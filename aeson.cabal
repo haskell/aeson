@@ -25,6 +25,7 @@ flag developer
 library
   exposed-modules:
     Data.Aeson
+    Data.Aeson.Encode
     Data.Aeson.Parser
     Data.Aeson.Parser.Internal
     Data.Aeson.Types
@@ -32,6 +33,7 @@ library
   build-depends:
     attoparsec >= 0.8.4.0,
     base == 4.*,
+    blaze-builder >= 0.2.1.4,
     bytestring,
     containers == 0.3.*,
     old-locale,
