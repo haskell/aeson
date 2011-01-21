@@ -27,7 +27,6 @@ library
     Data.Aeson
     Data.Aeson.Encode
     Data.Aeson.Parser
-    Data.Aeson.Parser.Internal
     Data.Aeson.Types
 
   build-depends:
