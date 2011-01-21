@@ -1,0 +1,20 @@
+^dist$
+benchmarks/Arse
+benchmarks/med.txt
+benchmarks/tiny
+
+syntax: glob
+*.aux
+*.hi
+*.hp
+*.o
+*.orig
+*.out
+*.pdf
+*.prof
+*.ps
+*.rej
+*~
+.*.swp
+.\#*
+\#*

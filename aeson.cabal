@@ -1,0 +1,50 @@
+name:            aeson
+version:         0.0.0.0
+license:         BSD3
+license-file:    LICENSE
+category:        Text, Web, JSON
+copyright:       Copyright 2011 MailRank, Inc.
+author:          Bryan O'Sullivan <bos@mailrank.com>
+maintainer:      Bryan O'Sullivan <bos@mailrank.com>
+stability:       experimental
+tested-with:     GHC == 6.12.3
+synopsis:        Fast JSON parsing and generation
+cabal-version:   >= 1.8
+homepage:        http://github.com/mailrank/aeson
+bug-reports:     http://github.com/mailrank/aeson/issues
+build-type:      Simple
+description:
+    A fast JSON parsing and generation library.
+extra-source-files:
+    README.markdown
+
+flag developer
+  description: operate in developer mode
+  default: False
+
+library
+  exposed-modules:
+    Data.Aeson
+    Data.Aeson.Parser
+    Data.Aeson.Parser.Internal
+    Data.Aeson.Types
+
+  build-depends:
+    attoparsec >= 0.8.4.0,
+    base == 4.*,
+    bytestring,
+    containers == 0.3.*,
+    old-locale,
+    text >= 0.11.0.0,
+    time,
+    vector >= 0.7
+
+  if flag(developer)
+    ghc-options: -Werror
+
+  ghc-options:      -Wall
+  ghc-prof-options: -auto-all
+
+source-repository head
+  type:     git
+  location: http://github.com/mailrank/aeson
