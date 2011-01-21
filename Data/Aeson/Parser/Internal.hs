@@ -8,6 +8,7 @@ module Data.Aeson.Parser.Internal
     ) where
 
 import Control.Applicative as A
+import Data.Aeson.Types (Value(..))
 import Data.Attoparsec.Char8
 import Data.Bits (shiftL)
 import Data.ByteString as B
@@ -18,7 +19,6 @@ import Data.Text.Encoding (decodeUtf8, encodeUtf8)
 import Data.Vector as Vector hiding ((++))
 import Data.Word (Word8)
 import qualified Data.Attoparsec as A
-import Data.Aeson.Types (Value(..))
 
 object :: Parser Value
 object = do
