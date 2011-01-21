@@ -8,7 +8,7 @@ module Data.Aeson.Encode
 
 import Blaze.ByteString.Builder
 import Blaze.ByteString.Builder.Char.Utf8
-import Data.Aeson.Types (JSON(..), Value(..))
+import Data.Aeson.Types (ToJSON(..), Value(..))
 import Data.Monoid (mappend, mconcat)
 import qualified Data.ByteString.Char8 as B
 import qualified Data.ByteString.Lazy.Char8 as L
@@ -39,17 +39,18 @@ build (Object m) =
 string :: T.Text -> Builder
 string s = fromChar '"' `mappend` quote s `mappend` fromChar '"'
   where
-    quote s = case T.uncons t of
+    quote q = case T.uncons t of
                 Just (c,t') -> mconcat [fromText h, fromText (escape c),
                                         quote t']
                 Nothing -> fromText h
-        where (h,t) = T.break isEscape s
+        where (h,t) = T.break isEscape q
     isEscape c = c == '\"' || c == '\n' || c == '\r' || c == '\t'
     escape '\"' = "\\\""
     escape '\n' = "\\n"
     escape '\r' = "\\r"
     escape '\t' = "\\t"
+    escape _    = error "Data.Aeson.Encode.build: internal error"
 
-encode :: JSON a => a -> L.ByteString
+encode :: ToJSON a => a -> L.ByteString
 encode = toLazyByteString . build . toJSON
 {-# INLINE encode #-}

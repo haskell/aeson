@@ -3,7 +3,8 @@ module Data.Aeson
       Array
     , Object
     , Value(..)
-    , JSON(..)
+    , FromJSON(..)
+    , ToJSON(..)
     , (.=)
     , (.:)
     , object
