@@ -21,24 +21,21 @@ import qualified Data.Attoparsec as A
 
 json :: Parser Value
 json = do
-  skipSpace
-  c <- anyChar
+  c <- skipSpace *> anyChar
   case c of
-    '{' -> skipSpace *> object
-    '[' -> skipSpace *> array
+    '{' -> skipSpace *> object_
+    '[' -> skipSpace *> array_
     _   -> fail "root value is not an object or array"
 
-object :: Parser Value
-object = do
+object_ :: Parser Value
+object_ = do
   let pair = liftA2 (,) (jstring <* skipSpace) (char8 ':' *> skipSpace *> value)
-  vals <- (pair <* skipSpace) `sepBy` (char8 ',' *> skipSpace)
-  _ <- char8 '}'
+  vals <- ((pair <* skipSpace) `sepBy` (char8 ',' *> skipSpace)) <* char8 '}'
   return . Object $ Map.fromList vals
 
-array :: Parser Value
-array = do
-  vals <- (value <* skipSpace) `sepBy` (char8 ',' *> skipSpace)
-  _ <- char8 ']'
+array_ :: Parser Value
+array_ = do
+  vals <- ((value <* skipSpace) `sepBy` (char8 ',' *> skipSpace)) <* char8 ']'
   return . Array $ Vector.fromList vals
 
 value :: Parser Value
@@ -47,8 +44,8 @@ value = most <|> (Number <$> double)
   most = do
     c <- anyChar
     case c of
-      '{' -> skipSpace *> object
-      '[' -> skipSpace *> array
+      '{' -> skipSpace *> object_
+      '[' -> skipSpace *> array_
       '"' -> String <$> jstring_
       'f' -> string "alse" *> pure (Bool False)
       't' -> string "rue" *> pure (Bool True)
