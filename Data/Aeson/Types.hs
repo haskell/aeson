@@ -11,10 +11,8 @@ module Data.Aeson.Types
     ) where
 
 import Control.Applicative
-import Data.ByteString (ByteString)
 import Data.Map (Map)
 import Data.Text (Text, pack, unpack)
-import Data.Text.Encoding (decodeUtf8, encodeUtf8)
 import Data.Time.Clock (UTCTime)
 import Data.Time.Format (formatTime, parseTime)
 import Data.Vector (Vector)
@@ -98,13 +96,6 @@ instance FromJSON Text where
     fromJSON (String t) = pure t
     fromJSON _          = empty
     {-# INLINE fromJSON #-}
-
-instance ToJSON ByteString where
-    toJSON = String . decodeUtf8
-
-instance FromJSON ByteString where
-    fromJSON (String t) = pure (encodeUtf8 t)
-    fromJSON _          = empty
 
 mapA :: (Applicative f) => (t -> f a) -> [t] -> f [a]
 mapA f = go
