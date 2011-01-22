@@ -9,7 +9,8 @@ module Data.Aeson.Encode
 import Blaze.ByteString.Builder
 import Blaze.ByteString.Builder.Char.Utf8
 import Data.Aeson.Types (ToJSON(..), Value(..))
-import Data.Monoid (mappend, mconcat)
+import Data.Monoid (mappend)
+import Numeric (showHex)
 import qualified Data.ByteString.Char8 as B
 import qualified Data.ByteString.Lazy.Char8 as L
 import qualified Data.Map as M
@@ -40,16 +41,19 @@ string :: T.Text -> Builder
 string s = fromChar '"' `mappend` quote s `mappend` fromChar '"'
   where
     quote q = case T.uncons t of
-                Just (c,t') -> mconcat [fromText h, fromText (escape c),
-                                        quote t']
+                Just (c,t') -> fromText h `mappend` escape c `mappend` quote t'
                 Nothing -> fromText h
         where (h,t) = T.break isEscape q
-    isEscape c = c == '\"' || c == '\n' || c == '\r' || c == '\t'
-    escape '\"' = "\\\""
-    escape '\n' = "\\n"
-    escape '\r' = "\\r"
-    escape '\t' = "\\t"
-    escape _    = error "Data.Aeson.Encode.build: internal error"
+    isEscape c = c == '\"' || c == '\\' || c < '\x20'
+    escape '\"' = fromByteString "\\\""
+    escape '\\' = fromByteString "\\\\"
+    escape '\n' = fromByteString "\\n"
+    escape '\r' = fromByteString "\\r"
+    escape '\t' = fromByteString "\\t"
+    escape c
+        | c < '\x20' = fromString $ "\\u" ++ replicate (4 - length h) '0' ++ h
+        | otherwise  = fromChar c
+        where h = showHex (fromEnum c) ""
 
 encode :: ToJSON a => a -> L.ByteString
 encode = toLazyByteString . build . toJSON
