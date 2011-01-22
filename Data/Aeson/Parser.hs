@@ -79,25 +79,23 @@ reparse p s = case (case parse p s of {Partial k -> k ""; r -> r}) of
                 _            -> fail "unexpected failure"
 
 unescape :: Parser [ByteString]
-unescape = do
-  let backslash = 92
-  h <- A.takeWhile (/=backslash)
-  let rest = do
-        w <- A.word8 backslash *> A.satisfy (`B.elem` "\"\\/ntbrfu")
-        case B.findIndex (==w) "\"\\/ntbrf" of
-          Just i ->
-               ([h,B.singleton $ B.index "\"\\/\n\t\b\r\f" i]++) <$> unescape
-          Nothing -> do
-               a <- reparse hexadecimal =<< A.take 4
-               if a < 0xd800 || a > 0xdfff
-                 then ([h,encodeUtf8 . T.singleton . chr $ a]++) <$> unescape
-                 else do
-                   _ <- string "\\u"
-                   b <- reparse hexadecimal =<< A.take 4
-                   if a <= 0xdbff && b >= 0xdc00 && b <= 0xdfff
-                     then do
-                       let c = ((a - 0xd800) `shiftL` 10) + (b - 0xdc00) +
-                               0x10000
-                       ([h,encodeUtf8 . T.singleton . chr $ c]++) <$> unescape
-                     else fail "invalid UTF-16 surrogates"
-  rest <|> return [h]
+unescape = Prelude.reverse <$> go [] where
+  go acc = do
+    let backslash = 92
+    h <- A.takeWhile (/=backslash)
+    let rest = do
+          w <- A.word8 backslash *> A.satisfy (`B.elem` "\"\\/ntbrfu")
+          case B.findIndex (==w) "\"\\/ntbrf" of
+            Just i  -> go (B.singleton (B.index "\"\\/\n\t\b\r\f" i):h:acc)
+            Nothing -> do
+                 a <- reparse hexadecimal =<< A.take 4
+                 if a < 0xd800 || a > 0xdfff
+                   then go (encodeUtf8 (T.singleton . chr $ a):h:acc)
+                   else do
+                     b <- string "\\u" *> (reparse hexadecimal =<< A.take 4)
+                     if a <= 0xdbff && b >= 0xdc00 && b <= 0xdfff
+                       then let c = ((a - 0xd800) `shiftL` 10) + (b - 0xdc00) +
+                                    0x10000
+                            in go (encodeUtf8 (T.singleton . chr $ c):h:acc)
+                       else fail "invalid UTF-16 surrogates"
+    rest <|> return (h:acc)
