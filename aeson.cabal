@@ -36,15 +36,15 @@ library
     bytestring,
     containers == 0.3.*,
     old-locale,
-    text >= 0.11.0.0,
+    text >= 0.11.0.2,
     time,
     vector >= 0.7
 
   if flag(developer)
     ghc-options: -Werror
+    ghc-prof-options: -auto-all
 
   ghc-options:      -Wall
-  ghc-prof-options: -auto-all
 
 source-repository head
   type:     git
