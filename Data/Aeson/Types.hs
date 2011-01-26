@@ -13,6 +13,7 @@ module Data.Aeson.Types
     ) where
 
 import Control.Applicative
+import Control.DeepSeq
 import Data.Map (Map)
 import Data.Text (Text, pack, unpack)
 import Data.Time.Clock (UTCTime)
@@ -33,6 +34,14 @@ data Value = Object Object
            | Bool !Bool
            | Null
              deriving (Eq, Show, Typeable)
+
+instance NFData Value where
+    rnf (Object o) = rnf o
+    rnf (Array a)  = V.foldl' (\x y -> rnf y `seq` x) () a
+    rnf (String s) = rnf s
+    rnf (Number n) = rnf n
+    rnf (Bool b)   = rnf b
+    rnf Null       = ()
 
 (.=) :: ToJSON a => Text -> a -> Object
 name .= value = M.singleton name (toJSON value)
