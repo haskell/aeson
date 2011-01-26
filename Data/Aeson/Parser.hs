@@ -6,19 +6,15 @@ module Data.Aeson.Parser
     , value
     ) where
 
-import Blaze.ByteString.Builder
-import Blaze.ByteString.Builder.Char.Utf8
-import Data.Monoid (Monoid(..))
 import Control.Applicative as A
 import Data.Aeson.Types (Value(..))
 import Data.Attoparsec.Char8
 import Data.Bits (shiftL)
 import Data.ByteString as B
-import Data.ByteString.Unsafe as B
 import Data.Char (chr)
 import Data.Map as Map
 import Data.Text as T
-import Data.Text.Encoding (decodeUtf8)
+import Data.Text.Encoding (decodeUtf8, encodeUtf8)
 import Data.Vector as Vector hiding ((++))
 import Data.Word (Word8)
 import qualified Data.Attoparsec as A
@@ -71,7 +67,7 @@ jstring_ = do
                                         then Nothing
                                         else Just (c == backslash)
   _ <- A.word8 doubleQuote
-  decodeUtf8 <$> reparse unescape s
+  (decodeUtf8 . B.concat) <$> reparse unescape s
 
 reparse :: Parser a -> ByteString -> Parser a
 reparse p s = case (case parse p s of {Partial k -> k ""; r -> r}) of
@@ -79,24 +75,24 @@ reparse p s = case (case parse p s of {Partial k -> k ""; r -> r}) of
                 Fail _ _ msg -> fail msg
                 _            -> fail "unexpected failure"
 
-unescape :: Parser ByteString
-unescape = toByteString <$> go mempty where
-  go bld = do
+unescape :: Parser [ByteString]
+unescape = Prelude.reverse <$> go [] where
+  go acc = do
     let backslash = 92
     h <- A.takeWhile (/=backslash)
     let rest = do
           w <- A.word8 backslash *> A.satisfy (`B.elem` "\"\\/ntbrfu")
           case B.findIndex (==w) "\"\\/ntbrf" of
-            Just i  -> go (bld `mappend` fromByteString h `mappend` fromWord8 (B.unsafeIndex "\"\\/\n\t\b\r\f" i))
+            Just i  -> go (B.singleton (B.index "\"\\/\n\t\b\r\f" i):h:acc)
             Nothing -> do
                  a <- reparse hexadecimal =<< A.take 4
                  if a < 0xd800 || a > 0xdfff
-                   then go (bld `mappend` fromByteString h `mappend` fromChar (chr a))
+                   then go (encodeUtf8 (T.singleton . chr $ a):h:acc)
                    else do
                      b <- string "\\u" *> (reparse hexadecimal =<< A.take 4)
                      if a <= 0xdbff && b >= 0xdc00 && b <= 0xdfff
                        then let c = ((a - 0xd800) `shiftL` 10) + (b - 0xdc00) +
                                     0x10000
-                            in go (bld `mappend` fromByteString h `mappend` fromChar (chr c))
+                            in go (encodeUtf8 (T.singleton . chr $ c):h:acc)
                        else fail "invalid UTF-16 surrogates"
-    rest <|> return (bld `mappend` fromByteString h)
+    rest <|> return (h:acc)
