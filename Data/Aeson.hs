@@ -1,13 +1,30 @@
+-- Module:      Data.Aeson
+-- Copyright:   (c) 2011 MailRank, Inc.
+-- License:     Apache
+-- Maintainer:  Bryan O'Sullivan <bos@mailrank.com>
+-- Stability:   experimental
+-- Portability: portable
+--
+-- Types and functions for working efficiently with JSON data.
+
 module Data.Aeson
     (
-      Array
+    -- * Core JSON types
+      Value(..)
+    , Array
     , Object
-    , Value(..)
+    -- * Type conversion
     , FromJSON(..)
     , ToJSON(..)
+    -- * Constructors and accessors
     , (.=)
     , (.:)
     , object
+    -- * Encoding and parsing
+    , encode
+    , json
     ) where
 
+import Data.Aeson.Encode
+import Data.Aeson.Parser
 import Data.Aeson.Types

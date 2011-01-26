@@ -24,7 +24,7 @@ main = do
           let refill = B.hGet h 1024
           result <- parseWith refill json =<< refill
           case result of
-            Done _ r -> rnf r `seq` loop (good+1) bad
+            Done _ r -> loop (good+1) bad
             _        -> loop good (bad+1)
     (good, _) <- loop 0 0
     end <- getCurrentTime

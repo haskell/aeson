@@ -1,8 +1,17 @@
 {-# LANGUAGE OverloadedStrings #-}
 
+-- Module:      Data.Aeson.Encode
+-- Copyright:   (c) 2011 MailRank, Inc.
+-- License:     Apache
+-- Maintainer:  Bryan O'Sullivan <bos@mailrank.com>
+-- Stability:   experimental
+-- Portability: portable
+--
+-- Efficiently serialize a JSON value as a lazy 'L.ByteString'.
+
 module Data.Aeson.Encode
     (
-      build
+      fromValue
     , encode
     ) where
 
@@ -17,25 +26,26 @@ import qualified Data.Map as M
 import qualified Data.Text as T
 import qualified Data.Vector as V
 
-build :: Value -> Builder
-build Null = fromByteString "null"
-build (Bool b) = fromByteString $ if b then "true" else "false"
-build (Number n) = fromByteString (B.pack (show n))
-build (String s) = string s
-build (Array v)
+-- | Encode a JSON value to a 'Builder'.
+fromValue :: Value -> Builder
+fromValue Null = fromByteString "null"
+fromValue (Bool b) = fromByteString $ if b then "true" else "false"
+fromValue (Number n) = fromByteString (B.pack (show n))
+fromValue (String s) = string s
+fromValue (Array v)
     | V.null v = fromByteString "[]"
     | otherwise = fromChar '[' `mappend`
-                  build (V.unsafeHead v) `mappend`
+                  fromValue (V.unsafeHead v) `mappend`
                   V.foldr f (fromChar ']') (V.unsafeTail v)
-  where f a z = fromChar ',' `mappend` build a `mappend` z
-build (Object m) =
+  where f a z = fromChar ',' `mappend` fromValue a `mappend` z
+fromValue (Object m) =
     case M.toList m of
       (x:xs) -> fromChar '{' `mappend`
                 one x `mappend`
                 foldr f (fromChar '}') xs
       _ -> fromByteString "{}"
   where f a z     = fromChar ',' `mappend` one a `mappend` z
-        one (k,v) = string k `mappend` fromChar ':' `mappend` build v
+        one (k,v) = string k `mappend` fromChar ':' `mappend` fromValue v
 
 string :: T.Text -> Builder
 string s = fromChar '"' `mappend` quote s `mappend` fromChar '"'
@@ -55,6 +65,7 @@ string s = fromChar '"' `mappend` quote s `mappend` fromChar '"'
         | otherwise  = fromChar c
         where h = showHex (fromEnum c) ""
 
+-- | Efficiently serialize a JSON value as a lazy 'L.ByteString'.
 encode :: ToJSON a => a -> L.ByteString
-encode = toLazyByteString . build . toJSON
+encode = toLazyByteString . fromValue . toJSON
 {-# INLINE encode #-}
