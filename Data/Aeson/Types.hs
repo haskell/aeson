@@ -1,3 +1,5 @@
+{-# LANGUAGE DeriveDataTypeable #-}
+
 module Data.Aeson.Types
     (
       Array
@@ -15,6 +17,7 @@ import Data.Map (Map)
 import Data.Text (Text, pack, unpack)
 import Data.Time.Clock (UTCTime)
 import Data.Time.Format (formatTime, parseTime)
+import Data.Typeable (Typeable)
 import Data.Vector (Vector)
 import System.Locale (defaultTimeLocale)
 import qualified Data.Map as M
@@ -29,7 +32,7 @@ data Value = Object Object
            | Number Double
            | Bool !Bool
            | Null
-             deriving (Eq, Show)
+             deriving (Eq, Show, Typeable)
 
 (.=) :: ToJSON a => Text -> a -> Object
 name .= value = M.singleton name (toJSON value)
