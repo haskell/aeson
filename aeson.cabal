@@ -30,7 +30,7 @@ description:
     .
     Encoding performance on the same machine and data:
     .
-    * 854 bytes: 72407 msg\/sec (59 MB/sec)
+    * 854 bytes: 10647 msg\/sec (8.7 MB/sec)
     .
     * 6.4 KB: 2098 msg\/sec (13.2 MB/sec)
     .
