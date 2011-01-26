@@ -1,5 +1,14 @@
 {-# LANGUAGE OverloadedStrings #-}
 
+-- Module:      Data.Aeson.Parser
+-- Copyright:   (c) 2011 MailRank, Inc.
+-- License:     Apache
+-- Maintainer:  Bryan O'Sullivan <bos@mailrank.com>
+-- Stability:   experimental
+-- Portability: portable
+--
+-- Efficiently and correctly parse a JSON string.
+
 module Data.Aeson.Parser
     (
       json
@@ -19,6 +28,8 @@ import Data.Vector as Vector hiding ((++))
 import Data.Word (Word8)
 import qualified Data.Attoparsec as A
 
+-- | Parse a top-level JSON value.  This must be either an object or
+-- an array.
 json :: Parser Value
 json = do
   c <- skipSpace *> anyChar
@@ -38,6 +49,8 @@ array_ = do
   vals <- ((value <* skipSpace) `sepBy` (char8 ',' *> skipSpace)) <* char8 ']'
   return . Array $ Vector.fromList vals
 
+-- | Parse any JSON value.  Use 'json' in preference to this function
+-- if you are parsing data from an untrusted source.
 value :: Parser Value
 value = most <|> (Number <$> double)
  where
