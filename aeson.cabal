@@ -35,6 +35,7 @@ library
     blaze-builder >= 0.2.1.4,
     bytestring,
     containers == 0.3.*,
+    deepseq,
     old-locale,
     text >= 0.11.0.2,
     time,
