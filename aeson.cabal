@@ -14,7 +14,32 @@ homepage:        http://github.com/mailrank/aeson
 bug-reports:     http://github.com/mailrank/aeson/issues
 build-type:      Simple
 description:
-    A fast JSON parsing and generation library.
+    A JSON parsing and generation library optimized for ease of use
+    and high performance.
+    .
+    Parsing performance with GHC 6.12.3 on a late 2010 MacBook Pro
+    (2.66GHz Core i7), for different message sizes:
+    .
+    * 854 bytes: 15308 msg\/sec (12.5 MB/sec)
+    .
+    * 6.4 KB: 2807 msg\/sec (17.6 MB/sec)
+    .
+    * 31.2 KB: 493 msg\/sec (15.0 MB/sec)
+    .
+    * 61.5 KB: 236 msg\/sec (14.2 MB/sec) 
+    .
+    Encoding performance on the same machine and data:
+    .
+    * 854 bytes: 72407 msg\/sec (59 MB/sec)
+    .
+    * 6.4 KB: 2098 msg\/sec (13.2 MB/sec)
+    .
+    * 31.2 KB: 422 msg\/sec (12.9 MB/sec)
+    .
+    * 61.5 KB: 219 msg\/sec (13.2 MB/sec)
+    .
+    (A note on naming: in Greek mythology, Aeson was the father of Jason.)
+
 extra-source-files:
     README.markdown
 
@@ -34,7 +59,7 @@ library
     base == 4.*,
     blaze-builder >= 0.2.1.4,
     bytestring,
-    containers == 0.3.*,
+    containers,
     deepseq,
     old-locale,
     text >= 0.11.0.2,
