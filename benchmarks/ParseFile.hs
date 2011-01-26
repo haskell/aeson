@@ -21,7 +21,7 @@ main = do
             | good+bad >= count = return (good, bad)
             | otherwise = do
           hSeek h AbsoluteSeek 0
-          let refill = B.hGet h 1024
+          let refill = B.hGet h 16384
           result <- parseWith refill json =<< refill
           case result of
             Done _ r -> loop (good+1) bad

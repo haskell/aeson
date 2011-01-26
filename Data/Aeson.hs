@@ -6,6 +6,8 @@
 -- Portability: portable
 --
 -- Types and functions for working efficiently with JSON data.
+--
+-- (A note on naming: in Greek mythology, Aeson was the father of Jason.)
 
 module Data.Aeson
     (
