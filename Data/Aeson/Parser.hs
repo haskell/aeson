@@ -80,7 +80,9 @@ jstring_ = do
                                         then Nothing
                                         else Just (c == backslash)
   _ <- A.word8 doubleQuote
-  (decodeUtf8 . B.concat) <$> reparse unescape s
+  if backslash `B.elem` s
+    then (decodeUtf8 . B.concat) <$> reparse unescape s
+    else return (decodeUtf8 s)
 
 reparse :: Parser a -> ByteString -> Parser a
 reparse p s = case (case parse p s of {Partial k -> k ""; r -> r}) of
