@@ -21,13 +21,18 @@ module Data.Aeson.Types
     -- * Constructors and accessors
     , (.=)
     , (.:)
+    , (.:?)
     , object
     ) where
 
 import Control.Applicative
 import Control.DeepSeq (NFData(..))
 import Data.Map (Map)
+import qualified Data.ByteString as B
+import qualified Data.ByteString.Lazy as LB
+import Data.Text.Encoding (decodeUtf8, encodeUtf8)
 import Data.Text (Text, pack, unpack)
+import qualified Data.Text.Lazy as LT
 import Data.Time.Clock (UTCTime)
 import Data.Time.Format (formatTime, parseTime)
 import Data.Typeable (Typeable)
@@ -62,13 +67,30 @@ name .= value = M.singleton name (toJSON value)
 {-# INLINE (.=) #-}
 
 -- | Retrieve the value associated with the given key of an 'Object'.
--- The result is 'empty' if the key is not present or cannot be
--- converted to the desired type..
+-- The result is 'empty' if the key is not present or the value cannot
+-- be converted to the desired type.
+--
+-- This accessor is appropriate if the key and value /must/ be present
+-- in an object for it to be valid.  If the key and value are
+-- optional, use '(.:?)' instead.
 (.:) :: (Alternative f, FromJSON a) => Object -> Text -> f a
 obj .: key = case M.lookup key obj of
                Nothing -> empty
                Just v  -> fromJSON v
 {-# INLINE (.:) #-}
+
+-- | Retrieve the value associated with the given key of an 'Object'.
+-- The result is 'Nothing' if the key is not present, or 'empty' if
+-- the value cannot be converted to the desired type.
+--
+-- This accessor is most useful if the key and value can be absent
+-- from an object without affecting its validity.  If the key and
+-- value are mandatory, use '(.:?)' instead.
+(.:?) :: (Alternative f, FromJSON a) => Object -> Text -> f (Maybe a)
+obj .:? key = case M.lookup key obj of
+               Nothing -> pure Nothing
+               Just v  -> fromJSON v
+{-# INLINE (.:?) #-}
 
 -- | Create a 'Value' from a list of 'Object's.  If duplicate
 -- keys arise, earlier keys and their associated values win.
@@ -171,6 +193,33 @@ instance ToJSON Text where
 
 instance FromJSON Text where
     fromJSON (String t) = pure t
+    fromJSON _          = empty
+    {-# INLINE fromJSON #-}
+
+instance ToJSON LT.Text where
+    toJSON = String . LT.toStrict
+    {-# INLINE toJSON #-}
+
+instance FromJSON LT.Text where
+    fromJSON (String t) = pure (LT.fromStrict t)
+    fromJSON _          = empty
+    {-# INLINE fromJSON #-}
+
+instance ToJSON B.ByteString where
+    toJSON = String . decodeUtf8
+    {-# INLINE toJSON #-}
+
+instance FromJSON B.ByteString where
+    fromJSON (String t) = pure . encodeUtf8 $ t
+    fromJSON _          = empty
+    {-# INLINE fromJSON #-}
+
+instance ToJSON LB.ByteString where
+    toJSON = toJSON . B.concat . LB.toChunks
+    {-# INLINE toJSON #-}
+
+instance FromJSON LB.ByteString where
+    fromJSON (String t) = pure . LB.fromChunks . (:[]) . encodeUtf8 $ t
     fromJSON _          = empty
     {-# INLINE fromJSON #-}
 
