@@ -16,9 +16,10 @@ module Data.Aeson.Parser
     ) where
 
 import Control.Applicative as A
+import Control.Monad (when)
 import Data.Aeson.Types (Value(..))
 import Data.Attoparsec.Char8
-import Data.Bits (shiftL)
+import Data.Bits ((.|.), shiftL)
 import Data.ByteString as B
 import Data.Char (chr)
 import Data.Map as Map
@@ -27,6 +28,7 @@ import Data.Text.Encoding (decodeUtf8, encodeUtf8)
 import Data.Vector as Vector hiding ((++))
 import Data.Word (Word8)
 import qualified Data.Attoparsec as A
+import qualified Data.ByteString.Unsafe as B
 
 -- | Parse a top-level JSON value.  This must be either an object or
 -- an array.
@@ -96,18 +98,42 @@ unescape = Prelude.reverse <$> go [] where
     let backslash = 92
     h <- A.takeWhile (/=backslash)
     let rest = do
-          w <- A.word8 backslash *> A.satisfy (`B.elem` "\"\\/ntbrfu")
-          case B.findIndex (==w) "\"\\/ntbrf" of
-            Just i  -> go (B.singleton (B.index "\"\\/\n\t\b\r\f" i):h:acc)
-            Nothing -> do
-                 a <- reparse hexadecimal =<< A.take 4
+          start <- A.take 2
+          let !slash = B.unsafeHead start
+              !t = B.unsafeIndex start 1
+              escape = case B.findIndex (==t) "\"\\/ntbrfu" of
+                         Just i -> i
+                         _      -> 255
+          when (slash /= backslash || escape == 255) $
+            fail "bad escape sequence"
+          if t /= 117 -- 'u'
+            then go (B.singleton (B.unsafeIndex mapping escape):h:acc)
+            else do
+                 a <- hexQuad
                  if a < 0xd800 || a > 0xdfff
                    then go (encodeUtf8 (T.singleton . chr $ a):h:acc)
                    else do
-                     b <- string "\\u" *> (reparse hexadecimal =<< A.take 4)
+                     b <- string "\\u" *> hexQuad
                      if a <= 0xdbff && b >= 0xdc00 && b <= 0xdfff
-                       then let c = ((a - 0xd800) `shiftL` 10) + (b - 0xdc00) +
-                                    0x10000
-                            in go (encodeUtf8 (T.singleton . chr $ c):h:acc)
+                       then let !c = ((a - 0xd800) `shiftL` 10) + (b - 0xdc00) +
+                                     0x10000
+                            in go (encodeUtf8 (T.singleton (chr c)):h:acc)
                        else fail "invalid UTF-16 surrogates"
     rest <|> return (h:acc)
+  mapping = "\"\\/\n\t\b\r\f"
+
+hexQuad :: Parser Int
+hexQuad = do
+  s <- A.take 4
+  let hex n | w >= 48 && w <= 57  = w - 48
+            | w >= 97 && w <= 122 = w - 87
+            | w >= 65 && w <= 90  = w - 55
+            | otherwise           = 255
+        where w = fromIntegral $ B.unsafeIndex s n
+      a = hex 0
+      b = hex 1
+      c = hex 2
+      d = hex 3
+  if (a .|. b .|. c .|. d) /= 255
+    then return $! d .|. (c `shiftL` 4) .|. (b `shiftL` 8) .|. (a `shiftL` 12)
+    else fail "invalid hex escape"
