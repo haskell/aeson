@@ -18,15 +18,24 @@ description:
     and high performance.
     .
     Parsing performance with GHC 6.12.3 on a late 2010 MacBook Pro
-    (2.66GHz Core i7), for different message sizes:
+    (2.66GHz Core i7), for mostly-English tweets from Twitter's JSON
+    search API:
     .
-    * 854 bytes: 15308 msg\/sec (12.5 MB/sec)
+    * 854 bytes: 21054 msg\/sec (17.1 MB/sec)
     .
-    * 6.4 KB: 2807 msg\/sec (17.6 MB/sec)
+    * 6.4 KB: 4545 msg\/sec (28.6 MB/sec)
     .
-    * 31.2 KB: 493 msg\/sec (15.0 MB/sec)
+    * 31.2 KB: 856 msg\/sec (26.1 MB/sec)
     .
-    * 61.5 KB: 236 msg\/sec (14.2 MB/sec) 
+    * 61.5 KB: 403 msg\/sec (24.2 MB/sec) 
+    .
+    Handling heavily-escaped text is a little more work.  Here is
+    parsing performance with Japanese tweets, where much of the text
+    is entirely Unicode-escaped:
+    .
+    * 14.6 KB: 1250 msg\/sec (17.9 MB/sec)
+    .
+    * 44.1 KB: 363 msg\/sec (15.6 MB/sec)
     .
     Encoding performance on the same machine and data:
     .
