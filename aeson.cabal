@@ -42,6 +42,10 @@ description:
 
 extra-source-files:
     README.markdown
+    benchmarks/AesonParse.hs
+    benchmarks/EncodeFile.hs
+    benchmarks/JsonParse.hs
+    benchmarks/ReadFile.hs
 
 flag developer
   description: operate in developer mode
@@ -75,3 +79,7 @@ library
 source-repository head
   type:     git
   location: http://github.com/mailrank/aeson
+
+source-repository head
+  type:     mercurial
+  location: http://bitbucket.org/bos/aeson
