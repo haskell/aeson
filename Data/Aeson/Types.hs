@@ -14,7 +14,9 @@ module Data.Aeson.Types
     -- * Core JSON types
       Value(..)
     , Array
+    , emptyArray
     , Object
+    , emptyObject
     -- * Type conversion
     , FromJSON(..)
     , ToJSON(..)
@@ -41,7 +43,10 @@ import System.Locale (defaultTimeLocale)
 import qualified Data.Map as M
 import qualified Data.Vector as V
 
+-- | A JSON \"object\" (key/value map).
 type Object = Map Text Value
+
+-- | A JSON \"array\" (sequence).
 type Array = Vector Value
 
 -- | A JSON value represented as a Haskell value.
@@ -60,6 +65,14 @@ instance NFData Value where
     rnf (Number n) = rnf n
     rnf (Bool b)   = rnf b
     rnf Null       = ()
+
+-- | The empty array.
+emptyArray :: Value
+emptyArray = Array V.empty
+
+-- | The empty object.
+emptyObject :: Value
+emptyObject = Object M.empty
 
 -- | Construct an 'Object' from a key and a value.
 (.=) :: ToJSON a => Text -> a -> Object
