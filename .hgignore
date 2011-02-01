@@ -1,19 +1,8 @@
 ^dist$
-benchmarks/Arse
-benchmarks/med.txt
-benchmarks/tiny
+^benchmarks/(?:AesonParse|EncodeFile|JsonParse|json-data)$
+.*\.(?:h[ip]|o|orig|out|pdf|prof|ps|rej)$
 
 syntax: glob
-*.aux
-*.hi
-*.hp
-*.o
-*.orig
-*.out
-*.pdf
-*.prof
-*.ps
-*.rej
 *~
 .*.swp
 .\#*
