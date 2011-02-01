@@ -25,7 +25,7 @@ import Data.Attoparsec.Char8
 import Data.Bits ((.|.), shiftL)
 import Data.ByteString as B
 import Data.Char (chr)
-import Data.Map as Map
+import Data.HashMap as Map
 import Data.Monoid (mappend, mempty)
 import Data.Text as T
 import Data.Text.Encoding (decodeUtf8)

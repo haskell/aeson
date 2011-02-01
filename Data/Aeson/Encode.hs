@@ -22,7 +22,7 @@ import Data.Monoid (mappend)
 import Numeric (showHex)
 import qualified Data.ByteString.Char8 as B
 import qualified Data.ByteString.Lazy.Char8 as L
-import qualified Data.Map as M
+import qualified Data.HashMap as M
 import qualified Data.Text as T
 import qualified Data.Vector as V
 
