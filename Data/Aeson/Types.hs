@@ -27,7 +27,7 @@ module Data.Aeson.Types
 
 import Control.Applicative
 import Control.DeepSeq (NFData(..))
-import Data.Map (Map)
+import Data.HashMap (HashMap)
 import qualified Data.ByteString as B
 import qualified Data.ByteString.Lazy as LB
 import Data.Text.Encoding (decodeUtf8, encodeUtf8)
@@ -38,10 +38,10 @@ import Data.Time.Format (formatTime, parseTime)
 import Data.Typeable (Typeable)
 import Data.Vector (Vector)
 import System.Locale (defaultTimeLocale)
-import qualified Data.Map as M
+import qualified Data.HashMap as M
 import qualified Data.Vector as V
 
-type Object = Map Text Value
+type Object = HashMap Text Value
 type Array = Vector Value
 
 -- | A JSON value represented as a Haskell value.
@@ -95,7 +95,7 @@ obj .:? key = case M.lookup key obj of
 -- | Create a 'Value' from a list of 'Object's.  If duplicate
 -- keys arise, earlier keys and their associated values win.
 object :: [Object] -> Value
-object = Object . M.unions
+object = Object . M.fromList . concat . map M.toList
 {-# INLINE object #-}
 
 -- | A type that can be converted to JSON.
