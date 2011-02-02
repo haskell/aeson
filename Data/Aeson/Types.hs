@@ -28,23 +28,24 @@ module Data.Aeson.Types
     , object
     ) where
 
-import Control.Monad (MonadPlus(..), ap, liftM)
 import Control.Arrow ((***))
 import Control.DeepSeq (NFData(..))
+import Control.Monad (MonadPlus(..), ap, liftM)
+import Data.Data (Data)
 import Data.Map (Map)
-import qualified Data.ByteString as B
-import qualified Data.ByteString.Lazy as LB
-import Data.Text.Encoding (decodeUtf8, encodeUtf8)
+import Data.Monoid (Dual(..), First(..), Last(..))
 import Data.Text (Text, pack, unpack)
-import qualified Data.Text.Lazy as LT
+import Data.Text.Encoding (decodeUtf8, encodeUtf8)
 import Data.Time.Clock (UTCTime)
 import Data.Time.Format (formatTime, parseTime)
 import Data.Typeable (Typeable)
-import Data.Data (Data)
 import Data.Vector (Vector)
 import System.Locale (defaultTimeLocale)
+import qualified Data.ByteString as B
+import qualified Data.ByteString.Lazy as LB
 import qualified Data.Map as M
 import qualified Data.Set as Set
+import qualified Data.Text.Lazy as LT
 import qualified Data.Vector as V
 
 -- | A JSON \"object\" (key\/value map).
@@ -328,6 +329,30 @@ instance (FromJSON a, FromJSON b) => FromJSON (a,b) where
                             [a,b] -> (,) <$> fromJSON a <*> fromJSON b
                             _     -> empty
     fromJSON _          = empty
+    {-# INLINE fromJSON #-}
+
+instance ToJSON a => ToJSON (Dual a) where
+    toJSON = toJSON . getDual
+    {-# INLINE toJSON #-}
+
+instance FromJSON a => FromJSON (Dual a) where
+    fromJSON = liftM Dual . fromJSON
+    {-# INLINE fromJSON #-}
+
+instance ToJSON a => ToJSON (First a) where
+    toJSON = toJSON . getFirst
+    {-# INLINE toJSON #-}
+
+instance FromJSON a => FromJSON (First a) where
+    fromJSON = liftM First . fromJSON
+    {-# INLINE fromJSON #-}
+
+instance ToJSON a => ToJSON (Last a) where
+    toJSON = toJSON . getLast
+    {-# INLINE toJSON #-}
+
+instance FromJSON a => FromJSON (Last a) where
+    fromJSON = liftM Last . fromJSON
     {-# INLINE fromJSON #-}
 
 -- | Transform one map into another.  The ordering of keys must be
