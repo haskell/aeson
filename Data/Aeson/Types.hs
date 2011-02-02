@@ -29,8 +29,8 @@ module Data.Aeson.Types
     ) where
 
 import Control.Arrow ((***))
+import Control.Applicative
 import Control.DeepSeq (NFData(..))
-import Control.Monad (MonadPlus(..), ap, liftM)
 import Data.Data (Data)
 import Data.Map (Map)
 import Data.Monoid (Dual(..), First(..), Last(..))
@@ -98,9 +98,9 @@ name .= value = Pair (name, toJSON value)
 -- This accessor is appropriate if the key and value /must/ be present
 -- in an object for it to be valid.  If the key and value are
 -- optional, use '(.:?)' instead.
-(.:) :: (MonadPlus m, FromJSON a) => Object -> Text -> m a
+(.:) :: (Alternative m, FromJSON a) => Object -> Text -> m a
 obj .: key = case M.lookup key obj of
-               Nothing -> mzero
+               Nothing -> empty
                Just v  -> fromJSON v
 {-# INLINE (.:) #-}
 
@@ -111,9 +111,9 @@ obj .: key = case M.lookup key obj of
 -- This accessor is most useful if the key and value can be absent
 -- from an object without affecting its validity.  If the key and
 -- value are mandatory, use '(.:?)' instead.
-(.:?) :: (MonadPlus m, FromJSON a) => Object -> Text -> m (Maybe a)
+(.:?) :: (Alternative m, FromJSON a) => Object -> Text -> m (Maybe a)
 obj .:? key = case M.lookup key obj of
-               Nothing -> return Nothing
+               Nothing -> pure Nothing
                Just v  -> fromJSON v
 {-# INLINE (.:?) #-}
 
@@ -147,15 +147,15 @@ class ToJSON a where
 -- @data Coord { x :: Double, y :: Double }
 -- 
 -- instance FromJSON Coord where
---   fromJSON ('Object' v) = Coord `'liftM'`
---                         v '.:' \"x\" `'ap'`
+--   fromJSON ('Object' v) = Coord '<$>'
+--                         v '.:' \"x\" '<*>'
 --                         v '.:' \"y\"
 --
 --   \-- A non-'Object' value is of the wrong type, so use 'mzero' to fail.
 --   fromJSON _          = 'mzero'
 -- @
 class FromJSON a where
-    fromJSON :: MonadPlus m => Value -> m a
+    fromJSON :: Alternative m => Value -> m a
 
 instance (ToJSON a) => ToJSON (Maybe a) where
     toJSON (Just a) = toJSON a
@@ -163,7 +163,7 @@ instance (ToJSON a) => ToJSON (Maybe a) where
     {-# INLINE toJSON #-}
     
 instance (FromJSON a) => FromJSON (Maybe a) where
-    fromJSON Null   = return Nothing
+    fromJSON Null   = pure Nothing
     fromJSON a      = Just <$> fromJSON a
     {-# INLINE fromJSON #-}
 
@@ -181,7 +181,7 @@ instance ToJSON Bool where
     {-# INLINE toJSON #-}
 
 instance FromJSON Bool where
-    fromJSON (Bool b) = return b
+    fromJSON (Bool b) = pure b
     fromJSON _        = empty
     {-# INLINE fromJSON #-}
 
@@ -190,7 +190,7 @@ instance ToJSON Double where
     {-# INLINE toJSON #-}
 
 instance FromJSON Double where
-    fromJSON (Number n) = return n
+    fromJSON (Number n) = pure n
     fromJSON _          = empty
     {-# INLINE fromJSON #-}
 
@@ -199,7 +199,7 @@ instance ToJSON Int where
     {-# INLINE toJSON #-}
 
 instance FromJSON Int where
-    fromJSON (Number n) = return (floor n)
+    fromJSON (Number n) = pure (floor n)
     fromJSON _          = empty
     {-# INLINE fromJSON #-}
 
@@ -208,7 +208,7 @@ instance ToJSON Integer where
     {-# INLINE toJSON #-}
 
 instance FromJSON Integer where
-    fromJSON (Number n) = return (floor n)
+    fromJSON (Number n) = pure (floor n)
     fromJSON _          = empty
     {-# INLINE fromJSON #-}
 
@@ -217,7 +217,7 @@ instance ToJSON Text where
     {-# INLINE toJSON #-}
 
 instance FromJSON Text where
-    fromJSON (String t) = return t
+    fromJSON (String t) = pure t
     fromJSON _          = empty
     {-# INLINE fromJSON #-}
 
@@ -226,7 +226,7 @@ instance ToJSON LT.Text where
     {-# INLINE toJSON #-}
 
 instance FromJSON LT.Text where
-    fromJSON (String t) = return (LT.fromStrict t)
+    fromJSON (String t) = pure (LT.fromStrict t)
     fromJSON _          = empty
     {-# INLINE fromJSON #-}
 
@@ -235,7 +235,7 @@ instance ToJSON B.ByteString where
     {-# INLINE toJSON #-}
 
 instance FromJSON B.ByteString where
-    fromJSON (String t) = return . encodeUtf8 $ t
+    fromJSON (String t) = pure . encodeUtf8 $ t
     fromJSON _          = empty
     {-# INLINE fromJSON #-}
 
@@ -244,7 +244,7 @@ instance ToJSON LB.ByteString where
     {-# INLINE toJSON #-}
 
 instance FromJSON LB.ByteString where
-    fromJSON (String t) = return . LB.fromChunks . (:[]) . encodeUtf8 $ t
+    fromJSON (String t) = pure . LB.fromChunks . (:[]) . encodeUtf8 $ t
     fromJSON _          = empty
     {-# INLINE fromJSON #-}
 
@@ -271,7 +271,7 @@ instance (ToJSON a) => ToJSON (Set.Set a) where
     {-# INLINE toJSON #-}
     
 instance (Ord a, FromJSON a) => FromJSON (Set.Set a) where
-    fromJSON = liftM Set.fromList . fromJSON
+    fromJSON = fmap Set.fromList . fromJSON
     {-# INLINE fromJSON #-}
 
 instance (ToJSON v) => ToJSON (M.Map Text v) where
@@ -279,31 +279,30 @@ instance (ToJSON v) => ToJSON (M.Map Text v) where
     {-# INLINE toJSON #-}
 
 instance (FromJSON v) => FromJSON (M.Map Text v) where
-    fromJSON (Object o) = go [] (M.toAscList o)
+    fromJSON (Object o) = M.fromAscList <$> go (M.toAscList o)
       where
-        go acc ((k,v):kvs) = do v' <- fromJSON v
-                                go ((k,v'):acc) kvs
-        go acc _           = return (M.fromAscList (reverse acc))
+        go ((k,v):kvs)  = ((:) . (,) k) <$> fromJSON v <*> go kvs
+        go _            = pure []
     fromJSON _          = empty
 
 instance (ToJSON v) => ToJSON (M.Map LT.Text v) where
     toJSON = Object . transformMap LT.toStrict toJSON
 
 instance (FromJSON v) => FromJSON (M.Map LT.Text v) where
-    fromJSON = liftM (M.mapKeysMonotonic LT.fromStrict) . fromJSON
+    fromJSON = fmap (M.mapKeysMonotonic LT.fromStrict) . fromJSON
 
 instance (ToJSON v) => ToJSON (M.Map String v) where
     toJSON = Object . transformMap pack toJSON
 
 instance (FromJSON v) => FromJSON (M.Map String v) where
-    fromJSON = liftM (M.mapKeysMonotonic unpack) . fromJSON
+    fromJSON = fmap (M.mapKeysMonotonic unpack) . fromJSON
 
 instance ToJSON Value where
     toJSON a = a
     {-# INLINE toJSON #-}
 
 instance FromJSON Value where
-    fromJSON a = return a
+    fromJSON a = pure a
     {-# INLINE fromJSON #-}
 
 -- We happen to use the same JSON formatting for a UTCTime as .NET
@@ -315,7 +314,7 @@ instance ToJSON UTCTime where
 instance FromJSON UTCTime where
     fromJSON (String t) =
         case parseTime defaultTimeLocale "/Date(%s)/" (unpack t) of
-          Just d -> return d
+          Just d -> pure d
           _      -> empty
     fromJSON _          = empty
     {-# INLINE fromJSON #-}
@@ -336,7 +335,7 @@ instance ToJSON a => ToJSON (Dual a) where
     {-# INLINE toJSON #-}
 
 instance FromJSON a => FromJSON (Dual a) where
-    fromJSON = liftM Dual . fromJSON
+    fromJSON = fmap Dual . fromJSON
     {-# INLINE fromJSON #-}
 
 instance ToJSON a => ToJSON (First a) where
@@ -344,7 +343,7 @@ instance ToJSON a => ToJSON (First a) where
     {-# INLINE toJSON #-}
 
 instance FromJSON a => FromJSON (First a) where
-    fromJSON = liftM First . fromJSON
+    fromJSON = fmap First . fromJSON
     {-# INLINE fromJSON #-}
 
 instance ToJSON a => ToJSON (Last a) where
@@ -352,7 +351,7 @@ instance ToJSON a => ToJSON (Last a) where
     {-# INLINE toJSON #-}
 
 instance FromJSON a => FromJSON (Last a) where
-    fromJSON = liftM Last . fromJSON
+    fromJSON = fmap Last . fromJSON
     {-# INLINE fromJSON #-}
 
 -- | Transform one map into another.  The ordering of keys must be
@@ -361,31 +360,8 @@ transformMap :: (Ord k1, Ord k2) => (k1 -> k2) -> (v1 -> v2)
              -> M.Map k1 v1 -> M.Map k2 v2
 transformMap fk fv = M.fromAscList . map (fk *** fv) . M.toAscList
 
-mapA :: (MonadPlus m) => (t -> m a) -> [t] -> m [a]
-mapA f = go []
+mapA :: (Alternative m) => (t -> m a) -> [t] -> m [a]
+mapA f = go
   where
-    go acc (a:as) = do
-      v <- f a
-      go (v:acc) as
-    go acc _      = return (reverse acc)
-
--- Applicative-style notation.
-
-(<$>) :: (Monad m) => (a1 -> r) -> m a1 -> m r
-(<$>) = liftM
-{-# INLINE (<$>) #-}
-infixl 4 <$>
-
-(<*>) :: (Monad m) => m (a -> b) -> m a -> m b
-(<*>) = ap
-{-# INLINE (<*>) #-}
-infixl 4 <*>
-
-(<|>) :: (MonadPlus m) => m a -> m a -> m a
-(<|>) = mplus
-{-# INLINE (<|>) #-}
-infixl 3 <|>
-
-empty :: (MonadPlus m) => m a
-empty = mzero
-{-# INLINE empty #-}
+    go (a:as) = (:) <$> f a <*> go as
+    go _      = pure []
