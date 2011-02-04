@@ -64,8 +64,12 @@ library
   exposed-modules:
     Data.Aeson
     Data.Aeson.Encode
+    Data.Aeson.Generic
     Data.Aeson.Parser
     Data.Aeson.Types
+
+  other-modules:
+    Data.Aeson.Functions
 
   build-depends:
     attoparsec >= 0.8.4.0,
@@ -75,6 +79,7 @@ library
     containers,
     deepseq,
     old-locale,
+    syb,
     text >= 0.11.0.2,
     time,
     vector >= 0.7

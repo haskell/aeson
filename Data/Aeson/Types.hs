@@ -1,4 +1,5 @@
-{-# LANGUAGE DeriveDataTypeable, FlexibleInstances #-}
+{-# LANGUAGE DeriveDataTypeable, FlexibleInstances, IncoherentInstances,
+    OverlappingInstances #-}
 
 -- Module:      Data.Aeson.Types
 -- Copyright:   (c) 2011 MailRank, Inc.
@@ -28,25 +29,30 @@ module Data.Aeson.Types
     , object
     ) where
 
-import Control.Arrow ((***))
 import Control.Applicative
 import Control.DeepSeq (NFData(..))
 import Data.Data (Data)
+import Data.Int (Int8, Int16, Int32, Int64)
+import qualified Data.IntSet as IntSet
 import Data.Map (Map)
 import Data.Monoid (Dual(..), First(..), Last(..))
+import Data.Ratio (Ratio)
 import Data.Text (Text, pack, unpack)
 import Data.Text.Encoding (decodeUtf8, encodeUtf8)
 import Data.Time.Clock (UTCTime)
 import Data.Time.Format (formatTime, parseTime)
 import Data.Typeable (Typeable)
 import Data.Vector (Vector)
+import Data.Word (Word, Word8, Word16, Word32, Word64)
 import System.Locale (defaultTimeLocale)
 import qualified Data.ByteString as B
 import qualified Data.ByteString.Lazy as LB
 import qualified Data.Map as M
 import qualified Data.Set as Set
+import qualified Data.Text as T
 import qualified Data.Text.Lazy as LT
 import qualified Data.Vector as V
+import Data.Aeson.Functions
 
 -- | A JSON \"object\" (key\/value map).
 type Object = Map Text Value
@@ -80,15 +86,11 @@ emptyObject :: Value
 emptyObject = Object M.empty
 
 -- | A key\/value pair for an 'Object'.
-newtype Pair = Pair { unPair :: (Text, Value) }
-    deriving (Eq, Typeable)
-
-instance Show Pair where
-    show = show . unPair
+type Pair = (Text, Value)
 
 -- | Construct a 'Pair' from a key and a value.
 (.=) :: ToJSON a => Text -> a -> Pair
-name .= value = Pair (name, toJSON value)
+name .= value = (name, toJSON value)
 {-# INLINE (.=) #-}
 
 -- | Retrieve the value associated with the given key of an 'Object'.
@@ -117,10 +119,10 @@ obj .:? key = case M.lookup key obj of
                Just v  -> fromJSON v
 {-# INLINE (.:?) #-}
 
--- | Create a 'Value' from a list of 'Pair's.  If duplicate
+-- | Create a 'Value' from a list of name\/value 'Pair's.  If duplicate
 -- keys arise, earlier keys and their associated values win.
 object :: [Pair] -> Value
-object = Object . M.fromList . map unPair
+object = Object . M.fromList
 {-# INLINE object #-}
 
 -- | A type that can be converted to JSON.
@@ -185,12 +187,58 @@ instance FromJSON Bool where
     fromJSON _        = empty
     {-# INLINE fromJSON #-}
 
+instance ToJSON () where
+    toJSON _ = emptyArray
+    {-# INLINE toJSON #-}
+
+instance FromJSON () where
+    fromJSON (Array v) | V.null v = pure ()
+    fromJSON _                    = empty
+    {-# INLINE fromJSON #-}
+
+instance ToJSON [Char] where
+    toJSON = String . T.pack
+    {-# INLINE toJSON #-}
+
+instance FromJSON [Char] where
+    fromJSON (String t) = pure (T.unpack t)
+    fromJSON _          = empty
+    {-# INLINE fromJSON #-}
+
+instance ToJSON Char where
+    toJSON = String . T.singleton
+    {-# INLINE toJSON #-}
+
+instance FromJSON Char where
+    fromJSON (String t)
+        | T.compareLength t 1 == EQ = pure (T.head t)
+    fromJSON _                      = empty
+    {-# INLINE fromJSON #-}
+
 instance ToJSON Double where
     toJSON = Number
     {-# INLINE toJSON #-}
 
 instance FromJSON Double where
     fromJSON (Number n) = pure n
+    fromJSON _          = empty
+    {-# INLINE fromJSON #-}
+
+instance ToJSON Float where
+    toJSON = Number . fromRational . toRational
+    {-# INLINE toJSON #-}
+
+instance FromJSON Float where
+    fromJSON (Number n) = pure . fromRational . toRational $ n
+    fromJSON _          = empty
+    {-# INLINE fromJSON #-}
+
+instance ToJSON (Ratio Integer) where
+    toJSON = Number . fromRational
+    {-# INLINE toJSON #-}
+
+instance FromJSON (Ratio Integer) where
+    fromJSON (Number n) = pure . toRational $ n
     fromJSON _          = empty
     {-# INLINE fromJSON #-}
 
@@ -208,6 +256,87 @@ instance ToJSON Integer where
     {-# INLINE toJSON #-}
 
 instance FromJSON Integer where
+    fromJSON (Number n) = pure (floor n)
+    fromJSON _          = empty
+    {-# INLINE fromJSON #-}
+
+instance ToJSON Int8 where
+    toJSON = Number . fromIntegral
+    {-# INLINE toJSON #-}
+
+instance FromJSON Int8 where
+    fromJSON (Number n) = pure (floor n)
+    fromJSON _          = empty
+    {-# INLINE fromJSON #-}
+
+instance ToJSON Int16 where
+    toJSON = Number . fromIntegral
+    {-# INLINE toJSON #-}
+
+instance FromJSON Int16 where
+    fromJSON (Number n) = pure (floor n)
+    fromJSON _          = empty
+    {-# INLINE fromJSON #-}
+
+instance ToJSON Int32 where
+    toJSON = Number . fromIntegral
+    {-# INLINE toJSON #-}
+
+instance FromJSON Int32 where
+    fromJSON (Number n) = pure (floor n)
+    fromJSON _          = empty
+    {-# INLINE fromJSON #-}
+
+instance ToJSON Int64 where
+    toJSON = Number . fromIntegral
+    {-# INLINE toJSON #-}
+
+instance FromJSON Int64 where
+    fromJSON (Number n) = pure (floor n)
+    fromJSON _          = empty
+    {-# INLINE fromJSON #-}
+
+instance ToJSON Word where
+    toJSON = Number . fromIntegral
+    {-# INLINE toJSON #-}
+
+instance FromJSON Word where
+    fromJSON (Number n) = pure (floor n)
+    fromJSON _          = empty
+    {-# INLINE fromJSON #-}
+
+instance ToJSON Word8 where
+    toJSON = Number . fromIntegral
+    {-# INLINE toJSON #-}
+
+instance FromJSON Word8 where
+    fromJSON (Number n) = pure (floor n)
+    fromJSON _          = empty
+    {-# INLINE fromJSON #-}
+
+instance ToJSON Word16 where
+    toJSON = Number . fromIntegral
+    {-# INLINE toJSON #-}
+
+instance FromJSON Word16 where
+    fromJSON (Number n) = pure (floor n)
+    fromJSON _          = empty
+    {-# INLINE fromJSON #-}
+
+instance ToJSON Word32 where
+    toJSON = Number . fromIntegral
+    {-# INLINE toJSON #-}
+
+instance FromJSON Word32 where
+    fromJSON (Number n) = pure (floor n)
+    fromJSON _          = empty
+    {-# INLINE fromJSON #-}
+
+instance ToJSON Word64 where
+    toJSON = Number . fromIntegral
+    {-# INLINE toJSON #-}
+
+instance FromJSON Word64 where
     fromJSON (Number n) = pure (floor n)
     fromJSON _          = empty
     {-# INLINE fromJSON #-}
@@ -272,6 +401,14 @@ instance (ToJSON a) => ToJSON (Set.Set a) where
     
 instance (Ord a, FromJSON a) => FromJSON (Set.Set a) where
     fromJSON = fmap Set.fromList . fromJSON
+    {-# INLINE fromJSON #-}
+
+instance ToJSON IntSet.IntSet where
+    toJSON = toJSON . IntSet.toList
+    {-# INLINE toJSON #-}
+    
+instance FromJSON IntSet.IntSet where
+    fromJSON = fmap IntSet.fromList . fromJSON
     {-# INLINE fromJSON #-}
 
 instance (ToJSON v) => ToJSON (M.Map Text v) where
@@ -353,12 +490,6 @@ instance ToJSON a => ToJSON (Last a) where
 instance FromJSON a => FromJSON (Last a) where
     fromJSON = fmap Last . fromJSON
     {-# INLINE fromJSON #-}
-
--- | Transform one map into another.  The ordering of keys must be
--- preserved.
-transformMap :: (Ord k1, Ord k2) => (k1 -> k2) -> (v1 -> v2)
-             -> M.Map k1 v1 -> M.Map k2 v2
-transformMap fk fv = M.fromAscList . map (fk *** fv) . M.toAscList
 
 mapA :: (Alternative m) => (t -> m a) -> [t] -> m [a]
 mapA f = go
