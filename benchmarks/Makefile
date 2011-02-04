@@ -3,19 +3,16 @@ ghcflags := -O
 
 binaries := AesonParse EncodeFile JsonParse
 
-all: json-data/example.json $(binaries)
+all: json-data/example.json $(binaries) $(binaries:%=%_p)
 
-AesonParse: AesonParse.hs
-	$(ghc) $(ghcflags) --make -o $@ $^
+%_p: %.hs
+	$(ghc) $(ghcflags) -prof -auto-all --make -o $@ $^
 
-EncodeFile: EncodeFile.hs
-	$(ghc) $(ghcflags) --make -o $@ $^
-
-JsonParse: JsonParse.hs
+%: %.hs
 	$(ghc) $(ghcflags) --make -o $@ $^
 
 json-data/example.json: json-data.tar.bz2
 	bzip2 -dc < $^ | tar -m -xf -
 
 clean:
-	-rm -f *.o *.hi $(binaries)
+	-rm -f *.o *.hi $(binaries) $(binaries:%=%_p)

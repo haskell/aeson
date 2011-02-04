@@ -1,4 +1,4 @@
-{-# LANGUAGE DeriveDataTypeable #-}
+{-# LANGUAGE DeriveDataTypeable, FlexibleInstances #-}
 
 -- Module:      Data.Aeson.Types
 -- Copyright:   (c) 2011 MailRank, Inc.
@@ -14,7 +14,10 @@ module Data.Aeson.Types
     -- * Core JSON types
       Value(..)
     , Array
+    , emptyArray
+    , Pair
     , Object
+    , emptyObject
     -- * Type conversion
     , FromJSON(..)
     , ToJSON(..)
@@ -25,23 +28,32 @@ module Data.Aeson.Types
     , object
     ) where
 
+import Control.Arrow ((***))
 import Control.Applicative
 import Control.DeepSeq (NFData(..))
+-- import Data.Data (Data)
+import Data.Hashable (Hashable)
 import Data.HashMap (HashMap)
-import qualified Data.ByteString as B
-import qualified Data.ByteString.Lazy as LB
-import Data.Text.Encoding (decodeUtf8, encodeUtf8)
+import Data.Monoid (Dual(..), First(..), Last(..))
 import Data.Text (Text, pack, unpack)
-import qualified Data.Text.Lazy as LT
+import Data.Text.Encoding (decodeUtf8, encodeUtf8)
 import Data.Time.Clock (UTCTime)
 import Data.Time.Format (formatTime, parseTime)
 import Data.Typeable (Typeable)
 import Data.Vector (Vector)
 import System.Locale (defaultTimeLocale)
-import qualified Data.HashMap as M
+import qualified Data.HashMap as HM
+import qualified Data.Map as M
+import qualified Data.ByteString as B
+import qualified Data.ByteString.Lazy as LB
+import qualified Data.Set as Set
+import qualified Data.Text.Lazy as LT
 import qualified Data.Vector as V
 
+-- | A JSON \"object\" (key\/value map).
 type Object = HashMap Text Value
+
+-- | A JSON \"array\" (sequence).
 type Array = Vector Value
 
 -- | A JSON value represented as a Haskell value.
@@ -61,9 +73,24 @@ instance NFData Value where
     rnf (Bool b)   = rnf b
     rnf Null       = ()
 
--- | Construct an 'Object' from a key and a value.
-(.=) :: ToJSON a => Text -> a -> Object
-name .= value = M.singleton name (toJSON value)
+-- | The empty array.
+emptyArray :: Value
+emptyArray = Array V.empty
+
+-- | The empty object.
+emptyObject :: Value
+emptyObject = Object HM.empty
+
+-- | A key\/value pair for an 'Object'.
+newtype Pair = Pair { unPair :: (Text, Value) }
+    deriving (Eq, Typeable)
+
+instance Show Pair where
+    show = show . unPair
+
+-- | Construct a 'Pair' from a key and a value.
+(.=) :: ToJSON a => Text -> a -> Pair
+name .= value = Pair (name, toJSON value)
 {-# INLINE (.=) #-}
 
 -- | Retrieve the value associated with the given key of an 'Object'.
@@ -73,8 +100,8 @@ name .= value = M.singleton name (toJSON value)
 -- This accessor is appropriate if the key and value /must/ be present
 -- in an object for it to be valid.  If the key and value are
 -- optional, use '(.:?)' instead.
-(.:) :: (Alternative f, FromJSON a) => Object -> Text -> f a
-obj .: key = case M.lookup key obj of
+(.:) :: (Alternative m, FromJSON a) => Object -> Text -> m a
+obj .: key = case HM.lookup key obj of
                Nothing -> empty
                Just v  -> fromJSON v
 {-# INLINE (.:) #-}
@@ -86,16 +113,16 @@ obj .: key = case M.lookup key obj of
 -- This accessor is most useful if the key and value can be absent
 -- from an object without affecting its validity.  If the key and
 -- value are mandatory, use '(.:?)' instead.
-(.:?) :: (Alternative f, FromJSON a) => Object -> Text -> f (Maybe a)
-obj .:? key = case M.lookup key obj of
+(.:?) :: (Alternative m, FromJSON a) => Object -> Text -> m (Maybe a)
+obj .:? key = case HM.lookup key obj of
                Nothing -> pure Nothing
                Just v  -> fromJSON v
 {-# INLINE (.:?) #-}
 
--- | Create a 'Value' from a list of 'Object's.  If duplicate
+-- | Create a 'Value' from a list of 'Pair's.  If duplicate
 -- keys arise, earlier keys and their associated values win.
-object :: [Object] -> Value
-object = Object . M.fromList . concat . map M.toList
+object :: [Pair] -> Value
+object = Object . HM.fromList . map unPair
 {-# INLINE object #-}
 
 -- | A type that can be converted to JSON.
@@ -113,7 +140,7 @@ class ToJSON a where
 -- | A type that can be converted from JSON, with the possibility of
 -- failure.
 --
--- When writing an instance, use 'empty' to make a conversion fail,
+-- When writing an instance, use 'mzero' to make a conversion fail,
 -- e.g. if an 'Object' is missing a required key, or the value is of
 -- the wrong type.
 --
@@ -126,11 +153,11 @@ class ToJSON a where
 --                         v '.:' \"x\" '<*>'
 --                         v '.:' \"y\"
 --
---   \-- A non-'Object' value is of the wrong type, so use 'empty' to fail.
---   fromJSON _          = 'empty'
+--   \-- A non-'Object' value is of the wrong type, so use 'mzero' to fail.
+--   fromJSON _          = 'mzero'
 -- @
 class FromJSON a where
-    fromJSON :: Alternative f => Value -> f a
+    fromJSON :: Alternative m => Value -> m a
 
 instance (ToJSON a) => ToJSON (Maybe a) where
     toJSON (Just a) = toJSON a
@@ -223,12 +250,6 @@ instance FromJSON LB.ByteString where
     fromJSON _          = empty
     {-# INLINE fromJSON #-}
 
-mapA :: (Applicative f) => (t -> f a) -> [t] -> f [a]
-mapA f = go
-  where
-    go (a:as) = (:) <$> f a <*> go as
-    go []     = pure []
-
 instance (ToJSON a) => ToJSON [a] where
     toJSON = Array . V.fromList . map toJSON
     {-# INLINE toJSON #-}
@@ -246,6 +267,37 @@ instance (FromJSON a) => FromJSON (Vector a) where
     fromJSON (Array a) = V.fromList <$> mapA fromJSON (V.toList a)
     fromJSON _         = empty
     {-# INLINE fromJSON #-}
+
+instance (ToJSON a) => ToJSON (Set.Set a) where
+    toJSON = toJSON . Set.toList
+    {-# INLINE toJSON #-}
+    
+instance (Ord a, FromJSON a) => FromJSON (Set.Set a) where
+    fromJSON = fmap Set.fromList . fromJSON
+    {-# INLINE fromJSON #-}
+
+instance (ToJSON v) => ToJSON (M.Map Text v) where
+    toJSON = Object . HM.fromList . M.toList . M.map toJSON
+    {-# INLINE toJSON #-}
+
+instance (FromJSON v) => FromJSON (M.Map Text v) where
+    fromJSON (Object o) = M.fromList <$> go (HM.toList o)
+      where
+        go ((k,v):kvs)  = ((:) . (,) k) <$> fromJSON v <*> go kvs
+        go _            = pure []
+    fromJSON _          = empty
+
+instance (ToJSON v) => ToJSON (M.Map LT.Text v) where
+    toJSON = Object . transformMap LT.toStrict toJSON
+
+instance (FromJSON v) => FromJSON (M.Map LT.Text v) where
+    fromJSON = fmap (M.mapKeysMonotonic LT.fromStrict) . fromJSON
+
+instance (ToJSON v) => ToJSON (M.Map String v) where
+    toJSON = Object . transformMap pack toJSON
+
+instance (FromJSON v) => FromJSON (M.Map String v) where
+    fromJSON = fmap (M.mapKeysMonotonic unpack) . fromJSON
 
 instance ToJSON Value where
     toJSON a = a
@@ -280,12 +332,38 @@ instance (FromJSON a, FromJSON b) => FromJSON (a,b) where
     fromJSON _          = empty
     {-# INLINE fromJSON #-}
 
+instance ToJSON a => ToJSON (Dual a) where
+    toJSON = toJSON . getDual
+    {-# INLINE toJSON #-}
 
+instance FromJSON a => FromJSON (Dual a) where
+    fromJSON = fmap Dual . fromJSON
+    {-# INLINE fromJSON #-}
 
+instance ToJSON a => ToJSON (First a) where
+    toJSON = toJSON . getFirst
+    {-# INLINE toJSON #-}
 
+instance FromJSON a => FromJSON (First a) where
+    fromJSON = fmap First . fromJSON
+    {-# INLINE fromJSON #-}
 
+instance ToJSON a => ToJSON (Last a) where
+    toJSON = toJSON . getLast
+    {-# INLINE toJSON #-}
 
+instance FromJSON a => FromJSON (Last a) where
+    fromJSON = fmap Last . fromJSON
+    {-# INLINE fromJSON #-}
 
+-- | Transform one map into another.  The ordering of keys must be
+-- preserved.
+transformMap :: (Ord k1, Hashable k2, Ord k2) => (k1 -> k2) -> (v1 -> v2)
+             -> M.Map k1 v1 -> HM.HashMap k2 v2
+transformMap fk fv = HM.fromList . map (fk *** fv) . M.toList
 
-
-
+mapA :: (Alternative m) => (t -> m a) -> [t] -> m [a]
+mapA f = go
+  where
+    go (a:as) = (:) <$> f a <*> go as
+    go _      = pure []
