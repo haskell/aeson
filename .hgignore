@@ -1,5 +1,5 @@
 ^dist$
-^benchmarks/(?:AesonParse|EncodeFile|JsonParse|json-data)$
+^benchmarks/(?:AesonParse|EncodeFile|JsonParse|json-data|.*_p)$
 .*\.(?:h[ip]|o|orig|out|pdf|prof|ps|rej)$
 
 syntax: glob
