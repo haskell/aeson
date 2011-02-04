@@ -94,6 +94,7 @@ jstring_ = do
   if backslash `B.elem` s
     then decodeUtf8 <$> reparse unescape s
     else return (decodeUtf8 s)
+{-# INLINE jstring_ #-}
 
 reparse :: Parser a -> ByteString -> Parser a
 reparse p s = case (case parse p s of {Partial k -> k ""; r -> r}) of
