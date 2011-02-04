@@ -97,7 +97,7 @@ jstring_ = do
 {-# INLINE jstring_ #-}
 
 reparse :: Parser a -> ByteString -> Parser a
-reparse p s = case (case parse p s of {Partial k -> k ""; r -> r}) of
+reparse p s = case parse p s `feed` "" of
                 Done "" r    -> return r
                 Fail _ _ msg -> fail msg
                 _            -> fail "unexpected failure"
