@@ -1,5 +1,5 @@
 name:            aeson
-version:         0.1.0.2
+version:         0.2.0.0
 license:         BSD3
 license-file:    LICENSE
 category:        Text, Web, JSON
@@ -78,6 +78,7 @@ library
     bytestring,
     containers,
     deepseq,
+    monads-fd,
     old-locale,
     syb,
     text >= 0.11.0.2,
