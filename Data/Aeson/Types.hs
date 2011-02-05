@@ -1,5 +1,5 @@
 {-# LANGUAGE DeriveDataTypeable, FlexibleInstances, IncoherentInstances,
-    OverlappingInstances #-}
+    OverlappingInstances, Rank2Types #-}
 
 -- Module:      Data.Aeson.Types
 -- Copyright:   (c) 2011 MailRank, Inc.
@@ -20,7 +20,11 @@ module Data.Aeson.Types
     , Object
     , emptyObject
     -- * Type conversion
+    , Parser
+    , Result(..)
     , FromJSON(..)
+    , fromJSON
+    , parse
     , ToJSON(..)
     -- * Constructors and accessors
     , (.=)
@@ -30,6 +34,8 @@ module Data.Aeson.Types
     ) where
 
 import Control.Applicative
+import Control.Monad (MonadPlus(..))
+import Data.Monoid (Monoid(..))
 import Control.DeepSeq (NFData(..))
 import Data.Data (Data)
 import Data.Int (Int8, Int16, Int32, Int64)
@@ -53,6 +59,70 @@ import qualified Data.Text as T
 import qualified Data.Text.Lazy as LT
 import qualified Data.Vector as V
 import Data.Aeson.Functions
+
+-- | The result of running a 'Parser'.
+data Result a = Error String
+              | Success a
+                deriving (Eq, Show, Typeable)
+
+-- | Failure continuation.  Constructs an 'Error'.
+type Failure r   = String -> Result r
+-- | Success continuation.  Constructs a 'Success'.
+type Success a r = a -> Result r
+
+-- | A continuation-based parser type.
+newtype Parser a = Parser {
+      runParser :: forall r.
+                   Failure r
+                -> Success a r
+                -> Result r
+    }
+
+instance Monad Parser where
+    m >>= g = Parser $ \kf ks -> let ks' a = runParser (g a) kf ks
+                                 in runParser m kf ks'
+    {-# INLINE (>>=) #-}
+    return a = Parser $ \_kf ks -> ks a
+    {-# INLINE return #-}
+    fail msg = Parser $ \kf _ks -> kf msg
+    {-# INLINE fail #-}
+
+instance Functor Parser where
+    fmap f m = Parser $ \kf ks -> let ks' a = ks (f a)
+                                  in runParser m kf ks'
+    {-# INLINE fmap #-}
+
+instance Applicative Parser where
+    pure  = return
+    {-# INLINE pure #-}
+    (<*>) = apP
+    {-# INLINE (<*>) #-}
+    
+instance Alternative Parser where
+    empty = fail "empty"
+    {-# INLINE empty #-}
+    (<|>) = mplus
+    {-# INLINE (<|>) #-}
+
+instance MonadPlus Parser where
+    mzero = fail "mzero"
+    {-# INLINE mzero #-}
+    mplus a b = Parser $ \kf ks -> let kf' _ = runParser b kf ks
+                                   in runParser a kf' ks
+    {-# INLINE mplus #-}
+
+instance Monoid (Parser a) where
+    mempty  = fail "mempty"
+    {-# INLINE mempty #-}
+    mappend = mplus
+    {-# INLINE mappend #-}
+
+apP :: Parser (a -> b) -> Parser a -> Parser b
+apP d e = do
+  b <- d
+  a <- e
+  return (b a)
+{-# INLINE apP #-}
 
 -- | A JSON \"object\" (key\/value map).
 type Object = Map Text Value
@@ -93,6 +163,16 @@ type Pair = (Text, Value)
 name .= value = (name, toJSON value)
 {-# INLINE (.=) #-}
 
+-- | Convert a value from JSON, failing if the types do not match.
+fromJSON :: (FromJSON a) => Value -> Result a
+fromJSON = parse parseJSON
+{-# INLINE fromJSON #-}
+
+-- | Run a 'Parser'.
+parse :: (a -> Parser b) -> a -> Result b
+parse m v = runParser (m v) Error Success
+{-# INLINE parse #-}
+
 -- | Retrieve the value associated with the given key of an 'Object'.
 -- The result is 'empty' if the key is not present or the value cannot
 -- be converted to the desired type.
@@ -100,10 +180,10 @@ name .= value = (name, toJSON value)
 -- This accessor is appropriate if the key and value /must/ be present
 -- in an object for it to be valid.  If the key and value are
 -- optional, use '(.:?)' instead.
-(.:) :: (Alternative m, FromJSON a) => Object -> Text -> m a
+(.:) :: (FromJSON a) => Object -> Text -> Parser a
 obj .: key = case M.lookup key obj of
                Nothing -> empty
-               Just v  -> fromJSON v
+               Just v  -> parseJSON v
 {-# INLINE (.:) #-}
 
 -- | Retrieve the value associated with the given key of an 'Object'.
@@ -113,10 +193,10 @@ obj .: key = case M.lookup key obj of
 -- This accessor is most useful if the key and value can be absent
 -- from an object without affecting its validity.  If the key and
 -- value are mandatory, use '(.:?)' instead.
-(.:?) :: (Alternative m, FromJSON a) => Object -> Text -> m (Maybe a)
+(.:?) :: (FromJSON a) => Object -> Text -> Parser (Maybe a)
 obj .:? key = case M.lookup key obj of
                Nothing -> pure Nothing
-               Just v  -> fromJSON v
+               Just v  -> parseJSON v
 {-# INLINE (.:?) #-}
 
 -- | Create a 'Value' from a list of name\/value 'Pair's.  If duplicate
@@ -140,24 +220,24 @@ class ToJSON a where
 -- | A type that can be converted from JSON, with the possibility of
 -- failure.
 --
--- When writing an instance, use 'mzero' to make a conversion fail,
--- e.g. if an 'Object' is missing a required key, or the value is of
--- the wrong type.
+-- When writing an instance, use 'mzero' or 'fail' to make a
+-- conversion fail, e.g. if an 'Object' is missing a required key, or
+-- the value is of the wrong type.
 --
 -- An example type and instance:
 --
 -- @data Coord { x :: Double, y :: Double }
 -- 
 -- instance FromJSON Coord where
---   fromJSON ('Object' v) = Coord '<$>'
+--   parseJSON ('Object' v) = Coord '<$>'
 --                         v '.:' \"x\" '<*>'
 --                         v '.:' \"y\"
 --
 --   \-- A non-'Object' value is of the wrong type, so use 'mzero' to fail.
---   fromJSON _          = 'mzero'
+--   parseJSON _          = 'mzero'
 -- @
 class FromJSON a where
-    fromJSON :: Alternative m => Value -> m a
+    parseJSON :: Value -> Parser a
 
 instance (ToJSON a) => ToJSON (Maybe a) where
     toJSON (Just a) = toJSON a
@@ -165,9 +245,9 @@ instance (ToJSON a) => ToJSON (Maybe a) where
     {-# INLINE toJSON #-}
     
 instance (FromJSON a) => FromJSON (Maybe a) where
-    fromJSON Null   = pure Nothing
-    fromJSON a      = Just <$> fromJSON a
-    {-# INLINE fromJSON #-}
+    parseJSON Null   = pure Nothing
+    parseJSON a      = Just <$> parseJSON a
+    {-# INLINE parseJSON #-}
 
 instance (ToJSON a, ToJSON b) => ToJSON (Either a b) where
     toJSON (Left a)  = toJSON a
@@ -175,272 +255,272 @@ instance (ToJSON a, ToJSON b) => ToJSON (Either a b) where
     {-# INLINE toJSON #-}
     
 instance (FromJSON a, FromJSON b) => FromJSON (Either a b) where
-    fromJSON a = Left <$> fromJSON a <|> Right <$> fromJSON a
-    {-# INLINE fromJSON #-}
+    parseJSON a = Left <$> parseJSON a <|> Right <$> parseJSON a
+    {-# INLINE parseJSON #-}
 
 instance ToJSON Bool where
     toJSON = Bool
     {-# INLINE toJSON #-}
 
 instance FromJSON Bool where
-    fromJSON (Bool b) = pure b
-    fromJSON _        = empty
-    {-# INLINE fromJSON #-}
+    parseJSON (Bool b) = pure b
+    parseJSON _        = empty
+    {-# INLINE parseJSON #-}
 
 instance ToJSON () where
     toJSON _ = emptyArray
     {-# INLINE toJSON #-}
 
 instance FromJSON () where
-    fromJSON (Array v) | V.null v = pure ()
-    fromJSON _                    = empty
-    {-# INLINE fromJSON #-}
+    parseJSON (Array v) | V.null v = pure ()
+    parseJSON _                    = empty
+    {-# INLINE parseJSON #-}
 
 instance ToJSON [Char] where
     toJSON = String . T.pack
     {-# INLINE toJSON #-}
 
 instance FromJSON [Char] where
-    fromJSON (String t) = pure (T.unpack t)
-    fromJSON _          = empty
-    {-# INLINE fromJSON #-}
+    parseJSON (String t) = pure (T.unpack t)
+    parseJSON _          = empty
+    {-# INLINE parseJSON #-}
 
 instance ToJSON Char where
     toJSON = String . T.singleton
     {-# INLINE toJSON #-}
 
 instance FromJSON Char where
-    fromJSON (String t)
+    parseJSON (String t)
         | T.compareLength t 1 == EQ = pure (T.head t)
-    fromJSON _                      = empty
-    {-# INLINE fromJSON #-}
+    parseJSON _                      = empty
+    {-# INLINE parseJSON #-}
 
 instance ToJSON Double where
     toJSON = Number
     {-# INLINE toJSON #-}
 
 instance FromJSON Double where
-    fromJSON (Number n) = pure n
-    fromJSON _          = empty
-    {-# INLINE fromJSON #-}
+    parseJSON (Number n) = pure n
+    parseJSON _          = empty
+    {-# INLINE parseJSON #-}
 
 instance ToJSON Float where
     toJSON = Number . fromRational . toRational
     {-# INLINE toJSON #-}
 
 instance FromJSON Float where
-    fromJSON (Number n) = pure . fromRational . toRational $ n
-    fromJSON _          = empty
-    {-# INLINE fromJSON #-}
+    parseJSON (Number n) = pure . fromRational . toRational $ n
+    parseJSON _          = empty
+    {-# INLINE parseJSON #-}
 
 instance ToJSON (Ratio Integer) where
     toJSON = Number . fromRational
     {-# INLINE toJSON #-}
 
 instance FromJSON (Ratio Integer) where
-    fromJSON (Number n) = pure . toRational $ n
-    fromJSON _          = empty
-    {-# INLINE fromJSON #-}
+    parseJSON (Number n) = pure . toRational $ n
+    parseJSON _          = empty
+    {-# INLINE parseJSON #-}
 
 instance ToJSON Int where
     toJSON = Number . fromIntegral
     {-# INLINE toJSON #-}
 
 instance FromJSON Int where
-    fromJSON (Number n) = pure (floor n)
-    fromJSON _          = empty
-    {-# INLINE fromJSON #-}
+    parseJSON (Number n) = pure (floor n)
+    parseJSON _          = empty
+    {-# INLINE parseJSON #-}
 
 instance ToJSON Integer where
     toJSON = Number . fromIntegral
     {-# INLINE toJSON #-}
 
 instance FromJSON Integer where
-    fromJSON (Number n) = pure (floor n)
-    fromJSON _          = empty
-    {-# INLINE fromJSON #-}
+    parseJSON (Number n) = pure (floor n)
+    parseJSON _          = empty
+    {-# INLINE parseJSON #-}
 
 instance ToJSON Int8 where
     toJSON = Number . fromIntegral
     {-# INLINE toJSON #-}
 
 instance FromJSON Int8 where
-    fromJSON (Number n) = pure (floor n)
-    fromJSON _          = empty
-    {-# INLINE fromJSON #-}
+    parseJSON (Number n) = pure (floor n)
+    parseJSON _          = empty
+    {-# INLINE parseJSON #-}
 
 instance ToJSON Int16 where
     toJSON = Number . fromIntegral
     {-# INLINE toJSON #-}
 
 instance FromJSON Int16 where
-    fromJSON (Number n) = pure (floor n)
-    fromJSON _          = empty
-    {-# INLINE fromJSON #-}
+    parseJSON (Number n) = pure (floor n)
+    parseJSON _          = empty
+    {-# INLINE parseJSON #-}
 
 instance ToJSON Int32 where
     toJSON = Number . fromIntegral
     {-# INLINE toJSON #-}
 
 instance FromJSON Int32 where
-    fromJSON (Number n) = pure (floor n)
-    fromJSON _          = empty
-    {-# INLINE fromJSON #-}
+    parseJSON (Number n) = pure (floor n)
+    parseJSON _          = empty
+    {-# INLINE parseJSON #-}
 
 instance ToJSON Int64 where
     toJSON = Number . fromIntegral
     {-# INLINE toJSON #-}
 
 instance FromJSON Int64 where
-    fromJSON (Number n) = pure (floor n)
-    fromJSON _          = empty
-    {-# INLINE fromJSON #-}
+    parseJSON (Number n) = pure (floor n)
+    parseJSON _          = empty
+    {-# INLINE parseJSON #-}
 
 instance ToJSON Word where
     toJSON = Number . fromIntegral
     {-# INLINE toJSON #-}
 
 instance FromJSON Word where
-    fromJSON (Number n) = pure (floor n)
-    fromJSON _          = empty
-    {-# INLINE fromJSON #-}
+    parseJSON (Number n) = pure (floor n)
+    parseJSON _          = empty
+    {-# INLINE parseJSON #-}
 
 instance ToJSON Word8 where
     toJSON = Number . fromIntegral
     {-# INLINE toJSON #-}
 
 instance FromJSON Word8 where
-    fromJSON (Number n) = pure (floor n)
-    fromJSON _          = empty
-    {-# INLINE fromJSON #-}
+    parseJSON (Number n) = pure (floor n)
+    parseJSON _          = empty
+    {-# INLINE parseJSON #-}
 
 instance ToJSON Word16 where
     toJSON = Number . fromIntegral
     {-# INLINE toJSON #-}
 
 instance FromJSON Word16 where
-    fromJSON (Number n) = pure (floor n)
-    fromJSON _          = empty
-    {-# INLINE fromJSON #-}
+    parseJSON (Number n) = pure (floor n)
+    parseJSON _          = empty
+    {-# INLINE parseJSON #-}
 
 instance ToJSON Word32 where
     toJSON = Number . fromIntegral
     {-# INLINE toJSON #-}
 
 instance FromJSON Word32 where
-    fromJSON (Number n) = pure (floor n)
-    fromJSON _          = empty
-    {-# INLINE fromJSON #-}
+    parseJSON (Number n) = pure (floor n)
+    parseJSON _          = empty
+    {-# INLINE parseJSON #-}
 
 instance ToJSON Word64 where
     toJSON = Number . fromIntegral
     {-# INLINE toJSON #-}
 
 instance FromJSON Word64 where
-    fromJSON (Number n) = pure (floor n)
-    fromJSON _          = empty
-    {-# INLINE fromJSON #-}
+    parseJSON (Number n) = pure (floor n)
+    parseJSON _          = empty
+    {-# INLINE parseJSON #-}
 
 instance ToJSON Text where
     toJSON = String
     {-# INLINE toJSON #-}
 
 instance FromJSON Text where
-    fromJSON (String t) = pure t
-    fromJSON _          = empty
-    {-# INLINE fromJSON #-}
+    parseJSON (String t) = pure t
+    parseJSON _          = empty
+    {-# INLINE parseJSON #-}
 
 instance ToJSON LT.Text where
     toJSON = String . LT.toStrict
     {-# INLINE toJSON #-}
 
 instance FromJSON LT.Text where
-    fromJSON (String t) = pure (LT.fromStrict t)
-    fromJSON _          = empty
-    {-# INLINE fromJSON #-}
+    parseJSON (String t) = pure (LT.fromStrict t)
+    parseJSON _          = empty
+    {-# INLINE parseJSON #-}
 
 instance ToJSON B.ByteString where
     toJSON = String . decodeUtf8
     {-# INLINE toJSON #-}
 
 instance FromJSON B.ByteString where
-    fromJSON (String t) = pure . encodeUtf8 $ t
-    fromJSON _          = empty
-    {-# INLINE fromJSON #-}
+    parseJSON (String t) = pure . encodeUtf8 $ t
+    parseJSON _          = empty
+    {-# INLINE parseJSON #-}
 
 instance ToJSON LB.ByteString where
     toJSON = toJSON . B.concat . LB.toChunks
     {-# INLINE toJSON #-}
 
 instance FromJSON LB.ByteString where
-    fromJSON (String t) = pure . LB.fromChunks . (:[]) . encodeUtf8 $ t
-    fromJSON _          = empty
-    {-# INLINE fromJSON #-}
+    parseJSON (String t) = pure . LB.fromChunks . (:[]) . encodeUtf8 $ t
+    parseJSON _          = empty
+    {-# INLINE parseJSON #-}
 
 instance (ToJSON a) => ToJSON [a] where
     toJSON = Array . V.fromList . map toJSON
     {-# INLINE toJSON #-}
     
 instance (FromJSON a) => FromJSON [a] where
-    fromJSON (Array a) = mapA fromJSON (V.toList a)
-    fromJSON _         = empty
-    {-# INLINE fromJSON #-}
+    parseJSON (Array a) = mapA parseJSON (V.toList a)
+    parseJSON _         = empty
+    {-# INLINE parseJSON #-}
 
 instance (ToJSON a) => ToJSON (Vector a) where
     toJSON = Array . V.map toJSON
     {-# INLINE toJSON #-}
     
 instance (FromJSON a) => FromJSON (Vector a) where
-    fromJSON (Array a) = V.fromList <$> mapA fromJSON (V.toList a)
-    fromJSON _         = empty
-    {-# INLINE fromJSON #-}
+    parseJSON (Array a) = V.fromList <$> mapA parseJSON (V.toList a)
+    parseJSON _         = empty
+    {-# INLINE parseJSON #-}
 
 instance (ToJSON a) => ToJSON (Set.Set a) where
     toJSON = toJSON . Set.toList
     {-# INLINE toJSON #-}
     
 instance (Ord a, FromJSON a) => FromJSON (Set.Set a) where
-    fromJSON = fmap Set.fromList . fromJSON
-    {-# INLINE fromJSON #-}
+    parseJSON = fmap Set.fromList . parseJSON
+    {-# INLINE parseJSON #-}
 
 instance ToJSON IntSet.IntSet where
     toJSON = toJSON . IntSet.toList
     {-# INLINE toJSON #-}
     
 instance FromJSON IntSet.IntSet where
-    fromJSON = fmap IntSet.fromList . fromJSON
-    {-# INLINE fromJSON #-}
+    parseJSON = fmap IntSet.fromList . parseJSON
+    {-# INLINE parseJSON #-}
 
 instance (ToJSON v) => ToJSON (M.Map Text v) where
     toJSON = Object . M.map toJSON
     {-# INLINE toJSON #-}
 
 instance (FromJSON v) => FromJSON (M.Map Text v) where
-    fromJSON (Object o) = M.fromAscList <$> go (M.toAscList o)
+    parseJSON (Object o) = M.fromAscList <$> go (M.toAscList o)
       where
-        go ((k,v):kvs)  = ((:) . (,) k) <$> fromJSON v <*> go kvs
+        go ((k,v):kvs)  = ((:) . (,) k) <$> parseJSON v <*> go kvs
         go _            = pure []
-    fromJSON _          = empty
+    parseJSON _          = empty
 
 instance (ToJSON v) => ToJSON (M.Map LT.Text v) where
     toJSON = Object . transformMap LT.toStrict toJSON
 
 instance (FromJSON v) => FromJSON (M.Map LT.Text v) where
-    fromJSON = fmap (M.mapKeysMonotonic LT.fromStrict) . fromJSON
+    parseJSON = fmap (M.mapKeysMonotonic LT.fromStrict) . parseJSON
 
 instance (ToJSON v) => ToJSON (M.Map String v) where
     toJSON = Object . transformMap pack toJSON
 
 instance (FromJSON v) => FromJSON (M.Map String v) where
-    fromJSON = fmap (M.mapKeysMonotonic unpack) . fromJSON
+    parseJSON = fmap (M.mapKeysMonotonic unpack) . parseJSON
 
 instance ToJSON Value where
     toJSON a = a
     {-# INLINE toJSON #-}
 
 instance FromJSON Value where
-    fromJSON a = pure a
-    {-# INLINE fromJSON #-}
+    parseJSON a = pure a
+    {-# INLINE parseJSON #-}
 
 -- We happen to use the same JSON formatting for a UTCTime as .NET
 -- does for a DateTime. How handy!
@@ -449,47 +529,47 @@ instance ToJSON UTCTime where
     {-# INLINE toJSON #-}
 
 instance FromJSON UTCTime where
-    fromJSON (String t) =
+    parseJSON (String t) =
         case parseTime defaultTimeLocale "/Date(%s)/" (unpack t) of
           Just d -> pure d
           _      -> empty
-    fromJSON _          = empty
-    {-# INLINE fromJSON #-}
+    parseJSON _          = empty
+    {-# INLINE parseJSON #-}
 
 instance (ToJSON a, ToJSON b) => ToJSON (a,b) where
     toJSON (a,b) = toJSON [toJSON a, toJSON b]
     {-# INLINE toJSON #-}
 
 instance (FromJSON a, FromJSON b) => FromJSON (a,b) where
-    fromJSON (Array ab) = case V.toList ab of
-                            [a,b] -> (,) <$> fromJSON a <*> fromJSON b
+    parseJSON (Array ab) = case V.toList ab of
+                            [a,b] -> (,) <$> parseJSON a <*> parseJSON b
                             _     -> empty
-    fromJSON _          = empty
-    {-# INLINE fromJSON #-}
+    parseJSON _          = empty
+    {-# INLINE parseJSON #-}
 
 instance ToJSON a => ToJSON (Dual a) where
     toJSON = toJSON . getDual
     {-# INLINE toJSON #-}
 
 instance FromJSON a => FromJSON (Dual a) where
-    fromJSON = fmap Dual . fromJSON
-    {-# INLINE fromJSON #-}
+    parseJSON = fmap Dual . parseJSON
+    {-# INLINE parseJSON #-}
 
 instance ToJSON a => ToJSON (First a) where
     toJSON = toJSON . getFirst
     {-# INLINE toJSON #-}
 
 instance FromJSON a => FromJSON (First a) where
-    fromJSON = fmap First . fromJSON
-    {-# INLINE fromJSON #-}
+    parseJSON = fmap First . parseJSON
+    {-# INLINE parseJSON #-}
 
 instance ToJSON a => ToJSON (Last a) where
     toJSON = toJSON . getLast
     {-# INLINE toJSON #-}
 
 instance FromJSON a => FromJSON (Last a) where
-    fromJSON = fmap Last . fromJSON
-    {-# INLINE fromJSON #-}
+    parseJSON = fmap Last . parseJSON
+    {-# INLINE parseJSON #-}
 
 mapA :: (Alternative m) => (t -> m a) -> [t] -> m [a]
 mapA f = go

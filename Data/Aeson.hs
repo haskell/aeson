@@ -17,6 +17,8 @@ module Data.Aeson
     , Object
     -- * Type conversion
     , FromJSON(..)
+    , Result(..)
+    , fromJSON
     , ToJSON(..)
     -- * Constructors and accessors
     , (.=)
