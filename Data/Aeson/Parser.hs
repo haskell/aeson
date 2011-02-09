@@ -19,7 +19,6 @@ import Blaze.ByteString.Builder (fromByteString, toByteString)
 import Blaze.ByteString.Builder.Char.Utf8 (fromChar)
 import Blaze.ByteString.Builder.Word (fromWord8)
 import Control.Applicative as A
-import Control.Monad (when)
 import Data.Aeson.Types (Value(..))
 import Data.Attoparsec.Char8
 import Data.Bits ((.|.), shiftL)
@@ -103,8 +102,8 @@ reparse p s = case parse p s `feed` "" of
                 _            -> fail "unexpected failure"
 
 unescape :: Parser ByteString
-unescape = toByteString <$> go mempty where
-  go acc = do
+unescape = toByteString <$> go (Right mempty) where
+  go (Right acc) = do
     h <- A.takeWhile (/=backslash)
     let rest = do
           start <- A.take 2
@@ -113,24 +112,26 @@ unescape = toByteString <$> go mempty where
               escape = case B.findIndex (==t) "\"\\/ntbrfu" of
                          Just i -> i
                          _      -> 255
-          when (slash /= backslash || escape == 255) $
-            fail "invalid JSON escape sequence"
-          let continue m = go (acc `mappend` fromByteString h `mappend` m)
-              {-# INLINE continue #-}
-          if t /= 117 -- 'u'
-            then continue (fromWord8 (B.unsafeIndex mapping escape))
-            else do
-                 a <- hexQuad
-                 if a < 0xd800 || a > 0xdfff
-                   then continue (fromChar (chr a))
-                   else do
-                     b <- string "\\u" *> hexQuad
-                     if a <= 0xdbff && b >= 0xdc00 && b <= 0xdfff
-                       then let !c = ((a - 0xd800) `shiftL` 10) + (b - 0xdc00) +
-                                     0x10000
-                            in continue (fromChar (chr c))
-                       else fail "invalid UTF-16 surrogates"
+          if slash /= backslash || escape == 255
+            then go (Left "invalid JSON escape sequence")
+            else flip (<|>) (go (Left "invalid Unicode escape sequence")) $ do
+            let cont m = go (Right (acc `mappend` fromByteString h `mappend` m))
+                {-# INLINE cont #-}
+            if t /= 117 -- 'u'
+              then cont (fromWord8 (B.unsafeIndex mapping escape))
+              else do
+                   a <- hexQuad
+                   if a < 0xd800 || a > 0xdfff
+                     then cont (fromChar (chr a))
+                     else do
+                       b <- string "\\u" *> hexQuad
+                       if a <= 0xdbff && b >= 0xdc00 && b <= 0xdfff
+                         then let !c = ((a - 0xd800) `shiftL` 10) +
+                                       (b - 0xdc00) + 0x10000
+                              in cont (fromChar (chr c))
+                         else fail "invalid UTF-16 surrogates"
     rest <|> return (acc `mappend` fromByteString h)
+  go (Left err) = fail err
   mapping = "\"\\/\n\t\b\r\f"
 
 hexQuad :: Parser Int
