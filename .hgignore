@@ -1,4 +1,4 @@
-^dist$
+^(?:dist|\.DS_Store)$
 ^benchmarks/(?:AesonParse|EncodeFile|JsonParse|json-data|.*_p)$
 .*\.(?:h[ip]|o|orig|out|pdf|prof|ps|rej)$
 
