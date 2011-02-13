@@ -192,7 +192,7 @@ obj .: key = case M.lookup key obj of
 --
 -- This accessor is most useful if the key and value can be absent
 -- from an object without affecting its validity.  If the key and
--- value are mandatory, use '(.:?)' instead.
+-- value are mandatory, use '(.:)' instead.
 (.:?) :: (FromJSON a) => Object -> Text -> Parser (Maybe a)
 obj .:? key = case M.lookup key obj of
                Nothing -> pure Nothing
