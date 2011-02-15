@@ -31,6 +31,7 @@ import Data.Text.Encoding (decodeUtf8)
 import Data.Vector as Vector hiding ((++))
 import Data.Word (Word8)
 import qualified Data.Attoparsec as A
+import qualified Data.Attoparsec.Zepto as Z
 import qualified Data.ByteString.Unsafe as B
 
 -- | Parse a top-level JSON value.  This must be either an object or
@@ -44,7 +45,7 @@ json = do
     _   -> fail "root value is not an object or array"
 
 object_ :: Parser Value
-object_ = do
+object_ = {-# SCC "object_" #-} do
   skipSpace
   let pair = do
         a <- jstring <* skipSpace
@@ -54,7 +55,7 @@ object_ = do
   return . Object $ Map.fromList vals
 
 array_ :: Parser Value
-array_ = do
+array_ = {-# SCC "array_" #-} do
   skipSpace
   vals <- ((value <* skipSpace) `sepBy` (char ',' *> skipSpace)) <* char ']'
   return . Array $ Vector.fromList vals
@@ -84,7 +85,7 @@ jstring = A.word8 doubleQuote *> jstring_
 
 -- | Parse a string without a leading quote.
 jstring_ :: Parser Text
-jstring_ = do
+jstring_ = {-# SCC "jstring_" #-} do
   s <- A.scan False $ \s c -> if s then Just False
                                    else if c == doubleQuote
                                         then Nothing
@@ -95,18 +96,17 @@ jstring_ = do
     else return (decodeUtf8 s)
 {-# INLINE jstring_ #-}
 
-reparse :: Parser a -> ByteString -> Parser a
-reparse p s = case parse p s `feed` "" of
-                Done "" r    -> return r
-                Fail _ _ msg -> fail msg
-                _            -> fail "unexpected failure"
+reparse :: Z.Parser a -> ByteString -> Parser a
+reparse p s = case Z.parse p s of
+                Right r  -> return r
+                Left err -> fail err
 
-unescape :: Parser ByteString
+unescape :: Z.Parser ByteString
 unescape = toByteString <$> go mempty where
   go acc = do
-    h <- A.takeWhile (/=backslash)
+    h <- Z.takeWhile (/=backslash)
     let rest = do
-          start <- A.take 2
+          start <- Z.take 2
           let !slash = B.unsafeHead start
               !t = B.unsafeIndex start 1
               escape = case B.findIndex (==t) "\"\\/ntbrfu" of
@@ -124,21 +124,21 @@ unescape = toByteString <$> go mempty where
                    if a < 0xd800 || a > 0xdfff
                      then cont (fromChar (chr a))
                      else do
-                       b <- string "\\u" *> hexQuad
+                       b <- Z.string "\\u" *> hexQuad
                        if a <= 0xdbff && b >= 0xdc00 && b <= 0xdfff
                          then let !c = ((a - 0xd800) `shiftL` 10) +
                                        (b - 0xdc00) + 0x10000
                               in cont (fromChar (chr c))
                          else fail "invalid UTF-16 surrogates"
-    done <- atEnd
+    done <- Z.atEnd
     if done
       then return (acc `mappend` fromByteString h)
       else rest
   mapping = "\"\\/\n\t\b\r\f"
 
-hexQuad :: Parser Int
+hexQuad :: Z.Parser Int
 hexQuad = do
-  s <- A.take 4
+  s <- Z.take 4
   let hex n | w >= 48 && w <= 57  = w - 48
             | w >= 97 && w <= 122 = w - 87
             | w >= 65 && w <= 90  = w - 55
