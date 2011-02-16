@@ -15,6 +15,8 @@ module Data.Aeson
       Value(..)
     , Array
     , Object
+    -- * Convenience types
+    , DotNetTime(..)
     -- * Type conversion
     , FromJSON(..)
     , Result(..)
