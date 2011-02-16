@@ -1,5 +1,5 @@
-{-# LANGUAGE DeriveDataTypeable, FlexibleInstances, IncoherentInstances,
-    OverlappingInstances, Rank2Types #-}
+{-# LANGUAGE DeriveDataTypeable, FlexibleInstances, GeneralizedNewtypeDeriving,
+    IncoherentInstances, OverlappingInstances, Rank2Types #-}
 
 -- Module:      Data.Aeson.Types
 -- Copyright:   (c) 2011 MailRank, Inc.
@@ -19,6 +19,8 @@ module Data.Aeson.Types
     , Pair
     , Object
     , emptyObject
+    -- * Convenience types
+    , DotNetTime(..)
     -- * Type conversion
     , Parser
     , Result(..)
@@ -46,7 +48,7 @@ import Data.Ratio (Ratio)
 import Data.Text (Text, pack, unpack)
 import Data.Text.Encoding (decodeUtf8, encodeUtf8)
 import Data.Time.Clock (UTCTime)
-import Data.Time.Format (formatTime, parseTime)
+import Data.Time.Format (FormatTime, formatTime, parseTime)
 import Data.Typeable (Typeable)
 import Data.Vector (Vector)
 import Data.Word (Word, Word8, Word16, Word32, Word64)
@@ -522,15 +524,31 @@ instance FromJSON Value where
     parseJSON a = pure a
     {-# INLINE parseJSON #-}
 
--- We happen to use the same JSON formatting for a UTCTime as .NET
--- does for a DateTime. How handy!
+-- | A newtype wrapper for 'UTCTime' that uses the same non-standard
+-- serialization format as Microsoft .NET.
+newtype DotNetTime = DotNetTime UTCTime
+    deriving (Eq, Ord, Read, Show, Typeable, FormatTime)
+
+instance ToJSON DotNetTime where
+    toJSON (DotNetTime t) =
+        String (pack (formatTime defaultTimeLocale "/Date(%s)/" t))
+    {-# INLINE toJSON #-}
+
+instance FromJSON DotNetTime where
+    parseJSON (String t) =
+        case parseTime defaultTimeLocale "/Date(%s)/" (unpack t) of
+          Just d -> pure (DotNetTime d)
+          _      -> empty
+    parseJSON _          = empty
+    {-# INLINE parseJSON #-}
+
 instance ToJSON UTCTime where
-    toJSON t = String (pack (formatTime defaultTimeLocale "/Date(%s)/" t))
+    toJSON t = String (pack (formatTime defaultTimeLocale "%FT%X%QZ" t))
     {-# INLINE toJSON #-}
 
 instance FromJSON UTCTime where
     parseJSON (String t) =
-        case parseTime defaultTimeLocale "/Date(%s)/" (unpack t) of
+        case parseTime defaultTimeLocale "%FT%X%QZ" (unpack t) of
           Just d -> pure d
           _      -> empty
     parseJSON _          = empty
