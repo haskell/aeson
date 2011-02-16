@@ -63,7 +63,7 @@ array_ = {-# SCC "array_" #-} do
 -- | Parse any JSON value.  Use 'json' in preference to this function
 -- if you are parsing data from an untrusted source.
 value :: Parser Value
-value = most <|> (Number <$> double)
+value = most <|> (Number <$> number)
  where
   most = do
     c <- anyChar

@@ -49,6 +49,7 @@ import Data.Text (Text, pack, unpack)
 import Data.Text.Encoding (decodeUtf8, encodeUtf8)
 import Data.Time.Clock (UTCTime)
 import Data.Time.Format (FormatTime, formatTime, parseTime)
+import Data.Attoparsec.Char8 (Number(..))
 import Data.Typeable (Typeable)
 import Data.Vector (Vector)
 import Data.Word (Word, Word8, Word16, Word32, Word64)
@@ -136,7 +137,7 @@ type Array = Vector Value
 data Value = Object Object
            | Array Array
            | String Text
-           | Number Double
+           | Number Number
            | Bool !Bool
            | Null
              deriving (Eq, Show, Typeable, Data)
@@ -145,7 +146,7 @@ instance NFData Value where
     rnf (Object o) = rnf o
     rnf (Array a)  = V.foldl' (\x y -> rnf y `seq` x) () a
     rnf (String s) = rnf s
-    rnf (Number n) = rnf n
+    rnf (Number n) = case n of I i -> rnf i; D d -> rnf d
     rnf (Bool b)   = rnf b
     rnf Null       = ()
 
@@ -298,10 +299,21 @@ instance FromJSON Char where
     {-# INLINE parseJSON #-}
 
 instance ToJSON Double where
-    toJSON = Number
+    toJSON = Number . D
     {-# INLINE toJSON #-}
 
 instance FromJSON Double where
+    parseJSON (Number n) = case n of
+                             D d -> pure d
+                             I i -> pure (fromIntegral i)
+    parseJSON _              = empty
+    {-# INLINE parseJSON #-}
+
+instance ToJSON Number where
+    toJSON = Number
+    {-# INLINE toJSON #-}
+
+instance FromJSON Number where
     parseJSON (Number n) = pure n
     parseJSON _          = empty
     {-# INLINE parseJSON #-}
@@ -311,7 +323,9 @@ instance ToJSON Float where
     {-# INLINE toJSON #-}
 
 instance FromJSON Float where
-    parseJSON (Number n) = pure . fromRational . toRational $ n
+    parseJSON (Number n) = case n of
+                             D d -> pure . fromRational . toRational $ d
+                             I i -> pure (fromIntegral i)
     parseJSON _          = empty
     {-# INLINE parseJSON #-}
 
@@ -320,7 +334,9 @@ instance ToJSON (Ratio Integer) where
     {-# INLINE toJSON #-}
 
 instance FromJSON (Ratio Integer) where
-    parseJSON (Number n) = pure . toRational $ n
+    parseJSON (Number n) = case n of
+                             D d -> pure . toRational $ d
+                             I i -> pure (fromIntegral i)
     parseJSON _          = empty
     {-# INLINE parseJSON #-}
 
@@ -329,17 +345,20 @@ instance ToJSON Int where
     {-# INLINE toJSON #-}
 
 instance FromJSON Int where
-    parseJSON (Number n) = pure (floor n)
-    parseJSON _          = empty
+    parseJSON = parseIntegral
     {-# INLINE parseJSON #-}
+
+parseIntegral :: Integral a => Value -> Parser a
+parseIntegral (Number n) = pure (floor n)
+parseIntegral _          = empty
+{-# INLINE parseIntegral #-}
 
 instance ToJSON Integer where
     toJSON = Number . fromIntegral
     {-# INLINE toJSON #-}
 
 instance FromJSON Integer where
-    parseJSON (Number n) = pure (floor n)
-    parseJSON _          = empty
+    parseJSON = parseIntegral
     {-# INLINE parseJSON #-}
 
 instance ToJSON Int8 where
@@ -347,8 +366,7 @@ instance ToJSON Int8 where
     {-# INLINE toJSON #-}
 
 instance FromJSON Int8 where
-    parseJSON (Number n) = pure (floor n)
-    parseJSON _          = empty
+    parseJSON = parseIntegral
     {-# INLINE parseJSON #-}
 
 instance ToJSON Int16 where
@@ -356,8 +374,7 @@ instance ToJSON Int16 where
     {-# INLINE toJSON #-}
 
 instance FromJSON Int16 where
-    parseJSON (Number n) = pure (floor n)
-    parseJSON _          = empty
+    parseJSON = parseIntegral
     {-# INLINE parseJSON #-}
 
 instance ToJSON Int32 where
@@ -365,8 +382,7 @@ instance ToJSON Int32 where
     {-# INLINE toJSON #-}
 
 instance FromJSON Int32 where
-    parseJSON (Number n) = pure (floor n)
-    parseJSON _          = empty
+    parseJSON = parseIntegral
     {-# INLINE parseJSON #-}
 
 instance ToJSON Int64 where
@@ -374,8 +390,7 @@ instance ToJSON Int64 where
     {-# INLINE toJSON #-}
 
 instance FromJSON Int64 where
-    parseJSON (Number n) = pure (floor n)
-    parseJSON _          = empty
+    parseJSON = parseIntegral
     {-# INLINE parseJSON #-}
 
 instance ToJSON Word where
@@ -383,8 +398,7 @@ instance ToJSON Word where
     {-# INLINE toJSON #-}
 
 instance FromJSON Word where
-    parseJSON (Number n) = pure (floor n)
-    parseJSON _          = empty
+    parseJSON = parseIntegral
     {-# INLINE parseJSON #-}
 
 instance ToJSON Word8 where
@@ -392,8 +406,7 @@ instance ToJSON Word8 where
     {-# INLINE toJSON #-}
 
 instance FromJSON Word8 where
-    parseJSON (Number n) = pure (floor n)
-    parseJSON _          = empty
+    parseJSON = parseIntegral
     {-# INLINE parseJSON #-}
 
 instance ToJSON Word16 where
@@ -401,8 +414,7 @@ instance ToJSON Word16 where
     {-# INLINE toJSON #-}
 
 instance FromJSON Word16 where
-    parseJSON (Number n) = pure (floor n)
-    parseJSON _          = empty
+    parseJSON = parseIntegral
     {-# INLINE parseJSON #-}
 
 instance ToJSON Word32 where
@@ -410,8 +422,7 @@ instance ToJSON Word32 where
     {-# INLINE toJSON #-}
 
 instance FromJSON Word32 where
-    parseJSON (Number n) = pure (floor n)
-    parseJSON _          = empty
+    parseJSON = parseIntegral
     {-# INLINE parseJSON #-}
 
 instance ToJSON Word64 where
@@ -419,8 +430,7 @@ instance ToJSON Word64 where
     {-# INLINE toJSON #-}
 
 instance FromJSON Word64 where
-    parseJSON (Number n) = pure (floor n)
-    parseJSON _          = empty
+    parseJSON = parseIntegral
     {-# INLINE parseJSON #-}
 
 instance ToJSON Text where

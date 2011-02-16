@@ -24,6 +24,7 @@ import Control.Arrow (first)
 import Control.Monad.State.Strict
 import Data.Aeson.Functions (transformMap)
 import Data.Aeson.Types hiding (FromJSON(..), ToJSON(..), fromJSON)
+import Data.Attoparsec.Number (Number)
 import Data.Generics
 import Data.Int (Int8, Int16, Int32, Int64)
 import Data.IntSet (IntSet)
@@ -62,6 +63,7 @@ toJSON = toJSON_generic
          `extQ` (T.toJSON :: T Word32)
          `extQ` (T.toJSON :: T Word64)
          `extQ` (T.toJSON :: T Double)
+         `extQ` (T.toJSON :: T Number)
          `extQ` (T.toJSON :: T Float)
          `extQ` (T.toJSON :: T Rational)
          `extQ` (T.toJSON :: T Char)
@@ -149,6 +151,7 @@ parseJSON j = parseJSON_generic j
              `extR` (value :: F Word32)
              `extR` (value :: F Word64)
              `extR` (value :: F Double)
+             `extR` (value :: F Number)
              `extR` (value :: F Float)
              `extR` (value :: F Rational)
              `extR` (value :: F Char)
