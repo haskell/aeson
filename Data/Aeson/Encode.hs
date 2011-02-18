@@ -29,6 +29,7 @@ import qualified Data.Vector as V
 -- | Encode a JSON value to a 'Builder'.
 fromValue :: Value -> Builder
 fromValue Null = fromByteString "null"
+fromValue Missing = error "Unexpected Missing"
 fromValue (Bool b) = fromByteString $ if b then "true" else "false"
 fromValue (Number n) = fromByteString (B.pack (show n))
 fromValue (String s) = string s

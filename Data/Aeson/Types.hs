@@ -30,6 +30,7 @@ module Data.Aeson.Types
     , ToJSON(..)
     -- * Constructors and accessors
     , (.=)
+    , (.=?)
     , (.:)
     , (.:?)
     , object
@@ -140,6 +141,7 @@ data Value = Object Object
            | Number Number
            | Bool !Bool
            | Null
+           | Missing
              deriving (Eq, Show, Typeable, Data)
 
 instance NFData Value where
@@ -149,6 +151,7 @@ instance NFData Value where
     rnf (Number n) = case n of I i -> rnf i; D d -> rnf d
     rnf (Bool b)   = rnf b
     rnf Null       = ()
+    rnf Missing    = ()
 
 -- | The empty array.
 emptyArray :: Value
@@ -165,6 +168,14 @@ type Pair = (Text, Value)
 (.=) :: ToJSON a => Text -> a -> Pair
 name .= value = (name, toJSON value)
 {-# INLINE (.=) #-}
+
+-- | Construct an optional 'Pair' from a key and a Maybe value.  If
+-- the value is Nothing, then it is omitted altogether from the
+-- resulting Object.
+(.=?) :: ToJSON a => Text -> Maybe a -> Pair
+name .=? Nothing    = (name, Missing)
+name .=? Just value = (name, toJSON value)
+{-# INLINE (.=?) #-}
 
 -- | Convert a value from JSON, failing if the types do not match.
 fromJSON :: (FromJSON a) => Value -> Result a
@@ -205,7 +216,9 @@ obj .:? key = case M.lookup key obj of
 -- | Create a 'Value' from a list of name\/value 'Pair's.  If duplicate
 -- keys arise, earlier keys and their associated values win.
 object :: [Pair] -> Value
-object = Object . M.fromList
+object = Object . M.fromList . filter (notmissing . snd) 
+    where notmissing Missing = False
+          notmissing _       = True
 {-# INLINE object #-}
 
 -- | A type that can be converted to JSON.
