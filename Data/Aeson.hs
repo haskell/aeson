@@ -24,6 +24,7 @@ module Data.Aeson
     , ToJSON(..)
     -- * Constructors and accessors
     , (.=)
+    , (.=?)
     , (.:)
     , (.:?)
     , object
