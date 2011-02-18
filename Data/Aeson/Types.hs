@@ -33,6 +33,7 @@ module Data.Aeson.Types
     , (.=?)
     , (.:)
     , (.:?)
+    , (./)
     , object
     ) where
 
@@ -212,6 +213,16 @@ obj .:? key = case M.lookup key obj of
                Nothing -> pure Nothing
                Just v  -> parseJSON v
 {-# INLINE (.:?) #-}
+
+-- | Traverse a object heirarchy.
+-- This is useful for traversing a JSON object to get to an
+-- appropriate place before parsing.
+(./) :: Value -> Text -> Value
+(Object obj) ./ key = case M.lookup key obj of
+                        Nothing -> Missing
+                        Just v -> v
+_ ./ _              = Missing
+{-# INLINE (./) #-}
 
 -- | Create a 'Value' from a list of name\/value 'Pair's.  If duplicate
 -- keys arise, earlier keys and their associated values win.
