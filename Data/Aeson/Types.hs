@@ -171,8 +171,8 @@ name .= value = (name, toJSON value)
 {-# INLINE (.=) #-}
 
 -- | Construct an optional 'Pair' from a key and a Maybe value.  If
--- the value is Nothing, then it is omitted altogether from the
--- resulting Object.
+-- the value is Nothing, the Pair's value is set to Missing, which
+-- 'object' will remove from the resulting 'Object'.
 (.=?) :: ToJSON a => Text -> Maybe a -> Pair
 name .=? Nothing    = (name, Missing)
 name .=? Just value = (name, toJSON value)
@@ -214,9 +214,10 @@ obj .:? key = case M.lookup key obj of
                Just v  -> parseJSON v
 {-# INLINE (.:?) #-}
 
--- | Traverse a object heirarchy.
--- This is useful for traversing a JSON object to get to an
--- appropriate place before parsing.
+-- | Traverse a object heirarchy.  This is useful for traversing a
+-- JSON object to get to an appropriate place before parsing.  If a
+-- key is not found or it encounters a non-'Object' node, then it
+-- returns 'Missing'.
 (./) :: Value -> Text -> Value
 (Object obj) ./ key = case M.lookup key obj of
                         Nothing -> Missing
@@ -224,8 +225,9 @@ obj .:? key = case M.lookup key obj of
 _ ./ _              = Missing
 {-# INLINE (./) #-}
 
--- | Create a 'Value' from a list of name\/value 'Pair's.  If duplicate
--- keys arise, earlier keys and their associated values win.
+-- | Create a 'Value' from a list of name\/value 'Pair's.  If
+-- duplicate keys arise, earlier keys and their associated values win.
+-- Missing values will be excluded from the resulting 'Object'.
 object :: [Pair] -> Value
 object = Object . M.fromList . filter (notmissing . snd) 
     where notmissing Missing = False
