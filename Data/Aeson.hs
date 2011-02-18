@@ -27,6 +27,7 @@ module Data.Aeson
     , (.=?)
     , (.:)
     , (.:?)
+    , (./)
     , object
     -- * Encoding and parsing
     , encode
