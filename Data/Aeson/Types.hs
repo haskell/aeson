@@ -49,6 +49,7 @@ import Data.Monoid (Dual(..), First(..), Last(..))
 import Data.Ratio (Ratio)
 import Data.Text (Text, pack, unpack)
 import Data.Text.Encoding (decodeUtf8, encodeUtf8)
+import Data.String (IsString(..))
 import Data.Time.Clock (UTCTime)
 import Data.Time.Format (FormatTime, formatTime, parseTime)
 import Data.Attoparsec.Char8 (Number(..))
@@ -153,6 +154,9 @@ instance NFData Value where
     rnf (Bool b)   = rnf b
     rnf Null       = ()
     rnf Missing    = ()
+
+instance IsString Value where
+    fromString = String . pack
 
 -- | The empty array.
 emptyArray :: Value
