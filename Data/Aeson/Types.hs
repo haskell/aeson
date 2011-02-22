@@ -45,6 +45,7 @@ import qualified Data.IntSet as IntSet
 import Data.Map (Map)
 import Data.Monoid (Dual(..), First(..), Last(..))
 import Data.Ratio (Ratio)
+import Data.String (IsString(..))
 import Data.Text (Text, pack, unpack)
 import Data.Text.Encoding (decodeUtf8, encodeUtf8)
 import Data.Time.Clock (UTCTime)
@@ -149,6 +150,10 @@ instance NFData Value where
     rnf (Number n) = case n of I i -> rnf i; D d -> rnf d
     rnf (Bool b)   = rnf b
     rnf Null       = ()
+
+instance IsString Value where
+    fromString = String . pack
+    {-# INLINE fromString #-}
 
 -- | The empty array.
 emptyArray :: Value
