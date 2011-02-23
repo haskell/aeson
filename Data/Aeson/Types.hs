@@ -518,7 +518,7 @@ instance (FromJSON a) => FromJSON (Vector a) where
     {-# INLINE parseJSON #-}
 
 instance (ToJSON a) => ToJSON (Set.Set a) where
-    toJSON = toJSON . Set.toList
+    toJSON = toJSON . Set.toAscList
     {-# INLINE toJSON #-}
     
 instance (Ord a, FromJSON a) => FromJSON (Set.Set a) where
