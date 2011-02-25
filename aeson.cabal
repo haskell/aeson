@@ -54,7 +54,21 @@ extra-source-files:
     benchmarks/AesonParse.hs
     benchmarks/EncodeFile.hs
     benchmarks/JsonParse.hs
+    benchmarks/Makefile
     benchmarks/ReadFile.hs
+    benchmarks/parse.py
+    benchmarks/json-data/example.json
+    benchmarks/json-data/integers.json
+    benchmarks/json-data/jp10.json
+    benchmarks/json-data/jp20.json
+    benchmarks/json-data/jp50.json
+    benchmarks/json-data/jp100.json
+    benchmarks/json-data/numbers.json
+    benchmarks/json-data/twitter1.json
+    benchmarks/json-data/twitter10.json
+    benchmarks/json-data/twitter20.json
+    benchmarks/json-data/twitter50.json
+    benchmarks/json-data/twitter100.json
 
 flag developer
   description: operate in developer mode
