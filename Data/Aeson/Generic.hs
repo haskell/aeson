@@ -20,8 +20,9 @@ module Data.Aeson.Generic
     ) where
 
 import Control.Applicative ((<$>))
-import Control.Arrow (first,(***))
+import Control.Arrow (first)
 import Control.Monad.State.Strict
+import Data.Aeson.Functions (transformMap)
 import Data.Aeson.Types hiding (FromJSON(..), ToJSON(..), fromJSON)
 import Data.Attoparsec.Number (Number)
 import Data.Generics
@@ -84,11 +85,13 @@ toJSON = toJSON_generic
     set s = Array . V.fromList . map toJSON . Set.toList $ s
 
     mapAny m
-        | tyrep == typeOf "" = Object . Map.fromAscList . map ((pack . fromJust . cast) *** toJSON) . Map.toList $ m
-        | tyrep == typeOf DT.empty = Object . Map.fromAscList . map ((fromJust . cast) *** toJSON) . Map.toList $ m
-        | tyrep == typeOf LT.empty = Object . Map.fromAscList . map ((LT.toStrict . fromJust . cast) *** toJSON) . Map.toList $ m
-        | otherwise = error $ "toJSON cannot convert map keyed by type: " ++ show tyrep
+      | tyrep == typeOf ""       = remap pack
+      | tyrep == typeOf DT.empty = remap id
+      | tyrep == typeOf LT.empty = remap LT.toStrict
+      | otherwise = modError "toJSON" $
+                             "cannot convert map keyed by type " ++ show tyrep
       where tyrep = typeOf $ head $ Map.keys m
+            remap f = Object . transformMap (f . fromJust . cast) toJSON $ m
 
 
 toJSON_generic :: (Data a) => a -> Value
@@ -108,8 +111,8 @@ toJSON_generic = generic
                 AlgRep _   -> encodeConstr (toConstr a) (gmapQ toJSON a)
                 rep        -> err (dataTypeOf a) rep
            where
-              err dt r = error $ "Data.Aeson.Generic.toJSON: not AlgRep " ++
-                                 show r ++ "(" ++ show dt ++ ")"
+              err dt r = modError "toJSON" $ "not AlgRep " ++
+                                  show r ++ "(" ++ show dt ++ ")"
         -- Encode nullary constructor as a string.
         -- Encode non-nullary constructors as an object with the constructor
         -- name as the single field and the arguments as the value.
@@ -187,8 +190,9 @@ parseJSON j = parseJSON_generic j
             trans
                | tyrep == typeOf DT.empty = fromJust . cast . id
                | tyrep == typeOf LT.empty = fromJust . cast . LT.fromStrict
-               | tyrep == typeOf "" = fromJust . cast . DT.unpack
-               | otherwise = error "parseJSON: mapAny -- should never happen"
+               | tyrep == typeOf ""       = fromJust . cast . DT.unpack
+               | otherwise = modError "parseJSON"
+                                      "mapAny -- should never happen"
             tyrep = typeOf (undefined :: f)
     myFail = modFail "parseJSON" $ "bad data: " ++ show j
 
@@ -199,7 +203,7 @@ parseJSON_generic j = generic
         typ = dataTypeOf $ resType generic
         generic = case dataTypeRep typ of
                     AlgRep []  -> case j of
-                                    Null -> return (error "Empty type")
+                                    Null -> return (modError "parseJSON" "empty type")
                                     _ -> modFail "parseJSON" "no-constr bad data"
                     AlgRep [_] -> decodeArgs (indexConstr typ 1) j
                     AlgRep _   -> do (c, j') <- getConstr typ j; decodeArgs c j'
@@ -252,15 +256,16 @@ parseJSON_generic j = generic
           where f = do modify (+1); return undefined
 
         resType :: MonadPlus m => m a -> a
-        resType _ = error "resType"
+        resType _ = modError "parseJSON" "resType"
 
 modFail :: (Monad m) => String -> String -> m a
 modFail func err = fail $ "Data.Aeson.Generic." ++ func ++ ": " ++ err
 
+modError :: String -> String -> a
+modError func err = error $ "Data.Aeson.Generic." ++ func ++ ": " ++ err
 
-------------------------------------------------------------------------------
---      Type extension for binary type constructors
-------------------------------------------------------------------------------
+
+-- Type extension for binary type constructors.
 
 -- | Flexible type extension
 ext2' :: (Data a, Typeable2 t)
