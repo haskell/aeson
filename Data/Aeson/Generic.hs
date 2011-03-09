@@ -1,4 +1,4 @@
-{-# LANGUAGE PatternGuards #-}
+{-# LANGUAGE PatternGuards, RankNTypes, ScopedTypeVariables  #-}
 
 -- Module:      Data.Aeson.Generic
 -- Copyright:   (c) 2011 MailRank, Inc.
@@ -22,22 +22,25 @@ module Data.Aeson.Generic
 import Control.Applicative ((<$>))
 import Control.Arrow (first)
 import Control.Monad.State.Strict
-import Data.Aeson.Functions (transformMap)
+import Data.Aeson.Functions (hashMap, transformMap)
 import Data.Aeson.Types hiding (FromJSON(..), ToJSON(..), fromJSON)
 import Data.Attoparsec.Number (Number)
 import Data.Generics
 import Data.Int (Int8, Int16, Int32, Int64)
 import Data.IntSet (IntSet)
+import Data.Maybe (fromJust)
 import Data.Text (Text, pack, unpack)
 import Data.Time.Clock (UTCTime)
 import Data.Word (Word, Word8, Word16, Word32, Word64)
 import qualified Data.Aeson.Types as T
 import qualified Data.ByteString as B
 import qualified Data.ByteString.Lazy as L
+import qualified Data.HashMap.Strict as H
 import qualified Data.Map as Map
-import qualified Data.Traversable as T
 import qualified Data.Set as Set
-import qualified Data.Text.Lazy as L
+import qualified Data.Text as DT
+import qualified Data.Text.Lazy as LT
+import qualified Data.Traversable as T
 import qualified Data.Vector as V
 
 type T a = a -> Value
@@ -47,9 +50,8 @@ toJSON = toJSON_generic
          `ext1Q` list
          `ext1Q` vector
          `ext1Q` set
-         `ext1Q` mapText
-         `ext1Q` mapLazyText
-         `ext1Q` mapString
+         `ext2Q'` mapAny
+         `ext2Q'` hashMapAny
          -- Use the standard encoding for all base types.
          `extQ` (T.toJSON :: T Integer)
          `extQ` (T.toJSON :: T Int)
@@ -68,7 +70,7 @@ toJSON = toJSON_generic
          `extQ` (T.toJSON :: T Rational)
          `extQ` (T.toJSON :: T Char)
          `extQ` (T.toJSON :: T Text)
-         `extQ` (T.toJSON :: T L.Text)
+         `extQ` (T.toJSON :: T LT.Text)
          `extQ` (T.toJSON :: T String)
          `extQ` (T.toJSON :: T B.ByteString)
          `extQ` (T.toJSON :: T L.ByteString)
@@ -83,9 +85,25 @@ toJSON = toJSON_generic
     list xs = Array . V.fromList . map toJSON $ xs
     vector v = Array . V.map toJSON $ v
     set s = Array . V.fromList . map toJSON . Set.toList $ s
-    mapText m = Object . Map.map toJSON $ m
-    mapLazyText m = Object . transformMap L.toStrict toJSON $ m
-    mapString m = Object . transformMap pack toJSON $ m
+
+    mapAny m
+      | tyrep == typeOf ""       = remap pack
+      | tyrep == typeOf DT.empty = remap id
+      | tyrep == typeOf LT.empty = remap LT.toStrict
+      | otherwise = modError "toJSON" $
+                             "cannot convert map keyed by type " ++ show tyrep
+      where tyrep = typeOf . head . Map.keys $ m
+            remap f = Object . transformMap (f . fromJust . cast) toJSON $ m
+
+    hashMapAny m
+      | tyrep == typeOf ""       = remap pack
+      | tyrep == typeOf DT.empty = remap id
+      | tyrep == typeOf LT.empty = remap LT.toStrict
+      | otherwise = modError "toJSON" $
+                             "cannot convert map keyed by type " ++ show tyrep
+      where tyrep = typeOf . head . H.keys $ m
+            remap f = Object . hashMap (f . fromJust . cast) toJSON $ m
+
 
 toJSON_generic :: (Data a) => a -> Value
 toJSON_generic = generic
@@ -104,8 +122,8 @@ toJSON_generic = generic
                 AlgRep _   -> encodeConstr (toConstr a) (gmapQ toJSON a)
                 rep        -> err (dataTypeOf a) rep
            where
-              err dt r = error $ "Data.Aeson.Generic.toJSON: not AlgRep " ++
-                                 show r ++ "(" ++ show dt ++ ")"
+              err dt r = modError "toJSON" $ "not AlgRep " ++
+                                  show r ++ "(" ++ show dt ++ ")"
         -- Encode nullary constructor as a string.
         -- Encode non-nullary constructors as an object with the constructor
         -- name as the single field and the arguments as the value.
@@ -135,9 +153,8 @@ parseJSON :: (Data a) => Value -> Parser a
 parseJSON j = parseJSON_generic j
              `ext1R` list
              `ext1R` vector
-             `ext1R` mapText
-             `ext1R` mapLazyText
-             `ext1R` mapString
+             `ext2R'` mapAny
+             -- Don't know how to support parsing HashMaps :-(
              -- Use the standard encoding for all base types.
              `extR` (value :: F Integer)
              `extR` (value :: F Int)
@@ -156,7 +173,7 @@ parseJSON j = parseJSON_generic j
              `extR` (value :: F Rational)
              `extR` (value :: F Char)
              `extR` (value :: F Text)
-             `extR` (value :: F L.Text)
+             `extR` (value :: F LT.Text)
              `extR` (value :: F String)
              `extR` (value :: F B.ByteString)
              `extR` (value :: F L.ByteString)
@@ -174,15 +191,23 @@ parseJSON j = parseJSON_generic j
     vector :: (Data a) => Parser (V.Vector a)
     vector = case j of
                Array js -> V.mapM parseJSON js
-               _        -> modFail "parseJSON" $ "bad data: " ++ show j
-    mapText :: (Data a) => Parser (Map.Map Text a)
-    mapText = case j of
-                Object js -> T.mapM parseJSON js
-                _         -> modFail "parseJSON" $ "bad data: " ++ show j
-    mapLazyText :: (Data a) => Parser (Map.Map L.Text a)
-    mapLazyText = Map.mapKeysMonotonic L.fromStrict <$> parseJSON j
-    mapString :: (Data a) => Parser (Map.Map String a)
-    mapString = Map.mapKeysMonotonic unpack <$> parseJSON j
+               _        -> myFail
+    mapAny :: forall e f. (Data e, Data f) => Parser (Map.Map f e)
+    mapAny
+        | tyrep `elem` [typeOf LT.empty, typeOf DT.empty, typeOf ""] = res
+        | otherwise = myFail
+      where res = case j of
+                Object js -> Map.mapKeysMonotonic trans <$> T.mapM parseJSON js
+                _         -> myFail
+            trans
+               | tyrep == typeOf DT.empty = fromJust . cast . id
+               | tyrep == typeOf LT.empty = fromJust . cast . LT.fromStrict
+               | tyrep == typeOf ""       = fromJust . cast . DT.unpack
+               | otherwise = modError "parseJSON"
+                                      "mapAny -- should never happen"
+            tyrep = typeOf (undefined :: f)
+    myFail = modFail "parseJSON" $ "bad data: " ++ show j
+
 
 parseJSON_generic :: (Data a) => Value -> Parser a
 parseJSON_generic j = generic
@@ -190,7 +215,7 @@ parseJSON_generic j = generic
         typ = dataTypeOf $ resType generic
         generic = case dataTypeRep typ of
                     AlgRep []  -> case j of
-                                    Null -> return (error "Empty type")
+                                    Null -> return (modError "parseJSON" "empty type")
                                     _ -> modFail "parseJSON" "no-constr bad data"
                     AlgRep [_] -> decodeArgs (indexConstr typ 1) j
                     AlgRep _   -> do (c, j') <- getConstr typ j; decodeArgs c j'
@@ -202,10 +227,10 @@ parseJSON_generic j = generic
         getConstr t (String js) = do c <- readConstr' t (unpack js)
                                      return (c, Null) -- handle nullary ctor
         getConstr _ _ = modFail "parseJSON" "bad constructor encoding"
-        readConstr' t s = 
-	  maybe (modFail "parseJSON" $ "unknown constructor: " ++ s ++ " " ++
-                         show t) 
-	        return $ readConstr t s
+        readConstr' t s =
+          maybe (modFail "parseJSON" $ "unknown constructor: " ++ s ++ " " ++
+                         show t)
+                return $ readConstr t s
 
         decodeArgs c0 = go (numConstrArgs (resType generic) c0) c0
                            (constrFields c0)
@@ -243,7 +268,40 @@ parseJSON_generic j = generic
           where f = do modify (+1); return undefined
 
         resType :: MonadPlus m => m a -> a
-        resType _ = error "resType"
+        resType _ = modError "parseJSON" "resType"
 
 modFail :: (Monad m) => String -> String -> m a
 modFail func err = fail $ "Data.Aeson.Generic." ++ func ++ ": " ++ err
+
+modError :: String -> String -> a
+modError func err = error $ "Data.Aeson.Generic." ++ func ++ ": " ++ err
+
+
+-- Type extension for binary type constructors.
+
+-- | Flexible type extension
+ext2' :: (Data a, Typeable2 t)
+     => c a
+     -> (forall d1 d2. (Data d1, Data d2) => c (t d1 d2))
+     -> c a
+ext2' def ext = maybe def id (dataCast2 ext)
+
+-- | Type extension of queries for type constructors
+ext2Q' :: (Data d, Typeable2 t)
+      => (d -> q)
+      -> (forall d1 d2. (Data d1, Data d2) => t d1 d2 -> q)
+      -> d -> q
+ext2Q' def ext = unQ ((Q def) `ext2'` (Q ext))
+
+-- | Type extension of readers for type constructors
+ext2R' :: (Monad m, Data d, Typeable2 t)
+      => m d
+      -> (forall d1 d2. (Data d1, Data d2) => m (t d1 d2))
+      -> m d
+ext2R' def ext = unR ((R def) `ext2'` (R ext))
+
+-- | The type constructor for queries
+newtype Q q x = Q { unQ :: x -> q }
+
+-- | The type constructor for readers
+newtype R m x = R { unR :: m x }
