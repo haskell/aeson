@@ -90,6 +90,7 @@ library
     base == 4.*,
     blaze-builder >= 0.2.1.4,
     bytestring,
+    bytestring-show,
     containers,
     deepseq,
     hashable,
