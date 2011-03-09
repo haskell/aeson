@@ -38,7 +38,7 @@ module Data.Aeson.Types
 import Control.Applicative
 import Control.DeepSeq (NFData(..))
 import Control.Monad (MonadPlus(..))
-import Data.Aeson.Functions (hashMap, mapHash, transformMap)
+import Data.Aeson.Functions
 import Data.Attoparsec.Char8 (Number(..))
 import Data.Data (Data)
 import Data.Int (Int8, Int16, Int32, Int64)
@@ -48,7 +48,7 @@ import Data.Monoid (Monoid(..))
 import Data.Ratio (Ratio)
 import Data.String (IsString(..))
 import Data.Text (Text, pack, unpack)
-import Data.Text.Encoding (decodeUtf8, encodeUtf8)
+import Data.Text.Encoding (encodeUtf8)
 import Data.Time.Clock (UTCTime)
 import Data.Time.Format (FormatTime, formatTime, parseTime)
 import Data.Typeable (Typeable)
@@ -480,7 +480,7 @@ instance (ToJSON a) => ToJSON [a] where
     {-# INLINE toJSON #-}
     
 instance (FromJSON a) => FromJSON [a] where
-    parseJSON (Array a) = mapA parseJSON (V.toList a)
+    parseJSON (Array a) = mapM parseJSON (V.toList a)
     parseJSON _         = empty
     {-# INLINE parseJSON #-}
 
@@ -489,7 +489,7 @@ instance (ToJSON a) => ToJSON (Vector a) where
     {-# INLINE toJSON #-}
     
 instance (FromJSON a) => FromJSON (Vector a) where
-    parseJSON (Array a) = V.fromList <$> mapA parseJSON (V.toList a)
+    parseJSON (Array a) = V.mapM parseJSON a
     parseJSON _         = empty
     {-# INLINE parseJSON #-}
 
@@ -514,10 +514,8 @@ instance (ToJSON v) => ToJSON (M.Map Text v) where
     {-# INLINE toJSON #-}
 
 instance (FromJSON v) => FromJSON (M.Map Text v) where
-    parseJSON (Object o) = M.fromAscList <$> go (M.toAscList o)
-      where
-        go ((k,v):kvs)  = ((:) . (,) k) <$> parseJSON v <*> go kvs
-        go _            = pure []
+    parseJSON (Object o) = M.fromAscList <$> mapM go (M.toAscList o)
+      where go (k,v)     = ((,) k) <$> parseJSON v
     parseJSON _          = empty
 
 instance (ToJSON v) => ToJSON (M.Map LT.Text v) where
@@ -532,15 +530,25 @@ instance (ToJSON v) => ToJSON (M.Map String v) where
 instance (FromJSON v) => FromJSON (M.Map String v) where
     parseJSON = fmap (M.mapKeysMonotonic unpack) . parseJSON
 
+instance (ToJSON v) => ToJSON (M.Map B.ByteString v) where
+    toJSON = Object . transformMap decode toJSON
+
+instance (FromJSON v) => FromJSON (M.Map B.ByteString v) where
+    parseJSON = fmap (M.mapKeysMonotonic encodeUtf8) . parseJSON
+
+instance (ToJSON v) => ToJSON (M.Map LB.ByteString v) where
+    toJSON = Object . transformMap strict toJSON
+
+instance (FromJSON v) => FromJSON (M.Map LB.ByteString v) where
+    parseJSON = fmap (M.mapKeysMonotonic lazy) . parseJSON
+
 instance (ToJSON v) => ToJSON (H.HashMap Text v) where
     toJSON = Object . hashMap id toJSON
     {-# INLINE toJSON #-}
 
 instance (FromJSON v) => FromJSON (H.HashMap Text v) where
-    parseJSON (Object o) = H.fromList <$> go (M.toList o)
-      where
-        go ((k,v):kvs)   = ((:) . (,) k) <$> parseJSON v <*> go kvs
-        go _             = pure []
+    parseJSON (Object o) = H.fromList <$> mapM go (M.toList o)
+      where go (k,v)     = ((,) k) <$> parseJSON v
     parseJSON _          = empty
 
 instance (ToJSON v) => ToJSON (H.HashMap LT.Text v) where
@@ -555,17 +563,17 @@ instance (ToJSON v) => ToJSON (H.HashMap String v) where
 instance (FromJSON v) => FromJSON (H.HashMap String v) where
     parseJSON = fmap (mapHash unpack) . parseJSON
 
-instance (ToJSON v) => ToJSON (M.Map B.ByteString v) where
-    toJSON = Object . transformMap decode toJSON
+instance (ToJSON v) => ToJSON (H.HashMap B.ByteString v) where
+    toJSON = Object . hashMap decode toJSON
 
-instance (FromJSON v) => FromJSON (M.Map B.ByteString v) where
-    parseJSON = fmap (M.mapKeysMonotonic encodeUtf8) . parseJSON
+instance (FromJSON v) => FromJSON (H.HashMap B.ByteString v) where
+    parseJSON = fmap (mapHash encodeUtf8) . parseJSON
 
-instance (ToJSON v) => ToJSON (M.Map LB.ByteString v) where
-    toJSON = Object . transformMap strict toJSON
+instance (ToJSON v) => ToJSON (H.HashMap LB.ByteString v) where
+    toJSON = Object . hashMap strict toJSON
 
-instance (FromJSON v) => FromJSON (M.Map LB.ByteString v) where
-    parseJSON = fmap (M.mapKeysMonotonic lazy) . parseJSON
+instance (FromJSON v) => FromJSON (H.HashMap LB.ByteString v) where
+    parseJSON = fmap (mapHash lazy) . parseJSON
 
 instance ToJSON Value where
     toJSON a = a
@@ -639,19 +647,3 @@ instance ToJSON a => ToJSON (Last a) where
 instance FromJSON a => FromJSON (Last a) where
     parseJSON = fmap Last . parseJSON
     {-# INLINE parseJSON #-}
-
-mapA :: (Alternative m) => (t -> m a) -> [t] -> m [a]
-mapA f = go
-  where
-    go (a:as) = (:) <$> f a <*> go as
-    go _      = pure []
-
-strict :: LB.ByteString -> Text
-strict = decode . B.concat . LB.toChunks
-
-lazy :: Text -> LB.ByteString
-lazy = LB.fromChunks . (:[]) . encodeUtf8
-
-decode :: B.ByteString -> Text
-decode = decodeUtf8
-{-# INLINE decode #-}
