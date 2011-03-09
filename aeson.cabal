@@ -99,7 +99,7 @@ library
     syb,
     text >= 0.11.0.2,
     time,
-    unordered-containers,
+    unordered-containers >= 0.1.2.0,
     vector >= 0.7
 
   if flag(developer)
