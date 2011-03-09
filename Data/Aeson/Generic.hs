@@ -22,7 +22,7 @@ module Data.Aeson.Generic
 import Control.Applicative ((<$>))
 import Control.Arrow (first)
 import Control.Monad.State.Strict
-import Data.Aeson.Functions (transformMap)
+import Data.Aeson.Functions (hashMap, transformMap)
 import Data.Aeson.Types hiding (FromJSON(..), ToJSON(..), fromJSON)
 import Data.Attoparsec.Number (Number)
 import Data.Generics
@@ -35,6 +35,7 @@ import Data.Word (Word, Word8, Word16, Word32, Word64)
 import qualified Data.Aeson.Types as T
 import qualified Data.ByteString as B
 import qualified Data.ByteString.Lazy as L
+import qualified Data.HashMap.Strict as H
 import qualified Data.Map as Map
 import qualified Data.Set as Set
 import qualified Data.Text as DT
@@ -50,6 +51,7 @@ toJSON = toJSON_generic
          `ext1Q` vector
          `ext1Q` set
          `ext2Q'` mapAny
+         `ext2Q'` hashMapAny
          -- Use the standard encoding for all base types.
          `extQ` (T.toJSON :: T Integer)
          `extQ` (T.toJSON :: T Int)
@@ -90,8 +92,17 @@ toJSON = toJSON_generic
       | tyrep == typeOf LT.empty = remap LT.toStrict
       | otherwise = modError "toJSON" $
                              "cannot convert map keyed by type " ++ show tyrep
-      where tyrep = typeOf $ head $ Map.keys m
+      where tyrep = typeOf . head . Map.keys $ m
             remap f = Object . transformMap (f . fromJust . cast) toJSON $ m
+
+    hashMapAny m
+      | tyrep == typeOf ""       = remap pack
+      | tyrep == typeOf DT.empty = remap id
+      | tyrep == typeOf LT.empty = remap LT.toStrict
+      | otherwise = modError "toJSON" $
+                             "cannot convert map keyed by type " ++ show tyrep
+      where tyrep = typeOf . head . H.keys $ m
+            remap f = Object . hashMap (f . fromJust . cast) toJSON $ m
 
 
 toJSON_generic :: (Data a) => a -> Value
@@ -143,6 +154,7 @@ parseJSON j = parseJSON_generic j
              `ext1R` list
              `ext1R` vector
              `ext2R'` mapAny
+             -- Don't know how to support parsing HashMaps :-(
              -- Use the standard encoding for all base types.
              `extR` (value :: F Integer)
              `extR` (value :: F Int)
@@ -186,7 +198,7 @@ parseJSON j = parseJSON_generic j
         | otherwise = myFail
       where res = case j of
                 Object js -> Map.mapKeysMonotonic trans <$> T.mapM parseJSON js
-                _ -> myFail
+                _         -> myFail
             trans
                | tyrep == typeOf DT.empty = fromJust . cast . id
                | tyrep == typeOf LT.empty = fromJust . cast . LT.fromStrict

@@ -78,11 +78,13 @@ library
     bytestring,
     containers,
     deepseq,
+    hashable,
     monads-fd,
     old-locale,
     syb,
     text >= 0.11.0.2,
     time,
+    unordered-containers,
     vector >= 0.7
 
   if flag(developer)
