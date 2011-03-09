@@ -457,7 +457,7 @@ instance FromJSON LT.Text where
     {-# INLINE parseJSON #-}
 
 instance ToJSON B.ByteString where
-    toJSON = String . decodeUtf8
+    toJSON = String . decode
     {-# INLINE toJSON #-}
 
 instance FromJSON B.ByteString where
@@ -466,11 +466,11 @@ instance FromJSON B.ByteString where
     {-# INLINE parseJSON #-}
 
 instance ToJSON LB.ByteString where
-    toJSON = toJSON . B.concat . LB.toChunks
+    toJSON = toJSON . strict
     {-# INLINE toJSON #-}
 
 instance FromJSON LB.ByteString where
-    parseJSON (String t) = pure . LB.fromChunks . (:[]) . encodeUtf8 $ t
+    parseJSON (String t) = pure . lazy $ t
     parseJSON _          = empty
     {-# INLINE parseJSON #-}
 
@@ -530,6 +530,18 @@ instance (ToJSON v) => ToJSON (M.Map String v) where
 
 instance (FromJSON v) => FromJSON (M.Map String v) where
     parseJSON = fmap (M.mapKeysMonotonic unpack) . parseJSON
+
+instance (ToJSON v) => ToJSON (M.Map B.ByteString v) where
+    toJSON = Object . transformMap decode toJSON
+
+instance (FromJSON v) => FromJSON (M.Map B.ByteString v) where
+    parseJSON = fmap (M.mapKeysMonotonic encodeUtf8) . parseJSON
+
+instance (ToJSON v) => ToJSON (M.Map LB.ByteString v) where
+    toJSON = Object . transformMap strict toJSON
+
+instance (FromJSON v) => FromJSON (M.Map LB.ByteString v) where
+    parseJSON = fmap (M.mapKeysMonotonic lazy) . parseJSON
 
 instance ToJSON Value where
     toJSON a = a
@@ -609,3 +621,13 @@ mapA f = go
   where
     go (a:as) = (:) <$> f a <*> go as
     go _      = pure []
+
+strict :: LB.ByteString -> Text
+strict = decode . B.concat . LB.toChunks
+
+lazy :: Text -> LB.ByteString
+lazy = LB.fromChunks . (:[]) . encodeUtf8
+
+decode :: B.ByteString -> Text
+decode = decodeUtf8
+{-# INLINE decode #-}
