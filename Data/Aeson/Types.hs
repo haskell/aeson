@@ -36,33 +36,34 @@ module Data.Aeson.Types
     ) where
 
 import Control.Applicative
-import Control.Monad (MonadPlus(..))
-import Data.Monoid (Monoid(..))
 import Control.DeepSeq (NFData(..))
+import Control.Monad (MonadPlus(..))
+import Data.Aeson.Functions (hashMap, mapHash, transformMap)
+import Data.Attoparsec.Char8 (Number(..))
 import Data.Data (Data)
 import Data.Int (Int8, Int16, Int32, Int64)
-import qualified Data.IntSet as IntSet
 import Data.Map (Map)
 import Data.Monoid (Dual(..), First(..), Last(..))
+import Data.Monoid (Monoid(..))
 import Data.Ratio (Ratio)
 import Data.String (IsString(..))
 import Data.Text (Text, pack, unpack)
 import Data.Text.Encoding (decodeUtf8, encodeUtf8)
 import Data.Time.Clock (UTCTime)
 import Data.Time.Format (FormatTime, formatTime, parseTime)
-import Data.Attoparsec.Char8 (Number(..))
 import Data.Typeable (Typeable)
 import Data.Vector (Vector)
 import Data.Word (Word, Word8, Word16, Word32, Word64)
 import System.Locale (defaultTimeLocale)
 import qualified Data.ByteString as B
 import qualified Data.ByteString.Lazy as LB
+import qualified Data.HashMap.Strict as H
+import qualified Data.IntSet as IntSet
 import qualified Data.Map as M
 import qualified Data.Set as Set
 import qualified Data.Text as T
 import qualified Data.Text.Lazy as LT
 import qualified Data.Vector as V
-import Data.Aeson.Functions
 
 -- | The result of running a 'Parser'.
 data Result a = Error String
@@ -530,6 +531,29 @@ instance (ToJSON v) => ToJSON (M.Map String v) where
 
 instance (FromJSON v) => FromJSON (M.Map String v) where
     parseJSON = fmap (M.mapKeysMonotonic unpack) . parseJSON
+
+instance (ToJSON v) => ToJSON (H.HashMap Text v) where
+    toJSON = Object . hashMap id toJSON
+    {-# INLINE toJSON #-}
+
+instance (FromJSON v) => FromJSON (H.HashMap Text v) where
+    parseJSON (Object o) = H.fromList <$> go (M.toList o)
+      where
+        go ((k,v):kvs)   = ((:) . (,) k) <$> parseJSON v <*> go kvs
+        go _             = pure []
+    parseJSON _          = empty
+
+instance (ToJSON v) => ToJSON (H.HashMap LT.Text v) where
+    toJSON = Object . M.fromList . H.foldrWithKey (\k v -> ((LT.toStrict k,toJSON v) :)) []
+
+instance (FromJSON v) => FromJSON (H.HashMap LT.Text v) where
+    parseJSON = fmap (mapHash LT.fromStrict) . parseJSON
+
+instance (ToJSON v) => ToJSON (H.HashMap String v) where
+    toJSON = Object . hashMap pack toJSON
+
+instance (FromJSON v) => FromJSON (H.HashMap String v) where
+    parseJSON = fmap (mapHash unpack) . parseJSON
 
 instance (ToJSON v) => ToJSON (M.Map B.ByteString v) where
     toJSON = Object . transformMap decode toJSON

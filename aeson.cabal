@@ -90,13 +90,16 @@ library
     base == 4.*,
     blaze-builder >= 0.2.1.4,
     bytestring,
+    bytestring-show,
     containers,
     deepseq,
+    hashable,
     monads-fd,
     old-locale,
     syb,
     text >= 0.11.0.2,
     time,
+    unordered-containers,
     vector >= 0.7
 
   if flag(developer)
