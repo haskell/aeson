@@ -603,7 +603,8 @@ instance FromJSON DotNetTime where
     {-# INLINE parseJSON #-}
 
 instance ToJSON UTCTime where
-    toJSON t = String (pack (formatTime defaultTimeLocale "%FT%X%QZ" t))
+    toJSON t = String (pack (take 23 str ++ "Z"))
+      where str = formatTime defaultTimeLocale "%FT%T%Q" t
     {-# INLINE toJSON #-}
 
 instance FromJSON UTCTime where
