@@ -585,8 +585,9 @@ instance FromJSON Value where
 
 -- | A newtype wrapper for 'UTCTime' that uses the same non-standard
 -- serialization format as Microsoft .NET.
-newtype DotNetTime = DotNetTime UTCTime
-    deriving (Eq, Ord, Read, Show, Typeable, FormatTime)
+newtype DotNetTime = DotNetTime {
+      fromDotNetTime :: UTCTime
+    } deriving (Eq, Ord, Read, Show, Typeable, FormatTime)
 
 instance ToJSON DotNetTime where
     toJSON (DotNetTime t) =
