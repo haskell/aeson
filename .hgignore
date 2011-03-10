@@ -1,6 +1,6 @@
 ^(?:dist|\.DS_Store)$
 ^benchmarks/(?:AesonParse|EncodeFile|JsonParse|.*_p)$
-.*\.(?:h[ip]|o|orig|out|pdf|prof|ps|rej)$
+.*\.(?:aux|h[ip]|o|orig|out|pdf|prof|ps|rej)$
 
 syntax: glob
 *~
