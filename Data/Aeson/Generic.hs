@@ -22,7 +22,7 @@ module Data.Aeson.Generic
 import Control.Applicative ((<$>))
 import Control.Arrow (first)
 import Control.Monad.State.Strict
-import Data.Aeson.Functions (hashMap, transformMap)
+import Data.Aeson.Functions
 import Data.Aeson.Types hiding (FromJSON(..), ToJSON(..), fromJSON)
 import Data.Attoparsec.Number (Number)
 import Data.Generics
@@ -31,6 +31,7 @@ import Data.Int (Int8, Int16, Int32, Int64)
 import Data.IntSet (IntSet)
 import Data.Maybe (fromJust)
 import Data.Text (Text, pack, unpack)
+import Data.Text.Encoding (encodeUtf8)
 import Data.Time.Clock (UTCTime)
 import Data.Word (Word, Word8, Word16, Word32, Word64)
 import qualified Data.Aeson.Types as T
@@ -88,18 +89,22 @@ toJSON = toJSON_generic
     set s = Array . V.fromList . map toJSON . Set.toList $ s
 
     mapAny m
-      | tyrep == typeOf ""       = remap pack
       | tyrep == typeOf DT.empty = remap id
       | tyrep == typeOf LT.empty = remap LT.toStrict
+      | tyrep == typeOf ""       = remap pack
+      | tyrep == typeOf B.empty  = remap decode
+      | tyrep == typeOf L.empty  = remap strict
       | otherwise = modError "toJSON" $
                              "cannot convert map keyed by type " ++ show tyrep
       where tyrep = typeOf . head . Map.keys $ m
             remap f = Object . transformMap (f . fromJust . cast) toJSON $ m
 
     hashMapAny m
-      | tyrep == typeOf ""       = remap pack
       | tyrep == typeOf DT.empty = remap id
       | tyrep == typeOf LT.empty = remap LT.toStrict
+      | tyrep == typeOf ""       = remap pack
+      | tyrep == typeOf B.empty  = remap decode
+      | tyrep == typeOf L.empty  = remap strict
       | otherwise = modError "toJSON" $
                              "cannot convert map keyed by type " ++ show tyrep
       where tyrep = typeOf . head . H.keys $ m
@@ -195,18 +200,21 @@ parseJSON j = parseJSON_generic j
                _        -> myFail
     mapAny :: forall e f. (Data e, Data f) => Parser (Map.Map f e)
     mapAny
-        | tyrep `elem` [typeOf LT.empty, typeOf DT.empty, typeOf ""] = res
+        | tyrep `elem` stringyTypes = res
         | otherwise = myFail
       where res = case j of
                 Object js -> Map.mapKeysMonotonic trans <$> T.mapM parseJSON js
                 _         -> myFail
             trans
-               | tyrep == typeOf DT.empty = fromJust . cast . id
-               | tyrep == typeOf LT.empty = fromJust . cast . LT.fromStrict
-               | tyrep == typeOf ""       = fromJust . cast . DT.unpack
+               | tyrep == typeOf DT.empty = remap id
+               | tyrep == typeOf LT.empty = remap LT.fromStrict
+               | tyrep == typeOf ""       = remap DT.unpack
+               | tyrep == typeOf B.empty  = remap encodeUtf8
+               | tyrep == typeOf L.empty  = remap lazy
                | otherwise = modError "parseJSON"
                                       "mapAny -- should never happen"
             tyrep = typeOf (undefined :: f)
+            remap f = fromJust . cast . f
     hashMapAny :: forall e f. (Data e, Data f) => Parser (H.HashMap f e)
     hashMapAny
         | tyrep == typeOf ""       = process DT.unpack
@@ -222,6 +230,8 @@ parseJSON j = parseJSON_generic j
                         _          -> myFail
         tyrep = typeOf (undefined :: f)
     myFail = modFail "parseJSON" $ "bad data: " ++ show j
+    stringyTypes = [typeOf LT.empty, typeOf DT.empty, typeOf B.empty, 
+                    typeOf L.empty, typeOf ""]
 
 parseJSON_generic :: (Data a) => Value -> Parser a
 parseJSON_generic j = generic
