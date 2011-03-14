@@ -19,8 +19,9 @@ module Data.Aeson.Types
     , Pair
     , Object
     , emptyObject
-    -- * Convenience types
+    -- * Convenience types and functions
     , DotNetTime(..)
+    , typeMismatch
     -- * Type conversion
     , Parser
     , Result(..)
@@ -191,7 +192,7 @@ parse m v = runParser (m v) Error Success
 -- optional, use '(.:?)' instead.
 (.:) :: (FromJSON a) => Object -> Text -> Parser a
 obj .: key = case M.lookup key obj of
-               Nothing -> empty
+               Nothing -> fail $ "key " ++ show key ++ " not present"
                Just v  -> parseJSON v
 {-# INLINE (.:) #-}
 
@@ -273,7 +274,7 @@ instance ToJSON Bool where
 
 instance FromJSON Bool where
     parseJSON (Bool b) = pure b
-    parseJSON _        = empty
+    parseJSON v        = typeMismatch "Bool" v
     {-# INLINE parseJSON #-}
 
 instance ToJSON () where
@@ -282,7 +283,7 @@ instance ToJSON () where
 
 instance FromJSON () where
     parseJSON (Array v) | V.null v = pure ()
-    parseJSON _                    = empty
+    parseJSON v        = typeMismatch "()" v
     {-# INLINE parseJSON #-}
 
 instance ToJSON [Char] where
@@ -291,7 +292,7 @@ instance ToJSON [Char] where
 
 instance FromJSON [Char] where
     parseJSON (String t) = pure (T.unpack t)
-    parseJSON _          = empty
+    parseJSON v          = typeMismatch "String" v
     {-# INLINE parseJSON #-}
 
 instance ToJSON Char where
@@ -301,7 +302,7 @@ instance ToJSON Char where
 instance FromJSON Char where
     parseJSON (String t)
         | T.compareLength t 1 == EQ = pure (T.head t)
-    parseJSON _                      = empty
+    parseJSON v          = typeMismatch "Char" v
     {-# INLINE parseJSON #-}
 
 instance ToJSON Double where
@@ -312,7 +313,7 @@ instance FromJSON Double where
     parseJSON (Number n) = case n of
                              D d -> pure d
                              I i -> pure (fromIntegral i)
-    parseJSON _              = empty
+    parseJSON v          = typeMismatch "Double" v
     {-# INLINE parseJSON #-}
 
 instance ToJSON Number where
@@ -321,7 +322,7 @@ instance ToJSON Number where
 
 instance FromJSON Number where
     parseJSON (Number n) = pure n
-    parseJSON _          = empty
+    parseJSON v          = typeMismatch "Number" v
     {-# INLINE parseJSON #-}
 
 instance ToJSON Float where
@@ -332,7 +333,7 @@ instance FromJSON Float where
     parseJSON (Number n) = case n of
                              D d -> pure . fromRational . toRational $ d
                              I i -> pure (fromIntegral i)
-    parseJSON _          = empty
+    parseJSON v          = typeMismatch "Float" v
     {-# INLINE parseJSON #-}
 
 instance ToJSON (Ratio Integer) where
@@ -343,7 +344,7 @@ instance FromJSON (Ratio Integer) where
     parseJSON (Number n) = case n of
                              D d -> pure . toRational $ d
                              I i -> pure (fromIntegral i)
-    parseJSON _          = empty
+    parseJSON v          = typeMismatch "Ratio Integer" v
     {-# INLINE parseJSON #-}
 
 instance ToJSON Int where
@@ -356,7 +357,7 @@ instance FromJSON Int where
 
 parseIntegral :: Integral a => Value -> Parser a
 parseIntegral (Number n) = pure (floor n)
-parseIntegral _          = empty
+parseIntegral v          = typeMismatch "Integral" v
 {-# INLINE parseIntegral #-}
 
 instance ToJSON Integer where
@@ -445,7 +446,7 @@ instance ToJSON Text where
 
 instance FromJSON Text where
     parseJSON (String t) = pure t
-    parseJSON _          = empty
+    parseJSON v          = typeMismatch "Text" v
     {-# INLINE parseJSON #-}
 
 instance ToJSON LT.Text where
@@ -454,7 +455,7 @@ instance ToJSON LT.Text where
 
 instance FromJSON LT.Text where
     parseJSON (String t) = pure (LT.fromStrict t)
-    parseJSON _          = empty
+    parseJSON v          = typeMismatch "Lazy Text" v
     {-# INLINE parseJSON #-}
 
 instance ToJSON B.ByteString where
@@ -463,7 +464,7 @@ instance ToJSON B.ByteString where
 
 instance FromJSON B.ByteString where
     parseJSON (String t) = pure . encodeUtf8 $ t
-    parseJSON _          = empty
+    parseJSON v          = typeMismatch "ByteString" v
     {-# INLINE parseJSON #-}
 
 instance ToJSON LB.ByteString where
@@ -472,7 +473,7 @@ instance ToJSON LB.ByteString where
 
 instance FromJSON LB.ByteString where
     parseJSON (String t) = pure . lazy $ t
-    parseJSON _          = empty
+    parseJSON v          = typeMismatch "Lazy ByteString" v
     {-# INLINE parseJSON #-}
 
 instance (ToJSON a) => ToJSON [a] where
@@ -481,7 +482,7 @@ instance (ToJSON a) => ToJSON [a] where
     
 instance (FromJSON a) => FromJSON [a] where
     parseJSON (Array a) = mapM parseJSON (V.toList a)
-    parseJSON _         = empty
+    parseJSON v         = typeMismatch "[a]" v
     {-# INLINE parseJSON #-}
 
 instance (ToJSON a) => ToJSON (Vector a) where
@@ -490,7 +491,7 @@ instance (ToJSON a) => ToJSON (Vector a) where
     
 instance (FromJSON a) => FromJSON (Vector a) where
     parseJSON (Array a) = V.mapM parseJSON a
-    parseJSON _         = empty
+    parseJSON v         = typeMismatch "Vector a" v
     {-# INLINE parseJSON #-}
 
 instance (ToJSON a) => ToJSON (Set.Set a) where
@@ -516,7 +517,7 @@ instance (ToJSON v) => ToJSON (M.Map Text v) where
 instance (FromJSON v) => FromJSON (M.Map Text v) where
     parseJSON (Object o) = M.fromAscList <$> mapM go (M.toAscList o)
       where go (k,v)     = ((,) k) <$> parseJSON v
-    parseJSON _          = empty
+    parseJSON v          = typeMismatch "Map Text a" v
 
 instance (ToJSON v) => ToJSON (M.Map LT.Text v) where
     toJSON = Object . transformMap LT.toStrict toJSON
@@ -549,7 +550,7 @@ instance (ToJSON v) => ToJSON (H.HashMap Text v) where
 instance (FromJSON v) => FromJSON (H.HashMap Text v) where
     parseJSON (Object o) = H.fromList <$> mapM go (M.toList o)
       where go (k,v)     = ((,) k) <$> parseJSON v
-    parseJSON _          = empty
+    parseJSON v          = typeMismatch "HashMap Text a" v
 
 instance (ToJSON v) => ToJSON (H.HashMap LT.Text v) where
     toJSON = Object . M.fromList . H.foldrWithKey (\k v -> ((LT.toStrict k,toJSON v) :)) []
@@ -598,8 +599,8 @@ instance FromJSON DotNetTime where
     parseJSON (String t) =
         case parseTime defaultTimeLocale "/Date(%s)/" (unpack t) of
           Just d -> pure (DotNetTime d)
-          _      -> empty
-    parseJSON _          = empty
+          _      -> fail "could not parse .NET time"
+    parseJSON v   = typeMismatch "DotNetTime" v
     {-# INLINE parseJSON #-}
 
 instance ToJSON UTCTime where
@@ -609,10 +610,10 @@ instance ToJSON UTCTime where
 
 instance FromJSON UTCTime where
     parseJSON (String t) =
-        case parseTime defaultTimeLocale "%FT%X%QZ" (unpack t) of
+        case parseTime defaultTimeLocale "%FT%T%QZ" (unpack t) of
           Just d -> pure d
-          _      -> empty
-    parseJSON _          = empty
+          _      -> fail "could not parse ISO-8601 date"
+    parseJSON v   = typeMismatch "UTCTime" v
     {-# INLINE parseJSON #-}
 
 instance (ToJSON a, ToJSON b) => ToJSON (a,b) where
@@ -620,10 +621,25 @@ instance (ToJSON a, ToJSON b) => ToJSON (a,b) where
     {-# INLINE toJSON #-}
 
 instance (FromJSON a, FromJSON b) => FromJSON (a,b) where
-    parseJSON (Array ab) = case V.toList ab of
-                            [a,b] -> (,) <$> parseJSON a <*> parseJSON b
-                            _     -> empty
-    parseJSON _          = empty
+    parseJSON (Array ab) =
+      case V.toList ab of
+        [a,b] -> (,) <$> parseJSON a <*> parseJSON b
+        _     -> fail $ "cannot unpack array of length " ++
+                        show (V.length ab) ++ " into a pair"
+    parseJSON v          = typeMismatch "(a,b)" v
+    {-# INLINE parseJSON #-}
+
+instance (ToJSON a, ToJSON b, ToJSON c) => ToJSON (a,b,c) where
+    toJSON (a,b,c) = toJSON [toJSON a, toJSON b, toJSON c]
+    {-# INLINE toJSON #-}
+
+instance (FromJSON a, FromJSON b, FromJSON c) => FromJSON (a,b,c) where
+    parseJSON (Array abc) =
+      case V.toList abc of
+        [a,b,c] -> (,,) <$> parseJSON a <*> parseJSON b <*> parseJSON c
+        _       -> fail $ "cannot unpack array of length " ++
+                          show (V.length abc) ++ " into a 3-tuple"
+    parseJSON v          = typeMismatch "(a,b,c)" v
     {-# INLINE parseJSON #-}
 
 instance ToJSON a => ToJSON (Dual a) where
@@ -649,3 +665,19 @@ instance ToJSON a => ToJSON (Last a) where
 instance FromJSON a => FromJSON (Last a) where
     parseJSON = fmap Last . parseJSON
     {-# INLINE parseJSON #-}
+
+-- | Fail parsing due to a type mismatch, with a descriptive message.
+typeMismatch :: String -- ^ The name of the type you are trying to parse.
+             -> Value  -- ^ The actual value encountered.
+             -> Parser a
+typeMismatch expected actual =
+    fail $ "when expecting a " ++ expected ++ ", encountered " ++ name ++
+           " instead"
+  where
+    name = case actual of
+             Object _ -> "Object"
+             Array _  -> "Array"
+             String _ -> "String"
+             Number _ -> "Number"
+             Bool _   -> "Boolean"
+             Null     -> "Null"
