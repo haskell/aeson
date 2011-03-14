@@ -26,6 +26,7 @@ import Data.Aeson.Functions
 import Data.Aeson.Types hiding (FromJSON(..), ToJSON(..), fromJSON)
 import Data.Attoparsec.Number (Number)
 import Data.Generics
+import Data.Hashable (Hashable)
 import Data.Int (Int8, Int16, Int32, Int64)
 import Data.IntSet (IntSet)
 import Data.Maybe (fromJust)
@@ -159,7 +160,7 @@ parseJSON j = parseJSON_generic j
              `ext1R` list
              `ext1R` vector
              `ext2R'` mapAny
-             -- Don't know how to support parsing HashMaps :-(
+             `ext2R'` hashMapAny
              -- Use the standard encoding for all base types.
              `extR` (value :: F Integer)
              `extR` (value :: F Int)
@@ -214,6 +215,20 @@ parseJSON j = parseJSON_generic j
                                       "mapAny -- should never happen"
             tyrep = typeOf (undefined :: f)
             remap f = fromJust . cast . f
+    hashMapAny :: forall e f. (Data e, Data f) => Parser (H.HashMap f e)
+    hashMapAny
+        | tyrep == typeOf ""       = process DT.unpack
+        | tyrep == typeOf LT.empty = process LT.fromStrict
+        | tyrep == typeOf DT.empty = process id
+        | otherwise = myFail
+      where
+        process f = maybe myFail return . cast =<< parseWith f
+        parseWith :: (Eq c, Hashable c) => (Text -> c) -> Parser (H.HashMap c e)
+        parseWith f = case j of
+                        Object js -> H.fromList . map (first f) . Map.toList <$>
+                                     T.mapM parseJSON js
+                        _          -> myFail
+        tyrep = typeOf (undefined :: f)
     myFail = modFail "parseJSON" $ "bad data: " ++ show j
     stringyTypes = [typeOf LT.empty, typeOf DT.empty, typeOf B.empty, 
                     typeOf L.empty, typeOf ""]
