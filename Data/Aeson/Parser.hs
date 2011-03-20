@@ -79,6 +79,8 @@ value = most <|> (Number <$> number)
 doubleQuote, backslash :: Word8
 doubleQuote = 34
 backslash = 92
+{-# INLINE backslash #-}
+{-# INLINE doubleQuote #-}
 
 jstring :: Parser Text
 jstring = A.word8 doubleQuote *> jstring_
@@ -92,14 +94,11 @@ jstring_ = {-# SCC "jstring_" #-} do
                                         else Just (c == backslash)
   _ <- A.word8 doubleQuote
   if backslash `B.elem` s
-    then decodeUtf8 <$> reparse unescape s
+    then case Z.parse unescape s of
+           Right r  -> return (decodeUtf8 r)
+           Left err -> fail err
     else return (decodeUtf8 s)
 {-# INLINE jstring_ #-}
-
-reparse :: Z.Parser a -> ByteString -> Parser a
-reparse p s = case Z.parse p s of
-                Right r  -> return r
-                Left err -> fail err
 
 unescape :: Z.Parser ByteString
 unescape = toByteString <$> go mempty where
