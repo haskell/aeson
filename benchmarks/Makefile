@@ -1,7 +1,7 @@
 ghc := ghc
 ghcflags := -O
 
-binaries := AesonParse EncodeFile JsonParse
+binaries := AesonParse AesonEncode JsonParse
 
 all: $(binaries) $(binaries:%=%_p)
 
