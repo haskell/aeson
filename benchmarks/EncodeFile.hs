@@ -11,22 +11,32 @@ import System.Environment (getArgs)
 import System.IO
 import qualified Data.ByteString as B
 import qualified Data.ByteString.Lazy as L
+import qualified Data.ByteString.Lazy.Internal as L
+import Control.DeepSeq
+
+instance NFData L.ByteString where
+    rnf = go
+      where go (L.Chunk _ cs) = go cs
+            go L.Empty        = ()
+    {-# INLINE rnf #-}
 
 main = do
   (cnt:args) <- getArgs
   let count = read cnt :: Int
   forM_ args $ \arg -> bracket (openFile arg ReadMode) hClose $ \h -> do
     putStrLn $ arg ++ ":"
+    let refill = B.hGet h 16384
+    result <- parseWith refill json =<< refill
+    r <- case result of
+           Done _ r -> return r
+           _        -> fail $ "failed to read " ++ show arg
     start <- getCurrentTime
-    let loop !n
+    let loop !n r
             | n >= count = return ()
             | otherwise = {-# SCC "loop" #-} do
-          hSeek h AbsoluteSeek 0
-          let refill = B.hGet h 16384
-          result <- parseWith refill json =<< refill
           case result of
-            Done _ r -> L.length (encode r) `seq` loop (n+1)
+            Done _ r -> rnf (encode r) `seq` loop (n+1) r
             _        -> error $ "failed to read " ++ show arg
-    loop 0
+    loop 0 r
     end <- getCurrentTime
     putStrLn $ "  " ++ show (diffUTCTime end start)
