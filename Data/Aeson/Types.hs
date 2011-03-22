@@ -28,6 +28,8 @@ module Data.Aeson.Types
     , FromJSON(..)
     , fromJSON
     , parse
+    , parseEither
+    , parseMaybe
     , ToJSON(..)
     -- * Constructors and accessors
     , (.=)
@@ -38,7 +40,7 @@ module Data.Aeson.Types
 
 import Control.Applicative
 import Control.DeepSeq (NFData(..))
-import Control.Monad (MonadPlus(..))
+import Control.Monad (MonadPlus(..), ap)
 import Data.Aeson.Functions
 import Data.Attoparsec.Char8 (Number(..))
 import Data.Data (Data)
@@ -71,17 +73,54 @@ data Result a = Error String
               | Success a
                 deriving (Eq, Show, Typeable)
 
--- | Failure continuation.  Constructs an 'Error'.
-type Failure r   = String -> Result r
--- | Success continuation.  Constructs a 'Success'.
-type Success a r = a -> Result r
+instance Functor Result where
+    fmap f (Success a) = Success (f a)
+    fmap _ (Error err) = Error err
+    {-# INLINE fmap #-}
+
+instance Monad Result where
+    return = Success
+    {-# INLINE return #-}
+    Success a >>= k = k a
+    Error err >>= _ = Error err
+    {-# INLINE (>>=) #-}
+
+instance Applicative Result where
+    pure  = return
+    {-# INLINE pure #-}
+    (<*>) = ap
+    {-# INLINE (<*>) #-}
+
+instance MonadPlus Result where
+    mzero = fail "mzero"
+    {-# INLINE mzero #-}
+    mplus a@(Success _) _ = a
+    mplus _ b             = b
+    {-# INLINE mplus #-}
+
+instance Alternative Result where
+    empty = mzero
+    {-# INLINE empty #-}
+    (<|>) = mplus
+    {-# INLINE (<|>) #-}
+
+instance Monoid (Result a) where
+    mempty  = fail "mempty"
+    {-# INLINE mempty #-}
+    mappend = mplus
+    {-# INLINE mappend #-}
+
+-- | Failure continuation.
+type Failure f r   = String -> f r
+-- | Success continuation.
+type Success a f r = a -> f r
 
 -- | A continuation-based parser type.
 newtype Parser a = Parser {
-      runParser :: forall r.
-                   Failure r
-                -> Success a r
-                -> Result r
+      runParser :: forall f r.
+                   Failure f r
+                -> Success a f r
+                -> f r
     }
 
 instance Monad Parser where
@@ -182,6 +221,16 @@ fromJSON = parse parseJSON
 parse :: (a -> Parser b) -> a -> Result b
 parse m v = runParser (m v) Error Success
 {-# INLINE parse #-}
+
+-- | Run a 'Parser' with a 'Maybe' result type.
+parseMaybe :: (a -> Parser b) -> a -> Maybe b
+parseMaybe m v = runParser (m v) (const Nothing) Just
+{-# INLINE parseMaybe #-}
+
+-- | Run a 'Parser' with an 'Either' result type.
+parseEither :: (a -> Parser b) -> a -> Either String b
+parseEither m v = runParser (m v) Left Right
+{-# INLINE parseEither #-}
 
 -- | Retrieve the value associated with the given key of an 'Object'.
 -- The result is 'empty' if the key is not present or the value cannot
