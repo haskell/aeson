@@ -25,7 +25,7 @@ int i
     | otherwise = go i
   where
     go n | n < 10    = digit n
-         | otherwise = go (n `rem` 10) `mappend` digit (n `quot` 10)
+         | otherwise = go (n `quot` 10) `mappend` digit (n `rem` 10)
 
 digit :: Int -> Builder
 digit n = fromWord8 $! fromIntegral n + 48
