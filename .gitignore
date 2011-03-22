@@ -1,0 +1,6 @@
+dist
+
+*.o
+*.hi
+
+benchmarks/AesonEncode
