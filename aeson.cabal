@@ -1,5 +1,5 @@
 name:            aeson
-version:         0.3.1.1
+version:         0.3.2.0
 license:         BSD3
 license-file:    LICENSE
 category:        Text, Web, JSON
@@ -21,31 +21,37 @@ description:
     (2.66GHz Core i7), for mostly-English tweets from Twitter's JSON
     search API:
     .
-    * 854 bytes: 21054 msg\/sec (17.1 MB/sec)
+    * English, 854 bytes: 29029 msg\/sec (23.6 MB/sec)
     .
-    * 6.4 KB: 4545 msg\/sec (28.6 MB/sec)
+    * English, 6.4 KB: 6407 msg\/sec (40.3 MB/sec)
     .
-    * 31.2 KB: 856 msg\/sec (26.1 MB/sec)
+    * English, 31.2 KB: 1265 msg\/sec (38.8 MB/sec)
     .
-    * 61.5 KB: 403 msg\/sec (24.2 MB/sec) 
+    * English, 61.5 KB: 585 msg\/sec (35.2 MB/sec) 
     .
     Handling heavily-escaped text is a little more work.  Here is
     parsing performance with Japanese tweets, where much of the text
     is entirely Unicode-escaped:
     .
-    * 14.6 KB: 1250 msg\/sec (17.9 MB/sec)
+    * Japanese, 14.6 KB: 2227 msg\/sec (31.9 MB/sec)
     .
-    * 44.1 KB: 363 msg\/sec (15.6 MB/sec)
+    * Japanese, 44.1 KB: 671 msg\/sec (29.6 MB/sec)
     .
     Encoding performance on the same machine and data:
     .
-    * 854 bytes: 10647 msg\/sec (8.7 MB/sec)
+    * English, 854 bytes: 43439 msg\/sec (35.4 MB/sec)
     .
-    * 6.4 KB: 2098 msg\/sec (13.2 MB/sec)
+    * English, 6.4 KB: 7127 msg\/sec (44.8 MB/sec)
     .
-    * 31.2 KB: 422 msg\/sec (12.9 MB/sec)
+    * Engish, 61.5 KB: 765 msg\/sec (46.0 MB/sec)
     .
-    * 61.5 KB: 219 msg\/sec (13.2 MB/sec)
+    * Japanese, 14.6 KB: 4727 msg\/sec (67.5 MB/sec)
+    .
+    * Japanese, 44.1 KB: 1505 msg\/sec (64.8 MB/sec)
+    .
+    With GHC 7.0.2, the story is mixed: parsing is 20-40% slower than
+    GHC 6.12.3, while encoding performance ranges from about the same
+    to twice as fast (on numeric data).
     .
     (A note on naming: in Greek mythology, Aeson was the father of Jason.)
 
