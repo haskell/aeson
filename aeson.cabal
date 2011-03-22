@@ -83,6 +83,8 @@ library
     Data.Aeson.Types
 
   other-modules:
+    Data.Aeson.Encode.Double
+    Data.Aeson.Encode.Int
     Data.Aeson.Encode.Number
     Data.Aeson.Functions
 

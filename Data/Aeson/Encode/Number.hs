@@ -16,6 +16,8 @@ module Data.Aeson.Encode.Number
 
 import Data.Monoid (mappend, mempty)
 import Data.Attoparsec.Number (Number(..))
+import Data.Aeson.Encode.Double
+import Data.Aeson.Encode.Int
 import Blaze.ByteString.Builder
 import GHC.Num (quotRemInteger)
 import GHC.Types (Int(..))
@@ -37,7 +39,7 @@ import GHC.Integer.GMP.Internals
 
 fromNumber :: Number -> Builder
 fromNumber (I i) = integer i
-fromNumber (D d) = fromLazyByteString (S.show d)
+fromNumber (D d) = double d
 
 integer :: Integer -> Builder
 integer (S# i#) = int (I# i#)
@@ -60,17 +62,6 @@ integer i
     splitb p (n:ns) = case n `quotRemInteger` p of
                         PAIR(q,r) -> q : r : splitb p ns
     splitb _ _      = []
-
-int :: Int -> Builder
-int i
-    | i < 0     = minus `mappend` go (-i)
-    | otherwise = go i
-  where
-    go n | n < 10    = digit n
-         | otherwise = go (n `rem` 10) `mappend` digit (n `quot` 10)
-
-digit :: Int -> Builder
-digit n = fromWord8 $! fromIntegral n + 48
 
 data T = T !Integer !Int
 
@@ -107,6 +98,3 @@ pblock = go maxDigits
         | otherwise = go (d-1) q `mappend` digit r
         where q = n `quot` 10
               r = n `rem` 10
-
-minus :: Builder
-minus = fromWord8 45
