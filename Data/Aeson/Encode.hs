@@ -17,22 +17,20 @@ module Data.Aeson.Encode
 
 import Blaze.ByteString.Builder
 import Blaze.ByteString.Builder.Char.Utf8
+import Data.Aeson.Encode.Number (fromNumber)
 import Data.Aeson.Types (ToJSON(..), Value(..))
-import Data.Attoparsec.Number (Number(..))
 import Data.Monoid (mappend)
 import Numeric (showHex)
 import qualified Data.ByteString.Lazy.Char8 as L
 import qualified Data.Map as M
 import qualified Data.Text as T
 import qualified Data.Vector as V
-import qualified Text.Show.ByteString as S
 
 -- | Encode a JSON value to a 'Builder'.
 fromValue :: Value -> Builder
 fromValue Null = fromByteString "null"
 fromValue (Bool b) = fromByteString $ if b then "true" else "false"
-fromValue (Number (I n)) = fromLazyByteString (S.show n)
-fromValue (Number (D n)) = fromLazyByteString (S.show n)
+fromValue (Number n) = fromNumber n
 fromValue (String s) = string s
 fromValue (Array v)
     | V.null v = fromByteString "[]"
