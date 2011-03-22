@@ -97,7 +97,7 @@ library
   build-depends:
     attoparsec >= 0.8.5.0,
     base == 4.*,
-    blaze-builder >= 0.2.1.4,
+    blaze-builder >= 0.3.0.0,
     bytestring,
     bytestring-show,
     containers,

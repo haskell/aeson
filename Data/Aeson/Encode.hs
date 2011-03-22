@@ -1,4 +1,4 @@
-{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE BangPatterns, OverloadedStrings #-}
 
 -- Module:      Data.Aeson.Encode
 -- Copyright:   (c) 2011 MailRank, Inc.
@@ -16,7 +16,6 @@ module Data.Aeson.Encode
     ) where
 
 import Blaze.ByteString.Builder
-import Blaze.ByteString.Builder.Internal.Write
 import Blaze.ByteString.Builder.Char.Utf8
 import Data.Aeson.Encode.Number (fromNumber)
 import Data.Aeson.Types (ToJSON(..), Value(..))
@@ -26,6 +25,8 @@ import qualified Data.Map as M
 import qualified Data.Text as T
 import qualified Data.Vector as V
 
+import Blaze.ByteString.Builder.Internal
+import qualified Data.Text.Fusion as F
 import Foreign
 
 -- | Encode a JSON value to a 'Builder'.
@@ -60,7 +61,7 @@ encode = toLazyByteString . fromValue . toJSON
 -- unpacking to lists.
 string :: T.Text -> Builder
 string s = 
-    fromChar '"' `mappend` fromWriteList writeJSONChar (T.unpack s) `mappend` fromChar '"'
+    fromChar '"' `mappend` fromWriteText writeJSONChar s `mappend` fromChar '"'
 
 {-# INLINE writeJSONChar #-}
 writeJSONChar :: Char -> Write
@@ -104,5 +105,55 @@ pokeWord16Hex x op = do
     pokeWord8 :: Int -> Word8 -> IO ()
     pokeWord8 off = poke (op `plusPtr` off)
 
+-- | Write a 'F.Stream' one element at a time to a builder using the given
+-- write operation.
+{-# INLINE fromWriteStream #-}
+fromWriteStream :: (a -> Write) -> F.Stream a -> Builder
+fromWriteStream write = 
+    makeBuilder
+  where
+    makeBuilder (F.Stream next s0 _) = fromBuildStepCont $ step s0
+      where
+        step s1 k !(BufRange op0 ope0) = go s1 op0
+          where
+            go s !op = case next s of
+              F.Done       -> do let !br' = BufRange op ope0
+                                 k br'
+              F.Skip s'    -> go s' op
+              F.Yield x s' -> 
+                let maxSize = getBound (write x)
+                    result
+                      | op `plusPtr` maxSize <= ope0 = do
+                          !op' <- runWrite (write x) op
+                          go s' op'
+                      | otherwise  = do return $ bufferFull maxSize op (step s k)
+                in result
+
+{-# INLINE fromWriteText #-}
+fromWriteText :: (Char -> Write) -> T.Text -> Builder
+fromWriteText w = fromWriteStream w . F.stream
+
+{-
+fromWriteList :: (a -> Write) -> [a] -> Builder
+fromWriteList write = 
+    makeBuilder
+  where
+    makeBuilder xs0 = fromBuildStepCont $ step xs0
+      where
+        step xs1 k !(BufRange op0 ope0) = go xs1 op0
+          where
+            go [] !op = do
+               let !br' = BufRange op ope0
+               k br'
+
+            go xs@(x':xs') !op
+              | op `plusPtr` maxSize <= ope0 = do
+                  !op' <- runPoke wio op
+                  go xs' op'
+              | otherwise = return $ bufferFull maxSize op (step xs k)
+              where
+                Write maxSize wio = write x'
+{-# INLINE fromWriteList #-}
+-}
 
 
