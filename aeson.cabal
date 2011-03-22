@@ -75,6 +75,8 @@ extra-source-files:
     benchmarks/json-data/twitter20.json
     benchmarks/json-data/twitter50.json
     benchmarks/json-data/twitter100.json
+    tests/Makefile
+    tests/Properties.hs
 
 flag developer
   description: operate in developer mode
