@@ -16,7 +16,7 @@ module Data.Aeson.Encode.Int
     , minus
     ) where
 
-import Blaze.ByteString.Builder
+import Blaze.ByteString.Builder (Builder, fromWord8)
 import Data.Monoid (mappend)
 
 int :: Int -> Builder

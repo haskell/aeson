@@ -19,9 +19,9 @@ import Data.Attoparsec.Number (Number(..))
 import Data.Aeson.Encode.Double
 import Data.Aeson.Encode.Int
 import Blaze.ByteString.Builder
+import GHC.Base (quotInt, remInt)
 import GHC.Num (quotRemInteger)
 import GHC.Types (Int(..))
-import qualified Text.Show.ByteString as S
 
 #ifdef  __GLASGOW_HASKELL__
 # if __GLASGOW_HASKELL__ < 611
@@ -96,5 +96,5 @@ pblock = go maxDigits
     go !d !n
         | d == 1    = digit n
         | otherwise = go (d-1) q `mappend` digit r
-        where q = n `quot` 10
-              r = n `rem` 10
+        where q = n `quotInt` 10
+              r = n `remInt` 10
