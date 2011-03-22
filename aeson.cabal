@@ -1,5 +1,5 @@
 name:            aeson
-version:         0.3.2.0
+version:         0.3.2.1
 license:         BSD3
 license-file:    LICENSE
 category:        Text, Web, JSON
