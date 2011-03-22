@@ -17,7 +17,7 @@ module Data.Aeson.Encode.Number
 import Data.Monoid (mappend, mempty)
 import Data.Attoparsec.Number (Number(..))
 import Blaze.ByteString.Builder
-import GHC.Num (quotRemInt, quotRemInteger)
+import GHC.Num (quotRemInteger)
 import GHC.Types (Int(..))
 import qualified Text.Show.ByteString as S
 
@@ -29,6 +29,12 @@ import GHC.Integer.GMP.Internals
 # endif
 #endif
 
+#ifdef INTEGER_GMP
+# define PAIR(a,b) (# a,b #)
+#else
+# define PAIR(a,b) (a,b)
+#endif
+
 fromNumber :: Number -> Builder
 fromNumber (I i) = integer i
 fromNumber (D d) = fromLazyByteString (S.show d)
@@ -36,48 +42,35 @@ fromNumber (D d) = fromLazyByteString (S.show d)
 integer :: Integer -> Builder
 integer (S# i#) = int (I# i#)
 integer i
-    | i < 0     = fromWord8 45 `mappend` go (-i)
+    | i < 0     = minus `mappend` go (-i)
     | otherwise = go i
   where
     go n | n < maxInt = int (fromInteger n)
          | otherwise  = putH (splitf (maxInt * maxInt) n)
 
-    splitf :: Integer -> Integer -> [Integer]
     splitf p n
-      | p > n     = [n]
-      | otherwise = splith p (splitf (p*p) n)
+      | p > n       = [n]
+      | otherwise   = splith p (splitf (p*p) n)
 
-    splith :: Integer -> [Integer] -> [Integer]
-    splith _ [    ] = error "splith: the impossible happened."
     splith p (n:ns) = case n `quotRemInteger` p of
-#ifdef INTEGER_GMP
-      (# q, r #) ->
-#else
-      (q, r) -> 
-#endif
-              if q > 0
-                then q : r : splitb p ns
-                else r : splitb p ns
-    splitb :: Integer -> [Integer] -> [Integer]
-    splitb _ [    ] = []
+                        PAIR(q,r) | q > 0     -> q : r : splitb p ns
+                                  | otherwise -> r : splitb p ns
+    splith _ _      = error "splith: the impossible happened."
+
     splitb p (n:ns) = case n `quotRemInteger` p of
-#ifdef INTEGER_GMP
-      (# q, r #) ->
-#else
-      (q, r) ->
-#endif
-                q : r : splitb p ns
+                        PAIR(q,r) -> q : r : splitb p ns
+    splitb _ _      = []
 
 int :: Int -> Builder
 int i
-    | i < 0     = fromWord8 45 `mappend` go (-i)
+    | i < 0     = minus `mappend` go (-i)
     | otherwise = go i
   where
     go n | n < 10    = digit n
          | otherwise = go (n `rem` 10) `mappend` digit (n `quot` 10)
 
 digit :: Int -> Builder
-digit n = fromWord8 (fromIntegral n + 48)
+digit n = fromWord8 $! fromIntegral n + 48
 
 data T = T !Integer !Int
 
@@ -92,28 +85,18 @@ T maxInt maxDigits =
 
 putH :: [Integer] -> Builder
 putH (n:ns) = case n `quotRemInteger` maxInt of
-#ifdef INTEGER_GMP
-  (# q', r' #) ->
-#else
-  (q', r') ->
-#endif
-    let q = fromInteger q'
-        r = fromInteger r'
-    in if q > 0
-       then int q `mappend` pblock r `mappend` putB ns
-       else int r `mappend` putB ns
+                PAIR(x,y)
+                    | q > 0     -> int q `mappend` pblock r `mappend` putB ns
+                    | otherwise -> int r `mappend` putB ns
+                    where q = fromInteger x
+                          r = fromInteger y
 putH _ = error "putH: the impossible happened"
 
 putB :: [Integer] -> Builder
 putB (n:ns) = case n `quotRemInteger` maxInt of
-#ifdef INTEGER_GMP
-  (# q', r' #) ->
-#else
-  (q', r') ->
-#endif
-    let q = fromInteger q'
-        r = fromInteger r'
-    in pblock q `mappend` pblock r `mappend` putB ns
+                PAIR(x,y) -> pblock q `mappend` pblock r `mappend` putB ns
+                    where q = fromInteger x
+                          r = fromInteger y
 putB _ = mempty
 
 pblock :: Int -> Builder
@@ -122,4 +105,8 @@ pblock = go maxDigits
     go !d !n
         | d == 1    = digit n
         | otherwise = go (d-1) q `mappend` digit r
-        where (q, r) = n `quotRemInt` 10
+        where q = n `quot` 10
+              r = n `rem` 10
+
+minus :: Builder
+minus = fromWord8 45
