@@ -74,24 +74,20 @@ writeJSONChar c =
       '\n' -> writeByteString "\\n"
       '\r' -> writeByteString "\\r"
       '\t' -> writeByteString "\\t"
-      _ | c < '\x20' -> writeChar '\\'  `mappend` 
-                        writeChar 'u'   `mappend` 
-                        -- FIXME: Why do we have to use Word16 where Word8 would suffice?
-                        writeWord16Hex (fromIntegral $ fromEnum c)
+      _ | c < '\x20' -> writeByteString "\\u00"  `mappend` 
+                        writeWord8Hex (fromIntegral $ fromEnum c)
         | otherwise  -> writeChar c
 
 -- TODO: Extend blaze-builder or better the new bytestring lib with support for
 -- hex encoding.
 
-{-# INLINE writeWord16Hex #-}
-writeWord16Hex :: Word16 -> Write
-writeWord16Hex = exactWrite 4 . pokeWord16Hex
+{-# INLINE writeWord8Hex #-}
+writeWord8Hex :: Word8 -> Write
+writeWord8Hex = exactWrite 2 . pokeWord8Hex
 
-{-# INLINE pokeWord16Hex #-}
-pokeWord16Hex :: Word16 -> Ptr Word8 -> IO ()
-pokeWord16Hex x op = do
-    pokeNibble 0 12
-    pokeNibble 1  8
+{-# INLINE pokeWord8Hex #-}
+pokeWord8Hex :: Word8 -> Ptr Word8 -> IO ()
+pokeWord8Hex x op = do
     pokeNibble 2  4
     pokeNibble 3  0
   where
@@ -133,27 +129,5 @@ fromWriteStream write =
 fromWriteText :: (Char -> Write) -> T.Text -> Builder
 fromWriteText w = fromWriteStream w . F.stream
 
-{-
-fromWriteList :: (a -> Write) -> [a] -> Builder
-fromWriteList write = 
-    makeBuilder
-  where
-    makeBuilder xs0 = fromBuildStepCont $ step xs0
-      where
-        step xs1 k !(BufRange op0 ope0) = go xs1 op0
-          where
-            go [] !op = do
-               let !br' = BufRange op ope0
-               k br'
-
-            go xs@(x':xs') !op
-              | op `plusPtr` maxSize <= ope0 = do
-                  !op' <- runPoke wio op
-                  go xs' op'
-              | otherwise = return $ bufferFull maxSize op (step xs k)
-              where
-                Write maxSize wio = write x'
-{-# INLINE fromWriteList #-}
--}
 
 
