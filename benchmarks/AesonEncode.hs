@@ -38,5 +38,7 @@ main = do
             Done _ r -> rnf (encode r) `seq` loop (n+1) r
             _        -> error $ "failed to read " ++ show arg
     loop 0 r
-    end <- getCurrentTime
-    putStrLn $ "  " ++ show (diffUTCTime end start)
+    delta <- flip diffUTCTime start `fmap` getCurrentTime
+    let rate = fromIntegral count / (fromRational . toRational) delta :: Double
+    putStrLn $ "  " ++ show delta
+    putStrLn $ "  " ++ show (round rate) ++ " per second"

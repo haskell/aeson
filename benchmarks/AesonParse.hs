@@ -27,5 +27,7 @@ main = do
             Done _ r -> loop (good+1) bad
             _        -> loop good (bad+1)
     (good, _) <- loop 0 0
-    end <- getCurrentTime
-    putStrLn $ "  " ++ show good ++ " good, " ++ show (diffUTCTime end start)
+    delta <- flip diffUTCTime start `fmap` getCurrentTime
+    putStrLn $ "  " ++ show good ++ " good, " ++ show delta
+    let rate = fromIntegral count / (fromRational . toRational) delta :: Double
+    putStrLn $ "  " ++ show (round rate) ++ " per second"
