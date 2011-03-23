@@ -1,6 +1,7 @@
 {-# LANGUAGE DeriveDataTypeable, FlexibleInstances, GeneralizedNewtypeDeriving,
     IncoherentInstances, OverlappingInstances, Rank2Types #-}
 
+-- |
 -- Module:      Data.Aeson.Types
 -- Copyright:   (c) 2011 MailRank, Inc.
 -- License:     Apache

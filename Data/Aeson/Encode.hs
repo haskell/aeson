@@ -1,5 +1,6 @@
 {-# LANGUAGE OverloadedStrings #-}
 
+-- |
 -- Module:      Data.Aeson.Encode
 -- Copyright:   (c) 2011 MailRank, Inc.
 -- License:     Apache

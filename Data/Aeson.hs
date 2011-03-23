@@ -1,3 +1,4 @@
+-- |
 -- Module:      Data.Aeson
 -- Copyright:   (c) 2011 MailRank, Inc.
 -- License:     Apache
