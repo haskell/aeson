@@ -3,6 +3,7 @@
 .*\.(?:aux|h[ip]|o|orig|out|pdf|prof|ps|rej)$
 
 syntax: glob
+cabal-dev
 *~
 .*.swp
 .\#*
