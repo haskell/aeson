@@ -74,6 +74,10 @@ data Result a = Error String
               | Success a
                 deriving (Eq, Show, Typeable)
 
+instance (NFData a) => NFData (Result a) where
+    rnf (Success a) = rnf a
+    rnf (Error err) = rnf err
+
 instance Functor Result where
     fmap f (Success a) = Success (f a)
     fmap _ (Error err) = Error err
