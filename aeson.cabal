@@ -1,5 +1,5 @@
 name:            aeson
-version:         0.3.2.1
+version:         0.3.2.2
 license:         BSD3
 license-file:    LICENSE
 category:        Text, Web, JSON
@@ -106,7 +106,7 @@ library
     ghc-prim,
     hashable,
     integer-gmp,
-    monads-fd,
+    mtl,
     old-locale,
     syb,
     text >= 0.11.0.2,
