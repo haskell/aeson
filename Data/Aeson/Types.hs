@@ -1,5 +1,5 @@
 {-# LANGUAGE DeriveDataTypeable, FlexibleInstances, GeneralizedNewtypeDeriving,
-    IncoherentInstances, OverlappingInstances, Rank2Types #-}
+    IncoherentInstances, OverlappingInstances, OverloadedStrings, Rank2Types #-}
 
 -- |
 -- Module:      Data.Aeson.Types
@@ -639,21 +639,30 @@ instance FromJSON Value where
     {-# INLINE parseJSON #-}
 
 -- | A newtype wrapper for 'UTCTime' that uses the same non-standard
--- serialization format as Microsoft .NET.
+-- serialization format as Microsoft .NET, whose @System.DateTime@
+-- type is by default serialized to JSON as in the following example:
+--
+-- > /Date(1302547608878)/
+--
+-- The number represents milliseconds since the Unix epoch.
 newtype DotNetTime = DotNetTime {
       fromDotNetTime :: UTCTime
     } deriving (Eq, Ord, Read, Show, Typeable, FormatTime)
 
 instance ToJSON DotNetTime where
     toJSON (DotNetTime t) =
-        String (pack (formatTime defaultTimeLocale "/Date(%s)/" t))
+        String (pack (secs ++ msecs ++ ")/"))
+      where secs  = formatTime defaultTimeLocale "/Date(%s" t
+            msecs = take 3 $ formatTime defaultTimeLocale "%q" t
     {-# INLINE toJSON #-}
 
 instance FromJSON DotNetTime where
     parseJSON (String t) =
-        case parseTime defaultTimeLocale "/Date(%s)/" (unpack t) of
+        case parseTime defaultTimeLocale "/Date(%s%Q)/" (unpack t') of
           Just d -> pure (DotNetTime d)
           _      -> fail "could not parse .NET time"
+      where (s,m) = T.splitAt (T.length t - 5) t
+            t'    = T.concat [s,".",m]
     parseJSON v   = typeMismatch "DotNetTime" v
     {-# INLINE parseJSON #-}
 
