@@ -3,7 +3,7 @@ ghc := ghc
 all: qc
 
 qc: Properties.hs
-	$(ghc) -o --make $@ $<
+	$(ghc) -Wall -o --make $@ $<
 
 clean:
 	-rm -f qc *.o *.hi
