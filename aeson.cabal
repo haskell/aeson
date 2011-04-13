@@ -97,7 +97,7 @@ library
     Data.Aeson.Functions
 
   build-depends:
-    attoparsec >= 0.8.5.0,
+    attoparsec >= 0.8.5.3,
     base == 4.*,
     blaze-builder >= 0.2.1.4,
     bytestring,
