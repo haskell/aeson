@@ -367,6 +367,7 @@ instance FromJSON Double where
     parseJSON (Number n) = case n of
                              D d -> pure d
                              I i -> pure (fromIntegral i)
+    parseJSON Null       = pure (0/0)
     parseJSON v          = typeMismatch "Double" v
     {-# INLINE parseJSON #-}
 
@@ -376,6 +377,7 @@ instance ToJSON Number where
 
 instance FromJSON Number where
     parseJSON (Number n) = pure n
+    parseJSON Null       = pure (D (0/0))
     parseJSON v          = typeMismatch "Number" v
     {-# INLINE parseJSON #-}
 
@@ -387,6 +389,7 @@ instance FromJSON Float where
     parseJSON (Number n) = case n of
                              D d -> pure . fromRational . toRational $ d
                              I i -> pure (fromIntegral i)
+    parseJSON Null       = pure (0/0)
     parseJSON v          = typeMismatch "Float" v
     {-# INLINE parseJSON #-}
 
