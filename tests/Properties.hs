@@ -1,4 +1,4 @@
-{-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE OverloadedStrings, ScopedTypeVariables #-}
 
 import Data.Aeson.Encode
 import Data.Aeson.Parser (value)
@@ -11,7 +11,10 @@ import Test.QuickCheck.Monadic (assert, monadicIO, run)
 import qualified Data.ByteString.Lazy.Char8 as L
 import qualified Data.Attoparsec.Lazy as L
 
-encodeDouble d  = encode (Number (D d)) == L.pack (show d)
+encodeDouble num denom
+    | isInfinite d || isNaN d = encode (Number (D d)) == "null"
+    | otherwise               = encode (Number (D d)) == L.pack (show d)
+  where d = num / denom
 encodeInteger i = encode (Number (I i)) == L.pack (show i)
 
 roundTrip :: (Eq a, FromJSON a, ToJSON a) => a -> Bool
