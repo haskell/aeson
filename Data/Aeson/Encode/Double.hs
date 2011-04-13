@@ -28,9 +28,7 @@ data T = T [Int] {-# UNPACK #-} !Int
 
 double :: Double -> Builder
 double f
-    | isNaN f                   = fromByteString "NaN"
-    | isInfinite f              = fromByteString $
-                                  if f < 0 then "-Infinity" else "Infinity"
+    | isNaN f || isInfinite f   = fromByteString "null"
     | f < 0 || isNegativeZero f = minus `mappend` goGeneric (floatToDigits (-f))
     | otherwise                 = goGeneric (floatToDigits f)
   where
