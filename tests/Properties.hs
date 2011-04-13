@@ -4,17 +4,18 @@ import Data.Aeson.Encode
 import Data.Aeson.Parser (value)
 import Data.Aeson.Types
 import Data.Attoparsec.Number
-import Test.Framework (defaultMain, testGroup)
+import Test.Framework (Test, defaultMain, testGroup)
 import Test.Framework.Providers.QuickCheck2 (testProperty)
-import Test.QuickCheck (Arbitrary(..))
-import Test.QuickCheck.Monadic (assert, monadicIO, run)
 import qualified Data.ByteString.Lazy.Char8 as L
 import qualified Data.Attoparsec.Lazy as L
 
+encodeDouble :: Double -> Double -> Bool
 encodeDouble num denom
     | isInfinite d || isNaN d = encode (Number (D d)) == "null"
     | otherwise               = encode (Number (D d)) == L.pack (show d)
   where d = num / denom
+
+encodeInteger :: Integer -> Bool
 encodeInteger i = encode (Number (I i)) == L.pack (show i)
 
 roundTrip :: (FromJSON a, ToJSON a) => (a -> a -> Bool) -> a -> Bool
@@ -23,9 +24,12 @@ roundTrip eq i =
       L.Done _ (Success v) -> v `eq` i
       _                    -> False
 
-roundTripBool (v::Bool) = roundTrip (==) v
-roundTripDouble (v::Double) = roundTrip approxEq v
-roundTripInteger (v::Integer) = roundTrip (==) v
+roundTripBool :: Bool -> Bool
+roundTripBool = roundTrip (==)
+roundTripDouble :: Double -> Bool
+roundTripDouble = roundTrip approxEq
+roundTripInteger :: Integer -> Bool
+roundTripInteger = roundTrip (==)
 
 approxEq :: Double -> Double -> Bool
 approxEq a b = a == b ||
@@ -35,8 +39,10 @@ approxEq a b = a == b ||
           maxAbsoluteError = 1e-15
           maxRelativeError = 1e-15
 
+main :: IO ()
 main = defaultMain tests
 
+tests :: [Test]
 tests = [
   testGroup "encode" [
       testProperty "encodeDouble" encodeDouble
