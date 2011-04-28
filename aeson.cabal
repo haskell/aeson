@@ -1,5 +1,5 @@
 name:            aeson
-version:         0.3.2.4
+version:         0.3.2.5
 license:         BSD3
 license-file:    LICENSE
 category:        Text, Web, JSON
@@ -91,21 +91,17 @@ library
     Data.Aeson.Types
 
   other-modules:
-    Data.Aeson.Encode.Double
-    Data.Aeson.Encode.Int
-    Data.Aeson.Encode.Number
     Data.Aeson.Functions
 
   build-depends:
     attoparsec >= 0.8.5.3,
     base == 4.*,
     blaze-builder >= 0.2.1.4,
+    blaze-textual,
     bytestring,
     containers,
     deepseq,
-    ghc-prim,
     hashable,
-    integer-gmp,
     mtl,
     old-locale,
     syb,
@@ -119,14 +115,6 @@ library
     ghc-prof-options: -auto-all
 
   ghc-options:      -Wall
-
-  if impl(ghc >= 6.11)
-    cpp-options: -DINTEGER_GMP
-    build-depends: integer-gmp >= 0.2 && < 0.3
-
-  if impl(ghc >= 6.9) && impl(ghc < 6.11)
-    cpp-options: -DINTEGER_GMP
-    build-depends: integer >= 0.1 && < 0.2
 
 source-repository head
   type:     git
