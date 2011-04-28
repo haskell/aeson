@@ -18,10 +18,11 @@ module Data.Aeson.Encode
 
 import Blaze.ByteString.Builder
 import Blaze.ByteString.Builder.Char.Utf8
-import Data.Aeson.Encode.Number (fromNumber)
+import Data.Attoparsec.Number (Number(..))
 import Data.Aeson.Types (ToJSON(..), Value(..))
 import Data.Monoid (mappend)
 import Numeric (showHex)
+import Blaze.Text (double, integral)
 import qualified Data.ByteString.Lazy.Char8 as L
 import qualified Data.Map as M
 import qualified Data.Text as T
@@ -65,6 +66,10 @@ string s = fromChar '"' `mappend` quote s `mappend` fromChar '"'
         | c < '\x20' = fromString $ "\\u" ++ replicate (4 - length h) '0' ++ h
         | otherwise  = fromChar c
         where h = showHex (fromEnum c) ""
+
+fromNumber :: Number -> Builder
+fromNumber (I i) = integral i
+fromNumber (D d) = double d
 
 -- | Efficiently serialize a JSON value as a lazy 'L.ByteString'.
 encode :: ToJSON a => a -> L.ByteString
