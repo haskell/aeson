@@ -45,7 +45,9 @@ import Control.Monad (MonadPlus(..), ap)
 import Data.Aeson.Functions
 import Data.Attoparsec.Char8 (Number(..))
 import Data.Data (Data)
+import Data.Hashable (Hashable(..))
 import Data.Int (Int8, Int16, Int32, Int64)
+import Data.List (foldl')
 import Data.Map (Map)
 import Data.Monoid (Dual(..), First(..), Last(..))
 import Data.Monoid (Monoid(..))
@@ -200,6 +202,14 @@ instance NFData Value where
 instance IsString Value where
     fromString = String . pack
     {-# INLINE fromString #-}
+
+instance Hashable Value where
+    hash (Object o) = foldl' hashWithSalt 0 . M.toList $ o
+    hash (Array a)  = V.foldl' hashWithSalt 1 a
+    hash (String s) = 2 `hashWithSalt` s
+    hash (Number n) = 3 `hashWithSalt` case n of I i -> hash i; D d -> hash d
+    hash (Bool b)   = 4 `hashWithSalt` b
+    hash Null       = 5
 
 -- | The empty array.
 emptyArray :: Value
