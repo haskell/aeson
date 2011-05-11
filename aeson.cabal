@@ -1,5 +1,5 @@
 name:            aeson
-version:         0.3.2.5
+version:         0.3.2.6
 license:         BSD3
 license-file:    LICENSE
 category:        Text, Web, JSON
@@ -109,7 +109,7 @@ library
     Data.Aeson.Functions
 
   build-depends:
-    attoparsec >= 0.8.5.3,
+    attoparsec >= 0.8.6.1,
     base == 4.*,
     blaze-builder >= 0.2.1.4,
     blaze-textual,
