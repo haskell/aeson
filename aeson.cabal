@@ -8,34 +8,53 @@ author:          Bryan O'Sullivan <bos@mailrank.com>
 maintainer:      Bryan O'Sullivan <bos@mailrank.com>
 stability:       experimental
 tested-with:     GHC == 6.12.3
-synopsis:        Fast JSON parsing and generation
+synopsis:        Fast JSON parsing and encoding
 cabal-version:   >= 1.8
 homepage:        http://github.com/mailrank/aeson
 bug-reports:     http://github.com/mailrank/aeson/issues
 build-type:      Simple
 description:
-    A JSON parsing and generation library optimized for ease of use
+    A JSON parsing and encoding library optimized for ease of use
     and high performance.
     .
-    Parsing performance with GHC 6.12.3 on a late 2010 MacBook Pro
-    (2.66GHz Core i7), for mostly-English tweets from Twitter's JSON
-    search API:
+    Parsing performance on a late 2010 MacBook Pro (2.66GHz Core i7),
+    for mostly-English tweets from Twitter's JSON search API:
     .
-    * English, 854 bytes: 29029 msg\/sec (23.6 MB/sec)
+    * 0.8 KB, 32-bit GHC 6.12.3: 29945 msg\/sec (24.4 MB\/sec)
     .
-    * English, 6.4 KB: 6407 msg\/sec (40.3 MB/sec)
+    * 0.8 KB, 64-bit GHC 7.0.3: 29280 msg\/sec (23.8 MB\/sec)
     .
-    * English, 31.2 KB: 1265 msg\/sec (38.8 MB/sec)
+    * 6.4 KB, 32-bit GHC 6.12.3: 6684 msg\/sec (42.0 MB\/sec)
     .
-    * English, 61.5 KB: 585 msg\/sec (35.2 MB/sec) 
+    * 6.4 KB, 64-bit GHC 7.0.3: 5893 msg\/sec (37.1 MB\/sec)
+    .
+    * 11.8 KB, 32-bit GHC 6.12.3: 3610 msg\/sec (41.5 MB\/sec)
+    .
+    * 11.8 KB, 64-bit GHC 7.0.3: 3059 msg\/sec (35.2 MB\/sec)
+    .
+    * 31.2 KB, 32-bit GHC 6.12.3: 1306 msg\/sec (39.8 MB\/sec)
+    .
+    * 31.2 KB, 64-bit GHC 7.0.3: 1050 msg\/sec (32.0 MB\/sec)
+    .
+    * 61.5 KB, 32-bit GHC 6.12.3: 594 msg\/sec (35.7 MB\/sec)
+    .
+    * 61.5 KB, 64-bit GHC 7.0.3: 505 msg\/sec (30.3 MB\/sec)
     .
     Handling heavily-escaped text is a little more work.  Here is
     parsing performance with Japanese tweets, where much of the text
-    is entirely Unicode-escaped:
+    is entirely Unicode-escaped.
     .
-    * Japanese, 14.6 KB: 2227 msg\/sec (31.9 MB/sec)
+    * 14.6 KB, 32-bit GHC 6.12.3: 2257 msg\/sec (32.2 MB\/sec)
     .
-    * Japanese, 44.1 KB: 671 msg\/sec (29.6 MB/sec)
+    * 14.6 KB, 64-bit GHC 7.0.3: 1931 msg\/sec (27.6 MB\/sec)
+    .
+    * 44.1 KB, 32-bit GHC 6.12.3: 697 msg\/sec (30.0 MB\/sec)
+    .
+    * 44.1 KB, 64-bit GHC 7.0.3: 611 msg\/sec (26.3 MB\/sec)
+    .
+    * 82.9 KB, 32-bit GHC 6.12.3: 368 msg\/sec (29.8 MB\/sec)
+    .
+    * 82.9 KB, 64-bit GHC 7.0.3: 322 msg\/sec (26.0 MB\/sec)
     .
     Encoding performance on the same machine and data:
     .
@@ -48,10 +67,6 @@ description:
     * Japanese, 14.6 KB: 4727 msg\/sec (67.5 MB/sec)
     .
     * Japanese, 44.1 KB: 1505 msg\/sec (64.8 MB/sec)
-    .
-    With GHC 7.0.2, the story is mixed: parsing is 20-40% slower than
-    GHC 6.12.3, while encoding performance ranges from about the same
-    to twice as fast (on numeric data).
     .
     (A note on naming: in Greek mythology, Aeson was the father of Jason.)
 

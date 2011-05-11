@@ -38,7 +38,6 @@ json-data/twitter20.json   7500
 json-data/twitter50.json   2500
 json-data/twitter100.json  1000
 json-data/jp10.json        4000
-json-data/jp20.json        3000
 json-data/jp50.json        1200
 json-data/jp100.json        700
 '''
