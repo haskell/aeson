@@ -116,7 +116,7 @@ library
     bytestring,
     containers,
     deepseq,
-    hashable,
+    hashable >= 1.1.2.0,
     mtl,
     old-locale,
     syb,
