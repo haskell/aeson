@@ -81,7 +81,6 @@ extra-source-files:
     benchmarks/json-data/example.json
     benchmarks/json-data/integers.json
     benchmarks/json-data/jp10.json
-    benchmarks/json-data/jp20.json
     benchmarks/json-data/jp50.json
     benchmarks/json-data/jp100.json
     benchmarks/json-data/numbers.json
