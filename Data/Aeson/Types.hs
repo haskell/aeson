@@ -288,6 +288,8 @@ object = Object . M.fromList
 -- instance ToJSON Coord where
 --   toJSON (Coord x y) = 'object' [\"x\" '.=' x, \"y\" '.=' y]
 -- @
+--
+-- This example assumes the OverloadedStrings language option is enabled.
 class ToJSON a where
     toJSON   :: a -> Value
 
@@ -310,6 +312,8 @@ class ToJSON a where
 --   \-- A non-'Object' value is of the wrong type, so use 'mzero' to fail.
 --   parseJSON _          = 'mzero'
 -- @
+--
+-- This example assumes the OverloadedStrings language option is enabled.
 class FromJSON a where
     parseJSON :: Value -> Parser a
 
