@@ -33,6 +33,7 @@ import Data.Vector as Vector hiding ((++))
 import Data.Word (Word8)
 import qualified Data.Attoparsec as A
 import qualified Data.Attoparsec.Zepto as Z
+import qualified Data.ByteString.Char8 as B8
 import qualified Data.ByteString.Unsafe as B
 
 -- | Parse a top-level JSON value.  This must be either an object or
@@ -67,7 +68,7 @@ value :: Parser Value
 value = most <|> (Number <$> number)
  where
   most = do
-    c <- anyChar
+    c <- satisfy (`B8.elem` "{[\"ftn")
     case c of
       '{' -> object_
       '[' -> array_
@@ -75,7 +76,7 @@ value = most <|> (Number <$> number)
       'f' -> string "alse" *> pure (Bool False)
       't' -> string "rue" *> pure (Bool True)
       'n' -> string "ull" *> pure Null
-      _   -> fail "not a valid JSON value"
+      _   -> error "attoparsec panic! the impossible happened!"
 
 doubleQuote, backslash :: Word8
 doubleQuote = 34
