@@ -40,11 +40,10 @@ import qualified Data.ByteString.Unsafe as B
 -- an array.
 json :: Parser Value
 json = do
-  c <- skipSpace *> anyChar
-  case c of
-    '{' -> object_
-    '[' -> array_
-    _   -> fail "root value is not an object or array"
+  c <- skipSpace *> satisfy (`B8.elem` "{[")
+  if c == '{'
+    then object_
+    else array_
 
 object_ :: Parser Value
 object_ = {-# SCC "object_" #-} do
