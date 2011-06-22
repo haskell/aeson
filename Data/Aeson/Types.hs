@@ -64,6 +64,7 @@ import System.Locale (defaultTimeLocale)
 import qualified Data.ByteString as B
 import qualified Data.ByteString.Lazy as LB
 import qualified Data.HashMap.Strict as H
+import qualified Data.HashSet as HashSet
 import qualified Data.IntSet as IntSet
 import qualified Data.Map as M
 import qualified Data.Set as Set
@@ -567,6 +568,14 @@ instance (ToJSON a) => ToJSON (Set.Set a) where
     
 instance (Ord a, FromJSON a) => FromJSON (Set.Set a) where
     parseJSON = fmap Set.fromList . parseJSON
+    {-# INLINE parseJSON #-}
+
+instance (ToJSON a) => ToJSON (HashSet.HashSet a) where
+    toJSON = toJSON . HashSet.toList
+    {-# INLINE toJSON #-}
+    
+instance (Eq a, Hashable a, FromJSON a) => FromJSON (HashSet.HashSet a) where
+    parseJSON = fmap HashSet.fromList . parseJSON
     {-# INLINE parseJSON #-}
 
 instance ToJSON IntSet.IntSet where
