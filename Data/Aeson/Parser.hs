@@ -8,7 +8,8 @@
 -- Stability:   experimental
 -- Portability: portable
 --
--- Efficiently and correctly parse a JSON string.
+-- Efficiently and correctly parse a JSON string.  The string must be
+-- encoded as UTF-8.
 
 module Data.Aeson.Parser
     (
