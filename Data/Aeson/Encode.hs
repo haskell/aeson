@@ -8,7 +8,8 @@
 -- Stability:   experimental
 -- Portability: portable
 --
--- Efficiently serialize a JSON value as a lazy 'L.ByteString'.
+-- Efficiently serialize a JSON value as a lazy 'L.ByteString',
+-- encoded as UTF-8.
 
 module Data.Aeson.Encode
     (
