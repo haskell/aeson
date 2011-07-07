@@ -393,7 +393,7 @@ instance FromJSON Number where
     {-# INLINE parseJSON #-}
 
 instance ToJSON Float where
-    toJSON = Number . fromRational . toRational
+    toJSON = Number . realToFrac
     {-# INLINE toJSON #-}
 
 instance FromJSON Float where

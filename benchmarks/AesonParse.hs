@@ -29,5 +29,5 @@ main = do
     (good, _) <- loop 0 0
     delta <- flip diffUTCTime start `fmap` getCurrentTime
     putStrLn $ "  " ++ show good ++ " good, " ++ show delta
-    let rate = fromIntegral count / (fromRational . toRational) delta :: Double
+    let rate = fromIntegral count / realToFrac delta :: Double
     putStrLn $ "  " ++ show (round rate) ++ " per second"

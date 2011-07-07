@@ -39,6 +39,6 @@ main = do
             _        -> error $ "failed to read " ++ show arg
     loop 0 r
     delta <- flip diffUTCTime start `fmap` getCurrentTime
-    let rate = fromIntegral count / (fromRational . toRational) delta :: Double
+    let rate = fromIntegral count / realToFrac delta :: Double
     putStrLn $ "  " ++ show delta
     putStrLn $ "  " ++ show (round rate) ++ " per second"
