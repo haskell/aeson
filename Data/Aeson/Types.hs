@@ -397,9 +397,9 @@ instance ToJSON Float where
     {-# INLINE toJSON #-}
 
 instance FromJSON Float where
-    parseJSON (Number n) = case n of
-                             D d -> pure . fromRational . toRational $ d
-                             I i -> pure (fromIntegral i)
+    parseJSON (Number n) = pure $ case n of
+                                    D d -> realToFrac d
+                                    I i -> fromIntegral i
     parseJSON Null       = pure (0/0)
     parseJSON v          = typeMismatch "Float" v
     {-# INLINE parseJSON #-}
@@ -409,9 +409,9 @@ instance ToJSON (Ratio Integer) where
     {-# INLINE toJSON #-}
 
 instance FromJSON (Ratio Integer) where
-    parseJSON (Number n) = case n of
-                             D d -> pure . toRational $ d
-                             I i -> pure (fromIntegral i)
+    parseJSON (Number n) = pure $ case n of
+                                    D d -> toRational d
+                                    I i -> fromIntegral i
     parseJSON v          = typeMismatch "Ratio Integer" v
     {-# INLINE parseJSON #-}
 
