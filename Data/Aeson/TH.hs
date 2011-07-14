@@ -13,97 +13,103 @@ module.
 An example shows how instances are generated for arbitrary data types. First we
 define a data type:
 
-
-> data D a = Nullary
->          | Unary Int
->          | Product String Char a
->          | Record { testOne   :: Double
->                   , testTwo   :: Bool
->                   , testThree :: D a
->                   } deriving Eq
-
+@
+data D a = Nullary
+         | Unary Int
+         | Product String Char a
+         | Record { testOne   :: Double
+                  , testTwo   :: Bool
+                  , testThree :: D a
+                  } deriving Eq
+@
 
 Next we derive the necessary instances. Note that we make use of the feature to
-rewrite record fields. In this case we drop the first 4 characters of every
+change record field names. In this case we drop the first 4 characters of every
 field name.
 
-
->>> $(deriveJSON (drop 4) ''D)
-
+@
+$('deriveJSON' ('drop' 4) ''D)
+@
 
 This will result in the following (simplified) code to be spliced in your program:
 
-> import Control.Applicative
-> import Control.Monad
-> import Data.Aeson
-> import Data.Aeson.TH
-> import qualified Data.Map    as M
-> import qualified Data.Text   as T
-> import qualified Data.Vector as V
->
-> instance ToJSON a => ToJSON (D a) where
->     toJSON =
->       \value ->
->         case value of
->           Nullary ->
->               object [T.pack "Nullary" .= toJSON ([] :: [()])]
->           Unary arg1 ->
->               object [T.pack "Unary" .= toJSON arg1]
->           Product arg1 arg2 arg3 ->
->               object [ T.pack "Product"
->                        .= toJSON [ toJSON arg1
->                                  , toJSON arg2
->                                  , toJSON arg3
->                                  ]
->                      ]
->           Record arg1 arg2 arg3 ->
->               object [ T.pack "Record"
->                        .= object [ T.pack "One"   .= arg1
->                                  , T.pack "Two"   .= arg2
->                                  , T.pack "Three" .= arg3
->                                  ]
->                      ]
->
-> instance FromJSON a => FromJSON (D a) where
->     parseJSON =
->       \value ->
->         case value of
->           Object obj ->
->             case M.toList obj of
->               [(conKey, conVal)] ->
->                   case conKey of
->                     _ | (conKey == T.pack "Nullary") ->
->                           case conVal of
->                             Array arr | V.null arr -> pure Nullary
->                             _ -> mzero
->                       | (conKey == T.pack "Unary") ->
->                           case conVal of
->                             arg -> Unary <$> parseJSON arg
->                       | (conKey == T.pack "Product") ->
->                           case conVal of
->                             Array arr | V.length arr == 3 ->
->                               Product <$> parseJSON (arr V.! 0)
->                                       <*> parseJSON (arr V.! 1)
->                                       <*> parseJSON (arr V.! 2)
->                             _ -> mzero
->                       | (conKey == T.pack "Record") ->
->                           case conVal of
->                             Object obj ->
->                               Record <$> (obj .: T.pack "One")
->                                      <*> (obj .: T.pack "Two")
->                                      <*> (obj .: T.pack "Three")
->                             _ -> mzero
->                      | otherwise -> mzero
->               _ -> mzero
->           _ -> mzero
+@
+import Control.Applicative
+import Control.Monad
+import Data.Aeson
+import Data.Aeson.TH
+import qualified Data.Map    as M
+import qualified Data.Text   as T
+import qualified Data.Vector as V
+
+instance 'ToJSON' a => 'ToJSON' (D a) where
+    'toJSON' =
+      \value ->
+        case value of
+          Nullary ->
+              'object' ['T.pack' \"Nullary\" .= 'toJSON' ([] :: [()])]
+          Unary arg1 ->
+              'object' ['T.pack' \"Unary\" .= 'toJSON' arg1]
+          Product arg1 arg2 arg3 ->
+              'object' [ 'T.pack' \"Product\"
+                       .= 'toJSON' [ 'toJSON' arg1
+                                 , 'toJSON' arg2
+                                 , 'toJSON' arg3
+                                 ]
+                     ]
+          Record arg1 arg2 arg3 ->
+              'object' [ 'T.pack' \"Record\"
+                       .= 'object' [ 'T.pack' \"One\"   '.=' arg1
+                                 , 'T.pack' \"Two\"   '.=' arg2
+                                 , 'T.pack' \"Three\" '.=' arg3
+                                 ]
+                     ]
+@
+
+@
+instance 'FromJSON' a => 'FromJSON' (D a) where
+    'parseJSON' =
+      \value ->
+        case value of
+          'Object' obj ->
+            case 'M.toList' obj of
+              [(conKey, conVal)] ->
+                  case conKey of
+                    _ | (conKey '==' 'T.pack' \"Nullary\") ->
+                          case conVal of
+                            'Array' arr | 'V.null' arr -> 'pure' Nullary
+                            _ -> 'mzero'
+                      | (conKey '==' 'T.pack' \"Unary\") ->
+                          case conVal of
+                            arg -> Unary '<$>' 'parseJSON' arg
+                      | (conKey '==' 'T.pack' \"Product\") ->
+                          case conVal of
+                            'Array' arr | 'V.length' arr '==' 3 ->
+                              'Product' '<$>' 'parseJSON' (arr 'V.!' 0)
+                                      '<*>' 'parseJSON' (arr 'V.!' 1)
+                                      '<*>' 'parseJSON' (arr 'V.!' 2)
+                            _ -> 'mzero'
+                      | (conKey '==' 'T.pack' \"Record\") ->
+                          case conVal of
+                            'Object' obj ->
+                              Record '<$>' (obj '.:' 'T.pack' \"One\")
+                                     '<*>' (obj '.:' 'T.pack' \"Two\")
+                                     '<*>' (obj '.:' 'T.pack' \"Three\")
+                            _ -> 'mzero'
+                     | 'otherwise' -> 'mzero'
+              _ -> 'mzero'
+          _ -> 'mzero'
+@
 
 Now we can use the newly created instances.
 
-> d :: D Int
-> d = Record { testOne = 3.14159
->            , testTwo = True
->            , testThree = Product "test" 'A' 123
->            }
+@
+d :: D 'Int'
+d = Record { testOne = 3.14159
+           , testTwo = 'True'
+           , testThree = Product \"test\" \'A\' 123
+           }
+@
 
 >>> fromJSON (toJSON d) == Success d
 > True
@@ -156,7 +162,17 @@ import qualified Data.Vector as V ( (!), null, length )
 -- Convenience
 --------------------------------------------------------------------------------
 
-deriveJSON :: (String -> String) -> Name -> Q [Dec]
+-- | Generates both 'ToJSON' and 'FromJSON' instance declarations for the given
+-- data type.
+--
+-- This is a convienience function which is equivalent to calling both
+-- 'deriveToJSON' and 'deriveFromJSON'.
+deriveJSON :: (String -> String)
+           -- ^ Function to change field names.
+           -> Name
+           -- ^ Name of the type for which to generate 'ToJSON' and 'FromJSON'
+           -- instances.
+           -> Q [Dec]
 deriveJSON withField name =
     liftM2 (++)
            (deriveToJSON   withField name)
@@ -168,14 +184,37 @@ deriveJSON withField name =
 --------------------------------------------------------------------------------
 
 {-
-TODO: Don't constrain type variables that are not used in any constructor.
+TODO: Don't constrain phantom type variables.
 
 data Foo a = Foo Int
 instance (ToJSON a) ⇒ ToJSON Foo where ...
 
-The above (ToJSON a) constraint is not necessary.
+The above (ToJSON a) constraint is not necessary and perhaps undesirable.
 -}
-deriveToJSON :: (String -> String) -> Name -> Q [Dec]
+
+-- | Generates a 'ToJSON' instance declaration for the given data type.
+--
+-- Example:
+--
+-- @
+-- data Foo = Foo 'Char' 'Int'
+-- $('deriveToJSON' 'id' ''Foo)
+-- @
+--
+-- This will splice in the following code:
+--
+-- @
+-- instance 'ToJSON' Foo where
+--      'toJSON' =
+--          \value -> case value of
+--                      Foo arg1 arg2 -> 'toJSON' ['toJSON' arg1, 'toJSON' arg2]
+-- @
+deriveToJSON :: (String -> String)
+             -- ^ Function to change field names.
+             -> Name
+             -- ^ Name of the type for which to generate a 'ToJSON' instance
+             -- declaration.
+             -> Q [Dec]
 deriveToJSON withField name =
     withType name $ \tvbs cons -> fmap (:[]) $ fromCons tvbs cons
   where
@@ -194,17 +233,49 @@ deriveToJSON withField name =
         typeNames = map tvbName tvbs
         instanceType = foldl' appT (conT name) $ map varT typeNames
 
-mkToJSON :: (String -> String) -> Name -> Q Exp
+-- | Generates a lambda expression which encodes the given data type as JSON.
+--
+-- Example:
+--
+-- @
+-- data Foo = Foo 'Int'
+-- @
+--
+-- @
+-- encodeFoo :: Foo -> 'Value'
+-- encodeFoo = $('mkToJSON' 'id' ''Foo)
+-- @
+--
+-- This will splice in the following code:
+--
+-- @
+-- \value -> case value of Foo arg1 -> 'toJSON' arg1
+-- @
+mkToJSON :: (String -> String) -- ^ Function to change field names.
+         -> Name -- ^ Name of the type to encode.
+         -> Q Exp
 mkToJSON withField name = withType name (\_ cons -> consToJSON withField cons)
 
-consToJSON :: (String -> String) -> [Con] -> Q Exp
+-- | Helper function used by both 'deriveToJSON' and 'mkToJSON'. Generates code
+-- to generate the JSON encoding of a number of constructors. All constructors
+-- must be from the same type.
+consToJSON :: (String -> String)
+           -- ^ Function to change field names.
+           -> [Con]
+           -- ^ Constructors for which to generate JSON generating code.
+           -> Q Exp
 consToJSON _ [] = error $ "Data.Aeson.TH.consToJSON: "
                           ++ "Not a single constructor given!"
+-- A single constructor is directly encoded. The constructor itself may be
+-- forgotten.
 consToJSON withField [con] = do
     value <- newName "value"
     lam1E (varP value)
           $ caseE (varE value)
                   [encodeArgs id withField con]
+-- With multiple constructors we need to remember which constructor is
+-- encoded. This is done by generating a JSON object which maps to constructor's
+-- name to the JSON encoding of its contents.
 consToJSON withField cons = do
     value <- newName "value"
     lam1E (varP value)
@@ -221,8 +292,11 @@ consToJSON withField cons = do
                                                exp
                                     ]
 
+-- | Generates code to generate the JSON encoding of a single constructor.
 encodeArgs :: (Q Exp -> Q Exp) -> (String -> String) -> Con -> Q Match
--- Nullary constructors.
+-- Nullary constructors. Generates code that explicitly matches against the
+-- constructor even though it doesn't contain data. This is useful to prevent
+-- type errors.
 encodeArgs withExp _ (NormalC conName []) =
     match (conP conName [])
           (normalB $ withExp [e|toJSON ([] :: [()])|])
@@ -270,7 +344,32 @@ encodeArgs withExp withField (ForallC _ _ con) =
 -- FromJSON
 --------------------------------------------------------------------------------
 
-deriveFromJSON :: (String -> String) -> Name -> Q [Dec]
+-- | Generates a 'FromJSON' instance declaration for the given data type.
+--
+-- Example:
+--
+-- @
+-- data Foo = Foo 'Char' 'Int'
+-- $('deriveFromJSON' 'id' ''Foo)
+-- @
+--
+-- This will splice in the following code:
+--
+-- @
+-- instance 'FromJSON' Foo where
+--     'parseJSON' =
+--         \value -> case value of
+--                     'Array' arr | ('V.length' arr '==' 2) ->
+--                        Foo '<$>' 'parseJSON' (arr 'V.!' 0)
+--                            '<*>' 'parseJSON' (arr 'V.!' 1)
+--                     _ -> 'mzero'
+-- @
+deriveFromJSON :: (String -> String)
+               -- ^ Function to change field names.
+               -> Name
+               -- ^ Name of the type for which to generate a 'FromJSON' instance
+               -- declaration.
+               -> Q [Dec]
 deriveFromJSON withField name =
     withType name $ \tvbs cons -> fmap (:[]) $ fromCons tvbs cons
   where
@@ -289,11 +388,39 @@ deriveFromJSON withField name =
         typeNames = map tvbName tvbs
         instanceType = foldl' appT (conT name) $ map varT typeNames
 
-mkParseJSON :: (String -> String) -> Name -> Q Exp
+-- | Generates a lambda expression which parses the JSON encoding of the given
+-- data type.
+--
+-- Example:
+--
+-- @
+-- data Foo = Foo 'Int'
+-- @
+--
+-- @
+-- parseFoo :: 'Value' -> 'Parser' Foo
+-- parseFoo = $('mkParseJSON' 'id' ''Foo)
+-- @
+--
+-- This will splice in the following code:
+--
+-- @
+-- \\value -> case value of arg -> Foo '<$>' 'parseJSON' arg
+-- @
+mkParseJSON :: (String -> String) -- ^ Function to change field names.
+            -> Name -- ^ Name of the encoded type.
+            -> Q Exp
 mkParseJSON withField name =
     withType name (\_ cons -> consFromJSON withField cons)
 
-consFromJSON :: (String -> String) -> [Con] -> Q Exp
+-- | Helper function used by both 'deriveFromJSON' and 'mkParseJSON'. Generates
+-- code to parse the JSON encoding of a number of constructors. All constructors
+-- must be from the same type.
+consFromJSON :: (String -> String)
+             -- ^ Function to change field names.
+             -> [Con]
+             -- ^ Constructors for which to generate JSON parsing code.
+             -> Q Exp
 consFromJSON _ [] = error $ "Data.Aeson.TH.consFromJSON: "
                             ++ "Not a single constructor given!"
 consFromJSON withField [con] = do
@@ -338,13 +465,23 @@ consFromJSON withField cons = do
                         []
                 , errorMatch
                 ]
+  where
+    -- Makes a string literal expression from a constructor's name.
+    conNameExp :: Con -> Q Exp
+    conNameExp = litE . stringL . nameBase . getConName
 
-parseArgs :: (String -> String) -> Con -> [Q Match]
+-- | Generates code to parse the JSON encoding of a single
+-- constructor.
+parseArgs :: (String -> String) -- ^ Function to change field names.
+          -> Con -- ^ Constructor for which to generate JSON parsing code.
+          -> [Q Match]
 -- Nullary constructors.
 parseArgs _ (NormalC conName []) =
     [ do arr <- newName "arr"
          g <- normalG $ [|V.null|] `appE` varE arr
          e <- [e|pure|] `appE` conE conName
+         -- TODO: Use applicative style: guardedB [(,) <$> g' <*> e']
+         -- But first need to have "instance Applicative Q".
          match (conP 'Array [varP arr])
                (guardedB [return (g, e)])
                []
@@ -361,7 +498,7 @@ parseArgs _ (NormalC conName [_]) =
                []
     ]
 
--- Polyadic constuctors.
+-- Polyadic constructors.
 parseArgs _ (NormalC conName ts) = parseProduct conName $ genericLength ts
 -- Records.
 parseArgs withField (RecC conName ts) =
@@ -383,12 +520,18 @@ parseArgs withField (RecC conName ts) =
                []
     , errorMatch
     ]
--- Infix constructors.
+-- Infix constructors. Apart from syntax these are the same as
+-- polyadic constructors.
 parseArgs _ (InfixC _ conName _) = parseProduct conName 2
--- Existentially quantified constructors.
+-- Existentially quantified constructors. We ignore the quantifiers
+-- and proceed with the contained constructor.
 parseArgs withField (ForallC _ _ con) = parseArgs withField con
 
-parseProduct :: Name -> Integer -> [Q Match]
+-- | Generates code to parse the JSON encoding of an n-ary
+-- constructor.
+parseProduct :: Name -- ^ 'Con'structor name.
+             -> Integer -- ^ 'Con'structor arity.
+             -> [Q Match]
 parseProduct conName numArgs =
     [ do arr <- newName "arr"
          g <- normalG $ infixApp ([|V.length|] `appE` varE arr)
@@ -411,7 +554,10 @@ parseProduct conName numArgs =
     , errorMatch
     ]
 
--- "_ -> mzero"
+-- |
+-- @
+--   _ -> 'mzero'
+-- @
 errorMatch :: Q Match
 errorMatch = match wildP (normalB [|mzero|]) []
 
@@ -420,7 +566,18 @@ errorMatch = match wildP (normalB [|mzero|]) []
 -- Utility functions
 --------------------------------------------------------------------------------
 
-withType :: Name -> ([TyVarBndr] -> [Con] -> Q a) -> Q a
+-- | Boilerplate for top level splices.
+--
+-- The given 'Name' must be from a type constructor. Furthermore, the
+-- type constructor must be either a data type or a newtype. Any other
+-- value will result in an exception.
+withType :: Name
+         -> ([TyVarBndr] -> [Con] -> Q a)
+         -- ^ Function that generates the actual code. Will be applied
+         -- to the type variable binders and constructors extracted
+         -- from the given 'Name'.
+         -> Q a
+         -- ^ Resulting value in the 'Q'uasi monad.
 withType name f = do
     info <- reify name
     case info of
@@ -432,18 +589,20 @@ withType name f = do
                           ++ show other
       _ -> error "Data.Aeson.TH.withType: I need the name of a type."
 
+-- | Extracts the name from a constructor.
 getConName :: Con -> Name
 getConName (NormalC name _)  = name
 getConName (RecC name _)     = name
 getConName (InfixC _ name _) = name
 getConName (ForallC _ _ con) = getConName con
 
+-- | Extracts the name from a type variable binder.
 tvbName :: TyVarBndr -> Name
 tvbName (PlainTV  name  ) = name
 tvbName (KindedTV name _) = name
 
-fieldNameExp :: (String -> String) -> Name -> Q Exp
+-- | Creates a string literal expression from a record field name.
+fieldNameExp :: (String -> String) -- ^ Function to change the field name.
+             -> Name
+             -> Q Exp
 fieldNameExp f = litE . stringL . f . nameBase
-
-conNameExp :: Con -> Q Exp
-conNameExp = litE . stringL . nameBase . getConName
