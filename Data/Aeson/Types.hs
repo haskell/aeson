@@ -325,12 +325,19 @@ instance (FromJSON a) => FromJSON (Maybe a) where
     {-# INLINE parseJSON #-}
 
 instance (ToJSON a, ToJSON b) => ToJSON (Either a b) where
-    toJSON (Left a)  = toJSON a
-    toJSON (Right b) = toJSON b
+    toJSON (Left a)  = Array (V.fromList [String "Left", toJSON a])
+    toJSON (Right b) = Array (V.fromList [String "Right", toJSON b])
     {-# INLINE toJSON #-}
     
 instance (FromJSON a, FromJSON b) => FromJSON (Either a b) where
-    parseJSON a = Left <$> parseJSON a <|> Right <$> parseJSON a
+    parseJSON v@(Array vec) =
+        if V.length vec /= 2
+            then typeMismatch "Either a b" v
+            else case vec V.! 0 of
+                "Left" -> Left <$> parseJSON (vec V.! 1)
+                "Right" -> Right <$> parseJSON (vec V.! 1)
+                _ -> typeMismatch "Either a b" v
+    parseJSON v         = typeMismatch "Either a b" v
     {-# INLINE parseJSON #-}
 
 instance ToJSON Bool where
