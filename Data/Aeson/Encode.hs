@@ -70,7 +70,9 @@ string s = fromChar '"' `mappend` quote s `mappend` fromChar '"'
 
 fromNumber :: Number -> Builder
 fromNumber (I i) = integral i
-fromNumber (D d) = double d
+fromNumber (D d)
+    | isNaN d || isInfinite d = "null"
+    | otherwise               = double d
 
 -- | Efficiently serialize a JSON value as a lazy 'L.ByteString'.
 encode :: ToJSON a => a -> L.ByteString
