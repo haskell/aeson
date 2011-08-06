@@ -17,6 +17,11 @@ description:
     A JSON parsing and encoding library optimized for ease of use
     and high performance.
     .
+    /Note/: if you use GHCi or Template Haskell, please see the
+    @README@ file for important details about building this package,
+    and other packages that depend on it:
+    <https://github.com/mailrank/aeson#readme>
+    .
     Parsing performance on a late 2010 MacBook Pro (2.66GHz Core i7),
     for mostly-English tweets from Twitter's JSON search API:
     .
@@ -111,7 +116,7 @@ library
     attoparsec >= 0.8.6.1,
     base == 4.*,
     blaze-builder >= 0.2.1.4,
-    blaze-textual,
+    blaze-textual >= 0.2.0.2,
     bytestring,
     containers,
     deepseq,

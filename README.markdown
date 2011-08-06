@@ -2,6 +2,17 @@
 
 aeson is a fast Haskell library for working with JSON data.
 
+# Important note for users of GHCi and Template Haskell
+
+This package depends on the [blaze-textual
+package](http://hackage.haskell.org/package/blaze-textual) , and is
+unfortunately subject to crashes if you use GHCi or Template Haskell
+in your work.
+
+For complete details, including a workaround, see the writeup in [the
+blaze-textual
+README](https://github.com/mailrank/blaze-textual#readme).
+
 # Join in!
 
 We are happy to receive bug reports, fixes, documentation enhancements,
