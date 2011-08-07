@@ -1,5 +1,6 @@
 {-# LANGUAGE DeriveDataTypeable, FlexibleInstances, GeneralizedNewtypeDeriving,
-    IncoherentInstances, OverlappingInstances, OverloadedStrings, Rank2Types #-}
+    IncoherentInstances, OverlappingInstances, OverloadedStrings, Rank2Types,
+    ViewPatterns #-}
 
 -- |
 -- Module:      Data.Aeson.Types
@@ -329,13 +330,20 @@ instance (FromJSON a) => FromJSON (Maybe a) where
     {-# INLINE parseJSON #-}
 
 instance (ToJSON a, ToJSON b) => ToJSON (Either a b) where
-    toJSON (Left a)  = toJSON a
-    toJSON (Right b) = toJSON b
+    toJSON (Left a)  = object [left  .= a]
+    toJSON (Right b) = object [right .= b]
     {-# INLINE toJSON #-}
     
 instance (FromJSON a, FromJSON b) => FromJSON (Either a b) where
-    parseJSON a = Left <$> parseJSON a <|> Right <$> parseJSON a
+    parseJSON (Object (M.toList -> [(key, value)]))
+        | key == left  = Left  <$> parseJSON value
+        | key == right = Right <$> parseJSON value
+    parseJSON _ = mzero
     {-# INLINE parseJSON #-}
+
+left, right :: Text
+left  = "Left"
+right = "Right"
 
 instance ToJSON Bool where
     toJSON = Bool
