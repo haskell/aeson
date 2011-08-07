@@ -15,6 +15,7 @@ module Data.Aeson.Parser
     (
       json
     , value
+    , jstring
     ) where
 
 import Blaze.ByteString.Builder (fromByteString, toByteString)
