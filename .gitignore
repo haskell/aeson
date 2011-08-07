@@ -4,3 +4,5 @@ dist
 *.hi
 
 benchmarks/AesonEncode
+
+tests/qc
