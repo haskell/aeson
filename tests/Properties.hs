@@ -6,6 +6,7 @@ import Data.Aeson.Types
 import Data.Attoparsec.Number
 import Test.Framework (Test, defaultMain, testGroup)
 import Test.Framework.Providers.QuickCheck2 (testProperty)
+import Test.QuickCheck (Arbitrary)
 import qualified Data.ByteString.Lazy.Char8 as L
 import qualified Data.Attoparsec.Lazy as L
 
@@ -39,6 +40,11 @@ approxEq a b = a == b ||
           maxAbsoluteError = 1e-15
           maxRelativeError = 1e-15
 
+toFromJSON :: (Arbitrary a, Eq a, FromJSON a, ToJSON a) => a -> Bool
+toFromJSON x = case fromJSON . toJSON $ x of
+                Error _ -> False
+                Success x' -> x == x'
+
 main :: IO ()
 main = defaultMain tests
 
@@ -52,5 +58,12 @@ tests = [
       testProperty "roundTripBool" roundTripBool
     , testProperty "roundTripDouble" roundTripDouble
     , testProperty "roundTripInteger" roundTripInteger
+    ],
+  testGroup "toFromJSON" [
+      testProperty "Integer" (toFromJSON :: Integer -> Bool)
+    , testProperty "Double" (toFromJSON :: Double -> Bool)
+    , testProperty "Maybe Integer" (toFromJSON :: Maybe Integer -> Bool)
+    , testProperty "Either Integer Double" (toFromJSON :: Either Integer Double -> Bool)
+    , testProperty "Either Integer Integer" (toFromJSON :: Either Integer Integer -> Bool)
     ]
   ]
