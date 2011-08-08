@@ -71,7 +71,7 @@ string s = fromChar '"' `mappend` quote s `mappend` fromChar '"'
 fromNumber :: Number -> Builder
 fromNumber (I i) = integral i
 fromNumber (D d)
-    | isNaN d || isInfinite d = "null"
+    | isNaN d || isInfinite d = fromByteString "null"
     | otherwise               = double d
 
 -- | Efficiently serialize a JSON value as a lazy 'L.ByteString'.
