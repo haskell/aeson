@@ -1,4 +1,4 @@
-{-# LANGUAGE NoImplicitPrelude, TemplateHaskell #-}
+{-# LANGUAGE CPP, NoImplicitPrelude, TemplateHaskell #-}
 
 {-|
 Module:      Data.Aeson.TH
@@ -140,13 +140,16 @@ import Data.Aeson.Types ( Value(..) )
 import Control.Applicative ( pure, (<$>), (<*>) )
 import Control.Monad       ( return, mapM, mzero, liftM2 )
 import Data.Bool           ( otherwise )
-import GHC.Base            ( Monad(..), String )
 import Data.Eq             ( (==) )
 import Data.Function       ( ($), (.), id )
 import Data.Functor        ( fmap )
 import Data.List           ( (++), foldl', map, zip, genericLength )
-import Prelude             ( (-), Integer, fromInteger, error )
+import Prelude             ( String, (-), Integer, error )
 import Text.Show           ( show )
+#if __GLASGOW_HASKELL__ < 700
+import Control.Monad       ( (>>=), fail )
+import Prelude             ( fromInteger )
+#endif
 -- from containers:
 import qualified Data.Map as M ( toList )
 -- from template-haskell:
