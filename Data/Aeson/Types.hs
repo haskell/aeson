@@ -1,6 +1,6 @@
 {-# LANGUAGE DeriveDataTypeable, FlexibleInstances, GeneralizedNewtypeDeriving,
     IncoherentInstances, OverlappingInstances, OverloadedStrings, Rank2Types,
-    ViewPatterns #-}
+    ViewPatterns, FlexibleContexts, UndecidableInstances #-}
 
 -- |
 -- Module:      Data.Aeson.Types
@@ -61,6 +61,7 @@ import Data.Time.Format (FormatTime, formatTime, parseTime)
 import Data.Typeable (Typeable)
 import Data.Vector (Vector)
 import Data.Word (Word, Word8, Word16, Word32, Word64)
+import Foreign.Storable (Storable)
 import System.Locale (defaultTimeLocale)
 import qualified Data.ByteString as B
 import qualified Data.ByteString.Lazy as LB
@@ -72,6 +73,11 @@ import qualified Data.Set as Set
 import qualified Data.Text as T
 import qualified Data.Text.Lazy as LT
 import qualified Data.Vector as V
+import qualified Data.Vector.Storable as VS
+import qualified Data.Vector.Primitive as VP
+import qualified Data.Vector.Unboxed as VU
+import qualified Data.Vector.Generic as VG
+
 
 -- | The result of running a 'Parser'.
 data Result a = Error String
@@ -573,6 +579,33 @@ instance (FromJSON a) => FromJSON (Vector a) where
     parseJSON (Array a) = V.mapM parseJSON a
     parseJSON v         = typeMismatch "Vector a" v
     {-# INLINE parseJSON #-}
+
+vectorToJSON :: (VG.Vector v a, ToJSON a) => v a -> Value
+vectorToJSON = Array . V.map toJSON . V.convert
+{-# INLINE vectorToJSON #-}
+
+vectorParseJSON :: (FromJSON a, VG.Vector w a) => String -> Value -> Parser (w a)
+vectorParseJSON _ (Array a) = V.convert <$> V.mapM parseJSON a
+vectorParseJSON s v         = typeMismatch s v
+{-# INLINE vectorParseJSON #-}
+
+instance (Storable a, ToJSON a) => ToJSON (VS.Vector a) where
+    toJSON = vectorToJSON
+
+instance (Storable a, FromJSON a) => FromJSON (VS.Vector a) where
+    parseJSON = vectorParseJSON "Data.Vector.Storable.Vector a"
+
+instance (VP.Prim a, ToJSON a) => ToJSON (VP.Vector a) where
+    toJSON = vectorToJSON
+
+instance (VP.Prim a, FromJSON a) => FromJSON (VP.Vector a) where
+    parseJSON = vectorParseJSON "Data.Vector.Primitive.Vector a"
+
+instance (VG.Vector VU.Vector a, ToJSON a) => ToJSON (VU.Vector a) where
+    toJSON = vectorToJSON
+
+instance (VG.Vector VU.Vector a, FromJSON a) => FromJSON (VU.Vector a) where
+    parseJSON = vectorParseJSON "Data.Vector.Unboxed.Vector a"
 
 instance (ToJSON a) => ToJSON (Set.Set a) where
     toJSON = toJSON . Set.toList
