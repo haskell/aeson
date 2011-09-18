@@ -121,7 +121,7 @@ library
     blaze-textual >= 0.2.0.2,
     bytestring,
     containers,
-    deepseq,
+    deepseq < 1.2,
     hashable >= 1.1.2.0,
     mtl,
     old-locale,
