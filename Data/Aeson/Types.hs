@@ -397,6 +397,7 @@ instance ToJSON [Char] where
 
 instance FromJSON [Char] where
     parseJSON (String t) = pure (T.unpack t)
+    parseJSON Null       = pure ""
     parseJSON v          = typeMismatch "String" v
     {-# INLINE parseJSON #-}
 
