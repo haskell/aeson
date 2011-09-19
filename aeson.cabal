@@ -136,7 +136,7 @@ library
     ghc-options: -Werror
     ghc-prof-options: -auto-all
 
-  if(impl(ghc >= 7.2.1))
+  if impl(ghc >= 7.2.1)
     cpp-options: -DDEFAULT_SIGNATURES
 
   ghc-options:      -Wall
