@@ -79,6 +79,7 @@ import qualified Data.ByteString.Lazy as LB
 import qualified Data.HashMap.Strict as H
 import qualified Data.HashSet as HashSet
 import qualified Data.IntSet as IntSet
+import qualified Data.IntMap as IntMap
 import qualified Data.Map as M
 import qualified Data.Set as Set
 import qualified Data.Text as T
@@ -651,6 +652,14 @@ instance ToJSON IntSet.IntSet where
     
 instance FromJSON IntSet.IntSet where
     parseJSON = fmap IntSet.fromList . parseJSON
+    {-# INLINE parseJSON #-}
+
+instance ToJSON a => ToJSON (IntMap.IntMap a) where
+    toJSON = toJSON . IntMap.toList
+    {-# INLINE toJSON #-}
+  
+instance FromJSON a => FromJSON (IntMap.IntMap a) where
+    parseJSON = fmap IntMap.fromList . parseJSON
     {-# INLINE parseJSON #-}
 
 instance (ToJSON v) => ToJSON (M.Map Text v) where
