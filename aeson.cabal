@@ -144,12 +144,14 @@ test-suite tests
     -Wall -threaded -rtsopts
 
   build-depends:
+    QuickCheck,
     aeson,
     attoparsec,
     base,
     bytestring,
     test-framework,
-    test-framework-quickcheck2
+    test-framework-quickcheck2,
+    text
 
 source-repository head
   type:     git
