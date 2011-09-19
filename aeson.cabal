@@ -148,6 +148,7 @@ test-suite tests
     aeson,
     attoparsec,
     base,
+    containers,
     bytestring,
     test-framework,
     test-framework-quickcheck2,
