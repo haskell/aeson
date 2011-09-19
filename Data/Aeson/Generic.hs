@@ -20,7 +20,7 @@ module Data.Aeson.Generic
     , toJSON
     ) where
 
-import Data.Aeson.Types (Value, Result, genericFromJSON, genericToJSON)
+import Data.Aeson.Types.Internal (Value, Result, genericFromJSON, genericToJSON)
 import Data.Data (Data)
 
 fromJSON :: (Data a) => Value -> Result a
