@@ -60,7 +60,9 @@ data Foo = Foo {
       fooInt :: Int
     , fooDouble :: Double
     , fooTuple :: (String, Text, Int)
-    , fooMap :: Map.Map String Foo
+    -- This definition causes an infinite loop in genericTo and genericFrom!
+    -- , fooMap :: Map.Map String Foo
+    , fooMap :: Map.Map String (Text,Int)
     } deriving (Show, Typeable, Data)
 
 instance Eq Foo where
