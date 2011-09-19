@@ -38,6 +38,9 @@ roundTripEq x y = roundTrip (==) x y
 genericTo :: (Data a, ToJSON a) => a -> a -> Bool
 genericTo _ v = G.toJSON v == toJSON v
 
+genericFrom :: (Eq a, Data a, ToJSON a) => a -> a -> Bool
+genericFrom _ v = G.fromJSON (toJSON v) == Success v
+
 approxEq :: Double -> Double -> Bool
 approxEq a b = a == b ||
                d < maxAbsoluteError ||
@@ -85,7 +88,13 @@ tests = [
       testProperty "encodeDouble" encodeDouble
     , testProperty "encodeInteger" encodeInteger
     ],
-  testGroup "generic" [
+  testGroup "genericFrom" [
+      testProperty "Bool" $ genericFrom True
+    , testProperty "Double" $ genericFrom (1::Double)
+    , testProperty "Int" $ genericFrom (1::Int)
+    , testProperty "Foo" $ genericFrom (undefined::Foo)
+    ],
+  testGroup "genericTo" [
       testProperty "Bool" $ genericTo True
     , testProperty "Double" $ genericTo (1::Double)
     , testProperty "Int" $ genericTo (1::Int)
