@@ -2,6 +2,7 @@
     ScopedTypeVariables #-}
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 
+import Control.Monad
 import Control.Applicative
 import Data.Aeson.Encode
 import Data.Aeson.Parser (value)
@@ -16,6 +17,7 @@ import qualified Data.Aeson.Generic as G
 import qualified Data.Attoparsec.Lazy as L
 import qualified Data.ByteString.Lazy.Char8 as L
 import qualified Data.Text as T
+import qualified Data.Map as Map
 
 encodeDouble :: Double -> Double -> Bool
 encodeDouble num denom
@@ -52,7 +54,8 @@ approxEq a b = a == b ||
 data Foo = Foo {
       fooInt :: Int
     , fooDouble :: Double
-    , fooTuple :: (String, Text)
+    , fooTuple :: (String, Text, Int)
+    , fooMap :: Map.Map String Foo
     } deriving (Show, Typeable, Data)
 
 instance Eq Foo where
@@ -64,20 +67,25 @@ instance ToJSON Foo where
     toJSON Foo{..} = object [ "fooInt" .= fooInt
                             , "fooDouble" .= fooDouble
                             , "fooTuple" .= fooTuple
+                            , "fooMap" .= fooMap
                             ]
 
 instance FromJSON Foo where
     parseJSON (Object v) = Foo <$>
                            v .: "fooInt" <*>
                            v .: "fooDouble" <*>
-                           v .: "fooTuple"
+                           v .: "fooTuple" <*>
+                           v .: "fooMap"
     parseJSON _ = empty
 
 instance Arbitrary Text where
     arbitrary = T.pack <$> arbitrary
 
+instance (Ord k, Arbitrary k, Arbitrary v) => Arbitrary (Map.Map k v) where
+    arbitrary = Map.fromList <$> arbitrary
+
 instance Arbitrary Foo where
-    arbitrary = liftA3 Foo arbitrary arbitrary arbitrary
+    arbitrary = liftM4 Foo arbitrary arbitrary arbitrary arbitrary
 
 main :: IO ()
 main = defaultMain tests
