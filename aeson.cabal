@@ -135,6 +135,22 @@ library
 
   ghc-options:      -Wall
 
+test-suite tests
+  type:           exitcode-stdio-1.0
+  hs-source-dirs: tests
+  main-is:        Properties.hs
+
+  ghc-options:
+    -Wall -threaded -rtsopts
+
+  build-depends:
+    aeson,
+    attoparsec,
+    base,
+    bytestring,
+    test-framework,
+    test-framework-quickcheck2
+
 source-repository head
   type:     git
   location: http://github.com/mailrank/aeson
