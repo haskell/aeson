@@ -12,7 +12,7 @@ import qualified Data.Attoparsec.Lazy as L
 encodeDouble :: Double -> Double -> Bool
 encodeDouble num denom
     | isInfinite d || isNaN d = encode (Number (D d)) == "null"
-    | otherwise               = encode (Number (D d)) == L.pack (show d)
+    | otherwise               = (read . L.unpack . encode . Number . D) d == d
   where d = num / denom
 
 encodeInteger :: Integer -> Bool
