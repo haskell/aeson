@@ -304,13 +304,25 @@ object = Object . M.fromList
 --
 -- An example type and instance:
 --
--- @data Coord { x :: Double, y :: Double }
+-- @{-\# LANGUAGE OverloadedStrings #-}
+--
+-- data Coord { x :: Double, y :: Double }
 --
 -- instance ToJSON Coord where
 --   toJSON (Coord x y) = 'object' [\"x\" '.=' x, \"y\" '.=' y]
 -- @
 --
--- This example assumes the OverloadedStrings language option is enabled.
+-- We use the @OverloadedStrings@ language extension so that we can
+-- write 'Text' values as normal double-quoted strings.
+--
+-- If you do not want to write your own 'ToJSON' instances, you have
+-- two options:
+--
+-- * The 'Data.Aeson.TH' module will automatically derive an instance
+--   for you with a single line of code.
+--
+-- * The 'Data.Aeson.Generic' module will work with most data types
+--   that are instances of 'Data' (but note, this can be slow).
 class ToJSON a where
     toJSON   :: a -> Value
 
@@ -328,7 +340,9 @@ class ToJSON a where
 --
 -- An example type and instance:
 --
--- @data Coord { x :: Double, y :: Double }
+-- @{-\# LANGUAGE OverloadedStrings #-}
+--
+-- data Coord { x :: Double, y :: Double }
 -- 
 -- instance FromJSON Coord where
 --   parseJSON ('Object' v) = Coord '<$>'
@@ -339,7 +353,17 @@ class ToJSON a where
 --   parseJSON _          = 'mzero'
 -- @
 --
--- This example assumes the OverloadedStrings language option is enabled.
+-- We use the @OverloadedStrings@ language extension so that we can
+-- write 'Text' values as normal double-quoted strings.
+--
+-- If you do not want to write your own 'FromJSON' instances, you have
+-- two options:
+--
+-- * The 'Data.Aeson.TH' module will automatically derive an instance
+--   for you with a single line of code.
+--
+-- * The 'Data.Aeson.Generic' module will work with most data types
+--   that are instances of 'Data' (but note, this can be slow).
 class FromJSON a where
     parseJSON :: Value -> Parser a
 
