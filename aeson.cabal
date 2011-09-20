@@ -17,6 +17,9 @@ description:
     A JSON parsing and encoding library optimized for ease of use
     and high performance.
     .
+    To get started, see the documentation for the @Data.Aeson@ module
+    below.
+    .
     /Note/: if you use GHCi or Template Haskell, please see the
     @README@ file for important details about building this package,
     and other packages that depend on it:
