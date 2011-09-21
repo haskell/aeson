@@ -138,7 +138,8 @@ library
     ghc-prof-options: -auto-all
 
   if impl(ghc >= 7.2.1)
-    cpp-options: -DDEFAULT_SIGNATURES
+    cpp-options: -DGENERICS
+    build-depends: ghc-prim >= 0.2 -- Exports GHC.Generics
 
   ghc-options:      -Wall
 
