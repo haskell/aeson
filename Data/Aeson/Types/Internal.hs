@@ -1011,11 +1011,9 @@ instance (GFromProduct a, GFromProduct b) => GFromProduct (a :*: b) where
         where
           (arrL, arrR) = V.splitAt (V.length arr `div` 2) arr
 
-instance (GFromJSON a) => GFromProduct (S1 NoSelector a) where
+instance (GFromJSON a) => GFromProduct a where
     gParseProduct ((!? 0) -> Just v) = gParseJSON v
     gParseProduct _ = fail "Array to small"
-
-instance GFromProduct (M1 i c f) where gParseProduct = undefined
 
 --------------------------------------------------------------------------------
 
