@@ -896,139 +896,63 @@ class GFromJSON f where
 
 --------------------------------------------------------------------------------
 
--- | Meta-information is stripped:
 instance (GToJSON a) => GToJSON (M1 i c a) where
     gToJSON = gToJSON . unM1
 
--- | Meta-information is added:
 instance (GFromJSON a) => GFromJSON (M1 i c a) where
     gParseJSON = fmap M1 . gParseJSON
 
+--------------------------------------------------------------------------------
 
--- | Constants are converted using toJSON:
 instance (ToJSON a) => GToJSON (K1 i a) where
     gToJSON = toJSON . unK1
 
--- | Constants are parsed using parseJSON:
 instance (FromJSON a) => GFromJSON (K1 i a) where
     gParseJSON = fmap K1 . parseJSON
 
+--------------------------------------------------------------------------------
 
--- | Constructors without arguments are converted to the empty array:
 instance GToJSON U1 where
     gToJSON _ = emptyArray
 
--- | Constructors without arguments must be represented by the empty array:
 instance GFromJSON U1 where
     gParseJSON v
         | isEmptyArray v = pure U1
         | otherwise      = typeMismatch "unary constructor (U1)" v
 
+--------------------------------------------------------------------------------
 
--- | Each value of a sum type is converted to an object
--- with a single key-value association where the key is the name of the constructor:
+instance (Constructor c, GRecordToObject a, GToJSON a) => GToJSON (C1 c a) where
+    gToJSON m1@(M1 x)
+        | conIsRecord m1 = Object $ gRecordToObject x
+        | otherwise = gToJSON x
+
+instance (Constructor c, GFromRecord a, GFromJSON a) => GFromJSON (C1 c a) where
+    gParseJSON v
+        | conIsRecord (undefined :: t c a p) =
+            case v of
+              Object obj -> M1 <$> gParseRecord obj
+              _ -> typeMismatch "record (:*:)" v
+        | otherwise = M1 <$> gParseJSON v
+
+--------------------------------------------------------------------------------
+
+instance (GProductToValues a, GProductToValues b) => GToJSON (a :*: b) where
+    gToJSON = toJSON . toList . gProductToValues
+
+instance (GFromProduct a, GFromProduct b) => GFromJSON (a :*: b) where
+    gParseJSON (Array arr) = gParseProduct arr
+    gParseJSON v = typeMismatch "product (:*:)" v
+
+--------------------------------------------------------------------------------
+
 instance (GObject a, GObject b) => GToJSON (a :+: b) where
     gToJSON (L1 x) = Object $ gObject x
     gToJSON (R1 x) = Object $ gObject x
 
--- | A sum type must be represented by an object with a single key-value association.
--- When this is the case, the sum will be recursively parsed using gParseSum:
 instance (GFromSum a, GFromSum b) => GFromJSON (a :+: b) where
     gParseJSON (Object (M.toList -> [keyVal])) = gParseSum keyVal
     gParseJSON v = typeMismatch "sum (:+:)" v
-
-
--- | Product types without field names are flattened and converted to an array:
-instance (GToJSON a, Flatten b) => GToJSON (S1 NoSelector a :*: b) where
-    gToJSON = toJSON . flatten
-
--- | Product types without field names must be represented as an array.
--- When this is the case the product will be recursively parsed sing gParseProduct:
-instance (GFromJSON a, GFromProduct b) => GFromJSON (S1 NoSelector a :*: b) where
-    gParseJSON (Array arr) = gParseProduct arr 0
-    gParseJSON v = typeMismatch "product (:*:)" v
-
-
--- | Other product types, so the ones with field names (records),
--- are converted to a single object.
-instance (GObject a, GObject b) => GToJSON (a :*: b) where
-    gToJSON = Object . gObject
-
--- | Product types with field names (records) must be represented as a single object.
--- If this is the case the product will be recursively parsed using gParseRecord.
-instance (GFromRecord a, GFromRecord b) => GFromJSON (a :*: b) where
-    gParseJSON (Object obj) = gParseRecord obj
-    gParseJSON v = typeMismatch "record (:*:)" v
-
---------------------------------------------------------------------------------
-
--- | Flatten /flattens/ a product type. For example:
--- a :*: (b :*: (c :*: d)) is converted to:
--- [gToJSON a, gToJSON b, gToJSON c, gToJSON d]
-class Flatten f where
-    flatten :: f a -> [Value]
-
-instance (GToJSON a, Flatten b) => Flatten (S1 NoSelector a :*: b) where
-    flatten (m1 :*: r) = gToJSON m1 : flatten r
-
-instance (GToJSON a) => Flatten (S1 NoSelector a) where
-    flatten m1 = [gToJSON $ unM1 m1]
-
---------------------------------------------------------------------------------
-
-class GObject f where
-    gObject :: f a -> Object
-
-instance (GObject a, GObject b) => GObject (a :+: b) where
-    gObject (L1 x) = gObject x
-    gObject (R1 x) = gObject x
-
-instance (GObject a, GObject b) => GObject (a :*: b) where
-    gObject (a :*: b) = gObject a `M.union` gObject b
-
-instance (Selector s, GToJSON a) => GObject (S1 s a) where
-    gObject = objectNamed selName
-
-instance (Constructor c, GToJSON a) => GObject (C1 c a) where
-    gObject = objectNamed conName
-
-objectNamed :: GToJSON f => (M1 i c f p -> String) -> M1 i c f p -> Object
-objectNamed getName m1 = M.singleton (pack (getName m1)) (gToJSON (unM1 m1))
-
---------------------------------------------------------------------------------
-
-class GFromSum f where
-    gParseSum :: Pair -> Parser (f a)
-
-instance (GFromSum a, GFromSum b) => GFromSum (a :+: b) where
-    gParseSum keyVal = fmap L1 (gParseSum keyVal) <|> fmap R1 (gParseSum keyVal)
-
-instance (Constructor c, GFromJSON a) => GFromSum (C1 c a) where
-    gParseSum (key, value)
-        | key == pack (conName (undefined :: t c a p)) = gParseJSON value
-        | otherwise = notFound $ unpack key
-
-notFound :: String -> Parser a
-notFound key = fail $ "The key \"" ++ key ++ "\" was not found"
-
---------------------------------------------------------------------------------
-
-class GFromProduct f where
-    gParseProduct :: Array -> Int -> Parser (f a)
-
-instance (GFromJSON a, GFromProduct b) => GFromProduct (a :*: b) where
-    gParseProduct arr ix =
-        case arr !? ix of
-          Nothing -> arrayToSmall ix
-          Just v  -> (:*:) <$> gParseJSON v <*> gParseProduct arr (ix+1)
-
-instance (GFromJSON a) => GFromProduct (S1 NoSelector a) where
-    gParseProduct arr ix = case arr !? ix of
-                             Nothing -> arrayToSmall ix
-                             Just v  -> gParseJSON v
-
-arrayToSmall :: Int -> Parser a
-arrayToSmall ix = fail $ "Expected an array of at least " ++ show ix ++ " values"
 
 --------------------------------------------------------------------------------
 
@@ -1044,4 +968,95 @@ instance (Selector s, GFromJSON a) => GFromRecord (S1 s a) where
                          Just v  -> gParseJSON v
         where
           key = selName (undefined :: t s a p)
+
+instance GFromRecord (a :+: b)  where gParseRecord = undefined
+instance GFromRecord U1         where gParseRecord = undefined
+instance GFromRecord (K1 i c)   where gParseRecord = undefined
+instance GFromRecord (M1 i c f) where gParseRecord = undefined
+
+--------------------------------------------------------------------------------
+
+class GRecordToObject f where
+    gRecordToObject :: f a -> Object
+
+instance (GRecordToObject a, GRecordToObject b) => GRecordToObject (a :*: b) where
+    gRecordToObject (a :*: b) = gRecordToObject a `M.union` gRecordToObject b
+
+instance (Selector s, GToJSON a) => GRecordToObject (S1 s a) where
+    gRecordToObject m1 = M.singleton (pack (selName m1)) (gToJSON (unM1 m1))
+
+instance GRecordToObject (a :+: b)  where gRecordToObject = undefined
+instance GRecordToObject U1         where gRecordToObject = undefined
+instance GRecordToObject (K1 i c)   where gRecordToObject = undefined
+instance GRecordToObject (M1 i c f) where gRecordToObject = undefined
+
+--------------------------------------------------------------------------------
+
+class GProductToValues f where
+    gProductToValues :: f a -> DList Value
+
+instance (GProductToValues a, GProductToValues b) => GProductToValues (a :*: b) where
+    gProductToValues (a :*: b) = gProductToValues a `append` gProductToValues b
+
+instance (GToJSON a) => GProductToValues a where
+    gProductToValues = singleton . gToJSON
+
+--------------------------------------------------------------------------------
+
+class GFromProduct f where
+    gParseProduct :: Array -> Parser (f a)
+
+instance (GFromProduct a, GFromProduct b) => GFromProduct (a :*: b) where
+    gParseProduct arr = (:*:) <$> gParseProduct arrL <*> gParseProduct arrR
+        where
+          (arrL, arrR) = V.splitAt (V.length arr `div` 2) arr
+
+instance (GFromJSON a) => GFromProduct (S1 NoSelector a) where
+    gParseProduct ((!? 0) -> Just v) = gParseJSON v
+    gParseProduct _ = fail "Array to small"
+
+instance GFromProduct (M1 i c f) where gParseProduct = undefined
+
+--------------------------------------------------------------------------------
+
+class GObject f where
+    gObject :: f a -> Object
+
+instance (GObject a, GObject b) => GObject (a :+: b) where
+    gObject (L1 x) = gObject x
+    gObject (R1 x) = gObject x
+
+instance (Constructor c, GToJSON a, GRecordToObject a) => GObject (C1 c a) where
+    gObject m1 = M.singleton (pack (conName m1)) (gToJSON m1)
+
+--------------------------------------------------------------------------------
+
+class GFromSum f where
+    gParseSum :: Pair -> Parser (f a)
+
+instance (GFromSum a, GFromSum b) => GFromSum (a :+: b) where
+    gParseSum keyVal = (L1 <$> gParseSum keyVal) <|> (R1 <$> gParseSum keyVal)
+
+instance (Constructor c, GFromJSON a, GFromRecord a) => GFromSum (C1 c a) where
+    gParseSum (key, value)
+        | key == pack (conName (undefined :: t c a p)) = gParseJSON value
+        | otherwise = notFound $ unpack key
+
+notFound :: String -> Parser a
+notFound key = fail $ "The key \"" ++ key ++ "\" was not found"
+
+--------------------------------------------------------------------------------
+
+type DList a = [a] -> [a]
+
+toList :: DList a -> [a]
+toList = ($ [])
+
+singleton :: a -> DList a
+singleton = (:)
+
+append :: DList a -> DList a -> DList a
+append = (.)
+
+--------------------------------------------------------------------------------
 #endif
