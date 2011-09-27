@@ -5,7 +5,13 @@
 
 {-# LANGUAGE CPP #-}
 #ifdef GENERICS
-{-# LANGUAGE DefaultSignatures, TypeOperators #-}
+{-# LANGUAGE DefaultSignatures
+           , TypeOperators
+           , EmptyDataDecls
+           , KindSignatures
+           , MultiParamTypeClasses
+           , FunctionalDependencies
+  #-}
 #endif
 
 -- |
@@ -922,18 +928,11 @@ instance GFromJSON U1 where
 
 --------------------------------------------------------------------------------
 
-instance (Constructor c, GRecordToObject a, GToJSON a) => GToJSON (C1 c a) where
-    gToJSON m1@(M1 x)
-        | conIsRecord m1 = Object $ gRecordToObject x
-        | otherwise = gToJSON x
+instance (ConsToJSON a) => GToJSON (C1 c a) where
+    gToJSON = consToJSON . unM1
 
-instance (Constructor c, GFromRecord a, GFromJSON a) => GFromJSON (C1 c a) where
-    gParseJSON v
-        | conIsRecord (undefined :: t c a p) =
-            case v of
-              Object obj -> M1 <$> gParseRecord obj
-              _ -> typeMismatch "record (:*:)" v
-        | otherwise = M1 <$> gParseJSON v
+instance (ConsFromJSON a) => GFromJSON (C1 c a) where
+    gParseJSON = fmap M1 . consParseJSON
 
 --------------------------------------------------------------------------------
 
@@ -956,6 +955,52 @@ instance (GFromSum a, GFromSum b) => GFromJSON (a :+: b) where
 
 --------------------------------------------------------------------------------
 
+class ConsToJSON    f where consToJSON  ::           f a -> Value
+class ConsToJSON' b f where consToJSON' :: Tagged b (f a -> Value)
+
+instance (IsRecord f b, ConsToJSON' b f) => ConsToJSON f where
+    consToJSON = unTagged (consToJSON' :: Tagged b (f a -> Value))
+
+instance (GRecordToObject f) => ConsToJSON' True f where
+    consToJSON' = Tagged (Object . gRecordToObject)
+
+instance GToJSON f => ConsToJSON' False f where
+    consToJSON' = Tagged gToJSON
+
+--------------------------------------------------------------------------------
+
+class ConsFromJSON    f where consParseJSON  ::           Value -> Parser (f a)
+class ConsFromJSON' b f where consParseJSON' :: Tagged b (Value -> Parser (f a))
+
+instance (IsRecord f b, ConsFromJSON' b f) => ConsFromJSON f where
+    consParseJSON = unTagged (consParseJSON' :: Tagged b (Value -> Parser (f a)))
+
+instance (GFromRecord f) => ConsFromJSON' True f where
+    consParseJSON' = Tagged parseRecord
+        where
+          parseRecord (Object obj) = gParseRecord obj
+          parseRecord v = typeMismatch "record (:*:)" v
+
+instance (GFromJSON f) => ConsFromJSON' False f where
+    consParseJSON' = Tagged gParseJSON
+
+--------------------------------------------------------------------------------
+
+newtype Tagged s b = Tagged {unTagged :: b}
+
+data True
+data False
+
+class IsRecord (f :: * -> *) b | f -> b
+
+instance (IsRecord f b) => IsRecord (f :*: g) b
+instance IsRecord (M1 S NoSelector f) False
+instance (IsRecord f b) => IsRecord (M1 S c f) b
+instance IsRecord (K1 i c) True
+instance IsRecord U1 False
+
+--------------------------------------------------------------------------------
+
 class GFromRecord f where
     gParseRecord :: Object -> Parser (f a)
 
@@ -969,11 +1014,6 @@ instance (Selector s, GFromJSON a) => GFromRecord (S1 s a) where
         where
           key = selName (undefined :: t s a p)
 
-instance GFromRecord (a :+: b)  where gParseRecord = undefined
-instance GFromRecord U1         where gParseRecord = undefined
-instance GFromRecord (K1 i c)   where gParseRecord = undefined
-instance GFromRecord (M1 i c f) where gParseRecord = undefined
-
 --------------------------------------------------------------------------------
 
 class GRecordToObject f where
@@ -984,11 +1024,6 @@ instance (GRecordToObject a, GRecordToObject b) => GRecordToObject (a :*: b) whe
 
 instance (Selector s, GToJSON a) => GRecordToObject (S1 s a) where
     gRecordToObject m1 = M.singleton (pack (selName m1)) (gToJSON (unM1 m1))
-
-instance GRecordToObject (a :+: b)  where gRecordToObject = undefined
-instance GRecordToObject U1         where gRecordToObject = undefined
-instance GRecordToObject (K1 i c)   where gRecordToObject = undefined
-instance GRecordToObject (M1 i c f) where gRecordToObject = undefined
 
 --------------------------------------------------------------------------------
 
@@ -1024,7 +1059,8 @@ instance (GObject a, GObject b) => GObject (a :+: b) where
     gObject (L1 x) = gObject x
     gObject (R1 x) = gObject x
 
-instance (Constructor c, GToJSON a, GRecordToObject a) => GObject (C1 c a) where
+instance (Constructor c, GToJSON a, ConsToJSON a)
+    => GObject (C1 c a) where
     gObject m1 = M.singleton (pack (conName m1)) (gToJSON m1)
 
 --------------------------------------------------------------------------------
@@ -1035,7 +1071,7 @@ class GFromSum f where
 instance (GFromSum a, GFromSum b) => GFromSum (a :+: b) where
     gParseSum keyVal = (L1 <$> gParseSum keyVal) <|> (R1 <$> gParseSum keyVal)
 
-instance (Constructor c, GFromJSON a, GFromRecord a) => GFromSum (C1 c a) where
+instance (Constructor c, GFromJSON a, ConsFromJSON a) => GFromSum (C1 c a) where
     gParseSum (key, value)
         | key == pack (conName (undefined :: t c a p)) = gParseJSON value
         | otherwise = notFound $ unpack key
