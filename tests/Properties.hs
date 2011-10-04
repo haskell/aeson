@@ -56,6 +56,12 @@ toFromJSON x = case fromJSON . toJSON $ x of
                 Error _ -> False
                 Success x' -> x == x'
 
+genericToFromJSON :: (Arbitrary a, Eq a, Data a) => a -> Bool
+genericToFromJSON x = case G.fromJSON . G.toJSON $ x of
+                Error _ -> False
+                Success x' -> x == x'
+
+
 data Foo = Foo {
       fooInt :: Int
     , fooDouble :: Double
@@ -94,6 +100,20 @@ instance (Ord k, Arbitrary k, Arbitrary v) => Arbitrary (Map.Map k v) where
 instance Arbitrary Foo where
     arbitrary = liftM4 Foo arbitrary arbitrary arbitrary arbitrary
 
+
+{-
+   Test for Data.Aeson.Generic handling '_' names
+-}
+data UFoo = UFoo {
+      _UFooInt :: Int
+    , uFooInt :: Int
+    } deriving (Show, Eq, Data, Typeable)
+
+instance Arbitrary UFoo where
+    arbitrary = UFoo <$> arbitrary <*> arbitrary
+
+
+
 main :: IO ()
 main = defaultMain tests
 
@@ -130,5 +150,8 @@ tests = [
     , testProperty "Maybe Integer" (toFromJSON :: Maybe Integer -> Bool)
     , testProperty "Either Integer Double" (toFromJSON :: Either Integer Double -> Bool)
     , testProperty "Either Integer Integer" (toFromJSON :: Either Integer Integer -> Bool)
+    ],
+  testGroup "genericToFromJSON" [
+      testProperty "_UFoo" (genericToFromJSON :: UFoo -> Bool)
     ]
   ]
