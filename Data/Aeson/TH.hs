@@ -124,6 +124,10 @@ module Data.Aeson.TH
 
     , mkToJSON
     , mkParseJSON
+
+    , deriveTupleToJSON
+    , deriveTupleFromJSON
+    , deriveTuplesJSON
     ) where
 
 --------------------------------------------------------------------------------
@@ -135,20 +139,19 @@ import Data.Aeson ( toJSON, object, (.=), (.:)
                   , ToJSON, toJSON
                   , FromJSON, parseJSON
                   )
-import Data.Aeson.Types ( Value(..) )
+import Data.Aeson.Types ( Value(..), typeMismatch )
 -- from base:
 import Control.Applicative ( pure, (<$>), (<*>) )
-import Control.Monad       ( return, mapM, mzero, liftM2 )
+import Control.Monad       ( return, mapM, mzero, liftM2, fail )
 import Data.Bool           ( otherwise )
 import Data.Eq             ( (==) )
 import Data.Function       ( ($), (.), id )
 import Data.Functor        ( fmap )
-import Data.List           ( (++), foldl', map, zip, genericLength )
-import Prelude             ( String, (-), Integer, error )
+import Data.List           ( (++), foldl', map, zip, genericLength, replicate, concat )
+import Prelude             ( String, (-), Integer, error, fromInteger )
 import Text.Show           ( show )
 #if __GLASGOW_HASKELL__ < 700
-import Control.Monad       ( (>>=), fail )
-import Prelude             ( fromInteger )
+import Control.Monad       ( (>>=) )
 #endif
 -- from containers:
 import qualified Data.Map as M ( toList )
@@ -609,3 +612,119 @@ fieldNameExp :: (String -> String) -- ^ Function to change the field name.
              -> Name
              -> Q Exp
 fieldNameExp f = litE . stringL . f . nameBase
+
+--------------------------------------------------------------------------------
+-- Generators for tuple instances
+--------------------------------------------------------------------------------
+
+-- |Derive 'ToJSON' instance for n-tuple
+--
+-- Example:
+-- @
+-- $(deriveTupleToJSON 4)
+-- @
+--
+-- generates the following code (modulo minor tidying up):
+--
+-- @
+-- instance (ToJSON t1, ToJSON t2, ToJSON t3, ToJSON t4)
+--          => ToJSON (t1, t2, t3, t4) where
+--     toJSON = \(v1, v2, v3, v4) ->
+--         toJSON [toJSON v1, toJSON v2, toJSON v3, toJSON v4]
+-- @
+deriveTupleToJSON :: Integer -> Q [Dec]
+deriveTupleToJSON n = withTupleInstance ''ToJSON n funDecl
+  where
+    funDecl = funD 'toJSON [ clause [] (normalB lamBody) [] ]
+    lamBody = do
+      vars <- mapM newName [ 'v' : show i | i <- [1..n] ]
+      let appToJsonE = appE [e|toJSON|]
+      lam1E (tupP (map varP vars)) (appToJsonE (listE $ map (appToJsonE . varE) vars))
+
+-- |Derive 'FromJSON' instance for n-tuple
+--
+-- Example:
+-- @
+-- $(deriveTupleFromJson 4)
+-- @
+--
+-- generates the following code (modulo minor tidying up):
+--
+-- @
+-- instance (FromJSON t1, FromJSON t2, FromJSON t3, FromJSON t4)
+--          => FromJSON (t1, t2, t3, t4) where
+--     parseJSON = \v -> case v of
+--         Array a | V.length a == 4 -> (,,,) <$> parseJSON (a V.! 0)
+--                                              <*> parseJSON (a V.! 1)
+--                                              <*> parseJSON (a V.! 2)
+--                                              <*> parseJSON (a V.! 3)
+--                 | otherwise       -> fail $ "cannot unpack array of length "
+--                                             ++ show (V.length a)
+--                                             ++ " into a 4-tuple"
+--         _ -> typeMismatch "4-tuple" v
+-- @
+deriveTupleFromJSON :: Integer -> Q [Dec]
+deriveTupleFromJSON n = withTupleInstance ''FromJSON n funDecl
+  where
+    funDecl = funD 'parseJSON [ clause [] (normalB lamBody) [] ]
+    lamBody = do
+      v <- newName "v"
+      a <- newName "a"
+      let aexp = varE a
+          n'   = fromInteger n
+
+      lam1E (varP v) $
+          caseE (varE v)
+              [ match (conP 'Array [varP a])
+                      (guardedB [ liftM2 (,)
+                                         (normalG [e|V.length $(aexp) == n'|])
+                                         (bodyLenOk aexp)
+                                , liftM2 (,)
+                                         (normalG [e|otherwise|])
+                                         (bodyLenFail aexp)
+                                ])
+                      []
+              , match wildP (normalB $ bodyNonArr v) []
+              ]
+
+    bodyLenOk   aexp = do
+      let x:xs = [ [e|parseJSON ($(aexp) V.! i) |]
+                 | i <- [0 .. fromInteger (n-1)] ]
+      foldl' (\a b -> infixApp a [|(<*>)|] b)
+             (infixApp (tupleConE n) [|(<$>)|] x)
+             xs
+
+    bodyLenFail aexp = [e|fail $ "cannot unpack array of length " ++
+                                 show (V.length $(aexp)) ++
+                                 " into a " ++ ntuplestr |]
+
+    bodyNonArr  v = [e|typeMismatch ntuplestr $(varE v)|]
+
+    ntuplestr = show n ++ "-tuple"
+    -- |Helper for creating tuple constructors
+    tupleConE k = conE . mkName $ "("++ replicate (fromInteger (k-1)) ',' ++")"
+
+-- |Create the instance prolog for 'deriveTupleFromJSON' and 'deriveTupleToJSON'
+--
+-- @
+-- instance (T a1, T a2, ..., T an) => T (a1, a2, ..., an) where ...
+-- @
+withTupleInstance :: Name -> Integer -> DecQ -> Q [Dec]
+withTupleInstance tclass n body = do
+    vars <- mapM newName [ 't' : show i | i <- [1..n] ]
+    let vars' = map varT vars
+
+    insDecl <- instanceD (mapM (classP tclass . (:[]) ) vars')
+                         (appT (conT tclass) $
+                         foldl' appT (tupleT (fromInteger n)) vars')
+                         [body]
+
+    return [insDecl]
+
+-- |Convenience wrapper calling 'deriveTupleFromJSON' and
+-- 'deriveTupleToJSON' for multiple arities at once.
+deriveTuplesJSON :: [Integer] -> Q [Dec]
+deriveTuplesJSON ns = do
+    fromJsons <- mapM deriveTupleFromJSON ns
+    toJsons   <- mapM deriveTupleToJSON ns
+    return . concat $ fromJsons ++ toJsons
