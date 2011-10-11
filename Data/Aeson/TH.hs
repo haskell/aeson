@@ -47,21 +47,21 @@ instance 'ToJSON' a => 'ToJSON' (D a) where
       \value ->
         case value of
           Nullary ->
-              'object' ['T.pack' \"Nullary\" .= 'toJSON' ([] :: [()])]
+              'object' [T.pack \"Nullary\" .= 'toJSON' ([] :: [()])]
           Unary arg1 ->
-              'object' ['T.pack' \"Unary\" .= 'toJSON' arg1]
+              'object' [T.pack \"Unary\" .= 'toJSON' arg1]
           Product arg1 arg2 arg3 ->
-              'object' [ 'T.pack' \"Product\"
+              'object' [ T.pack \"Product\"
                        .= 'toJSON' [ 'toJSON' arg1
                                  , 'toJSON' arg2
                                  , 'toJSON' arg3
                                  ]
                      ]
           Record arg1 arg2 arg3 ->
-              'object' [ 'T.pack' \"Record\"
-                       .= 'object' [ 'T.pack' \"One\"   '.=' arg1
-                                 , 'T.pack' \"Two\"   '.=' arg2
-                                 , 'T.pack' \"Three\" '.=' arg3
+              'object' [ T.pack \"Record\"
+                       .= 'object' [ T.pack \"One\"   '.=' arg1
+                                 , T.pack \"Two\"   '.=' arg2
+                                 , T.pack \"Three\" '.=' arg3
                                  ]
                      ]
 @
@@ -72,34 +72,44 @@ instance 'FromJSON' a => 'FromJSON' (D a) where
       \value ->
         case value of
           'Object' obj ->
-            case 'M.toList' obj of
+            case M.toList obj of
               [(conKey, conVal)] ->
-                  case conKey of
-                    _ | (conKey '==' 'T.pack' \"Nullary\") ->
-                          case conVal of
-                            'Array' arr | 'V.null' arr -> 'pure' Nullary
-                            _ -> 'mzero'
-                      | (conKey '==' 'T.pack' \"Unary\") ->
-                          case conVal of
-                            arg -> Unary '<$>' 'parseJSON' arg
-                      | (conKey '==' 'T.pack' \"Product\") ->
-                          case conVal of
-                            'Array' arr | 'V.length' arr '==' 3 ->
-                              'Product' '<$>' 'parseJSON' (arr 'V.!' 0)
-                                      '<*>' 'parseJSON' (arr 'V.!' 1)
-                                      '<*>' 'parseJSON' (arr 'V.!' 2)
-                            _ -> 'mzero'
-                      | (conKey '==' 'T.pack' \"Record\") ->
-                          case conVal of
-                            'Object' obj ->
-                              Record '<$>' (obj '.:' 'T.pack' \"One\")
-                                     '<*>' (obj '.:' 'T.pack' \"Two\")
-                                     '<*>' (obj '.:' 'T.pack' \"Three\")
-                            _ -> 'mzero'
-                     | 'otherwise' -> 'mzero'
-              _ -> 'mzero'
-          _ -> 'mzero'
+                case conKey of
+                  _ | conKey == T.pack \"Nullary\" ->
+                        case conVal of
+                          'Array' arr ->
+                            if V.null arr
+                            then pure Nullary
+                            else fail \"\<error message\>\"
+                          _ -> fail \"\<error message\>\"
+                    | conKey == T.pack \"Unary\" ->
+                        case conVal of
+                          arg -> Unary \<$\> parseJSON arg
+                    | conKey == T.pack \"Product\" ->
+                        case conVal of
+                          'Array' arr ->
+                            if V.length arr == 3
+                            then Product \<$\> 'parseJSON' (arr V.! 0)
+                                         \<*\> 'parseJSON' (arr V.! 1)
+                                         \<*\> 'parseJSON' (arr V.! 2)
+                            else fail \"\<error message\>\"
+                          _ -> fail \"\<error message\>\"
+                    | conKey == T.pack \"Record\" ->
+                        case conVal of
+                          'Object' recObj ->
+                            if M.size recObj == 3
+                            then Record \<$\> recObj '.:' T.pack \"One\"
+                                        \<*\> recObj '.:' T.pack \"Two\"
+                                        \<*\> recObj '.:' T.pack \"Three\"
+                            else fail \"\<error message\>\"
+                          _ -> fail \"\<error message\>\"
+                    | otherwise -> fail \"\<error message\>\"
+              _ -> fail \"\<error message\>\"
+          _ -> fail \"\<error message\>\"
 @
+
+Note that every \"\<error message\>\" is in fact a descriptive message which
+provides as much information as is reasonable about the failed parse.
 
 Now we can use the newly created instances.
 
@@ -113,6 +123,13 @@ d = Record { testOne = 3.14159
 
 >>> fromJSON (toJSON d) == Success d
 > True
+
+Please note that you can derive instances for tuples using the following syntax:
+
+@
+-- FromJSON and ToJSON instances for 4-tuples.
+$('deriveJSON' id ''(,,,))
+@
 
 -}
 
@@ -131,31 +148,35 @@ module Data.Aeson.TH
 --------------------------------------------------------------------------------
 
 -- from aeson:
-import Data.Aeson ( toJSON, object, (.=), (.:)
+import Data.Aeson ( toJSON, Object, object, (.=)
                   , ToJSON, toJSON
                   , FromJSON, parseJSON
                   )
-import Data.Aeson.Types ( Value(..) )
+import Data.Aeson.Types ( Value(..), Parser )
 -- from base:
 import Control.Applicative ( pure, (<$>), (<*>) )
-import Control.Monad       ( return, mapM, mzero, liftM2 )
+import Control.Monad       ( return, mapM, liftM2, fail )
 import Data.Bool           ( otherwise )
 import Data.Eq             ( (==) )
 import Data.Function       ( ($), (.), id )
 import Data.Functor        ( fmap )
-import Data.List           ( (++), foldl', map, zip, genericLength )
+import Data.List           ( (++), foldl, foldl', intercalate
+                           , length, map, zip, genericLength
+                           )
+import Data.Maybe          ( Maybe(Nothing, Just) )
 import Prelude             ( String, (-), Integer, error )
+import Text.Printf         ( printf )
 import Text.Show           ( show )
 #if __GLASGOW_HASKELL__ < 700
 import Control.Monad       ( (>>=), fail )
 import Prelude             ( fromInteger )
 #endif
 -- from containers:
-import qualified Data.Map as M ( toList )
+import qualified Data.Map as M ( lookup, toList, size )
 -- from template-haskell:
 import Language.Haskell.TH
 -- from text:
-import qualified Data.Text as T ( pack )
+import qualified Data.Text as T ( Text, pack, unpack )
 -- from vector:
 import qualified Data.Vector as V ( (!), null, length )
 
@@ -241,12 +262,12 @@ deriveToJSON withField name =
 -- Example:
 --
 -- @
--- data Foo = Foo 'Int'
+-- data Foo = Foo Int
 -- @
 --
 -- @
 -- encodeFoo :: Foo -> 'Value'
--- encodeFoo = $('mkToJSON' 'id' ''Foo)
+-- encodeFoo = $('mkToJSON' id ''Foo)
 -- @
 --
 -- This will splice in the following code:
@@ -352,8 +373,8 @@ encodeArgs withExp withField (ForallC _ _ con) =
 -- Example:
 --
 -- @
--- data Foo = Foo 'Char' 'Int'
--- $('deriveFromJSON' 'id' ''Foo)
+-- data Foo = Foo Char Int
+-- $('deriveFromJSON' id ''Foo)
 -- @
 --
 -- This will splice in the following code:
@@ -362,10 +383,12 @@ encodeArgs withExp withField (ForallC _ _ con) =
 -- instance 'FromJSON' Foo where
 --     'parseJSON' =
 --         \value -> case value of
---                     'Array' arr | ('V.length' arr '==' 2) ->
---                        Foo '<$>' 'parseJSON' (arr 'V.!' 0)
---                            '<*>' 'parseJSON' (arr 'V.!' 1)
---                     _ -> 'mzero'
+--                     'Array' arr ->
+--                       if (V.length arr == 2)
+--                       then Foo \<$\> 'parseJSON' (arr V.! 0)
+--                                \<*\> 'parseJSON' (arr V.! 1)
+--                       else fail \"\<error message\>\"
+--                     other -> fail \"\<error message\>\"
 -- @
 deriveFromJSON :: (String -> String)
                -- ^ Function to change field names.
@@ -382,7 +405,7 @@ deriveFromJSON withField name =
                   (classType `appT` instanceType)
                   [ funD 'parseJSON
                          [ clause []
-                                  (normalB $ consFromJSON withField cons)
+                                  (normalB $ consFromJSON name withField cons)
                                   []
                          ]
                   ]
@@ -402,36 +425,38 @@ deriveFromJSON withField name =
 --
 -- @
 -- parseFoo :: 'Value' -> 'Parser' Foo
--- parseFoo = $('mkParseJSON' 'id' ''Foo)
+-- parseFoo = $('mkParseJSON' id ''Foo)
 -- @
 --
 -- This will splice in the following code:
 --
 -- @
--- \\value -> case value of arg -> Foo '<$>' 'parseJSON' arg
+-- \\value -> case value of arg -> Foo \<$\> 'parseJSON' arg
 -- @
 mkParseJSON :: (String -> String) -- ^ Function to change field names.
             -> Name -- ^ Name of the encoded type.
             -> Q Exp
 mkParseJSON withField name =
-    withType name (\_ cons -> consFromJSON withField cons)
+    withType name (\_ cons -> consFromJSON name withField cons)
 
 -- | Helper function used by both 'deriveFromJSON' and 'mkParseJSON'. Generates
 -- code to parse the JSON encoding of a number of constructors. All constructors
 -- must be from the same type.
-consFromJSON :: (String -> String)
+consFromJSON :: Name
+             -- ^ Name of the type to which the constructors belong.
+             -> (String -> String)
              -- ^ Function to change field names.
              -> [Con]
              -- ^ Constructors for which to generate JSON parsing code.
              -> Q Exp
-consFromJSON _ [] = error $ "Data.Aeson.TH.consFromJSON: "
-                            ++ "Not a single constructor given!"
-consFromJSON withField [con] = do
+consFromJSON _ _ [] = error $ "Data.Aeson.TH.consFromJSON: "
+                              ++ "Not a single constructor given!"
+consFromJSON tName withField [con] = do
   value <- newName "value"
   lam1E (varP value)
         $ caseE (varE value)
-                (parseArgs withField con)
-consFromJSON withField cons = do
+                (parseArgs tName withField con)
+consFromJSON tName withField cons = do
   value  <- newName "value"
   obj    <- newName "obj"
   conKey <- newName "conKey"
@@ -444,8 +469,15 @@ consFromJSON withField cons = do
                       [ match (listP [tupP [varP conKey, varP conVal]])
                               (normalB caseKey)
                               []
-                      , errorMatch
+                      , do other <- newName "other"
+                           match (varP other)
+                                 (normalB $ [|wrongPairCountFail|]
+                                            `appE` (litE $ stringL $ show tName)
+                                            `appE` ([|show . length|] `appE` varE other)
+                                 )
+                                 []
                       ]
+
       caseKey = caseE (varE conKey)
                       [match wildP (guardedB guards) []]
       guards = [ do g <- normalG $ infixApp (varE conKey)
@@ -454,44 +486,59 @@ consFromJSON withField cons = do
                                               `appE` conNameExp con
                                             )
                     e <- caseE (varE conVal)
-                               (parseArgs withField con)
+                               (parseArgs tName withField con)
                     return (g, e)
                | con <- cons
                ]
                ++
-               [liftM2 (,) (normalG [e|otherwise|]) [e|mzero|]]
+               [ liftM2 (,)
+                        (normalG [e|otherwise|])
+                        ( [|conNotFoundFail|]
+                          `appE` (litE $ stringL $ show tName)
+                          `appE` listE (map (litE . stringL . nameBase . getConName) cons)
+                          `appE` ([|T.unpack|] `appE` varE conKey)
+                        )
+               ]
 
   lam1E (varP value)
         $ caseE (varE value)
                 [ match (conP 'Object [varP obj])
                         (normalB caseLst)
                         []
-                , errorMatch
+                , do other <- newName "other"
+                     match (varP other)
+                           ( normalB
+                           $ [|noObjectFail|]
+                             `appE` (litE $ stringL $ show tName)
+                             `appE` ([|valueConName|] `appE` varE other)
+                           )
+                           []
                 ]
-  where
-    -- Makes a string literal expression from a constructor's name.
-    conNameExp :: Con -> Q Exp
-    conNameExp = litE . stringL . nameBase . getConName
 
--- | Generates code to parse the JSON encoding of a single
--- constructor.
-parseArgs :: (String -> String) -- ^ Function to change field names.
+-- | Generates code to parse the JSON encoding of a single constructor.
+parseArgs :: Name -- ^ Name of the type to which the constructor belongs.
+          -> (String -> String) -- ^ Function to change field names.
           -> Con -- ^ Constructor for which to generate JSON parsing code.
           -> [Q Match]
 -- Nullary constructors.
-parseArgs _ (NormalC conName []) =
+parseArgs tName _ (NormalC conName []) =
     [ do arr <- newName "arr"
-         g <- normalG $ [|V.null|] `appE` varE arr
-         e <- [e|pure|] `appE` conE conName
-         -- TODO: Use applicative style: guardedB [(,) <$> g' <*> e']
-         -- But first need to have "instance Applicative Q".
          match (conP 'Array [varP arr])
-               (guardedB [return (g, e)])
+               ( normalB $ condE ([|V.null|] `appE` varE arr)
+                                 ([e|pure|] `appE` conE conName)
+                                 ( parseTypeMismatch tName conName
+                                     (litE $ stringL "an empty Array")
+                                     ( infixApp (litE $ stringL $ "Array of length ")
+                                                [|(++)|]
+                                                ([|show . V.length|] `appE` varE arr)
+                                     )
+                                 )
+               )
                []
-    , errorMatch
+    , matchFailed tName conName "Array"
     ]
 -- Unary constructors.
-parseArgs _ (NormalC conName [_]) =
+parseArgs _ _ (NormalC conName [_]) =
     [ do arg <- newName "arg"
          match (varP arg)
                ( normalB $ infixApp (conE conName)
@@ -500,46 +547,59 @@ parseArgs _ (NormalC conName [_]) =
                )
                []
     ]
-
 -- Polyadic constructors.
-parseArgs _ (NormalC conName ts) = parseProduct conName $ genericLength ts
+parseArgs tName _ (NormalC conName ts) = parseProduct tName conName $ genericLength ts
 -- Records.
-parseArgs withField (RecC conName ts) =
-    [ do obj <- newName "obj"
-         -- List of: "obj .: "<FIELD>""
-         let x:xs = [ infixApp (varE obj)
-                               [|(.:)|]
-                               ( [e|T.pack|]
-                                 `appE`
-                                 fieldNameExp withField field
-                               )
+parseArgs tName withField (RecC conName ts) =
+    [ do obj <- newName "recObj"
+         let x:xs = [ [|lookupField|]
+                      `appE` (litE $ stringL $ show tName)
+                      `appE` (litE $ stringL $ nameBase conName)
+                      `appE` (varE obj)
+                      `appE` ( [e|T.pack|]
+                               `appE`
+                               fieldNameExp withField field
+                             )
                     | (field, _, _) <- ts
                     ]
          match (conP 'Object [varP obj])
-               ( normalB $ foldl' (\a b -> infixApp a [|(<*>)|] b)
-                                  (infixApp (conE conName) [|(<$>)|] x)
-                                  xs
+               ( normalB $ condE ( infixApp ([|M.size|] `appE` varE obj)
+                                            [|(==)|]
+                                            (litE $ integerL $ genericLength ts)
+                                 )
+                                 ( foldl' (\a b -> infixApp a [|(<*>)|] b)
+                                          (infixApp (conE conName) [|(<$>)|] x)
+                                          xs
+                                 )
+                                 ( parseTypeMismatch tName conName
+                                     ( litE $ stringL $ "Object with "
+                                                        ++ show (length ts)
+                                                        ++ " name/value pairs"
+                                     )
+                                     ( infixApp ([|show . M.size|] `appE` varE obj)
+                                                [|(++)|]
+                                                (litE $ stringL $ " name/value pairs")
+                                     )
+                                 )
                )
                []
-    , errorMatch
+    , matchFailed tName conName "Object"
     ]
 -- Infix constructors. Apart from syntax these are the same as
 -- polyadic constructors.
-parseArgs _ (InfixC _ conName _) = parseProduct conName 2
+parseArgs tName _ (InfixC _ conName _) = parseProduct tName conName 2
 -- Existentially quantified constructors. We ignore the quantifiers
 -- and proceed with the contained constructor.
-parseArgs withField (ForallC _ _ con) = parseArgs withField con
+parseArgs tName withField (ForallC _ _ con) = parseArgs tName withField con
 
 -- | Generates code to parse the JSON encoding of an n-ary
 -- constructor.
-parseProduct :: Name -- ^ 'Con'structor name.
+parseProduct :: Name -- ^ Name of the type to which the constructor belongs.
+             -> Name -- ^ 'Con'structor name.
              -> Integer -- ^ 'Con'structor arity.
              -> [Q Match]
-parseProduct conName numArgs =
+parseProduct tName conName numArgs =
     [ do arr <- newName "arr"
-         g <- normalG $ infixApp ([|V.length|] `appE` varE arr)
-                                 [|(==)|]
-                                 (litE $ integerL numArgs)
          -- List of: "parseJSON (arr V.! <IX>)"
          let x:xs = [ [|parseJSON|]
                       `appE`
@@ -548,21 +608,81 @@ parseProduct conName numArgs =
                                (litE $ integerL ix)
                     | ix <- [0 .. numArgs - 1]
                     ]
-         e <- foldl' (\a b -> infixApp a [|(<*>)|] b)
-                     (infixApp (conE conName) [|(<$>)|] x)
-                     xs
          match (conP 'Array [varP arr])
-               (guardedB [return (g, e)])
+               (normalB $ condE ( infixApp ([|V.length|] `appE` varE arr)
+                                           [|(==)|]
+                                           (litE $ integerL numArgs)
+                                )
+                                ( foldl' (\a b -> infixApp a [|(<*>)|] b)
+                                         (infixApp (conE conName) [|(<$>)|] x)
+                                         xs
+                                )
+                                ( parseTypeMismatch tName conName
+                                    (litE $ stringL $ "Array of length " ++ show numArgs)
+                                    ( infixApp (litE $ stringL $ "Array of length ")
+                                               [|(++)|]
+                                               ([|show . V.length|] `appE` varE arr)
+                                    )
+                                )
+               )
                []
-    , errorMatch
+    , matchFailed tName conName "Array"
     ]
 
--- |
--- @
---   _ -> 'mzero'
--- @
-errorMatch :: Q Match
-errorMatch = match wildP (normalB [|mzero|]) []
+
+--------------------------------------------------------------------------------
+-- Parsing errors
+--------------------------------------------------------------------------------
+
+matchFailed :: Name -> Name -> String -> MatchQ
+matchFailed tName conName expected = do
+  other <- newName "other"
+  match (varP other)
+        ( normalB $ parseTypeMismatch tName conName
+                      (litE $ stringL expected)
+                      ([|valueConName|] `appE` varE other)
+        )
+        []
+
+parseTypeMismatch :: Name -> Name -> ExpQ -> ExpQ -> ExpQ
+parseTypeMismatch tName conName expected actual =
+    foldl appE
+          [|parseTypeMismatch'|]
+          [ litE $ stringL $ nameBase conName
+          , litE $ stringL $ show tName
+          , expected
+          , actual
+          ]
+
+lookupField :: (FromJSON a) => String -> String -> Object -> T.Text -> Parser a
+lookupField tName rec obj key =
+    case M.lookup key obj of
+      Nothing -> unknownFieldFail tName rec (T.unpack key)
+      Just v  -> parseJSON v
+
+unknownFieldFail :: String -> String -> String -> Parser fail
+unknownFieldFail tName rec key =
+    fail $ printf "When parsing the record %s of type %s the key %s was not present."
+                  rec tName key
+
+noObjectFail :: String -> String -> Parser fail
+noObjectFail t o =
+    fail $ printf "When parsing %s expected Object but got %s." t o
+
+wrongPairCountFail :: String -> String -> Parser fail
+wrongPairCountFail t n =
+    fail $ printf "When parsing %s expected an Object with a single name/value pair but got %s pairs."
+                  t n
+
+conNotFoundFail :: String -> [String] -> String -> Parser fail
+conNotFoundFail t cs o =
+    fail $ printf "When parsing %s expected an Object with a name/value pair where the name is one of [%s], but got %s."
+                  t (intercalate ", " cs) o
+
+parseTypeMismatch' :: String -> String -> String -> String -> Parser fail
+parseTypeMismatch' tName conName expected actual =
+    fail $ printf "When parsing the constructor %s of type %s expected %s but got %s."
+                  conName tName expected actual
 
 
 --------------------------------------------------------------------------------
@@ -604,8 +724,21 @@ tvbName :: TyVarBndr -> Name
 tvbName (PlainTV  name  ) = name
 tvbName (KindedTV name _) = name
 
+-- | Makes a string literal expression from a constructor's name.
+conNameExp :: Con -> Q Exp
+conNameExp = litE . stringL . nameBase . getConName
+
 -- | Creates a string literal expression from a record field name.
 fieldNameExp :: (String -> String) -- ^ Function to change the field name.
              -> Name
              -> Q Exp
 fieldNameExp f = litE . stringL . f . nameBase
+
+-- | The name of the outermost 'Value' constructor.
+valueConName :: Value -> String
+valueConName (Object _) = "Object"
+valueConName (Array  _) = "Array"
+valueConName (String _) = "String"
+valueConName (Number _) = "Number"
+valueConName (Bool   _) = "Boolean"
+valueConName Null       = "Null"
