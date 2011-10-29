@@ -918,66 +918,29 @@ typeMismatch expected actual =
 
 #ifdef GENERICS
 --------------------------------------------------------------------------------
--- Generic toJSON and fromJSON
+-- Generic toJSON
 
 class GToJSON f where
     gToJSON :: f a -> Value
 
-class GFromJSON f where
-    gParseJSON :: Value -> Parser (f a)
-
---------------------------------------------------------------------------------
-
 instance (GToJSON a) => GToJSON (M1 i c a) where
     gToJSON = gToJSON . unM1
-
-instance (GFromJSON a) => GFromJSON (M1 i c a) where
-    gParseJSON = fmap M1 . gParseJSON
-
---------------------------------------------------------------------------------
 
 instance (ToJSON a) => GToJSON (K1 i a) where
     gToJSON = toJSON . unK1
 
-instance (FromJSON a) => GFromJSON (K1 i a) where
-    gParseJSON = fmap K1 . parseJSON
-
---------------------------------------------------------------------------------
-
 instance GToJSON U1 where
     gToJSON _ = emptyArray
-
-instance GFromJSON U1 where
-    gParseJSON v
-        | isEmptyArray v = pure U1
-        | otherwise      = typeMismatch "unary constructor (U1)" v
-
---------------------------------------------------------------------------------
 
 instance (ConsToJSON a) => GToJSON (C1 c a) where
     gToJSON = consToJSON . unM1
 
-instance (ConsFromJSON a) => GFromJSON (C1 c a) where
-    gParseJSON = fmap M1 . consParseJSON
-
---------------------------------------------------------------------------------
-
 instance (GProductToValues a, GProductToValues b) => GToJSON (a :*: b) where
     gToJSON = toJSON . toList . gProductToValues
-
-instance (GFromProduct a, GFromProduct b) => GFromJSON (a :*: b) where
-    gParseJSON (Array arr) = gParseProduct arr
-    gParseJSON v = typeMismatch "product (:*:)" v
-
---------------------------------------------------------------------------------
 
 instance (GObject a, GObject b) => GToJSON (a :+: b) where
     gToJSON (L1 x) = Object $ gObject x
     gToJSON (R1 x) = Object $ gObject x
-
-instance (GFromSum a, GFromSum b) => GFromJSON (a :+: b) where
-    gParseJSON (Object (M.toList -> [keyVal])) = gParseSum keyVal
-    gParseJSON v = typeMismatch "sum (:+:)" v
 
 --------------------------------------------------------------------------------
 
@@ -992,53 +955,6 @@ instance (GRecordToObject f) => ConsToJSON' True f where
 
 instance GToJSON f => ConsToJSON' False f where
     consToJSON' = Tagged gToJSON
-
---------------------------------------------------------------------------------
-
-class ConsFromJSON    f where consParseJSON  ::           Value -> Parser (f a)
-class ConsFromJSON' b f where consParseJSON' :: Tagged b (Value -> Parser (f a))
-
-instance (IsRecord f b, ConsFromJSON' b f) => ConsFromJSON f where
-    consParseJSON = unTagged (consParseJSON' :: Tagged b (Value -> Parser (f a)))
-
-instance (GFromRecord f) => ConsFromJSON' True f where
-    consParseJSON' = Tagged parseRecord
-        where
-          parseRecord (Object obj) = gParseRecord obj
-          parseRecord v = typeMismatch "record (:*:)" v
-
-instance (GFromJSON f) => ConsFromJSON' False f where
-    consParseJSON' = Tagged gParseJSON
-
---------------------------------------------------------------------------------
-
-newtype Tagged s b = Tagged {unTagged :: b}
-
-data True
-data False
-
-class IsRecord (f :: * -> *) b | f -> b
-
-instance (IsRecord f b) => IsRecord (f :*: g) b
-instance IsRecord (M1 S NoSelector f) False
-instance (IsRecord f b) => IsRecord (M1 S c f) b
-instance IsRecord (K1 i c) True
-instance IsRecord U1 False
-
---------------------------------------------------------------------------------
-
-class GFromRecord f where
-    gParseRecord :: Object -> Parser (f a)
-
-instance (GFromRecord a, GFromRecord b) => GFromRecord (a :*: b) where
-    gParseRecord obj = (:*:) <$> gParseRecord obj <*> gParseRecord obj
-
-instance (Selector s, GFromJSON a) => GFromRecord (S1 s a) where
-    gParseRecord obj = case M.lookup (T.pack key) obj of
-                         Nothing -> notFound key
-                         Just v  -> gParseJSON v
-        where
-          key = selName (undefined :: t s a p)
 
 --------------------------------------------------------------------------------
 
@@ -1064,6 +980,78 @@ instance (GToJSON a) => GProductToValues a where
 
 --------------------------------------------------------------------------------
 
+class GObject f where
+    gObject :: f a -> Object
+
+instance (GObject a, GObject b) => GObject (a :+: b) where
+    gObject (L1 x) = gObject x
+    gObject (R1 x) = gObject x
+
+instance (Constructor c, GToJSON a, ConsToJSON a) => GObject (C1 c a) where
+    gObject m1 = M.singleton (pack (conName m1)) (gToJSON m1)
+
+--------------------------------------------------------------------------------
+-- Generic parseJSON
+
+class GFromJSON f where
+    gParseJSON :: Value -> Parser (f a)
+
+instance (GFromJSON a) => GFromJSON (M1 i c a) where
+    gParseJSON = fmap M1 . gParseJSON
+
+instance (FromJSON a) => GFromJSON (K1 i a) where
+    gParseJSON = fmap K1 . parseJSON
+
+instance GFromJSON U1 where
+    gParseJSON v
+        | isEmptyArray v = pure U1
+        | otherwise      = typeMismatch "unit constructor (U1)" v
+
+instance (ConsFromJSON a) => GFromJSON (C1 c a) where
+    gParseJSON = fmap M1 . consParseJSON
+
+instance (GFromProduct a, GFromProduct b) => GFromJSON (a :*: b) where
+    gParseJSON (Array arr) = gParseProduct arr
+    gParseJSON v = typeMismatch "product (:*:)" v
+
+instance (GFromSum a, GFromSum b) => GFromJSON (a :+: b) where
+    gParseJSON (Object (M.toList -> [keyVal])) = gParseSum keyVal
+    gParseJSON v = typeMismatch "sum (:+:)" v
+
+--------------------------------------------------------------------------------
+
+class ConsFromJSON    f where consParseJSON  ::           Value -> Parser (f a)
+class ConsFromJSON' b f where consParseJSON' :: Tagged b (Value -> Parser (f a))
+
+instance (IsRecord f b, ConsFromJSON' b f) => ConsFromJSON f where
+    consParseJSON = unTagged (consParseJSON' :: Tagged b (Value -> Parser (f a)))
+
+instance (GFromRecord f) => ConsFromJSON' True f where
+    consParseJSON' = Tagged parseRecord
+        where
+          parseRecord (Object obj) = gParseRecord obj
+          parseRecord v = typeMismatch "record (:*:)" v
+
+instance (GFromJSON f) => ConsFromJSON' False f where
+    consParseJSON' = Tagged gParseJSON
+
+--------------------------------------------------------------------------------
+
+class GFromRecord f where
+    gParseRecord :: Object -> Parser (f a)
+
+instance (GFromRecord a, GFromRecord b) => GFromRecord (a :*: b) where
+    gParseRecord obj = (:*:) <$> gParseRecord obj <*> gParseRecord obj
+
+instance (Selector s, GFromJSON a) => GFromRecord (S1 s a) where
+    gParseRecord obj = case M.lookup (T.pack key) obj of
+                         Nothing -> notFound key
+                         Just v  -> gParseJSON v
+        where
+          key = selName (undefined :: t s a p)
+
+--------------------------------------------------------------------------------
+
 class GFromProduct f where
     gParseProduct :: Array -> Parser (f a)
 
@@ -1075,19 +1063,6 @@ instance (GFromProduct a, GFromProduct b) => GFromProduct (a :*: b) where
 instance (GFromJSON a) => GFromProduct a where
     gParseProduct ((!? 0) -> Just v) = gParseJSON v
     gParseProduct _ = fail "Array to small"
-
---------------------------------------------------------------------------------
-
-class GObject f where
-    gObject :: f a -> Object
-
-instance (GObject a, GObject b) => GObject (a :+: b) where
-    gObject (L1 x) = gObject x
-    gObject (R1 x) = gObject x
-
-instance (Constructor c, GToJSON a, ConsToJSON a)
-    => GObject (C1 c a) where
-    gObject m1 = M.singleton (pack (conName m1)) (gToJSON m1)
 
 --------------------------------------------------------------------------------
 
@@ -1104,6 +1079,21 @@ instance (Constructor c, GFromJSON a, ConsFromJSON a) => GFromSum (C1 c a) where
 
 notFound :: String -> Parser a
 notFound key = fail $ "The key \"" ++ key ++ "\" was not found"
+
+--------------------------------------------------------------------------------
+
+newtype Tagged s b = Tagged {unTagged :: b}
+
+data True
+data False
+
+class IsRecord (f :: * -> *) b | f -> b
+
+instance (IsRecord f b) => IsRecord (f :*: g) b
+instance IsRecord (M1 S NoSelector f) False
+instance (IsRecord f b) => IsRecord (M1 S c f) b
+instance IsRecord (K1 i c) True
+instance IsRecord U1 False
 
 --------------------------------------------------------------------------------
 
