@@ -17,6 +17,9 @@ description:
     A JSON parsing and encoding library optimized for ease of use
     and high performance.
     .
+    To get started, see the documentation for the @Data.Aeson@ module
+    below.
+    .
     /Note/: if you use GHCi or Template Haskell, please see the
     @README@ file for important details about building this package,
     and other packages that depend on it:
@@ -102,6 +105,9 @@ flag developer
   description: operate in developer mode
   default: False
 
+flag old-deepseq-containers
+  default: False
+
 library
   exposed-modules:
     Data.Aeson
@@ -121,8 +127,6 @@ library
     blaze-builder >= 0.2.1.4,
     blaze-textual >= 0.2.0.2,
     bytestring,
-    containers,
-    deepseq < 1.2,
     hashable >= 1.1.2.0,
     mtl,
     old-locale,
@@ -132,6 +136,15 @@ library
     time,
     unordered-containers >= 0.1.3.0,
     vector >= 0.7.1
+
+  if flag(old-deepseq-containers)
+    build-depends:
+      containers < 0.4.2,
+      deepseq < 1.2
+  else
+    build-depends:
+      containers >= 0.4.2,
+      deepseq >= 1.2
 
   if flag(developer)
     ghc-options: -Werror
