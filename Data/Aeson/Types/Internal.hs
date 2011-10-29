@@ -313,20 +313,36 @@ object = Object . M.fromList
 --
 -- An example type and instance:
 --
--- @data Coord { x :: Double, y :: Double }
+-- @{-\# LANGUAGE OverloadedStrings #-}
+--
+-- data Coord { x :: Double, y :: Double }
 --
 -- instance ToJSON Coord where
 --   toJSON (Coord x y) = 'object' [\"x\" '.=' x, \"y\" '.=' y]
 -- @
 --
--- This example assumes the OverloadedStrings language option is enabled.
+-- Note the use of the @OverloadedStrings@ language extension which enables
+-- 'Text' values to be written as string literals.
 --
--- If your compiler has support for the @DeriveGeneric@ and @DefaultSignatures@
--- language extensions, @toJSON@ will have a default generic implementation.
+-- Instead of manually writing your 'ToJSON' instance, there are three options
+-- to do it automatically:
 --
--- To use this, simply add a @deriving 'Generic'@ clause to your datatype and
--- declare a @ToJSON@ instance for your datatype without giving a definition for
--- @toJSON@. For example the previous example can be simplified to just:
+-- * 'Data.Aeson.TH' provides template-haskell functions which will derive an
+-- instance at compile-time. The generated instance is optimized for your type
+-- so will probably be more efficient than the following two options:
+--
+-- * 'Data.Aeson.Generic' provides a generic @toJSON@ function that accepts any
+-- type which is an instance of 'Data'.
+-- 
+-- * If your compiler has support for the @DeriveGeneric@ and
+-- @DefaultSignatures@ language extensions, @toJSON@ will have a default generic
+-- implementation.
+--
+-- To use the latter option, simply add a @deriving 'Generic'@ clause to your
+-- datatype and declare a @ToJSON@ instance for your datatype without giving a
+-- definition for @toJSON@.
+--
+-- For example the previous example can be simplified to just:
 --
 -- @{-\# LANGUAGE DeriveGeneric \#-}
 --
@@ -336,9 +352,6 @@ object = Object . M.fromList
 --
 -- instance ToJSON Coord
 -- @
---
--- (Another way to automatically derive a @ToJSON@ instance is to use the
--- template-haskell template 'deriveToJSON' from "Data.Aeson.TH".)
 class ToJSON a where
     toJSON   :: a -> Value
 
@@ -356,25 +369,41 @@ class ToJSON a where
 --
 -- An example type and instance:
 --
--- @data Coord { x :: Double, y :: Double }
+-- @{-\# LANGUAGE OverloadedStrings #-}
 --
+-- data Coord { x :: Double, y :: Double }
+-- 
 -- instance FromJSON Coord where
---   parseJSON ('Object' v) = Coord '<$>'
---                         v '.:' \"x\" '<*>'
---                         v '.:' \"y\"
+--   parseJSON ('Object' v) = Coord    '<$>'
+--                          v '.:' \"x\" '<*>'
+--                          v '.:' \"y\"
 --
 --   \-- A non-'Object' value is of the wrong type, so use 'mzero' to fail.
 --   parseJSON _          = 'mzero'
 -- @
 --
--- This example assumes the OverloadedStrings language option is enabled.
+-- Note the use of the @OverloadedStrings@ language extension which enables
+-- 'Text' values to be written as string literals.
 --
--- If your compiler has support for the @DeriveGeneric@ and @DefaultSignatures@
--- language extensions, @parseJSON@ will have a default generic implementation.
+-- Instead of manually writing your 'FromJSON' instance, there are three options
+-- to do it automatically:
+--
+-- * 'Data.Aeson.TH' provides template-haskell functions which will derive an
+-- instance at compile-time. The generated instance is optimized for your type
+-- so will probably be more efficient than the following two options:
+--
+-- * 'Data.Aeson.Generic' provides a generic @fromJSON@ function that parses to
+-- any type which is an instance of 'Data'.
+--
+-- * If your compiler has support for the @DeriveGeneric@ and
+-- @DefaultSignatures@ language extensions, @parseJSON@ will have a default
+-- generic implementation.
 --
 -- To use this, simply add a @deriving 'Generic'@ clause to your datatype and
--- declare a @FromJSON@ instance for your datatype without giving a definition for
--- @parseJSON@. For example the previous example can be simplified to just:
+-- declare a @FromJSON@ instance for your datatype without giving a definition
+-- for @parseJSON@.
+--
+-- For example the previous example can be simplified to just:
 --
 -- @{-\# LANGUAGE DeriveGeneric \#-}
 --
@@ -384,9 +413,6 @@ class ToJSON a where
 --
 -- instance FromJSON Coord
 -- @
---
--- (Another way to automatically derive a @FromJSON@ instance is to use the
--- template-haskell template 'deriveFromJSON' from "Data.Aeson.TH".)
 class FromJSON a where
     parseJSON :: Value -> Parser a
 
