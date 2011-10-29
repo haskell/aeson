@@ -132,7 +132,7 @@ library
     old-locale,
     syb,
     text >= 0.11.0.2,
-    template-haskell >= 2.5,
+    template-haskell >= 2.4,
     time,
     unordered-containers >= 0.1.3.0,
     vector >= 0.7
