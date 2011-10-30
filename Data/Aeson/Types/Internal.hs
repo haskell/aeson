@@ -4,8 +4,14 @@
     ScopedTypeVariables, PatternGuards #-}
 
 {-# LANGUAGE CPP #-}
-#ifdef DEFAULT_SIGNATURES
-{-# LANGUAGE DefaultSignatures #-}
+#ifdef GENERICS
+{-# LANGUAGE DefaultSignatures
+           , TypeOperators
+           , EmptyDataDecls
+           , KindSignatures
+           , MultiParamTypeClasses
+           , FunctionalDependencies
+  #-}
 #endif
 
 -- |
@@ -23,7 +29,7 @@ module Data.Aeson.Types.Internal
     -- * Core JSON types
       Value(..)
     , Array
-    , emptyArray
+    , emptyArray, isEmptyArray
     , Pair
     , Object
     , emptyObject
@@ -44,33 +50,28 @@ module Data.Aeson.Types.Internal
     , (.:)
     , (.:?)
     , object
-    -- * Generic toJSON and fromJSON
-    , genericToJSON
-    , genericFromJSON
     ) where
 
 import Control.Applicative
-import Control.Arrow (first)
-import Control.Monad.State.Strict
 import Control.DeepSeq (NFData(..))
+import Control.Monad.State.Strict
 import Data.Aeson.Functions
 import Data.Attoparsec.Char8 (Number(..))
-import Data.Generics
+import Data.Data (Data)
 import Data.Hashable (Hashable(..))
 import Data.Int (Int8, Int16, Int32, Int64)
-import Data.IntSet (IntSet)
 import Data.List (foldl')
 import Data.Map (Map)
-import Data.Maybe (fromJust)
 import Data.Monoid (Dual(..), First(..), Last(..))
 import Data.Monoid (Monoid(..))
 import Data.Ratio (Ratio)
 import Data.String (IsString(..))
-import Data.Text (Text, pack, unpack)
 import Data.Text.Encoding (encodeUtf8)
+import Data.Text (Text, pack, unpack)
 import Data.Time.Clock (UTCTime)
 import Data.Time.Format (FormatTime, formatTime, parseTime)
-import Data.Vector (Vector)
+import Data.Typeable (Typeable)
+import Data.Vector (Vector, (!?))
 import Data.Word (Word, Word8, Word16, Word32, Word64)
 import Foreign.Storable (Storable)
 import System.Locale (defaultTimeLocale)
@@ -84,13 +85,15 @@ import qualified Data.Map as M
 import qualified Data.Set as Set
 import qualified Data.Text as T
 import qualified Data.Text.Lazy as LT
-import qualified Data.Traversable as T
 import qualified Data.Vector as V
 import qualified Data.Vector.Storable as VS
 import qualified Data.Vector.Primitive as VP
 import qualified Data.Vector.Unboxed as VU
 import qualified Data.Vector.Generic as VG
 
+#ifdef GENERICS
+import GHC.Generics
+#endif
 
 -- | The result of running a 'Parser'.
 data Result a = Error String
@@ -170,7 +173,7 @@ instance Applicative Parser where
     {-# INLINE pure #-}
     (<*>) = apP
     {-# INLINE (<*>) #-}
-    
+
 instance Alternative Parser where
     empty = fail "empty"
     {-# INLINE empty #-}
@@ -235,6 +238,12 @@ instance Hashable Value where
 -- | The empty array.
 emptyArray :: Value
 emptyArray = Array V.empty
+
+-- | Determines if the 'Value' is an empty 'Array'.
+-- Note that: @isEmptyArray 'emptyArray'@.
+isEmptyArray :: Value -> Bool
+isEmptyArray (Array arr) = V.null arr
+isEmptyArray _ = False
 
 -- | The empty object.
 emptyObject :: Value
@@ -312,23 +321,43 @@ object = Object . M.fromList
 --   toJSON (Coord x y) = 'object' [\"x\" '.=' x, \"y\" '.=' y]
 -- @
 --
--- We use the @OverloadedStrings@ language extension so that we can
--- write 'Text' values as normal double-quoted strings.
+-- Note the use of the @OverloadedStrings@ language extension which enables
+-- 'Text' values to be written as string literals.
 --
--- If you do not want to write your own 'ToJSON' instances, you have
--- two options:
+-- Instead of manually writing your 'ToJSON' instance, there are three options
+-- to do it automatically:
 --
--- * The 'Data.Aeson.TH' module will automatically derive an instance
---   for you with a single line of code.
+-- * 'Data.Aeson.TH' provides template-haskell functions which will derive an
+-- instance at compile-time. The generated instance is optimized for your type
+-- so will probably be more efficient than the following two options:
 --
--- * The 'Data.Aeson.Generic' module will work with most data types
---   that are instances of 'Data' (but note, this can be slow).
+-- * 'Data.Aeson.Generic' provides a generic @toJSON@ function that accepts any
+-- type which is an instance of 'Data'.
+-- 
+-- * If your compiler has support for the @DeriveGeneric@ and
+-- @DefaultSignatures@ language extensions, @toJSON@ will have a default generic
+-- implementation.
+--
+-- To use the latter option, simply add a @deriving 'Generic'@ clause to your
+-- datatype and declare a @ToJSON@ instance for your datatype without giving a
+-- definition for @toJSON@.
+--
+-- For example the previous example can be simplified to just:
+--
+-- @{-\# LANGUAGE DeriveGeneric \#-}
+--
+-- import GHC.Generics
+--
+-- data Coord { x :: Double, y :: Double } deriving Generic
+--
+-- instance ToJSON Coord
+-- @
 class ToJSON a where
     toJSON   :: a -> Value
 
-#ifdef DEFAULT_SIGNATURES
-    default toJSON :: Data a => a -> Value
-    toJSON = genericToJSON
+#ifdef GENERICS
+    default toJSON :: (Generic a, GToJSON (Rep a)) => a -> Value
+    toJSON = gToJSON . from
 #endif
 
 -- | A type that can be converted from JSON, with the possibility of
@@ -345,38 +374,58 @@ class ToJSON a where
 -- data Coord { x :: Double, y :: Double }
 -- 
 -- instance FromJSON Coord where
---   parseJSON ('Object' v) = Coord '<$>'
---                         v '.:' \"x\" '<*>'
---                         v '.:' \"y\"
+--   parseJSON ('Object' v) = Coord    '<$>'
+--                          v '.:' \"x\" '<*>'
+--                          v '.:' \"y\"
 --
 --   \-- A non-'Object' value is of the wrong type, so use 'mzero' to fail.
 --   parseJSON _          = 'mzero'
 -- @
 --
--- We use the @OverloadedStrings@ language extension so that we can
--- write 'Text' values as normal double-quoted strings.
+-- Note the use of the @OverloadedStrings@ language extension which enables
+-- 'Text' values to be written as string literals.
 --
--- If you do not want to write your own 'FromJSON' instances, you have
--- two options:
+-- Instead of manually writing your 'FromJSON' instance, there are three options
+-- to do it automatically:
 --
--- * The 'Data.Aeson.TH' module will automatically derive an instance
---   for you with a single line of code.
+-- * 'Data.Aeson.TH' provides template-haskell functions which will derive an
+-- instance at compile-time. The generated instance is optimized for your type
+-- so will probably be more efficient than the following two options:
 --
--- * The 'Data.Aeson.Generic' module will work with most data types
---   that are instances of 'Data' (but note, this can be slow).
+-- * 'Data.Aeson.Generic' provides a generic @fromJSON@ function that parses to
+-- any type which is an instance of 'Data'.
+--
+-- * If your compiler has support for the @DeriveGeneric@ and
+-- @DefaultSignatures@ language extensions, @parseJSON@ will have a default
+-- generic implementation.
+--
+-- To use this, simply add a @deriving 'Generic'@ clause to your datatype and
+-- declare a @FromJSON@ instance for your datatype without giving a definition
+-- for @parseJSON@.
+--
+-- For example the previous example can be simplified to just:
+--
+-- @{-\# LANGUAGE DeriveGeneric \#-}
+--
+-- import GHC.Generics
+--
+-- data Coord { x :: Double, y :: Double } deriving Generic
+--
+-- instance FromJSON Coord
+-- @
 class FromJSON a where
     parseJSON :: Value -> Parser a
 
-#ifdef DEFAULT_SIGNATURES
-    default parseJSON :: Data a => Value -> Parser a
-    parseJSON = genericParseJSON
+#ifdef GENERICS
+    default parseJSON :: (Generic a, GFromJSON (Rep a)) => Value -> Parser a
+    parseJSON = fmap to . gParseJSON
 #endif
 
 instance (ToJSON a) => ToJSON (Maybe a) where
     toJSON (Just a) = toJSON a
     toJSON Nothing  = Null
     {-# INLINE toJSON #-}
-    
+
 instance (FromJSON a) => FromJSON (Maybe a) where
     parseJSON Null   = pure Nothing
     parseJSON a      = Just <$> parseJSON a
@@ -386,7 +435,7 @@ instance (ToJSON a, ToJSON b) => ToJSON (Either a b) where
     toJSON (Left a)  = object [left  .= a]
     toJSON (Right b) = object [right .= b]
     {-# INLINE toJSON #-}
-    
+
 instance (FromJSON a, FromJSON b) => FromJSON (Either a b) where
     parseJSON (Object (M.toList -> [(key, value)]))
         | key == left  = Left  <$> parseJSON value
@@ -612,7 +661,7 @@ instance FromJSON LB.ByteString where
 instance (ToJSON a) => ToJSON [a] where
     toJSON = Array . V.fromList . map toJSON
     {-# INLINE toJSON #-}
-    
+
 instance (FromJSON a) => FromJSON [a] where
     parseJSON (Array a) = mapM parseJSON (V.toList a)
     parseJSON v         = typeMismatch "[a]" v
@@ -621,7 +670,7 @@ instance (FromJSON a) => FromJSON [a] where
 instance (ToJSON a) => ToJSON (Vector a) where
     toJSON = Array . V.map toJSON
     {-# INLINE toJSON #-}
-    
+
 instance (FromJSON a) => FromJSON (Vector a) where
     parseJSON (Array a) = V.mapM parseJSON a
     parseJSON v         = typeMismatch "Vector a" v
@@ -657,7 +706,7 @@ instance (VG.Vector VU.Vector a, FromJSON a) => FromJSON (VU.Vector a) where
 instance (ToJSON a) => ToJSON (Set.Set a) where
     toJSON = toJSON . Set.toList
     {-# INLINE toJSON #-}
-    
+
 instance (Ord a, FromJSON a) => FromJSON (Set.Set a) where
     parseJSON = fmap Set.fromList . parseJSON
     {-# INLINE parseJSON #-}
@@ -665,7 +714,7 @@ instance (Ord a, FromJSON a) => FromJSON (Set.Set a) where
 instance (ToJSON a) => ToJSON (HashSet.HashSet a) where
     toJSON = toJSON . HashSet.toList
     {-# INLINE toJSON #-}
-    
+
 instance (Eq a, Hashable a, FromJSON a) => FromJSON (HashSet.HashSet a) where
     parseJSON = fmap HashSet.fromList . parseJSON
     {-# INLINE parseJSON #-}
@@ -673,7 +722,7 @@ instance (Eq a, Hashable a, FromJSON a) => FromJSON (HashSet.HashSet a) where
 instance ToJSON IntSet.IntSet where
     toJSON = toJSON . IntSet.toList
     {-# INLINE toJSON #-}
-    
+
 instance FromJSON IntSet.IntSet where
     parseJSON = fmap IntSet.fromList . parseJSON
     {-# INLINE parseJSON #-}
@@ -681,7 +730,7 @@ instance FromJSON IntSet.IntSet where
 instance ToJSON a => ToJSON (IntMap.IntMap a) where
     toJSON = toJSON . IntMap.toList
     {-# INLINE toJSON #-}
-  
+
 instance FromJSON a => FromJSON (IntMap.IntMap a) where
     parseJSON = fmap IntMap.fromList . parseJSON
     {-# INLINE parseJSON #-}
@@ -867,293 +916,230 @@ typeMismatch expected actual =
              Bool _   -> "Boolean"
              Null     -> "Null"
 
+#ifdef GENERICS
+--------------------------------------------------------------------------------
+-- Generic toJSON
+
+class GToJSON f where
+    gToJSON :: f a -> Value
+
+instance (GToJSON a) => GToJSON (M1 i c a) where
+    gToJSON = gToJSON . unM1
+    {-# INLINE gToJSON #-}
+
+instance (ToJSON a) => GToJSON (K1 i a) where
+    gToJSON = toJSON . unK1
+    {-# INLINE gToJSON #-}
+
+instance GToJSON U1 where
+    gToJSON _ = emptyArray
+    {-# INLINE gToJSON #-}
+
+instance (ConsToJSON a) => GToJSON (C1 c a) where
+    gToJSON = consToJSON . unM1
+    {-# INLINE gToJSON #-}
+
+instance (GProductToValues a, GProductToValues b) => GToJSON (a :*: b) where
+    gToJSON = toJSON . toList . gProductToValues
+    {-# INLINE gToJSON #-}
+
+instance (GObject a, GObject b) => GToJSON (a :+: b) where
+    gToJSON (L1 x) = Object $ gObject x
+    gToJSON (R1 x) = Object $ gObject x
+    {-# INLINE gToJSON #-}
 
 --------------------------------------------------------------------------------
--- Generic toJSON and fromJSON
 
-type T a = a -> Value
+class ConsToJSON    f where consToJSON  ::           f a -> Value
+class ConsToJSON' b f where consToJSON' :: Tagged b (f a -> Value)
 
-genericToJSON :: (Data a) => a -> Value
-genericToJSON = toJSON_generic
-         `ext1Q` list
-         `ext1Q` vector
-         `ext1Q` set
-         `ext2Q'` mapAny
-         `ext2Q'` hashMapAny
-         -- Use the standard encoding for all base types.
-         `extQ` (toJSON :: T Integer)
-         `extQ` (toJSON :: T Int)
-         `extQ` (toJSON :: T Int8)
-         `extQ` (toJSON :: T Int16)
-         `extQ` (toJSON :: T Int32)
-         `extQ` (toJSON :: T Int64)
-         `extQ` (toJSON :: T Word)
-         `extQ` (toJSON :: T Word8)
-         `extQ` (toJSON :: T Word16)
-         `extQ` (toJSON :: T Word32)
-         `extQ` (toJSON :: T Word64)
-         `extQ` (toJSON :: T Double)
-         `extQ` (toJSON :: T Number)
-         `extQ` (toJSON :: T Float)
-         `extQ` (toJSON :: T Rational)
-         `extQ` (toJSON :: T Char)
-         `extQ` (toJSON :: T Text)
-         `extQ` (toJSON :: T LT.Text)
-         `extQ` (toJSON :: T String)
-         `extQ` (toJSON :: T B.ByteString)
-         `extQ` (toJSON :: T LB.ByteString)
-         `extQ` (toJSON :: T Value)
-         `extQ` (toJSON :: T DotNetTime)
-         `extQ` (toJSON :: T UTCTime)
-         `extQ` (toJSON :: T IntSet)
-         `extQ` (toJSON :: T Bool)
-         `extQ` (toJSON :: T ())
-         --`extQ` (T.toJSON :: T Ordering)
-  where
-    list xs = Array . V.fromList . map genericToJSON $ xs
-    vector v = Array . V.map genericToJSON $ v
-    set s = Array . V.fromList . map genericToJSON . Set.toList $ s
+instance (IsRecord f b, ConsToJSON' b f) => ConsToJSON f where
+    consToJSON = unTagged (consToJSON' :: Tagged b (f a -> Value))
+    {-# INLINE consToJSON #-}
 
-    mapAny m
-      | tyrep == typeOf T.empty  = remap id
-      | tyrep == typeOf LT.empty = remap LT.toStrict
-      | tyrep == typeOf string   = remap pack
-      | tyrep == typeOf B.empty  = remap decode
-      | tyrep == typeOf LB.empty = remap strict
-      | otherwise = modError "genericToJSON" $
-                             "cannot convert map keyed by type " ++ show tyrep
-      where tyrep = typeOf . head . M.keys $ m
-            remap f = Object . transformMap (f . fromJust . cast) genericToJSON $ m
+instance (GRecordToPairs f) => ConsToJSON' True f where
+    consToJSON' = Tagged (object . toList . gRecordToPairs)
+    {-# INLINE consToJSON' #-}
 
-    hashMapAny m
-      | tyrep == typeOf T.empty  = remap id
-      | tyrep == typeOf LT.empty = remap LT.toStrict
-      | tyrep == typeOf string   = remap pack
-      | tyrep == typeOf B.empty  = remap decode
-      | tyrep == typeOf LB.empty = remap strict
-      | otherwise = modError "genericToJSON" $
-                             "cannot convert map keyed by type " ++ show tyrep
-      where tyrep = typeOf . head . H.keys $ m
-            remap f = Object . hashMap (f . fromJust . cast) genericToJSON $ m
+instance GToJSON f => ConsToJSON' False f where
+    consToJSON' = Tagged gToJSON
+    {-# INLINE consToJSON' #-}
 
+--------------------------------------------------------------------------------
 
-toJSON_generic :: (Data a) => a -> Value
-toJSON_generic = generic
-  where
-        -- Generic encoding of an algebraic data type.
-        generic a =
-            case dataTypeRep (dataTypeOf a) of
-                -- No constructor, so it must be an error value.  Code
-                -- it anyway as Null.
-                AlgRep []  -> Null
-                -- Elide a single constructor and just code the arguments.
-                AlgRep [c] -> encodeArgs c (gmapQ genericToJSON a)
-                -- For multiple constructors, make an object with a
-                -- field name that is the constructor (except lower
-                -- case) and the data is the arguments encoded.
-                AlgRep _   -> encodeConstr (toConstr a) (gmapQ genericToJSON a)
-                rep        -> err (dataTypeOf a) rep
-           where
-              err dt r = modError "genericToJSON" $ "not AlgRep " ++
-                                  show r ++ "(" ++ show dt ++ ")"
-        -- Encode nullary constructor as a string.
-        -- Encode non-nullary constructors as an object with the constructor
-        -- name as the single field and the arguments as the value.
-        -- Use an array if the are no field names, but elide singleton arrays,
-        -- and use an object if there are field names.
-        encodeConstr c [] = String . constrString $ c
-        encodeConstr c as = object [(constrString c, encodeArgs c as)]
+class GRecordToPairs f where
+    gRecordToPairs :: f a -> DList Pair
 
-        constrString = pack . showConstr
+instance (GRecordToPairs a, GRecordToPairs b) => GRecordToPairs (a :*: b) where
+    gRecordToPairs (a :*: b) = gRecordToPairs a `append` gRecordToPairs b
+    {-# INLINE gRecordToPairs #-}
 
-        encodeArgs c = encodeArgs' (constrFields c)
-        encodeArgs' [] [j] = j
-        encodeArgs' [] js  = Array . V.fromList $ js
-        encodeArgs' ns js  = object $ zip (map mungeField ns) js
+instance (Selector s, GToJSON a) => GRecordToPairs (S1 s a) where
+    gRecordToPairs m1 = singleton (pack (selName m1), gToJSON (unM1 m1))
+    {-# INLINE gRecordToPairs #-}
 
-        -- Skip leading '_' in field name so we can use keywords
-        -- etc. as field names.
-        mungeField ('_':cs) = pack cs
-        mungeField cs       = pack cs
+--------------------------------------------------------------------------------
 
-genericFromJSON :: (Data a) => Value -> Result a
-genericFromJSON = parse genericParseJSON
+class GProductToValues f where
+    gProductToValues :: f a -> DList Value
 
-type F a = Parser a
+instance (GProductToValues a, GProductToValues b) => GProductToValues (a :*: b) where
+    gProductToValues (a :*: b) = gProductToValues a `append` gProductToValues b
+    {-# INLINE gProductToValues #-}
 
-genericParseJSON :: (Data a) => Value -> Parser a
-genericParseJSON j = parseJSON_generic j
-             `ext1R` list
-             `ext1R` vector
-             `ext2R'` mapAny
-             `ext2R'` hashMapAny
-             -- Use the standard encoding for all base types.
-             `extR` (value :: F Integer)
-             `extR` (value :: F Int)
-             `extR` (value :: F Int8)
-             `extR` (value :: F Int16)
-             `extR` (value :: F Int32)
-             `extR` (value :: F Int64)
-             `extR` (value :: F Word)
-             `extR` (value :: F Word8)
-             `extR` (value :: F Word16)
-             `extR` (value :: F Word32)
-             `extR` (value :: F Word64)
-             `extR` (value :: F Double)
-             `extR` (value :: F Number)
-             `extR` (value :: F Float)
-             `extR` (value :: F Rational)
-             `extR` (value :: F Char)
-             `extR` (value :: F Text)
-             `extR` (value :: F LT.Text)
-             `extR` (value :: F String)
-             `extR` (value :: F B.ByteString)
-             `extR` (value :: F LB.ByteString)
-             `extR` (value :: F Value)
-             `extR` (value :: F DotNetTime)
-             `extR` (value :: F UTCTime)
-             `extR` (value :: F IntSet)
-             `extR` (value :: F Bool)
-             `extR` (value :: F ())
-  where
-    value :: (FromJSON a) => Parser a
-    value = parseJSON j
-    list :: (Data a) => Parser [a]
-    list = V.toList <$> genericParseJSON j
-    vector :: (Data a) => Parser (V.Vector a)
-    vector = case j of
-               Array js -> V.mapM genericParseJSON js
-               _        -> myFail
-    mapAny :: forall e f. (Data e, Data f) => Parser (Map f e)
-    mapAny
-        | tyrep `elem` stringyTypes = res
-        | otherwise = myFail
-      where res = case j of
-                Object js -> M.mapKeysMonotonic trans <$> T.mapM genericParseJSON js
-                _         -> myFail
-            trans
-               | tyrep == typeOf T.empty  = remap id
-               | tyrep == typeOf LT.empty = remap LT.fromStrict
-               | tyrep == typeOf string   = remap T.unpack
-               | tyrep == typeOf B.empty  = remap encodeUtf8
-               | tyrep == typeOf LB.empty = remap lazy
-               | otherwise = modError "genericParseJSON"
-                                      "mapAny -- should never happen"
-            tyrep = typeOf (undefined :: f)
-            remap f = fromJust . cast . f
-    hashMapAny :: forall e f. (Data e, Data f) => Parser (H.HashMap f e)
-    hashMapAny
-        | tyrep == typeOf string   = process T.unpack
-        | tyrep == typeOf LT.empty = process LT.fromStrict
-        | tyrep == typeOf T.empty  = process id
-        | otherwise = myFail
-      where
-        process f = maybe myFail return . cast =<< parseWith f
-        parseWith :: (Eq c, Hashable c) => (Text -> c) -> Parser (H.HashMap c e)
-        parseWith f = case j of
-                        Object js -> H.fromList . map (first f) . M.toList <$>
-                                     T.mapM genericParseJSON js
-                        _          -> myFail
-        tyrep = typeOf (undefined :: f)
-    myFail = modFail "genericParseJSON" $ "bad data: " ++ show j
-    stringyTypes = [typeOf LT.empty, typeOf T.empty, typeOf B.empty,
-                    typeOf LB.empty, typeOf string]
+instance (GToJSON a) => GProductToValues a where
+    gProductToValues = singleton . gToJSON
+    {-# INLINE gProductToValues #-}
 
-parseJSON_generic :: (Data a) => Value -> Parser a
-parseJSON_generic j = generic
-  where
-        typ = dataTypeOf $ resType generic
-        generic = case dataTypeRep typ of
-                    AlgRep []  -> case j of
-                                    Null -> return (modError "genericParseJSON" "empty type")
-                                    _ -> modFail "genericParseJSON" "no-constr bad data"
-                    AlgRep [_] -> decodeArgs (indexConstr typ 1) j
-                    AlgRep _   -> do (c, j') <- getConstr typ j; decodeArgs c j'
-                    rep        -> modFail "genericParseJSON" $
-                                  show rep ++ "(" ++ show typ ++ ")"
-        getConstr t (Object o) | [(s, j')] <- fromJSObject o = do
-                                                c <- readConstr' t s
-                                                return (c, j')
-        getConstr t (String js) = do c <- readConstr' t (unpack js)
-                                     return (c, Null) -- handle nullary ctor
-        getConstr _ _ = modFail "genericParseJSON" "bad constructor encoding"
-        readConstr' t s =
-          maybe (modFail "genericParseJSON" $ "unknown constructor: " ++ s ++ " " ++
-                         show t)
-                return $ readConstr t s
+--------------------------------------------------------------------------------
 
-        decodeArgs c0 = go (numConstrArgs (resType generic) c0) c0
-                           (constrFields c0)
-         where
-          go 0 c  _       Null       = construct c []   -- nullary constructor
-          go 1 c []       jd         = construct c [jd] -- unary constructor
-          go n c []       (Array js)
-              | n > 1 = construct c (V.toList js)   -- no field names
-          -- FIXME? We could allow reading an array into a constructor
-          -- with field names.
-          go _ c fs@(_:_) (Object o) = selectFields o fs >>=
-                                       construct c -- field names
-          go _ c _        jd         = modFail "genericParseJSON" $
-                                       "bad decodeArgs data " ++ show (c, jd)
+class GObject f where
+    gObject :: f a -> Object
 
-        fromJSObject = map (first unpack) . M.toList
+instance (GObject a, GObject b) => GObject (a :+: b) where
+    gObject (L1 x) = gObject x
+    gObject (R1 x) = gObject x
+    {-# INLINE gObject #-}
 
-        -- Build the value by stepping through the list of subparts.
-        construct c = evalStateT $ fromConstrM f c
-          where f :: (Data a) => StateT [Value] Parser a
-                f = do js <- get
-                       case js of
-                         [] -> lift $ modFail "construct" "empty list"
-                         (j':js') -> do put js'; lift $ genericParseJSON j'
+instance (Constructor c, GToJSON a, ConsToJSON a) => GObject (C1 c a) where
+    gObject m1 = M.singleton (pack (conName m1)) (gToJSON m1)
+    {-# INLINE gObject #-}
 
-        -- Select the named fields from a JSON object.
-        selectFields fjs = mapM sel
-          where sel f = maybe (modFail "genericParseJSON" $ "field does not exist " ++
-                               f) return $ M.lookup (pack f) fjs
+--------------------------------------------------------------------------------
+-- Generic parseJSON
 
-        -- Count how many arguments a constructor has.  The value x is
-        -- used to determine what type the constructor returns.
-        numConstrArgs :: (Data a) => a -> Constr -> Int
-        numConstrArgs x c = execState (fromConstrM f c `asTypeOf` return x) 0
-          where f = do modify (+1); return undefined
+class GFromJSON f where
+    gParseJSON :: Value -> Parser (f a)
 
-        resType :: MonadPlus m => m a -> a
-        resType _ = modError "genericParseJSON" "resType"
+instance (GFromJSON a) => GFromJSON (M1 i c a) where
+    gParseJSON = fmap M1 . gParseJSON
+    {-# INLINE gParseJSON #-}
 
-modFail :: (Monad m) => String -> String -> m a
-modFail func err = fail $ "Data.Aeson.Types." ++ func ++ ": " ++ err
+instance (FromJSON a) => GFromJSON (K1 i a) where
+    gParseJSON = fmap K1 . parseJSON
+    {-# INLINE gParseJSON #-}
 
-modError :: String -> String -> a
-modError func err = error $ "Data.Aeson.Types." ++ func ++ ": " ++ err
+instance GFromJSON U1 where
+    gParseJSON v
+        | isEmptyArray v = pure U1
+        | otherwise      = typeMismatch "unit constructor (U1)" v
+    {-# INLINE gParseJSON #-}
 
-string :: String
-string = ""
+instance (ConsFromJSON a) => GFromJSON (C1 c a) where
+    gParseJSON = fmap M1 . consParseJSON
+    {-# INLINE gParseJSON #-}
 
--- Type extension for binary type constructors.
+instance (GFromProduct a, GFromProduct b) => GFromJSON (a :*: b) where
+    gParseJSON (Array arr) = gParseProduct arr
+    gParseJSON v = typeMismatch "product (:*:)" v
+    {-# INLINE gParseJSON #-}
 
--- | Flexible type extension
-ext2' :: (Data a, Typeable2 t)
-     => c a
-     -> (forall d1 d2. (Data d1, Data d2) => c (t d1 d2))
-     -> c a
-ext2' def ext = maybe def id (dataCast2 ext)
+instance (GFromSum a, GFromSum b) => GFromJSON (a :+: b) where
+    gParseJSON (Object (M.toList -> [keyVal])) = gParseSum keyVal
+    gParseJSON v = typeMismatch "sum (:+:)" v
+    {-# INLINE gParseJSON #-}
 
--- | Type extension of queries for type constructors
-ext2Q' :: (Data d, Typeable2 t)
-      => (d -> q)
-      -> (forall d1 d2. (Data d1, Data d2) => t d1 d2 -> q)
-      -> d -> q
-ext2Q' def ext = unQ ((Q def) `ext2'` (Q ext))
+--------------------------------------------------------------------------------
 
--- | Type extension of readers for type constructors
-ext2R' :: (Monad m, Data d, Typeable2 t)
-      => m d
-      -> (forall d1 d2. (Data d1, Data d2) => m (t d1 d2))
-      -> m d
-ext2R' def ext = unR ((R def) `ext2'` (R ext))
+class ConsFromJSON    f where consParseJSON  ::           Value -> Parser (f a)
+class ConsFromJSON' b f where consParseJSON' :: Tagged b (Value -> Parser (f a))
 
--- | The type constructor for queries
-newtype Q q x = Q { unQ :: x -> q }
+instance (IsRecord f b, ConsFromJSON' b f) => ConsFromJSON f where
+    consParseJSON = unTagged (consParseJSON' :: Tagged b (Value -> Parser (f a)))
+    {-# INLINE consParseJSON #-}
 
--- | The type constructor for readers
-newtype R m x = R { unR :: m x }
+instance (GFromRecord f) => ConsFromJSON' True f where
+    consParseJSON' = Tagged parseRecord
+        where
+          parseRecord (Object obj) = gParseRecord obj
+          parseRecord v = typeMismatch "record (:*:)" v
+    {-# INLINE consParseJSON' #-}
+
+instance (GFromJSON f) => ConsFromJSON' False f where
+    consParseJSON' = Tagged gParseJSON
+    {-# INLINE consParseJSON' #-}
+
+--------------------------------------------------------------------------------
+
+class GFromRecord f where
+    gParseRecord :: Object -> Parser (f a)
+
+instance (GFromRecord a, GFromRecord b) => GFromRecord (a :*: b) where
+    gParseRecord obj = (:*:) <$> gParseRecord obj <*> gParseRecord obj
+    {-# INLINE gParseRecord #-}
+
+instance (Selector s, GFromJSON a) => GFromRecord (S1 s a) where
+    gParseRecord obj = case M.lookup (T.pack key) obj of
+                         Nothing -> notFound key
+                         Just v  -> gParseJSON v
+        where
+          key = selName (undefined :: t s a p)
+    {-# INLINE gParseRecord #-}
+
+--------------------------------------------------------------------------------
+
+class GFromProduct f where
+    gParseProduct :: Array -> Parser (f a)
+
+instance (GFromProduct a, GFromProduct b) => GFromProduct (a :*: b) where
+    gParseProduct arr = (:*:) <$> gParseProduct arrL <*> gParseProduct arrR
+        where
+          (arrL, arrR) = V.splitAt (V.length arr `div` 2) arr
+    {-# INLINE gParseProduct #-}
+
+instance (GFromJSON a) => GFromProduct a where
+    gParseProduct ((!? 0) -> Just v) = gParseJSON v
+    gParseProduct _ = fail "Array to small"
+    {-# INLINE gParseProduct #-}
+
+--------------------------------------------------------------------------------
+
+class GFromSum f where
+    gParseSum :: Pair -> Parser (f a)
+
+instance (GFromSum a, GFromSum b) => GFromSum (a :+: b) where
+    gParseSum keyVal = (L1 <$> gParseSum keyVal) <|> (R1 <$> gParseSum keyVal)
+    {-# INLINE gParseSum #-}
+
+instance (Constructor c, GFromJSON a, ConsFromJSON a) => GFromSum (C1 c a) where
+    gParseSum (key, value)
+        | key == pack (conName (undefined :: t c a p)) = gParseJSON value
+        | otherwise = notFound $ unpack key
+    {-# INLINE gParseSum #-}
+
+notFound :: String -> Parser a
+notFound key = fail $ "The key \"" ++ key ++ "\" was not found"
+
+--------------------------------------------------------------------------------
+
+newtype Tagged s b = Tagged {unTagged :: b}
+
+data True
+data False
+
+class IsRecord (f :: * -> *) b | f -> b
+
+instance (IsRecord f b) => IsRecord (f :*: g) b
+instance IsRecord (M1 S NoSelector f) False
+instance (IsRecord f b) => IsRecord (M1 S c f) b
+instance IsRecord (K1 i c) True
+instance IsRecord U1 False
+
+--------------------------------------------------------------------------------
+
+type DList a = [a] -> [a]
+
+toList :: DList a -> [a]
+toList = ($ [])
+{-# INLINE toList #-}
+
+singleton :: a -> DList a
+singleton = (:)
+{-# INLINE singleton #-}
+
+append :: DList a -> DList a -> DList a
+append = (.)
+{-# INLINE append #-}
+
+--------------------------------------------------------------------------------
+#endif
