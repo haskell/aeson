@@ -957,8 +957,8 @@ instance (IsRecord f b, ConsToJSON' b f) => ConsToJSON f where
     consToJSON = unTagged (consToJSON' :: Tagged b (f a -> Value))
     {-# INLINE consToJSON #-}
 
-instance (GRecordToObject f) => ConsToJSON' True f where
-    consToJSON' = Tagged (Object . gRecordToObject)
+instance (GRecordToPairs f) => ConsToJSON' True f where
+    consToJSON' = Tagged (object . toList . gRecordToPairs)
     {-# INLINE consToJSON' #-}
 
 instance GToJSON f => ConsToJSON' False f where
@@ -967,16 +967,16 @@ instance GToJSON f => ConsToJSON' False f where
 
 --------------------------------------------------------------------------------
 
-class GRecordToObject f where
-    gRecordToObject :: f a -> Object
+class GRecordToPairs f where
+    gRecordToPairs :: f a -> DList Pair
 
-instance (GRecordToObject a, GRecordToObject b) => GRecordToObject (a :*: b) where
-    gRecordToObject (a :*: b) = gRecordToObject a `M.union` gRecordToObject b
-    {-# INLINE gRecordToObject #-}
+instance (GRecordToPairs a, GRecordToPairs b) => GRecordToPairs (a :*: b) where
+    gRecordToPairs (a :*: b) = gRecordToPairs a `append` gRecordToPairs b
+    {-# INLINE gRecordToPairs #-}
 
-instance (Selector s, GToJSON a) => GRecordToObject (S1 s a) where
-    gRecordToObject m1 = M.singleton (pack (selName m1)) (gToJSON (unM1 m1))
-    {-# INLINE gRecordToObject #-}
+instance (Selector s, GToJSON a) => GRecordToPairs (S1 s a) where
+    gRecordToPairs m1 = singleton (pack (selName m1), gToJSON (unM1 m1))
+    {-# INLINE gRecordToPairs #-}
 
 --------------------------------------------------------------------------------
 
