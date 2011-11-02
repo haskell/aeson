@@ -89,9 +89,9 @@ instance 'FromJSON' a => 'FromJSON' (D a) where
                         case conVal of
                           'Array' arr ->
                             if V.length arr == 3
-                            then Product \<$\> 'parseJSON' (arr V.! 0)
-                                         \<*\> 'parseJSON' (arr V.! 1)
-                                         \<*\> 'parseJSON' (arr V.! 2)
+                            then Product \<$\> 'parseJSON' (arr `V.unsafeIndex` 0)
+                                         \<*\> 'parseJSON' (arr `V.unsafeIndex` 1)
+                                         \<*\> 'parseJSON' (arr `V.unsafeIndex` 2)
                             else fail \"\<error message\>\"
                           _ -> fail \"\<error message\>\"
                     | conKey == T.pack \"Record\" ->
@@ -178,7 +178,7 @@ import Language.Haskell.TH
 -- from text:
 import qualified Data.Text as T ( Text, pack, unpack )
 -- from vector:
-import qualified Data.Vector as V ( (!), null, length )
+import qualified Data.Vector as V ( unsafeIndex, null, length )
 
 
 
@@ -385,8 +385,8 @@ encodeArgs withExp withField (ForallC _ _ con) =
 --         \value -> case value of
 --                     'Array' arr ->
 --                       if (V.length arr == 2)
---                       then Foo \<$\> 'parseJSON' (arr V.! 0)
---                                \<*\> 'parseJSON' (arr V.! 1)
+--                       then Foo \<$\> 'parseJSON' (arr `V.unsafeIndex` 0)
+--                                \<*\> 'parseJSON' (arr `V.unsafeIndex` 1)
 --                       else fail \"\<error message\>\"
 --                     other -> fail \"\<error message\>\"
 -- @
@@ -600,11 +600,11 @@ parseProduct :: Name -- ^ Name of the type to which the constructor belongs.
              -> [Q Match]
 parseProduct tName conName numArgs =
     [ do arr <- newName "arr"
-         -- List of: "parseJSON (arr V.! <IX>)"
+         -- List of: "parseJSON (arr `V.unsafeIndex` <IX>)"
          let x:xs = [ [|parseJSON|]
                       `appE`
                       infixApp (varE arr)
-                               [|(V.!)|]
+                               [|V.unsafeIndex|]
                                (litE $ integerL ix)
                     | ix <- [0 .. numArgs - 1]
                     ]
