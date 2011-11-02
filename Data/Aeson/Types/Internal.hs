@@ -226,7 +226,7 @@ instance NFData Value where
 obj_rnf :: (NFData k, NFData v) => Map k v -> ()
 #if MIN_VERSION_containers(0,4,2)
 obj_rnf = rnf
-#elif MIN_VERSION_containers(0,4,0)
+#elif MIN_VERSION_containers(0,4,1)
 obj_rnf = M.foldlWithKey' (\_ k v -> rnf k `seq` rnf v) ()
 #else
 obj_rnf = rnf . M.toList
