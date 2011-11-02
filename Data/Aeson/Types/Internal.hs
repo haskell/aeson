@@ -1014,7 +1014,7 @@ instance (GObject a, GObject b) => GObject (a :+: b) where
     {-# INLINE gObject #-}
 
 instance (Constructor c, GToJSON a, ConsToJSON a) => GObject (C1 c a) where
-    gObject m1 = M.singleton (pack (conName m1)) (gToJSON m1)
+    gObject = M.singleton (pack $ conName (undefined :: t c a p)) . gToJSON
     {-# INLINE gObject #-}
 
 --------------------------------------------------------------------------------
