@@ -216,12 +216,20 @@ data Value = Object Object
              deriving (Eq, Show, Typeable, Data)
 
 instance NFData Value where
-    rnf (Object o) = rnf o
+    rnf (Object o) = obj_rnf o
     rnf (Array a)  = V.foldl' (\x y -> rnf y `seq` x) () a
     rnf (String s) = rnf s
     rnf (Number n) = case n of I i -> rnf i; D d -> rnf d
     rnf (Bool b)   = rnf b
     rnf Null       = ()
+
+obj_rnf :: (NFData k, NFData v) => Map k v -> ()
+#if MIN_VERSION_containers(0,4,2)
+obj_rnf = rnf
+#else
+obj_rnf M.Tip = ()
+obj_rnf (M.Bin _ kx x l r) = rnf kx `seq` rnf x `seq` rnf l `seq` rnf r
+#endif
 
 instance IsString Value where
     fromString = String . pack
