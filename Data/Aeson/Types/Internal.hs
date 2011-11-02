@@ -227,8 +227,7 @@ obj_rnf :: (NFData k, NFData v) => Map k v -> ()
 #if MIN_VERSION_containers(0,4,2)
 obj_rnf = rnf
 #else
-obj_rnf M.Tip = ()
-obj_rnf (M.Bin _ kx x l r) = rnf kx `seq` rnf x `seq` rnf l `seq` rnf r
+obj_rnf = M.foldlWithKey' (\_ k v -> rnf k `seq` rnf v) ()
 #endif
 
 instance IsString Value where
