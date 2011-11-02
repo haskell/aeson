@@ -57,6 +57,7 @@ import Control.DeepSeq (NFData(..))
 import Control.Monad.State.Strict
 import Data.Aeson.Functions
 import Data.Attoparsec.Char8 (Number(..))
+import Data.Bits (shiftR)
 import Data.Data (Data)
 import Data.Hashable (Hashable(..))
 import Data.Int (Int8, Int16, Int32, Int64)
@@ -1043,7 +1044,7 @@ instance (ConsFromJSON a) => GFromJSON (C1 c a) where
 instance ( GFromProduct a, GFromProduct b
          , ProductSize a, ProductSize b) => GFromJSON (a :*: b) where
     gParseJSON (Array arr)
-        | lenArray == lenProduct = gParseProduct arr
+        | lenArray == lenProduct = gParseProduct arr 0 lenProduct
         | otherwise =
             fail $ "When expecting a product of " ++ show lenProduct ++
                    " values, encountered an Array of " ++ show lenArray ++
@@ -1114,16 +1115,19 @@ instance ProductSize (S1 s a) where
 --------------------------------------------------------------------------------
 
 class GFromProduct f where
-    gParseProduct :: Array -> Parser (f a)
+    gParseProduct :: Array -> Int -> Int -> Parser (f a)
 
 instance (GFromProduct a, GFromProduct b) => GFromProduct (a :*: b) where
-    gParseProduct arr = (:*:) <$> gParseProduct arrL <*> gParseProduct arrR
+    gParseProduct arr ix len = (:*:) <$> gParseProduct arr ix  lenL
+                                     <*> gParseProduct arr ixR lenR
         where
-          (arrL, arrR) = V.splitAt (V.length arr `div` 2) arr
+          lenL = len `shiftR` 1
+          ixR  = ix + lenL
+          lenR = len - lenL
     {-# INLINE gParseProduct #-}
 
 instance (GFromJSON a) => GFromProduct (S1 s a) where
-    gParseProduct arr = gParseJSON $ V.unsafeIndex arr 0
+    gParseProduct arr ix _ = gParseJSON $ V.unsafeIndex arr ix
     {-# INLINE gParseProduct #-}
 
 --------------------------------------------------------------------------------
