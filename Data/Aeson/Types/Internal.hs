@@ -71,7 +71,7 @@ import Data.Text (Text, pack, unpack)
 import Data.Time.Clock (UTCTime)
 import Data.Time.Format (FormatTime, formatTime, parseTime)
 import Data.Typeable (Typeable)
-import Data.Vector (Vector, (!?))
+import Data.Vector (Vector)
 import Data.Word (Word, Word8, Word16, Word32, Word64)
 import Foreign.Storable (Storable)
 import System.Locale (defaultTimeLocale)
@@ -953,6 +953,8 @@ instance (GObject a, GObject b) => GToJSON (a :+: b) where
 class ConsToJSON    f where consToJSON  ::           f a -> Value
 class ConsToJSON' b f where consToJSON' :: Tagged b (f a -> Value)
 
+newtype Tagged s b = Tagged {unTagged :: b}
+
 instance (IsRecord f b, ConsToJSON' b f) => ConsToJSON f where
     consToJSON = unTagged (consToJSON' :: Tagged b (f a -> Value))
     {-# INLINE consToJSON #-}
@@ -1029,8 +1031,18 @@ instance (ConsFromJSON a) => GFromJSON (C1 c a) where
     gParseJSON = fmap M1 . consParseJSON
     {-# INLINE gParseJSON #-}
 
-instance (GFromProduct a, GFromProduct b) => GFromJSON (a :*: b) where
-    gParseJSON (Array arr) = gParseProduct arr
+instance ( GFromProduct a, GFromProduct b
+         , ProductSize a, ProductSize b) => GFromJSON (a :*: b) where
+    gParseJSON (Array arr)
+        | lenArray == lenProduct = gParseProduct arr
+        | otherwise =
+            fail $ "When expecting a product of " ++ show lenProduct ++
+                   " values, encountered an Array of " ++ show lenArray ++
+                   " elements instead"
+        where
+          lenArray = V.length arr
+          lenProduct = unTagged2 (productSize :: Tagged2 (a :*: b) Int)
+
     gParseJSON v = typeMismatch "product (:*:)" v
     {-# INLINE gParseJSON #-}
 
@@ -1078,6 +1090,20 @@ instance (Selector s, GFromJSON a) => GFromRecord (S1 s a) where
 
 --------------------------------------------------------------------------------
 
+class ProductSize f where
+    productSize :: Tagged2 f Int
+
+newtype Tagged2 (s :: * -> *) b = Tagged2 {unTagged2 :: b}
+
+instance (ProductSize a, ProductSize b) => ProductSize (a :*: b) where
+    productSize = Tagged2 $ unTagged2 (productSize :: Tagged2 a Int) +
+                            unTagged2 (productSize :: Tagged2 b Int)
+
+instance ProductSize (S1 s a) where
+    productSize = Tagged2 1
+
+--------------------------------------------------------------------------------
+
 class GFromProduct f where
     gParseProduct :: Array -> Parser (f a)
 
@@ -1087,9 +1113,8 @@ instance (GFromProduct a, GFromProduct b) => GFromProduct (a :*: b) where
           (arrL, arrR) = V.splitAt (V.length arr `div` 2) arr
     {-# INLINE gParseProduct #-}
 
-instance (GFromJSON a) => GFromProduct a where
-    gParseProduct ((!? 0) -> Just v) = gParseJSON v
-    gParseProduct _ = fail "Array to small"
+instance (GFromJSON a) => GFromProduct (S1 s a) where
+    gParseProduct arr = gParseJSON $ V.unsafeIndex arr 0
     {-# INLINE gParseProduct #-}
 
 --------------------------------------------------------------------------------
@@ -1109,15 +1134,14 @@ instance (Constructor c, GFromJSON a, ConsFromJSON a) => GFromSum (C1 c a) where
 
 notFound :: String -> Parser a
 notFound key = fail $ "The key \"" ++ key ++ "\" was not found"
+{-# INLINE notFound #-}
 
 --------------------------------------------------------------------------------
 
-newtype Tagged s b = Tagged {unTagged :: b}
+class IsRecord (f :: * -> *) b | f -> b
 
 data True
 data False
-
-class IsRecord (f :: * -> *) b | f -> b
 
 instance (IsRecord f b) => IsRecord (f :*: g) b
 instance IsRecord (M1 S NoSelector f) False
