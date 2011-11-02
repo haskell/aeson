@@ -171,6 +171,7 @@ test-suite tests
     base,
     containers,
     bytestring,
+    template-haskell,
     test-framework,
     test-framework-quickcheck2,
     text
