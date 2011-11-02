@@ -1091,9 +1091,7 @@ instance (GFromRecord a, GFromRecord b) => GFromRecord (a :*: b) where
     {-# INLINE gParseRecord #-}
 
 instance (Selector s, GFromJSON a) => GFromRecord (S1 s a) where
-    gParseRecord obj = case M.lookup (T.pack key) obj of
-                         Nothing -> notFound key
-                         Just v  -> gParseJSON v
+    gParseRecord = maybe (notFound key) gParseJSON . M.lookup (T.pack key)
         where
           key = selName (undefined :: t s a p)
     {-# INLINE gParseRecord #-}
