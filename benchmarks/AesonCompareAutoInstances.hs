@@ -25,7 +25,7 @@ data D a = Nullary
          | Record { testOne   :: Double
                   , testTwo   :: Bool
                   , testThree :: D a
-                  } deriving (Eq, Generic, Data, Typeable)
+                  } deriving (Show, Eq, Generic, Data, Typeable)
 
 instance NFData a => NFData (D a) where
     rnf Nullary         = ()
@@ -62,20 +62,20 @@ thDFromJSON = parse thDParseJSON
 --------------------------------------------------------------------------------
 
 data BigRecord = BigRecord
-    { field01 :: !(), field02 :: !(), field03 :: !(), field04 :: !(), field05 :: !()
-    , field06 :: !(), field07 :: !(), field08 :: !(), field09 :: !(), field10 :: !()
-    , field11 :: !(), field12 :: !(), field13 :: !(), field14 :: !(), field15 :: !()
-    , field16 :: !(), field17 :: !(), field18 :: !(), field19 :: !(), field20 :: !()
-    , field21 :: !(), field22 :: !(), field23 :: !(), field24 :: !(), field25 :: !()
-    } deriving (Eq, Generic, Data, Typeable)
+    { field01 :: !Int, field02 :: !Int, field03 :: !Int, field04 :: !Int, field05 :: !Int
+    , field06 :: !Int, field07 :: !Int, field08 :: !Int, field09 :: !Int, field10 :: !Int
+    , field11 :: !Int, field12 :: !Int, field13 :: !Int, field14 :: !Int, field15 :: !Int
+    , field16 :: !Int, field17 :: !Int, field18 :: !Int, field19 :: !Int, field20 :: !Int
+    , field21 :: !Int, field22 :: !Int, field23 :: !Int, field24 :: !Int, field25 :: !Int
+    } deriving (Show, Eq, Generic, Data, Typeable)
 
 instance NFData BigRecord
 
-bigRecord = BigRecord () () () () ()
-                      () () () () ()
-                      () () () () ()
-                      () () () () ()
-                      () () () () ()
+bigRecord = BigRecord 1   2  3  4  5
+                      6   7  8  9 10
+                      11 12 13 14 15
+                      16 17 18 19 20
+                      21 22 23 24 25
 
 instance ToJSON   BigRecord
 instance FromJSON BigRecord
@@ -92,20 +92,20 @@ thBigRecordFromJSON = parse thBigRecordParseJSON
 --------------------------------------------------------------------------------
 
 data BigProduct = BigProduct
-    !() !() !() !() !()
-    !() !() !() !() !()
-    !() !() !() !() !()
-    !() !() !() !() !()
-    !() !() !() !() !()
-    deriving (Eq, Generic, Data, Typeable)
+    !Int !Int !Int !Int !Int
+    !Int !Int !Int !Int !Int
+    !Int !Int !Int !Int !Int
+    !Int !Int !Int !Int !Int
+    !Int !Int !Int !Int !Int
+    deriving (Show, Eq, Generic, Data, Typeable)
 
 instance NFData BigProduct
 
-bigProduct = BigProduct () () () () ()
-                        () () () () ()
-                        () () () () ()
-                        () () () () ()
-                        () () () () ()
+bigProduct = BigProduct 1   2  3  4  5
+                        6   7  8  9 10
+                        11 12 13 14 15
+                        16 17 18 19 20
+                        21 22 23 24 25
 
 instance ToJSON   BigProduct
 instance FromJSON BigProduct
@@ -126,11 +126,11 @@ data BigSum = F01 | F02 | F03 | F04 | F05
             | F11 | F12 | F13 | F14 | F15
             | F16 | F17 | F18 | F19 | F20
             | F21 | F22 | F23 | F24 | F25
-    deriving (Eq, Generic, Data, Typeable)
+    deriving (Show, Eq, Generic, Data, Typeable)
 
 instance NFData BigSum
 
-bigSum = F12
+bigSum = F25
 
 instance ToJSON   BigSum
 instance FromJSON BigSum
