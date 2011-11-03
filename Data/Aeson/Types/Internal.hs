@@ -343,7 +343,7 @@ object = Object . M.fromList
 --
 -- * 'Data.Aeson.Generic' provides a generic @toJSON@ function that accepts any
 -- type which is an instance of 'Data'.
--- 
+--
 -- * If your compiler has support for the @DeriveGeneric@ and
 -- @DefaultSignatures@ language extensions, @toJSON@ will have a default generic
 -- implementation.
@@ -382,7 +382,7 @@ class ToJSON a where
 -- @{-\# LANGUAGE OverloadedStrings #-}
 --
 -- data Coord { x :: Double, y :: Double }
--- 
+--
 -- instance FromJSON Coord where
 --   parseJSON ('Object' v) = Coord    '<$>'
 --                          v '.:' \"x\" '<*>'
@@ -1057,9 +1057,16 @@ instance ( GFromProduct a, GFromProduct b
     {-# INLINE gParseJSON #-}
 
 instance (GFromSum a, GFromSum b) => GFromJSON (a :+: b) where
-    gParseJSON (Object (M.toList -> [keyVal])) = gParseSum keyVal
+    gParseJSON (Object (M.toList -> [keyVal@(key, _)])) =
+        case gParseSum keyVal of
+          Nothing -> notFound $ unpack key
+          Just p  -> p
     gParseJSON v = typeMismatch "sum (:+:)" v
     {-# INLINE gParseJSON #-}
+
+notFound :: String -> Parser a
+notFound key = fail $ "The key \"" ++ key ++ "\" was not found"
+{-# INLINE notFound #-}
 
 --------------------------------------------------------------------------------
 
@@ -1131,21 +1138,18 @@ instance (GFromJSON a) => GFromProduct (S1 s a) where
 --------------------------------------------------------------------------------
 
 class GFromSum f where
-    gParseSum :: Pair -> Parser (f a)
+    gParseSum :: Pair -> Maybe (Parser (f a))
 
 instance (GFromSum a, GFromSum b) => GFromSum (a :+: b) where
-    gParseSum keyVal = (L1 <$> gParseSum keyVal) <|> (R1 <$> gParseSum keyVal)
+    gParseSum keyVal = (fmap L1 <$> gParseSum keyVal) <|>
+                       (fmap R1 <$> gParseSum keyVal)
     {-# INLINE gParseSum #-}
 
 instance (Constructor c, GFromJSON a, ConsFromJSON a) => GFromSum (C1 c a) where
     gParseSum (key, value)
-        | key == pack (conName (undefined :: t c a p)) = gParseJSON value
-        | otherwise = notFound $ unpack key
+        | key == pack (conName (undefined :: t c a p)) = Just $ gParseJSON value
+        | otherwise = Nothing
     {-# INLINE gParseSum #-}
-
-notFound :: String -> Parser a
-notFound key = fail $ "The key \"" ++ key ++ "\" was not found"
-{-# INLINE notFound #-}
 
 --------------------------------------------------------------------------------
 
