@@ -1,3 +1,5 @@
+{-# LANGUAGE CPP #-}
+
 -- |
 -- Module:      Data.Aeson.Types
 -- Copyright:   (c) 2011 MailRank, Inc.
@@ -36,4 +38,9 @@ module Data.Aeson.Types
     , object
     ) where
 
+import Data.Aeson.Types.Class
 import Data.Aeson.Types.Internal
+
+#ifdef GENERICS
+import Data.Aeson.Types.Generic ()
+#endif

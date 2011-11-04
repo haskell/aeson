@@ -116,7 +116,14 @@ library
 
   other-modules:
     Data.Aeson.Functions
+    Data.Aeson.Types.Class
     Data.Aeson.Types.Internal
+
+  if impl(ghc >= 7.2.1)
+    cpp-options: -DGENERICS
+    build-depends: ghc-prim >= 0.2
+    other-modules:
+      Data.Aeson.Types.Generic
 
   build-depends:
     attoparsec >= 0.8.6.1,
@@ -139,10 +146,6 @@ library
   if flag(developer)
     ghc-options: -Werror
     ghc-prof-options: -auto-all
-
-  if impl(ghc >= 7.2.1)
-    cpp-options: -DGENERICS
-    build-depends: ghc-prim >= 0.2
 
   ghc-options:      -Wall
 
