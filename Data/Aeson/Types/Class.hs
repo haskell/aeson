@@ -1,6 +1,13 @@
-{-# LANGUAGE CPP, DeriveDataTypeable, FlexibleContexts, FlexibleInstances,
-    GeneralizedNewtypeDeriving, IncoherentInstances, OverlappingInstances,
-    OverloadedStrings, UndecidableInstances, ViewPatterns #-}
+{-# LANGUAGE CPP
+           , DeriveDataTypeable
+           , FlexibleContexts
+           , FlexibleInstances
+           , GeneralizedNewtypeDeriving
+           , OverlappingInstances
+           , OverloadedStrings
+           , UndecidableInstances
+           , ViewPatterns
+  #-}
 
 #ifdef GENERICS
 {-# LANGUAGE DefaultSignatures #-}
@@ -104,7 +111,7 @@ class GFromJSON f where
 --
 -- * 'Data.Aeson.Generic' provides a generic @toJSON@ function that accepts any
 -- type which is an instance of 'Data'.
--- 
+--
 -- * If your compiler has support for the @DeriveGeneric@ and
 -- @DefaultSignatures@ language extensions, @toJSON@ will have a default generic
 -- implementation.
@@ -143,7 +150,7 @@ class ToJSON a where
 -- @{-\# LANGUAGE OverloadedStrings #-}
 --
 -- data Coord { x :: Double, y :: Double }
--- 
+--
 -- instance FromJSON Coord where
 --   parseJSON ('Object' v) = Coord    '<$>'
 --                          v '.:' \"x\" '<*>'
