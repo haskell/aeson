@@ -1,4 +1,4 @@
-{-# LANGUAGE PatternGuards, RankNTypes, ScopedTypeVariables  #-}
+{-# LANGUAGE PatternGuards, Rank2Types, ScopedTypeVariables #-}
 
 -- |
 -- Module:      Data.Aeson.Generic

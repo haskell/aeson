@@ -116,7 +116,12 @@ library
 
   other-modules:
     Data.Aeson.Functions
+    Data.Aeson.Types.Class
     Data.Aeson.Types.Internal
+
+  if impl(ghc >= 7.2.1)
+    other-modules:
+      Data.Aeson.Types.Generic
 
   build-depends:
     attoparsec >= 0.8.6.1,
