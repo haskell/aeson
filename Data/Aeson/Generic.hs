@@ -112,6 +112,13 @@ toJSON = toJSON_generic
             remap f = Object . hashMap (f . fromJust . cast) toJSON $ m
 
 
+-- Skip leading '_' in field name so we can use keywords
+-- etc. as field names.
+mungeField :: String -> Text
+mungeField ('_':cs) = pack cs
+mungeField cs       = pack cs
+
+
 toJSON_generic :: (Data a) => a -> Value
 toJSON_generic = generic
   where
@@ -146,10 +153,6 @@ toJSON_generic = generic
         encodeArgs' [] js  = Array . V.fromList $ js
         encodeArgs' ns js  = object $ zip (map mungeField ns) js
 
-        -- Skip leading '_' in field name so we can use keywords
-        -- etc. as field names.
-        mungeField ('_':cs) = pack cs
-        mungeField cs       = pack cs
 
 fromJSON :: (Data a) => Value -> Result a
 fromJSON = parse parseJSON
@@ -284,7 +287,7 @@ parseJSON_generic j = generic
         -- Select the named fields from a JSON object.
         selectFields fjs = mapM sel
           where sel f = maybe (modFail "parseJSON" $ "field does not exist " ++
-                               f) return $ Map.lookup (pack f) fjs
+                               f) return $ Map.lookup (mungeField f) fjs
 
         -- Count how many arguments a constructor has.  The value x is
         -- used to determine what type the constructor returns.
