@@ -1,9 +1,4 @@
-{-# LANGUAGE DeriveDataTypeable, FlexibleInstances, GeneralizedNewtypeDeriving,
-    IncoherentInstances, OverlappingInstances, OverloadedStrings, Rank2Types,
-    ViewPatterns, FlexibleContexts, UndecidableInstances,
-    ScopedTypeVariables, PatternGuards #-}
-
-{-# LANGUAGE CPP #-}
+{-# LANGUAGE CPP, DeriveDataTypeable, Rank2Types #-}
 
 -- |
 -- Module:      Data.Aeson.Types.Internal

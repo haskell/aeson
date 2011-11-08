@@ -1,7 +1,15 @@
-{-# LANGUAGE DefaultSignatures, EmptyDataDecls, FlexibleContexts,
-    FlexibleInstances, FunctionalDependencies, IncoherentInstances,
-    KindSignatures, OverlappingInstances, ScopedTypeVariables, TypeOperators,
-    UndecidableInstances, ViewPatterns #-}
+{-# LANGUAGE DefaultSignatures
+           , EmptyDataDecls
+           , FlexibleInstances
+           , FunctionalDependencies
+           , KindSignatures
+           , OverlappingInstances
+           , ScopedTypeVariables
+           , TypeOperators
+           , UndecidableInstances
+           , ViewPatterns
+  #-}
+
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 
 -- |
@@ -18,10 +26,10 @@ module Data.Aeson.Types.Generic ( ) where
 
 import Control.Applicative
 import Control.Monad.State.Strict
+import Data.Bits (shiftR)
 import Data.Aeson.Types.Class
 import Data.Aeson.Types.Internal
 import Data.Text (pack, unpack)
-import Data.Vector ((!?))
 import GHC.Generics
 import qualified Data.Map as M
 import qualified Data.Text as T
@@ -59,6 +67,8 @@ instance (GObject a, GObject b) => GToJSON (a :+: b) where
 
 class ConsToJSON    f where consToJSON  ::           f a -> Value
 class ConsToJSON' b f where consToJSON' :: Tagged b (f a -> Value)
+
+newtype Tagged s b = Tagged {unTagged :: b}
 
 instance (IsRecord f b, ConsToJSON' b f) => ConsToJSON f where
     consToJSON = unTagged (consToJSON' :: Tagged b (f a -> Value))
@@ -109,7 +119,7 @@ instance (GObject a, GObject b) => GObject (a :+: b) where
     {-# INLINE gObject #-}
 
 instance (Constructor c, GToJSON a, ConsToJSON a) => GObject (C1 c a) where
-    gObject m1 = M.singleton (pack (conName m1)) (gToJSON m1)
+    gObject = M.singleton (pack $ conName (undefined :: t c a p)) . gToJSON
     {-# INLINE gObject #-}
 
 --------------------------------------------------------------------------------
@@ -133,15 +143,32 @@ instance (ConsFromJSON a) => GFromJSON (C1 c a) where
     gParseJSON = fmap M1 . consParseJSON
     {-# INLINE gParseJSON #-}
 
-instance (GFromProduct a, GFromProduct b) => GFromJSON (a :*: b) where
-    gParseJSON (Array arr) = gParseProduct arr
+instance ( GFromProduct a, GFromProduct b
+         , ProductSize a, ProductSize b) => GFromJSON (a :*: b) where
+    gParseJSON (Array arr)
+        | lenArray == lenProduct = gParseProduct arr 0 lenProduct
+        | otherwise =
+            fail $ "When expecting a product of " ++ show lenProduct ++
+                   " values, encountered an Array of " ++ show lenArray ++
+                   " elements instead"
+        where
+          lenArray = V.length arr
+          lenProduct = unTagged2 (productSize :: Tagged2 (a :*: b) Int)
+
     gParseJSON v = typeMismatch "product (:*:)" v
     {-# INLINE gParseJSON #-}
 
 instance (GFromSum a, GFromSum b) => GFromJSON (a :+: b) where
-    gParseJSON (Object (M.toList -> [keyVal])) = gParseSum keyVal
+    gParseJSON (Object (M.toList -> [keyVal@(key, _)])) =
+        case gParseSum keyVal of
+          Nothing -> notFound $ unpack key
+          Just p  -> p
     gParseJSON v = typeMismatch "sum (:+:)" v
     {-# INLINE gParseJSON #-}
+
+notFound :: String -> Parser a
+notFound key = fail $ "The key \"" ++ key ++ "\" was not found"
+{-# INLINE notFound #-}
 
 --------------------------------------------------------------------------------
 
@@ -173,55 +200,65 @@ instance (GFromRecord a, GFromRecord b) => GFromRecord (a :*: b) where
     {-# INLINE gParseRecord #-}
 
 instance (Selector s, GFromJSON a) => GFromRecord (S1 s a) where
-    gParseRecord obj = case M.lookup (T.pack key) obj of
-                         Nothing -> notFound key
-                         Just v  -> gParseJSON v
+    gParseRecord = maybe (notFound key) gParseJSON . M.lookup (T.pack key)
         where
           key = selName (undefined :: t s a p)
     {-# INLINE gParseRecord #-}
 
 --------------------------------------------------------------------------------
 
+class ProductSize f where
+    productSize :: Tagged2 f Int
+
+newtype Tagged2 (s :: * -> *) b = Tagged2 {unTagged2 :: b}
+
+instance (ProductSize a, ProductSize b) => ProductSize (a :*: b) where
+    productSize = Tagged2 $ unTagged2 (productSize :: Tagged2 a Int) +
+                            unTagged2 (productSize :: Tagged2 b Int)
+
+instance ProductSize (S1 s a) where
+    productSize = Tagged2 1
+
+--------------------------------------------------------------------------------
+
 class GFromProduct f where
-    gParseProduct :: Array -> Parser (f a)
+    gParseProduct :: Array -> Int -> Int -> Parser (f a)
 
 instance (GFromProduct a, GFromProduct b) => GFromProduct (a :*: b) where
-    gParseProduct arr = (:*:) <$> gParseProduct arrL <*> gParseProduct arrR
+    gParseProduct arr ix len = (:*:) <$> gParseProduct arr ix  lenL
+                                     <*> gParseProduct arr ixR lenR
         where
-          (arrL, arrR) = V.splitAt (V.length arr `div` 2) arr
+          lenL = len `shiftR` 1
+          ixR  = ix + lenL
+          lenR = len - lenL
     {-# INLINE gParseProduct #-}
 
-instance (GFromJSON a) => GFromProduct a where
-    gParseProduct ((!? 0) -> Just v) = gParseJSON v
-    gParseProduct _ = fail "Array to small"
+instance (GFromJSON a) => GFromProduct (S1 s a) where
+    gParseProduct arr ix _ = gParseJSON $ V.unsafeIndex arr ix
     {-# INLINE gParseProduct #-}
 
 --------------------------------------------------------------------------------
 
 class GFromSum f where
-    gParseSum :: Pair -> Parser (f a)
+    gParseSum :: Pair -> Maybe (Parser (f a))
 
 instance (GFromSum a, GFromSum b) => GFromSum (a :+: b) where
-    gParseSum keyVal = (L1 <$> gParseSum keyVal) <|> (R1 <$> gParseSum keyVal)
+    gParseSum keyVal = (fmap L1 <$> gParseSum keyVal) <|>
+                       (fmap R1 <$> gParseSum keyVal)
     {-# INLINE gParseSum #-}
 
 instance (Constructor c, GFromJSON a, ConsFromJSON a) => GFromSum (C1 c a) where
     gParseSum (key, value)
-        | key == pack (conName (undefined :: t c a p)) = gParseJSON value
-        | otherwise = notFound $ unpack key
+        | key == pack (conName (undefined :: t c a p)) = Just $ gParseJSON value
+        | otherwise = Nothing
     {-# INLINE gParseSum #-}
-
-notFound :: String -> Parser a
-notFound key = fail $ "The key \"" ++ key ++ "\" was not found"
 
 --------------------------------------------------------------------------------
 
-newtype Tagged s b = Tagged {unTagged :: b}
+class IsRecord (f :: * -> *) b | f -> b
 
 data True
 data False
-
-class IsRecord (f :: * -> *) b | f -> b
 
 instance (IsRecord f b) => IsRecord (f :*: g) b
 instance IsRecord (M1 S NoSelector f) False
