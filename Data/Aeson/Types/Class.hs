@@ -1,13 +1,6 @@
-{-# LANGUAGE CPP
-           , DeriveDataTypeable
-           , FlexibleContexts
-           , FlexibleInstances
-           , GeneralizedNewtypeDeriving
-           , OverlappingInstances
-           , OverloadedStrings
-           , UndecidableInstances
-           , ViewPatterns
-  #-}
+{-# LANGUAGE CPP, DeriveDataTypeable, FlexibleContexts, FlexibleInstances,
+    GeneralizedNewtypeDeriving, IncoherentInstances, OverlappingInstances,
+    OverloadedStrings, UndecidableInstances, ViewPatterns #-}
 
 #ifdef GENERICS
 {-# LANGUAGE DefaultSignatures #-}
