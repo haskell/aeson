@@ -4,14 +4,14 @@ license:         BSD3
 license-file:    LICENSE
 category:        Text, Web, JSON
 copyright:       Copyright 2011 MailRank, Inc.
-author:          Bryan O'Sullivan <bos@mailrank.com>
-maintainer:      Bryan O'Sullivan <bos@mailrank.com>
+author:          Bryan O'Sullivan <bos@serpentine.com>
+maintainer:      Bryan O'Sullivan <bos@serpentine.com>
 stability:       experimental
 tested-with:     GHC == 6.12.3
 synopsis:        Fast JSON parsing and encoding
 cabal-version:   >= 1.8
-homepage:        http://github.com/mailrank/aeson
-bug-reports:     http://github.com/mailrank/aeson/issues
+homepage:        http://github.com/bos/aeson
+bug-reports:     http://github.com/bos/aeson/issues
 build-type:      Simple
 description:
     A JSON parsing and encoding library optimized for ease of use
@@ -23,7 +23,7 @@ description:
     /Note/: if you use GHCi or Template Haskell, please see the
     @README@ file for important details about building this package,
     and other packages that depend on it:
-    <https://github.com/mailrank/aeson#readme>
+    <https://github.com/bos/aeson#readme>
     .
     Parsing performance on a late 2010 MacBook Pro (2.66GHz Core i7),
     for mostly-English tweets from Twitter's JSON search API:
@@ -171,7 +171,7 @@ test-suite tests
 
 source-repository head
   type:     git
-  location: http://github.com/mailrank/aeson
+  location: http://github.com/bos/aeson
 
 source-repository head
   type:     mercurial
