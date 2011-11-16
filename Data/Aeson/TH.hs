@@ -38,8 +38,8 @@ import Control.Applicative
 import Control.Monad
 import Data.Aeson
 import Data.Aeson.TH
-import qualified Data.Map    as M
-import qualified Data.Text   as T
+import qualified Data.HashMap.Strict as H
+import qualified Data.Text as T
 import qualified Data.Vector as V
 
 instance 'ToJSON' a => 'ToJSON' (D a) where
