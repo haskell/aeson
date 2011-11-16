@@ -31,7 +31,7 @@ import Data.Aeson.Types.Class
 import Data.Aeson.Types.Internal
 import Data.Text (pack, unpack)
 import GHC.Generics
-import qualified Data.Map as M
+import qualified Data.HashMap.Strict as H
 import qualified Data.Text as T
 import qualified Data.Vector as V
 
@@ -119,7 +119,7 @@ instance (GObject a, GObject b) => GObject (a :+: b) where
     {-# INLINE gObject #-}
 
 instance (Constructor c, GToJSON a, ConsToJSON a) => GObject (C1 c a) where
-    gObject = M.singleton (pack $ conName (undefined :: t c a p)) . gToJSON
+    gObject = H.singleton (pack $ conName (undefined :: t c a p)) . gToJSON
     {-# INLINE gObject #-}
 
 --------------------------------------------------------------------------------
@@ -159,7 +159,7 @@ instance ( GFromProduct a, GFromProduct b
     {-# INLINE gParseJSON #-}
 
 instance (GFromSum a, GFromSum b) => GFromJSON (a :+: b) where
-    gParseJSON (Object (M.toList -> [keyVal@(key, _)])) =
+    gParseJSON (Object (H.toList -> [keyVal@(key, _)])) =
         case gParseSum keyVal of
           Nothing -> notFound $ unpack key
           Just p  -> p
@@ -200,7 +200,7 @@ instance (GFromRecord a, GFromRecord b) => GFromRecord (a :*: b) where
     {-# INLINE gParseRecord #-}
 
 instance (Selector s, GFromJSON a) => GFromRecord (S1 s a) where
-    gParseRecord = maybe (notFound key) gParseJSON . M.lookup (T.pack key)
+    gParseRecord = maybe (notFound key) gParseJSON . H.lookup (T.pack key)
         where
           key = selName (undefined :: t s a p)
     {-# INLINE gParseRecord #-}

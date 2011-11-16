@@ -27,7 +27,6 @@ import Data.Attoparsec.Char8
 import Data.Bits ((.|.), shiftL)
 import Data.ByteString as B
 import Data.Char (chr)
-import Data.Map as Map
 import Data.Monoid (mappend, mempty)
 import Data.Text as T
 import Data.Text.Encoding (decodeUtf8)
@@ -37,6 +36,7 @@ import qualified Data.Attoparsec as A
 import qualified Data.Attoparsec.Zepto as Z
 import qualified Data.ByteString.Char8 as B8
 import qualified Data.ByteString.Unsafe as B
+import qualified Data.HashMap.Strict as H
 
 -- | Parse a top-level JSON value.  This must be either an object or
 -- an array.
@@ -55,7 +55,7 @@ object_ = {-# SCC "object_" #-} do
         b <- char ':' *> skipSpace *> value
         return (a,b)
   vals <- ((pair <* skipSpace) `sepBy` (char ',' *> skipSpace)) <* char '}'
-  return . Object $ Map.fromList vals
+  return . Object $ H.fromList vals
 
 array_ :: Parser Value
 array_ = {-# SCC "array_" #-} do
