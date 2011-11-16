@@ -36,6 +36,7 @@ module Data.Aeson.Types
     , (.=)
     , (.:)
     , (.:?)
+    , (.:/)
     , object
     ) where
 
@@ -273,6 +274,20 @@ obj .:? key = case M.lookup key obj of
                Nothing -> pure Nothing
                Just v  -> parseJSON v
 {-# INLINE (.:?) #-}
+
+-- | Retrieve the value associated with the given key of an 'Object'.
+-- The result is a default value if the key is not present, or 'empty' 
+-- if the value cannot be converted to the desired type.
+--
+-- This accessor is most useful if the key and value can be absent 
+-- from an object without affecting its validity and we know a 
+-- default value to assign in that case.  If the key and value 
+-- are mandatory, use '(.:)' instead.
+(.:/) :: (FromJSON a) => Object -> (Text, a) -> Parser a
+obj .:/ (key, val) = case M.lookup key obj of
+               Nothing -> pure val
+               Just v  -> parseJSON v
+{-# INLINE (.:/) #-}
 
 -- | Create a 'Value' from a list of name\/value 'Pair's.  If duplicate
 -- keys arise, earlier keys and their associated values win.
