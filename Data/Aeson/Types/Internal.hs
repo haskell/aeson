@@ -33,16 +33,14 @@ import Control.Applicative
 import Control.DeepSeq (NFData(..))
 import Control.Monad.State.Strict
 import Data.Attoparsec.Char8 (Number(..))
-import Data.Data (Data)
 import Data.Hashable (Hashable(..))
-import Data.List (foldl')
-import Data.Map (Map)
+import Data.HashMap.Strict (HashMap)
 import Data.Monoid (Monoid(..))
 import Data.String (IsString(..))
 import Data.Text (Text, pack)
 import Data.Typeable (Typeable)
 import Data.Vector (Vector)
-import qualified Data.Map as M
+import qualified Data.HashMap.Strict as H
 import qualified Data.Vector as V
 
 -- | The result of running a 'Parser'.
@@ -151,7 +149,7 @@ apP d e = do
 {-# INLINE apP #-}
 
 -- | A JSON \"object\" (key\/value map).
-type Object = Map Text Value
+type Object = HashMap Text Value
 
 -- | A JSON \"array\" (sequence).
 type Array = Vector Value
@@ -163,31 +161,22 @@ data Value = Object Object
            | Number Number
            | Bool !Bool
            | Null
-             deriving (Eq, Show, Typeable, Data)
+             deriving (Eq, Show, Typeable)
 
 instance NFData Value where
-    rnf (Object o) = obj_rnf o
+    rnf (Object o) = rnf o
     rnf (Array a)  = V.foldl' (\x y -> rnf y `seq` x) () a
     rnf (String s) = rnf s
     rnf (Number n) = case n of I i -> rnf i; D d -> rnf d
     rnf (Bool b)   = rnf b
     rnf Null       = ()
 
-obj_rnf :: (NFData k, NFData v) => Map k v -> ()
-#if MIN_VERSION_containers(0,4,2)
-obj_rnf = rnf
-#elif MIN_VERSION_containers(0,4,1)
-obj_rnf = M.foldlWithKey' (\_ k v -> rnf k `seq` rnf v) ()
-#else
-obj_rnf = rnf . M.toList
-#endif
-
 instance IsString Value where
     fromString = String . pack
     {-# INLINE fromString #-}
 
 instance Hashable Value where
-    hash (Object o) = foldl' hashWithSalt 0 . M.toList $ o
+    hash (Object o) = H.foldl' hashWithSalt 0 o
     hash (Array a)  = V.foldl' hashWithSalt 1 a
     hash (String s) = 2 `hashWithSalt` s
     hash (Number n) = 3 `hashWithSalt` case n of I i -> hash i; D d -> hash d
@@ -206,7 +195,7 @@ isEmptyArray _ = False
 
 -- | The empty object.
 emptyObject :: Value
-emptyObject = Object M.empty
+emptyObject = Object H.empty
 
 -- | Run a 'Parser'.
 parse :: (a -> Parser b) -> a -> Result b
@@ -229,5 +218,5 @@ type Pair = (Text, Value)
 -- | Create a 'Value' from a list of name\/value 'Pair's.  If duplicate
 -- keys arise, earlier keys and their associated values win.
 object :: [Pair] -> Value
-object = Object . M.fromList
+object = Object . H.fromList
 {-# INLINE object #-}

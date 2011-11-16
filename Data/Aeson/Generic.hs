@@ -98,7 +98,7 @@ toJSON = toJSON_generic
       | otherwise = modError "toJSON" $
                              "cannot convert map keyed by type " ++ show tyrep
       where tyrep = typeOf . head . Map.keys $ m
-            remap f = Object . transformMap (f . fromJust . cast) toJSON $ m
+            remap f = Object . mapHashKeyVal (f . fromJust . cast) toJSON $ m
 
     hashMapAny m
       | tyrep == typeOf DT.empty = remap id
@@ -109,7 +109,7 @@ toJSON = toJSON_generic
       | otherwise = modError "toJSON" $
                              "cannot convert map keyed by type " ++ show tyrep
       where tyrep = typeOf . head . H.keys $ m
-            remap f = Object . hashMap (f . fromJust . cast) toJSON $ m
+            remap f = Object . mapKeyVal (f . fromJust . cast) toJSON $ m
 
 
 -- Skip leading '_' in field name so we can use keywords
@@ -202,40 +202,41 @@ parseJSON j = parseJSON_generic j
     vector = case j of
                Array js -> V.mapM parseJSON js
                _        -> myFail
+
     mapAny :: forall e f. (Data e, Data f) => Parser (Map.Map f e)
     mapAny
-        | tyrep `elem` stringyTypes = res
+        | tyrep == typeOf DT.empty = process id
+        | tyrep == typeOf LT.empty = process LT.fromStrict
+        | tyrep == typeOf ""       = process DT.unpack
+        | tyrep == typeOf B.empty  = process encodeUtf8
+        | tyrep == typeOf L.empty  = process lazy
         | otherwise = myFail
-      where res = case j of
-                Object js -> Map.mapKeysMonotonic trans <$> T.mapM parseJSON js
-                _         -> myFail
-            trans
-               | tyrep == typeOf DT.empty = remap id
-               | tyrep == typeOf LT.empty = remap LT.fromStrict
-               | tyrep == typeOf ""       = remap DT.unpack
-               | tyrep == typeOf B.empty  = remap encodeUtf8
-               | tyrep == typeOf L.empty  = remap lazy
-               | otherwise = modError "parseJSON"
-                                      "mapAny -- should never happen"
-            tyrep = typeOf (undefined :: f)
-            remap f = fromJust . cast . f
+        where
+          process f = maybe myFail return . cast =<< parseWith f
+          parseWith :: (Ord c) => (Text -> c) -> Parser (Map.Map c e)
+          parseWith f = case j of
+                          Object js -> Map.fromList . map (first f) . H.toList <$>
+                                         T.mapM parseJSON js
+                          _         -> myFail
+          tyrep = typeOf (undefined :: f)
+
     hashMapAny :: forall e f. (Data e, Data f) => Parser (H.HashMap f e)
     hashMapAny
-        | tyrep == typeOf ""       = process DT.unpack
-        | tyrep == typeOf LT.empty = process LT.fromStrict
         | tyrep == typeOf DT.empty = process id
+        | tyrep == typeOf LT.empty = process LT.fromStrict
+        | tyrep == typeOf ""       = process DT.unpack
+        | tyrep == typeOf B.empty  = process encodeUtf8
+        | tyrep == typeOf L.empty  = process lazy
         | otherwise = myFail
       where
         process f = maybe myFail return . cast =<< parseWith f
         parseWith :: (Eq c, Hashable c) => (Text -> c) -> Parser (H.HashMap c e)
         parseWith f = case j of
-                        Object js -> H.fromList . map (first f) . Map.toList <$>
-                                     T.mapM parseJSON js
-                        _          -> myFail
+                        Object js -> mapKey f <$> T.mapM parseJSON js
+                        _         -> myFail
         tyrep = typeOf (undefined :: f)
+
     myFail = modFail "parseJSON" $ "bad data: " ++ show j
-    stringyTypes = [typeOf LT.empty, typeOf DT.empty, typeOf B.empty,
-                    typeOf L.empty, typeOf ""]
 
 parseJSON_generic :: (Data a) => Value -> Parser a
 parseJSON_generic j = generic
@@ -274,7 +275,7 @@ parseJSON_generic j = generic
           go _ c _        jd         = modFail "parseJSON" $
                                        "bad decodeArgs data " ++ show (c, jd)
 
-        fromJSObject = map (first unpack) . Map.toList
+        fromJSObject = map (first unpack) . H.toList
 
         -- Build the value by stepping through the list of subparts.
         construct c = evalStateT $ fromConstrM f c
@@ -287,7 +288,7 @@ parseJSON_generic j = generic
         -- Select the named fields from a JSON object.
         selectFields fjs = mapM sel
           where sel f = maybe (modFail "parseJSON" $ "field does not exist " ++
-                               f) return $ Map.lookup (mungeField f) fjs
+                               f) return $ H.lookup (mungeField f) fjs
 
         -- Count how many arguments a constructor has.  The value x is
         -- used to determine what type the constructor returns.
