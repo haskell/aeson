@@ -157,10 +157,10 @@ type Object = Map Text Value
 type Array = Vector Value
 
 -- | A JSON value represented as a Haskell value.
-data Value = Object Object
-           | Array Array
-           | String Text
-           | Number Number
+data Value = Object !Object
+           | Array !Array
+           | String !Text
+           | Number !Number
            | Bool !Bool
            | Null
              deriving (Eq, Show, Typeable, Data)
