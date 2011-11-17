@@ -35,6 +35,7 @@ module Data.Aeson.Types
     , (.=)
     , (.:)
     , (.:?)
+    , (.:/)
     , object
     ) where
 
