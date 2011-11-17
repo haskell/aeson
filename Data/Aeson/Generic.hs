@@ -5,7 +5,7 @@
 -- Copyright:   (c) 2011 MailRank, Inc.
 --              (c) 2008, 2009 Lennart Augustsson
 -- License:     BSD3
--- Maintainer:  Bryan O'Sullivan <bos@mailrank.com>
+-- Maintainer:  Bryan O'Sullivan <bos@serpentine.com>
 -- Stability:   experimental
 -- Portability: portable
 --
