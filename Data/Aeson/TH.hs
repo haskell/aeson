@@ -38,8 +38,8 @@ import Control.Applicative
 import Control.Monad
 import Data.Aeson
 import Data.Aeson.TH
-import qualified Data.Map    as M
-import qualified Data.Text   as T
+import qualified Data.HashMap.Strict as H
+import qualified Data.Text as T
 import qualified Data.Vector as V
 
 instance 'ToJSON' a => 'ToJSON' (D a) where
@@ -72,7 +72,7 @@ instance 'FromJSON' a => 'FromJSON' (D a) where
       \value ->
         case value of
           'Object' obj ->
-            case M.toList obj of
+            case H.toList obj of
               [(conKey, conVal)] ->
                 case conKey of
                   _ | conKey == T.pack \"Nullary\" ->
@@ -97,7 +97,7 @@ instance 'FromJSON' a => 'FromJSON' (D a) where
                     | conKey == T.pack \"Record\" ->
                         case conVal of
                           'Object' recObj ->
-                            if M.size recObj == 3
+                            if H.size recObj == 3
                             then Record \<$\> recObj '.:' T.pack \"One\"
                                         \<*\> recObj '.:' T.pack \"Two\"
                                         \<*\> recObj '.:' T.pack \"Three\"
@@ -171,8 +171,8 @@ import Text.Show           ( show )
 import Control.Monad       ( (>>=) )
 import Prelude             ( fromInteger )
 #endif
--- from containers:
-import qualified Data.Map as M ( lookup, toList, size )
+-- from unordered-containers:
+import qualified Data.HashMap.Strict as H ( lookup, toList, size )
 -- from template-haskell:
 import Language.Haskell.TH
 -- from text:
@@ -465,7 +465,7 @@ consFromJSON tName withField cons = do
   let -- Convert the Data.Map inside the Object to a list and pattern match
       -- against it. It must contain a single element otherwise the parse will
       -- fail.
-      caseLst = caseE ([e|M.toList|] `appE` varE obj)
+      caseLst = caseE ([e|H.toList|] `appE` varE obj)
                       [ match (listP [tupP [varP conKey, varP conVal]])
                               (normalB caseKey)
                               []
@@ -563,7 +563,7 @@ parseArgs tName withField (RecC conName ts) =
                     | (field, _, _) <- ts
                     ]
          match (conP 'Object [varP obj])
-               ( normalB $ condE ( infixApp ([|M.size|] `appE` varE obj)
+               ( normalB $ condE ( infixApp ([|H.size|] `appE` varE obj)
                                             [|(==)|]
                                             (litE $ integerL $ genericLength ts)
                                  )
@@ -576,7 +576,7 @@ parseArgs tName withField (RecC conName ts) =
                                                         ++ show (length ts)
                                                         ++ " name/value pairs"
                                      )
-                                     ( infixApp ([|show . M.size|] `appE` varE obj)
+                                     ( infixApp ([|show . H.size|] `appE` varE obj)
                                                 [|(++)|]
                                                 (litE $ stringL $ " name/value pairs")
                                      )
@@ -656,7 +656,7 @@ parseTypeMismatch tName conName expected actual =
 
 lookupField :: (FromJSON a) => String -> String -> Object -> T.Text -> Parser a
 lookupField tName rec obj key =
-    case M.lookup key obj of
+    case H.lookup key obj of
       Nothing -> unknownFieldFail tName rec (T.unpack key)
       Just v  -> parseJSON v
 

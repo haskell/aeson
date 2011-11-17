@@ -49,6 +49,7 @@ import Data.Text (Text, pack, unpack)
 import Data.Text.Encoding (encodeUtf8)
 import Data.Time.Clock (UTCTime)
 import Data.Time.Format (FormatTime, formatTime, parseTime)
+import Data.Traversable (traverse)
 import Data.Typeable (Typeable)
 import Data.Vector (Vector)
 import Data.Word (Word, Word8, Word16, Word32, Word64)
@@ -208,7 +209,7 @@ instance (ToJSON a, ToJSON b) => ToJSON (Either a b) where
     {-# INLINE toJSON #-}
 
 instance (FromJSON a, FromJSON b) => FromJSON (Either a b) where
-    parseJSON (Object (M.toList -> [(key, value)]))
+    parseJSON (Object (H.toList -> [(key, value)]))
         | key == left  = Left  <$> parseJSON value
         | key == right = Right <$> parseJSON value
     parseJSON _        = fail ""
@@ -507,70 +508,68 @@ instance FromJSON a => FromJSON (IntMap.IntMap a) where
     {-# INLINE parseJSON #-}
 
 instance (ToJSON v) => ToJSON (M.Map Text v) where
-    toJSON = Object . M.map toJSON
+    toJSON = Object . M.foldrWithKey (\k -> H.insert k . toJSON) H.empty
     {-# INLINE toJSON #-}
 
 instance (FromJSON v) => FromJSON (M.Map Text v) where
-    parseJSON (Object o) = M.fromAscList <$> mapM go (M.toAscList o)
-      where go (k,v)     = ((,) k) <$> parseJSON v
+    parseJSON (Object o) = H.foldrWithKey M.insert M.empty <$> traverse parseJSON o
     parseJSON v          = typeMismatch "Map Text a" v
 
 instance (ToJSON v) => ToJSON (M.Map LT.Text v) where
-    toJSON = Object . transformMap LT.toStrict toJSON
+    toJSON = Object . mapHashKeyVal LT.toStrict toJSON
 
 instance (FromJSON v) => FromJSON (M.Map LT.Text v) where
-    parseJSON = fmap (M.mapKeysMonotonic LT.fromStrict) . parseJSON
+    parseJSON = fmap (hashMapKey LT.fromStrict) . parseJSON
 
 instance (ToJSON v) => ToJSON (M.Map String v) where
-    toJSON = Object . transformMap pack toJSON
+    toJSON = Object . mapHashKeyVal pack toJSON
 
 instance (FromJSON v) => FromJSON (M.Map String v) where
-    parseJSON = fmap (M.mapKeysMonotonic unpack) . parseJSON
+    parseJSON = fmap (hashMapKey unpack) . parseJSON
 
 instance (ToJSON v) => ToJSON (M.Map B.ByteString v) where
-    toJSON = Object . transformMap decode toJSON
+    toJSON = Object . mapHashKeyVal decode toJSON
 
 instance (FromJSON v) => FromJSON (M.Map B.ByteString v) where
-    parseJSON = fmap (M.mapKeysMonotonic encodeUtf8) . parseJSON
+    parseJSON = fmap (hashMapKey encodeUtf8) . parseJSON
 
 instance (ToJSON v) => ToJSON (M.Map LB.ByteString v) where
-    toJSON = Object . transformMap strict toJSON
+    toJSON = Object . mapHashKeyVal strict toJSON
 
 instance (FromJSON v) => FromJSON (M.Map LB.ByteString v) where
-    parseJSON = fmap (M.mapKeysMonotonic lazy) . parseJSON
+    parseJSON = fmap (hashMapKey lazy) . parseJSON
 
 instance (ToJSON v) => ToJSON (H.HashMap Text v) where
-    toJSON = Object . hashMap id toJSON
+    toJSON = Object . H.map toJSON
     {-# INLINE toJSON #-}
 
 instance (FromJSON v) => FromJSON (H.HashMap Text v) where
-    parseJSON (Object o) = H.fromList <$> mapM go (M.toList o)
-      where go (k,v)     = ((,) k) <$> parseJSON v
+    parseJSON (Object o) = traverse parseJSON o
     parseJSON v          = typeMismatch "HashMap Text a" v
 
 instance (ToJSON v) => ToJSON (H.HashMap LT.Text v) where
-    toJSON = Object . M.fromList . H.foldrWithKey (\k v -> ((LT.toStrict k,toJSON v) :)) []
+    toJSON = Object . mapKeyVal LT.toStrict toJSON
 
 instance (FromJSON v) => FromJSON (H.HashMap LT.Text v) where
-    parseJSON = fmap (mapHash LT.fromStrict) . parseJSON
+    parseJSON = fmap (mapKey LT.fromStrict) . parseJSON
 
 instance (ToJSON v) => ToJSON (H.HashMap String v) where
-    toJSON = Object . hashMap pack toJSON
+    toJSON = Object . mapKeyVal pack toJSON
 
 instance (FromJSON v) => FromJSON (H.HashMap String v) where
-    parseJSON = fmap (mapHash unpack) . parseJSON
+    parseJSON = fmap (mapKey unpack) . parseJSON
 
 instance (ToJSON v) => ToJSON (H.HashMap B.ByteString v) where
-    toJSON = Object . hashMap decode toJSON
+    toJSON = Object . mapKeyVal decode toJSON
 
 instance (FromJSON v) => FromJSON (H.HashMap B.ByteString v) where
-    parseJSON = fmap (mapHash encodeUtf8) . parseJSON
+    parseJSON = fmap (mapKey encodeUtf8) . parseJSON
 
 instance (ToJSON v) => ToJSON (H.HashMap LB.ByteString v) where
-    toJSON = Object . hashMap strict toJSON
+    toJSON = Object . mapKeyVal strict toJSON
 
 instance (FromJSON v) => FromJSON (H.HashMap LB.ByteString v) where
-    parseJSON = fmap (mapHash lazy) . parseJSON
+    parseJSON = fmap (mapKey lazy) . parseJSON
 
 instance ToJSON Value where
     toJSON a = a
@@ -689,7 +688,7 @@ fromJSON = parse parseJSON
 -- in an object for it to be valid.  If the key and value are
 -- optional, use '(.:?)' instead.
 (.:) :: (FromJSON a) => Object -> Text -> Parser a
-obj .: key = case M.lookup key obj of
+obj .: key = case H.lookup key obj of
                Nothing -> fail $ "key " ++ show key ++ " not present"
                Just v  -> parseJSON v
 {-# INLINE (.:) #-}
@@ -702,7 +701,7 @@ obj .: key = case M.lookup key obj of
 -- from an object without affecting its validity.  If the key and
 -- value are mandatory, use '(.:)' instead.
 (.:?) :: (FromJSON a) => Object -> Text -> Parser (Maybe a)
-obj .:? key = case M.lookup key obj of
+obj .:? key = case H.lookup key obj of
                Nothing -> pure Nothing
                Just v  -> parseJSON v
 {-# INLINE (.:?) #-}

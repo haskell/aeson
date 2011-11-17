@@ -1,15 +1,14 @@
 module Data.Aeson.Functions
-    (
-      hashMap
-    , mapHash
-    , transformMap
+    ( mapHashKeyVal
+    , hashMapKey
+    , mapKeyVal
+    , mapKey
     -- * String conversions
     , decode
     , strict
     , lazy
     ) where
 
-import Control.Arrow ((***), first)
 import Data.Hashable (Hashable)
 import Data.Text (Text)
 import Data.Text.Encoding (decodeUtf8, encodeUtf8)
@@ -18,23 +17,28 @@ import qualified Data.ByteString.Lazy as L
 import qualified Data.HashMap.Strict as H
 import qualified Data.Map as M
 
--- | Transform one map into another.  The ordering of keys must be
--- preserved by the key transformation function.
-transformMap :: (Ord k2) => (k1 -> k2) -> (v1 -> v2)
-             -> M.Map k1 v1 -> M.Map k2 v2
-transformMap fk fv = M.fromAscList . map (fk *** fv) . M.toAscList
-{-# INLINE transformMap #-}
+-- | Transform a 'M.Map' into a 'H.HashMap' while transforming the keys.
+mapHashKeyVal :: (Eq k2, Hashable k2) => (k1 -> k2) -> (v1 -> v2)
+              -> M.Map k1 v1 -> H.HashMap k2 v2
+mapHashKeyVal fk kv = M.foldrWithKey (\k v -> H.insert (fk k) (kv v)) H.empty
+{-# INLINE mapHashKeyVal #-}
 
--- | Transform a 'H.HashMap' into a 'M.Map'.
-hashMap :: (Ord k2) => (k1 -> k2) -> (v1 -> v2)
-        -> H.HashMap k1 v1 -> M.Map k2 v2
-hashMap fk kv = M.fromList . map (fk *** kv) . H.toList
-{-# INLINE hashMap #-}
+-- | Transform a 'M.Map' into a 'H.HashMap' while transforming the keys.
+hashMapKey :: (Ord k2) => (k1 -> k2)
+           -> H.HashMap k1 v -> M.Map k2 v
+hashMapKey kv = H.foldrWithKey (M.insert . kv) M.empty
+{-# INLINE hashMapKey #-}
 
--- | Transform a 'M.Map' into a 'H.HashMap'.
-mapHash :: (Eq k2, Hashable k2) => (k1 -> k2) -> M.Map k1 v -> H.HashMap k2 v
-mapHash fk = H.fromList . map (first fk) . M.toList
-{-# INLINE mapHash #-}
+-- | Transform the keys and values of a 'H.HashMap'.
+mapKeyVal :: (Eq k2, Hashable k2) => (k1 -> k2) -> (v1 -> v2)
+          -> H.HashMap k1 v1 -> H.HashMap k2 v2
+mapKeyVal fk kv = H.foldrWithKey (\k v -> H.insert (fk k) (kv v)) H.empty
+{-# INLINE mapKeyVal #-}
+
+-- | Transform the keys of a 'H.HashMap'.
+mapKey :: (Eq k2, Hashable k2) => (k1 -> k2) -> H.HashMap k1 v -> H.HashMap k2 v
+mapKey fk = mapKeyVal fk id
+{-# INLINE mapKey #-}
 
 strict :: L.ByteString -> Text
 strict = decode . B.concat . L.toChunks
