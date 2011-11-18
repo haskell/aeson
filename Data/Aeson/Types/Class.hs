@@ -647,6 +647,22 @@ instance (FromJSON a, FromJSON b, FromJSON c) => FromJSON (a,b,c) where
     parseJSON v          = typeMismatch "(a,b,c)" v
     {-# INLINE parseJSON #-}
 
+instance (ToJSON a, ToJSON b, ToJSON c, ToJSON d) => ToJSON (a,b,c,d) where
+    toJSON (a,b,c,d) = toJSON [toJSON a, toJSON b, toJSON c, toJSON d]
+    {-# INLINE toJSON #-}
+
+instance (FromJSON a, FromJSON b, FromJSON c, FromJSON d) => FromJSON (a,b,c,d) where
+    parseJSON (Array abcd) =
+      case V.toList abcd of
+        [a,b,c,d] -> (,,,) <$> parseJSON a
+                           <*> parseJSON b
+                           <*> parseJSON c
+                           <*> parseJSON d
+        _         -> fail $ "cannot unpack array of length " ++
+                            show (V.length abcd) ++ " into a 4-tuple"
+    parseJSON v            = typeMismatch "(a,b,c,d)" v
+    {-# INLINE parseJSON #-}
+
 instance ToJSON a => ToJSON (Dual a) where
     toJSON = toJSON . getDual
     {-# INLINE toJSON #-}
