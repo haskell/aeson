@@ -716,7 +716,7 @@ obj .:? key = case H.lookup key obj of
 -- default value to assign in that case.  If the key and value 
 -- are mandatory, use '(.:)' instead.
 (.:/) :: (FromJSON a) => Object -> (Text, a) -> Parser a
-obj .:/ (key, val) = case M.lookup key obj of
+obj .:/ (key, val) = case H.lookup key obj of
                Nothing -> pure val
                Just v  -> parseJSON v
 {-# INLINE (.:/) #-}
