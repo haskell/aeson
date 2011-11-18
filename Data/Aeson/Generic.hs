@@ -111,20 +111,11 @@ toJSON = toJSON_generic
       where tyrep = typeOf . head . H.keys $ m
             remap f = Object . mapKeyVal (f . fromJust . cast) toJSON $ m
 
-
 -- Skip leading '_' in field name so we can use keywords
 -- etc. as field names.
 mungeField :: String -> Text
 mungeField ('_':cs) = pack cs
 mungeField cs       = pack cs
-
-
--- Skip leading '_' in field name so we can use keywords
--- etc. as field names.
-mungeField :: String -> Text
-mungeField ('_':cs) = pack cs
-mungeField cs       = pack cs
-
 
 toJSON_generic :: (Data a) => a -> Value
 toJSON_generic = generic
