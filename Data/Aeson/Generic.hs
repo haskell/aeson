@@ -119,6 +119,13 @@ mungeField ('_':cs) = pack cs
 mungeField cs       = pack cs
 
 
+-- Skip leading '_' in field name so we can use keywords
+-- etc. as field names.
+mungeField :: String -> Text
+mungeField ('_':cs) = pack cs
+mungeField cs       = pack cs
+
+
 toJSON_generic :: (Data a) => a -> Value
 toJSON_generic = generic
   where
