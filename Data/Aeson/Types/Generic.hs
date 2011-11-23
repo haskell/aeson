@@ -30,6 +30,8 @@ import Data.Bits (shiftR)
 import Data.Aeson.Types.Class
 import Data.Aeson.Types.Internal
 import Data.Text (pack, unpack)
+import Data.DList (DList, toList)
+import Data.Monoid (mappend)
 import GHC.Generics
 import qualified Data.HashMap.Strict as H
 import qualified Data.Text as T
@@ -88,11 +90,11 @@ class GRecordToPairs f where
     gRecordToPairs :: f a -> DList Pair
 
 instance (GRecordToPairs a, GRecordToPairs b) => GRecordToPairs (a :*: b) where
-    gRecordToPairs (a :*: b) = gRecordToPairs a `append` gRecordToPairs b
+    gRecordToPairs (a :*: b) = gRecordToPairs a `mappend` gRecordToPairs b
     {-# INLINE gRecordToPairs #-}
 
 instance (Selector s, GToJSON a) => GRecordToPairs (S1 s a) where
-    gRecordToPairs m1 = singleton (pack (selName m1), gToJSON (unM1 m1))
+    gRecordToPairs m1 = pure (pack (selName m1), gToJSON (unM1 m1))
     {-# INLINE gRecordToPairs #-}
 
 --------------------------------------------------------------------------------
@@ -101,11 +103,11 @@ class GProductToValues f where
     gProductToValues :: f a -> DList Value
 
 instance (GProductToValues a, GProductToValues b) => GProductToValues (a :*: b) where
-    gProductToValues (a :*: b) = gProductToValues a `append` gProductToValues b
+    gProductToValues (a :*: b) = gProductToValues a `mappend` gProductToValues b
     {-# INLINE gProductToValues #-}
 
 instance (GToJSON a) => GProductToValues a where
-    gProductToValues = singleton . gToJSON
+    gProductToValues = pure . gToJSON
     {-# INLINE gProductToValues #-}
 
 --------------------------------------------------------------------------------
@@ -265,21 +267,5 @@ instance IsRecord (M1 S NoSelector f) False
 instance (IsRecord f b) => IsRecord (M1 S c f) b
 instance IsRecord (K1 i c) True
 instance IsRecord U1 False
-
---------------------------------------------------------------------------------
-
-type DList a = [a] -> [a]
-
-toList :: DList a -> [a]
-toList = ($ [])
-{-# INLINE toList #-}
-
-singleton :: a -> DList a
-singleton = (:)
-{-# INLINE singleton #-}
-
-append :: DList a -> DList a -> DList a
-append = (.)
-{-# INLINE append #-}
 
 --------------------------------------------------------------------------------
