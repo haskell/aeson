@@ -33,9 +33,11 @@ import Data.Text (pack, unpack)
 import Data.DList (DList, toList)
 import Data.Monoid (mappend)
 import GHC.Generics
+import Control.Monad.ST (ST)
 import qualified Data.HashMap.Strict as H
 import qualified Data.Text as T
 import qualified Data.Vector as V
+import qualified Data.Vector.Mutable as VM
 
 --------------------------------------------------------------------------------
 -- Generic toJSON
@@ -56,8 +58,14 @@ instance (ConsToJSON a) => GToJSON (C1 c a) where
     gToJSON = consToJSON . unM1
     {-# INLINE gToJSON #-}
 
-instance (GProductToValues a, GProductToValues b) => GToJSON (a :*: b) where
-    gToJSON = toJSON . toList . gProductToValues
+instance ( GProductToValues a, GProductToValues b
+         , ProductSize      a, ProductSize      b) => GToJSON (a :*: b) where
+    gToJSON p = Array $ V.create $ do
+                  mv <- VM.unsafeNew lenProduct
+                  gProductToValues mv 0 lenProduct p
+                  return mv
+        where
+          lenProduct = unTagged2 (productSize :: Tagged2 (a :*: b) Int)
     {-# INLINE gToJSON #-}
 
 instance (GObject a, GObject b) => GToJSON (a :+: b) where
@@ -100,14 +108,19 @@ instance (Selector s, GToJSON a) => GRecordToPairs (S1 s a) where
 --------------------------------------------------------------------------------
 
 class GProductToValues f where
-    gProductToValues :: f a -> DList Value
+    gProductToValues :: VM.MVector s Value -> Int -> Int -> f a -> ST s ()
 
 instance (GProductToValues a, GProductToValues b) => GProductToValues (a :*: b) where
-    gProductToValues (a :*: b) = gProductToValues a `mappend` gProductToValues b
+    gProductToValues mv ix len (a :*: b) = do gProductToValues mv ix  lenL a
+                                              gProductToValues mv ixR lenR b
+        where
+          lenL = len `shiftR` 1
+          ixR  = ix + lenL
+          lenR = len - lenL
     {-# INLINE gProductToValues #-}
 
 instance (GToJSON a) => GProductToValues a where
-    gProductToValues = pure . gToJSON
+    gProductToValues mv ix _ = VM.unsafeWrite mv ix . gToJSON
     {-# INLINE gProductToValues #-}
 
 --------------------------------------------------------------------------------
