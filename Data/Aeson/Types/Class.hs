@@ -71,6 +71,7 @@ import qualified Data.Vector.Generic as VG
 import qualified Data.Vector.Primitive as VP
 import qualified Data.Vector.Storable as VS
 import qualified Data.Vector.Unboxed as VU
+import qualified Data.Vector.Mutable as VM ( unsafeNew, unsafeWrite )
 
 #ifdef GENERICS
 import GHC.Generics
@@ -622,45 +623,66 @@ instance FromJSON UTCTime where
     {-# INLINE parseJSON #-}
 
 instance (ToJSON a, ToJSON b) => ToJSON (a,b) where
-    toJSON (a,b) = toJSON [toJSON a, toJSON b]
+    toJSON (a,b) = Array $ V.create $ do
+                     mv <- VM.unsafeNew 2
+                     VM.unsafeWrite mv 0 (toJSON a)
+                     VM.unsafeWrite mv 1 (toJSON b)
+                     return mv
     {-# INLINE toJSON #-}
 
 instance (FromJSON a, FromJSON b) => FromJSON (a,b) where
-    parseJSON (Array ab) =
-      case V.toList ab of
-        [a,b] -> (,) <$> parseJSON a <*> parseJSON b
-        _     -> fail $ "cannot unpack array of length " ++
-                        show (V.length ab) ++ " into a pair"
-    parseJSON v          = typeMismatch "(a,b)" v
+    parseJSON (Array ab)
+        | n == 2    = (,) <$> parseJSON (V.unsafeIndex ab 0)
+                          <*> parseJSON (V.unsafeIndex ab 1)
+        | otherwise = fail $ "cannot unpack array of length " ++
+                        show n ++ " into a pair"
+          where
+            n = V.length ab
+    parseJSON v = typeMismatch "(a,b)" v
     {-# INLINE parseJSON #-}
 
 instance (ToJSON a, ToJSON b, ToJSON c) => ToJSON (a,b,c) where
-    toJSON (a,b,c) = toJSON [toJSON a, toJSON b, toJSON c]
+    toJSON (a,b,c) = Array $ V.create $ do
+                       mv <- VM.unsafeNew 3
+                       VM.unsafeWrite mv 0 (toJSON a)
+                       VM.unsafeWrite mv 1 (toJSON b)
+                       VM.unsafeWrite mv 2 (toJSON c)
+                       return mv
     {-# INLINE toJSON #-}
 
 instance (FromJSON a, FromJSON b, FromJSON c) => FromJSON (a,b,c) where
-    parseJSON (Array abc) =
-      case V.toList abc of
-        [a,b,c] -> (,,) <$> parseJSON a <*> parseJSON b <*> parseJSON c
-        _       -> fail $ "cannot unpack array of length " ++
-                          show (V.length abc) ++ " into a 3-tuple"
-    parseJSON v          = typeMismatch "(a,b,c)" v
+    parseJSON (Array abc)
+        | n == 3    = (,,) <$> parseJSON (V.unsafeIndex abc 0)
+                           <*> parseJSON (V.unsafeIndex abc 1)
+                           <*> parseJSON (V.unsafeIndex abc 2)
+        | otherwise = fail $ "cannot unpack array of length " ++
+                        show n ++ " into a 3-tuple"
+          where
+            n = V.length abc
+    parseJSON v = typeMismatch "(a,b,c)" v
     {-# INLINE parseJSON #-}
 
 instance (ToJSON a, ToJSON b, ToJSON c, ToJSON d) => ToJSON (a,b,c,d) where
-    toJSON (a,b,c,d) = toJSON [toJSON a, toJSON b, toJSON c, toJSON d]
+    toJSON (a,b,c,d) = Array $ V.create $ do
+                         mv <- VM.unsafeNew 4
+                         VM.unsafeWrite mv 0 (toJSON a)
+                         VM.unsafeWrite mv 1 (toJSON b)
+                         VM.unsafeWrite mv 2 (toJSON c)
+                         VM.unsafeWrite mv 3 (toJSON d)
+                         return mv
     {-# INLINE toJSON #-}
 
 instance (FromJSON a, FromJSON b, FromJSON c, FromJSON d) => FromJSON (a,b,c,d) where
-    parseJSON (Array abcd) =
-      case V.toList abcd of
-        [a,b,c,d] -> (,,,) <$> parseJSON a
-                           <*> parseJSON b
-                           <*> parseJSON c
-                           <*> parseJSON d
-        _         -> fail $ "cannot unpack array of length " ++
-                            show (V.length abcd) ++ " into a 4-tuple"
-    parseJSON v            = typeMismatch "(a,b,c,d)" v
+    parseJSON (Array abcd)
+        | n == 4    = (,,,) <$> parseJSON (V.unsafeIndex abcd 0)
+                            <*> parseJSON (V.unsafeIndex abcd 1)
+                            <*> parseJSON (V.unsafeIndex abcd 2)
+                            <*> parseJSON (V.unsafeIndex abcd 3)
+        | otherwise = fail $ "cannot unpack array of length " ++
+                        show n ++ " into a 4-tuple"
+          where
+            n = V.length abcd
+    parseJSON v = typeMismatch "(a,b,c,d)" v
     {-# INLINE parseJSON #-}
 
 instance ToJSON a => ToJSON (Dual a) where
