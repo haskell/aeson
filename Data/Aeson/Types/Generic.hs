@@ -30,10 +30,14 @@ import Data.Bits (shiftR)
 import Data.Aeson.Types.Class
 import Data.Aeson.Types.Internal
 import Data.Text (pack, unpack)
+import Data.DList (DList, toList)
+import Data.Monoid (mappend)
 import GHC.Generics
+import Control.Monad.ST (ST)
 import qualified Data.HashMap.Strict as H
 import qualified Data.Text as T
 import qualified Data.Vector as V
+import qualified Data.Vector.Mutable as VM
 
 --------------------------------------------------------------------------------
 -- Generic toJSON
@@ -54,8 +58,14 @@ instance (ConsToJSON a) => GToJSON (C1 c a) where
     gToJSON = consToJSON . unM1
     {-# INLINE gToJSON #-}
 
-instance (GProductToValues a, GProductToValues b) => GToJSON (a :*: b) where
-    gToJSON = toJSON . toList . gProductToValues
+instance ( GProductToValues a, GProductToValues b
+         , ProductSize      a, ProductSize      b) => GToJSON (a :*: b) where
+    gToJSON p = Array $ V.create $ do
+                  mv <- VM.unsafeNew lenProduct
+                  gProductToValues mv 0 lenProduct p
+                  return mv
+        where
+          lenProduct = unTagged2 (productSize :: Tagged2 (a :*: b) Int)
     {-# INLINE gToJSON #-}
 
 instance (GObject a, GObject b) => GToJSON (a :+: b) where
@@ -88,24 +98,29 @@ class GRecordToPairs f where
     gRecordToPairs :: f a -> DList Pair
 
 instance (GRecordToPairs a, GRecordToPairs b) => GRecordToPairs (a :*: b) where
-    gRecordToPairs (a :*: b) = gRecordToPairs a `append` gRecordToPairs b
+    gRecordToPairs (a :*: b) = gRecordToPairs a `mappend` gRecordToPairs b
     {-# INLINE gRecordToPairs #-}
 
 instance (Selector s, GToJSON a) => GRecordToPairs (S1 s a) where
-    gRecordToPairs m1 = singleton (pack (selName m1), gToJSON (unM1 m1))
+    gRecordToPairs m1 = pure (pack (selName m1), gToJSON (unM1 m1))
     {-# INLINE gRecordToPairs #-}
 
 --------------------------------------------------------------------------------
 
 class GProductToValues f where
-    gProductToValues :: f a -> DList Value
+    gProductToValues :: VM.MVector s Value -> Int -> Int -> f a -> ST s ()
 
 instance (GProductToValues a, GProductToValues b) => GProductToValues (a :*: b) where
-    gProductToValues (a :*: b) = gProductToValues a `append` gProductToValues b
+    gProductToValues mv ix len (a :*: b) = do gProductToValues mv ix  lenL a
+                                              gProductToValues mv ixR lenR b
+        where
+          lenL = len `shiftR` 1
+          ixR  = ix + lenL
+          lenR = len - lenL
     {-# INLINE gProductToValues #-}
 
 instance (GToJSON a) => GProductToValues a where
-    gProductToValues = singleton . gToJSON
+    gProductToValues mv ix _ = VM.unsafeWrite mv ix . gToJSON
     {-# INLINE gProductToValues #-}
 
 --------------------------------------------------------------------------------
@@ -265,21 +280,5 @@ instance IsRecord (M1 S NoSelector f) False
 instance (IsRecord f b) => IsRecord (M1 S c f) b
 instance IsRecord (K1 i c) True
 instance IsRecord U1 False
-
---------------------------------------------------------------------------------
-
-type DList a = [a] -> [a]
-
-toList :: DList a -> [a]
-toList = ($ [])
-{-# INLINE toList #-}
-
-singleton :: a -> DList a
-singleton = (:)
-{-# INLINE singleton #-}
-
-append :: DList a -> DList a -> DList a
-append = (.)
-{-# INLINE append #-}
 
 --------------------------------------------------------------------------------

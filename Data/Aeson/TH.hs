@@ -52,10 +52,12 @@ instance 'ToJSON' a => 'ToJSON' (D a) where
               'object' [T.pack \"Unary\" .= 'toJSON' arg1]
           Product arg1 arg2 arg3 ->
               'object' [ T.pack \"Product\"
-                       .= 'toJSON' [ 'toJSON' arg1
-                                 , 'toJSON' arg2
-                                 , 'toJSON' arg3
-                                 ]
+                       .= ('Array' $ 'V.create' $ do
+                             mv <- 'VM.unsafeNew' 3
+                             'VM.unsafeWrite' mv 0 ('toJSON' arg1)
+                             'VM.unsafeWrite' mv 1 ('toJSON' arg2)
+                             'VM.unsafeWrite' mv 2 ('toJSON' arg3)
+                             return mv)
                      ]
           Record arg1 arg2 arg3 ->
               'object' [ T.pack \"Record\"
@@ -164,7 +166,7 @@ import Data.List           ( (++), foldl, foldl', intercalate
                            , length, map, zip, genericLength
                            )
 import Data.Maybe          ( Maybe(Nothing, Just) )
-import Prelude             ( String, (-), Integer, error )
+import Prelude             ( String, (-), Integer, fromIntegral, error )
 import Text.Printf         ( printf )
 import Text.Show           ( show )
 #if __GLASGOW_HASKELL__ < 700
@@ -178,8 +180,8 @@ import Language.Haskell.TH
 -- from text:
 import qualified Data.Text as T ( Text, pack, unpack )
 -- from vector:
-import qualified Data.Vector as V ( unsafeIndex, null, length )
-
+import qualified Data.Vector as V ( unsafeIndex, null, length, create )
+import qualified Data.Vector.Mutable as VM ( unsafeNew, unsafeWrite )
 
 
 --------------------------------------------------------------------------------
@@ -231,7 +233,11 @@ The above (ToJSON a) constraint is not necessary and perhaps undesirable.
 -- instance 'ToJSON' Foo where
 --      'toJSON' =
 --          \value -> case value of
---                      Foo arg1 arg2 -> 'toJSON' ['toJSON' arg1, 'toJSON' arg2]
+--                      Foo arg1 arg2 -> 'Array' $ 'V.create' $ do
+--                        mv <- 'VM.unsafeNew' 2
+--                        'VM.unsafeWrite' mv 0 ('toJSON' arg1)
+--                        'VM.unsafeWrite' mv 1 ('toJSON' arg2)
+--                        return mv
 -- @
 deriveToJSON :: (String -> String)
              -- ^ Function to change field names.
@@ -327,12 +333,28 @@ encodeArgs withExp _ (NormalC conName []) =
           []
 -- Polyadic constructors with special case for unary constructors.
 encodeArgs withExp _ (NormalC conName ts) = do
-    args <- mapM newName ["arg" ++ show n | (_, n) <- zip ts [1 :: Integer ..]]
-    let js = case [[e|toJSON|] `appE` varE arg | arg <- args] of
-               -- Single argument is directly converted.
-               [e] -> e
-               -- Multiple arguments are converted to a JSON array.
-               es  -> [e|toJSON|] `appE` listE es
+    let len = length ts
+    args <- mapM newName ["arg" ++ show n | n <- [1..len]]
+    js <- case [[e|toJSON|] `appE` varE arg | arg <- args] of
+            -- Single argument is directly converted.
+            [e] -> return e
+            -- Multiple arguments are converted to a JSON array.
+            es  -> do
+              mv <- newName "mv"
+              let newMV = bindS (varP mv)
+                                ([e|VM.unsafeNew|] `appE`
+                                  litE (integerL $ fromIntegral len))
+                  stmts = [ noBindS $
+                              [e|VM.unsafeWrite|] `appE`
+                                (varE mv) `appE`
+                                  litE (integerL ix) `appE`
+                                    e
+                          | (ix, e) <- zip [(0::Integer)..] es
+                          ]
+                  ret = noBindS $ [e|return|] `appE` varE mv
+              return $ [e|Array|] `appE`
+                         ([e|V.create|] `appE`
+                           doE (newMV:stmts++[ret]))
     match (conP conName $ map varP args)
           (normalB $ withExp js)
           []
