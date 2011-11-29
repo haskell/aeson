@@ -120,7 +120,7 @@ library
 
   if impl(ghc >= 7.2.1)
     cpp-options: -DGENERICS
-    build-depends: ghc-prim >= 0.2
+    build-depends: ghc-prim >= 0.2, dlist >= 0.2
     other-modules:
       Data.Aeson.Types.Generic
 
