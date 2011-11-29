@@ -1,5 +1,5 @@
 name:            aeson
-version:         0.3.2.12
+version:         0.3.2.13
 license:         BSD3
 license-file:    LICENSE
 category:        Text, Web, JSON
@@ -119,7 +119,8 @@ library
     blaze-textual >= 0.2.0.2,
     bytestring,
     containers,
-    deepseq < 1.2,
+    deepseq,
+    containers-deepseq,
     hashable >= 1.1.2.0,
     mtl,
     old-locale,

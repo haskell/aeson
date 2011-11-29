@@ -41,6 +41,7 @@ module Data.Aeson.Types
 
 import Control.Applicative
 import Control.DeepSeq (NFData(..))
+import Control.DeepSeq.Containers ()
 import Control.Monad (MonadPlus(..), ap)
 import Data.Aeson.Functions
 import Data.Attoparsec.Char8 (Number(..))
