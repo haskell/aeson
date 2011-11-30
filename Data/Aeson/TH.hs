@@ -353,7 +353,7 @@ encodeArgs withExp _ (NormalC conName ts) = do
                           ]
                   ret = noBindS $ [e|return|] `appE` varE mv
               return $ [e|Array|] `appE`
-                         ([e|V.create|] `appE`
+                         (varE 'V.create `appE`
                            doE (newMV:stmts++[ret]))
     match (conP conName $ map varP args)
           (normalB $ withExp js)
