@@ -1,26 +1,29 @@
 name:            aeson
-version:         0.3.2.11
+version:         0.4.0.0
 license:         BSD3
 license-file:    LICENSE
 category:        Text, Web, JSON
 copyright:       Copyright 2011 MailRank, Inc.
-author:          Bryan O'Sullivan <bos@mailrank.com>
-maintainer:      Bryan O'Sullivan <bos@mailrank.com>
+author:          Bryan O'Sullivan <bos@serpentine.com>
+maintainer:      Bryan O'Sullivan <bos@serpentine.com>
 stability:       experimental
 tested-with:     GHC == 6.12.3
 synopsis:        Fast JSON parsing and encoding
 cabal-version:   >= 1.8
-homepage:        http://github.com/mailrank/aeson
-bug-reports:     http://github.com/mailrank/aeson/issues
+homepage:        http://github.com/bos/aeson
+bug-reports:     http://github.com/bos/aeson/issues
 build-type:      Simple
 description:
     A JSON parsing and encoding library optimized for ease of use
     and high performance.
     .
+    To get started, see the documentation for the @Data.Aeson@ module
+    below.
+    .
     /Note/: if you use GHCi or Template Haskell, please see the
     @README@ file for important details about building this package,
     and other packages that depend on it:
-    <https://github.com/mailrank/aeson#readme>
+    <https://github.com/bos/aeson#readme>
     .
     Parsing performance on a late 2010 MacBook Pro (2.66GHz Core i7),
     for mostly-English tweets from Twitter's JSON search API:
@@ -94,7 +97,6 @@ extra-source-files:
     benchmarks/json-data/twitter20.json
     benchmarks/json-data/twitter50.json
     benchmarks/json-data/twitter100.json
-    tests/Makefile
     tests/Properties.hs
     examples/Demo.hs
 
@@ -113,6 +115,14 @@ library
 
   other-modules:
     Data.Aeson.Functions
+    Data.Aeson.Types.Class
+    Data.Aeson.Types.Internal
+
+  if impl(ghc >= 7.2.1)
+    cpp-options: -DGENERICS
+    build-depends: ghc-prim >= 0.2, dlist >= 0.2
+    other-modules:
+      Data.Aeson.Types.Generic
 
   build-depends:
     attoparsec >= 0.8.6.1,
@@ -121,29 +131,46 @@ library
     blaze-textual >= 0.2.0.2,
     bytestring,
     containers,
-    deepseq < 1.2,
+    deepseq,
     hashable >= 1.1.2.0,
     mtl,
     old-locale,
     syb,
+    template-haskell >= 2.4,
     text >= 0.11.0.2,
-    template-haskell >= 2.5,
     time,
     unordered-containers >= 0.1.3.0,
-    vector >= 0.7
+    vector >= 0.7.1
 
   if flag(developer)
     ghc-options: -Werror
     ghc-prof-options: -auto-all
 
-  if(impl(ghc >= 7.2.1))
-    cpp-options: -DDEFAULT_SIGNATURES
-
   ghc-options:      -Wall
+
+test-suite tests
+  type:           exitcode-stdio-1.0
+  hs-source-dirs: tests
+  main-is:        Properties.hs
+
+  ghc-options:
+    -Wall -threaded -rtsopts
+
+  build-depends:
+    QuickCheck,
+    aeson,
+    attoparsec,
+    base,
+    containers,
+    bytestring,
+    template-haskell,
+    test-framework,
+    test-framework-quickcheck2,
+    text
 
 source-repository head
   type:     git
-  location: http://github.com/mailrank/aeson
+  location: http://github.com/bos/aeson
 
 source-repository head
   type:     mercurial

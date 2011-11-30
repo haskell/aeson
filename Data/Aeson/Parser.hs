@@ -4,7 +4,7 @@
 -- Module:      Data.Aeson.Parser
 -- Copyright:   (c) 2011 MailRank, Inc.
 -- License:     Apache
--- Maintainer:  Bryan O'Sullivan <bos@mailrank.com>
+-- Maintainer:  Bryan O'Sullivan <bos@serpentine.com>
 -- Stability:   experimental
 -- Portability: portable
 --
@@ -14,7 +14,9 @@
 module Data.Aeson.Parser
     (
       json
+    , json'
     , value
+    , value'
     , jstring
     ) where
 
@@ -27,7 +29,6 @@ import Data.Attoparsec.Char8
 import Data.Bits ((.|.), shiftL)
 import Data.ByteString as B
 import Data.Char (chr)
-import Data.Map as Map
 import Data.Monoid (mappend, mempty)
 import Data.Text as T
 import Data.Text.Encoding (decodeUtf8)
@@ -37,31 +38,63 @@ import qualified Data.Attoparsec as A
 import qualified Data.Attoparsec.Zepto as Z
 import qualified Data.ByteString.Char8 as B8
 import qualified Data.ByteString.Unsafe as B
+import qualified Data.HashMap.Strict as H
 
 -- | Parse a top-level JSON value.  This must be either an object or
 -- an array.
 json :: Parser Value
-json = do
-  c <- skipSpace *> satisfy (`B8.elem` "{[")
-  if c == '{'
-    then object_
-    else array_
+json = json_ object_ array_
+
+-- | Parse a top-level JSON value.  This must be either an object or
+-- an array.
+--
+-- This is a strict parser version of 'json' which avoids
+-- building up thunks during parsing. Prefer this version if most of
+-- the JSON data needs to be accessed.
+json' :: Parser Value
+json' = json_ object_' array_'
+
+json_ :: Parser Value -> Parser Value -> Parser Value
+json_ obj ary = do
+  w <- skipSpace *> A.satisfy (\w -> w == 123 || w == 91)
+  if w == 123
+    then obj
+    else ary
+{-# INLINE json_ #-}
 
 object_ :: Parser Value
-object_ = {-# SCC "object_" #-} do
+object_ = {-# SCC "object_" #-} Object <$> objectValues value
+
+object_' :: Parser Value
+object_' = {-# SCC "object_'" #-} do
+  !vals <- objectValues value'
+  return (Object vals)
+
+objectValues :: Parser Value -> Parser (H.HashMap Text Value)
+objectValues val = do
   skipSpace
   let pair = do
         a <- jstring <* skipSpace
-        b <- char ':' *> skipSpace *> value
+        b <- char ':' *> skipSpace *> val
         return (a,b)
   vals <- ((pair <* skipSpace) `sepBy` (char ',' *> skipSpace)) <* char '}'
-  return . Object $ Map.fromList vals
+  return (H.fromList vals)
+{-# INLINE objectValues #-}
 
 array_ :: Parser Value
-array_ = {-# SCC "array_" #-} do
+array_ = {-# SCC "array_" #-} Array <$> arrayValues value
+
+array_' :: Parser Value
+array_' = {-# SCC "array_'" #-} do
+  !vals <- arrayValues value'
+  return (Array vals)
+
+arrayValues :: Parser Value -> Parser (Vector Value)
+arrayValues val = do
   skipSpace
-  vals <- ((value <* skipSpace) `sepBy` (char ',' *> skipSpace)) <* char ']'
-  return . Array $ Vector.fromList vals
+  vals <- ((val <* skipSpace) `sepBy` (char ',' *> skipSpace)) <* char ']'
+  return (Vector.fromList vals)
+{-# INLINE arrayValues #-}
 
 -- | Parse any JSON value.  Use 'json' in preference to this function
 -- if you are parsing data from an untrusted source.
@@ -78,6 +111,26 @@ value = most <|> (Number <$> number)
       't' -> string "rue" *> pure (Bool True)
       'n' -> string "ull" *> pure Null
       _   -> error "attoparsec panic! the impossible happened!"
+
+-- | Strict version of 'value'. See also 'json''.
+value' :: Parser Value
+value' = most <|> num
+ where
+  most = do
+    c <- satisfy (`B8.elem` "{[\"ftn")
+    case c of
+      '{' -> object_'
+      '[' -> array_'
+      '"' -> do
+          !s <- jstring_
+          return (String s)
+      'f' -> string "alse" *> pure (Bool False)
+      't' -> string "rue" *> pure (Bool True)
+      'n' -> string "ull" *> pure Null
+      _   -> error "attoparsec panic! the impossible happened!"
+  num = do
+    !n <- number
+    return (Number n)
 
 doubleQuote, backslash :: Word8
 doubleQuote = 34
