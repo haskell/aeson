@@ -14,7 +14,9 @@
 module Data.Aeson.Parser
     (
       json
+    , json'
     , value
+    , value'
     , jstring
     ) where
 
@@ -47,6 +49,19 @@ json = do
     then object_
     else array_
 
+-- | Parse a top-level JSON value.  This must be either an object or
+-- an array.
+--
+-- This is a strict parser version of 'json' which avoids
+-- building up thunks during parsing. Prefer this version if most of
+-- the JSON data needs to be accessed.
+json' :: Parser Value
+json' = do
+  c <- skipSpace *> satisfy (`B8.elem` "{[")
+  if c == '{'
+    then object_'
+    else array_'
+
 object_ :: Parser Value
 object_ = {-# SCC "object_" #-} do
   skipSpace
@@ -57,11 +72,27 @@ object_ = {-# SCC "object_" #-} do
   vals <- ((pair <* skipSpace) `sepBy` (char ',' *> skipSpace)) <* char '}'
   return . Object $ H.fromList vals
 
+object_' :: Parser Value
+object_' = {-# SCC "object_'" #-} do
+  skipSpace
+  let pair = do
+        a <- jstring <* skipSpace
+        b <- char ':' *> skipSpace *> value'
+        return (a,b)
+  vals <- ((pair <* skipSpace) `sepBy` (char ',' *> skipSpace)) <* char '}'
+  return $! Object $ H.fromList vals
+
 array_ :: Parser Value
 array_ = {-# SCC "array_" #-} do
   skipSpace
   vals <- ((value <* skipSpace) `sepBy` (char ',' *> skipSpace)) <* char ']'
   return . Array $ Vector.fromList vals
+
+array_' :: Parser Value
+array_' = {-# SCC "array_'" #-} do
+  skipSpace
+  vals <- ((value' <* skipSpace) `sepBy` (char ',' *> skipSpace)) <* char ']'
+  return $! Array $ Vector.fromList vals
 
 -- | Parse any JSON value.  Use 'json' in preference to this function
 -- if you are parsing data from an untrusted source.
@@ -74,6 +105,26 @@ value = most <|> (Number <$> number)
       '{' -> object_
       '[' -> array_
       '"' -> String <$> jstring_
+      'f' -> string "alse" *> pure (Bool False)
+      't' -> string "rue" *> pure (Bool True)
+      'n' -> string "ull" *> pure Null
+      _   -> error "attoparsec panic! the impossible happened!"
+
+-- | Strict version of 'value'. See also 'json''.
+value' :: Parser Value
+value' = most <|> num
+ where
+  num = do
+    n <- number
+    return $! Number n
+  most = do
+    c <- satisfy (`B8.elem` "{[\"ftn")
+    case c of
+      '{' -> object_'
+      '[' -> array_'
+      '"' -> do
+          s <- jstring_
+          return $! String s
       'f' -> string "alse" *> pure (Bool False)
       't' -> string "rue" *> pure (Bool True)
       'n' -> string "ull" *> pure Null
