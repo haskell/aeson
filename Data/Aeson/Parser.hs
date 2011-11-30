@@ -43,11 +43,7 @@ import qualified Data.HashMap.Strict as H
 -- | Parse a top-level JSON value.  This must be either an object or
 -- an array.
 json :: Parser Value
-json = do
-  c <- skipSpace *> satisfy (`B8.elem` "{[")
-  if c == '{'
-    then object_
-    else array_
+json = json_ object_ array_
 
 -- | Parse a top-level JSON value.  This must be either an object or
 -- an array.
@@ -56,43 +52,49 @@ json = do
 -- building up thunks during parsing. Prefer this version if most of
 -- the JSON data needs to be accessed.
 json' :: Parser Value
-json' = do
-  c <- skipSpace *> satisfy (`B8.elem` "{[")
-  if c == '{'
-    then object_'
-    else array_'
+json' = json_ object_' array_'
+
+json_ :: Parser Value -> Parser Value -> Parser Value
+json_ obj ary = do
+  w <- skipSpace *> A.satisfy (\w -> w == 123 || w == 91)
+  if w == 123
+    then obj
+    else ary
+{-# INLINE json_ #-}
 
 object_ :: Parser Value
-object_ = {-# SCC "object_" #-} do
-  skipSpace
-  let pair = do
-        a <- jstring <* skipSpace
-        b <- char ':' *> skipSpace *> value
-        return (a,b)
-  vals <- ((pair <* skipSpace) `sepBy` (char ',' *> skipSpace)) <* char '}'
-  return . Object $ H.fromList vals
+object_ = {-# SCC "object_" #-} Object <$> objectValues value
 
 object_' :: Parser Value
 object_' = {-# SCC "object_'" #-} do
+  !vals <- objectValues value'
+  return (Object vals)
+
+objectValues :: Parser Value -> Parser (H.HashMap Text Value)
+objectValues val = do
   skipSpace
   let pair = do
         a <- jstring <* skipSpace
-        b <- char ':' *> skipSpace *> value'
+        b <- char ':' *> skipSpace *> val
         return (a,b)
   vals <- ((pair <* skipSpace) `sepBy` (char ',' *> skipSpace)) <* char '}'
-  return $! Object $ H.fromList vals
+  return (H.fromList vals)
+{-# INLINE objectValues #-}
 
 array_ :: Parser Value
-array_ = {-# SCC "array_" #-} do
-  skipSpace
-  vals <- ((value <* skipSpace) `sepBy` (char ',' *> skipSpace)) <* char ']'
-  return . Array $ Vector.fromList vals
+array_ = {-# SCC "array_" #-} Array <$> arrayValues value
 
 array_' :: Parser Value
 array_' = {-# SCC "array_'" #-} do
+  !vals <- arrayValues value'
+  return (Array vals)
+
+arrayValues :: Parser Value -> Parser (Vector Value)
+arrayValues val = do
   skipSpace
-  vals <- ((value' <* skipSpace) `sepBy` (char ',' *> skipSpace)) <* char ']'
-  return $! Array $ Vector.fromList vals
+  vals <- ((val <* skipSpace) `sepBy` (char ',' *> skipSpace)) <* char ']'
+  return (Vector.fromList vals)
+{-# INLINE arrayValues #-}
 
 -- | Parse any JSON value.  Use 'json' in preference to this function
 -- if you are parsing data from an untrusted source.
@@ -114,21 +116,21 @@ value = most <|> (Number <$> number)
 value' :: Parser Value
 value' = most <|> num
  where
-  num = do
-    n <- number
-    return $! Number n
   most = do
     c <- satisfy (`B8.elem` "{[\"ftn")
     case c of
       '{' -> object_'
       '[' -> array_'
       '"' -> do
-          s <- jstring_
-          return $! String s
+          !s <- jstring_
+          return (String s)
       'f' -> string "alse" *> pure (Bool False)
       't' -> string "rue" *> pure (Bool True)
       'n' -> string "ull" *> pure Null
       _   -> error "attoparsec panic! the impossible happened!"
+  num = do
+    !n <- number
+    return (Number n)
 
 doubleQuote, backslash :: Word8
 doubleQuote = 34
