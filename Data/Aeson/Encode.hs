@@ -4,7 +4,7 @@
 -- Module:      Data.Aeson.Encode
 -- Copyright:   (c) 2011 MailRank, Inc.
 -- License:     Apache
--- Maintainer:  Bryan O'Sullivan <bos@mailrank.com>
+-- Maintainer:  Bryan O'Sullivan <bos@serpentine.com>
 -- Stability:   experimental
 -- Portability: portable
 --
@@ -25,7 +25,7 @@ import Data.Monoid (mappend)
 import Numeric (showHex)
 import Blaze.Text (double, integral)
 import qualified Data.ByteString.Lazy.Char8 as L
-import qualified Data.Map as M
+import qualified Data.HashMap.Strict as H
 import qualified Data.Text as T
 import qualified Data.Vector as V
 
@@ -42,7 +42,7 @@ fromValue (Array v)
                   V.foldr f (fromChar ']') (V.unsafeTail v)
   where f a z = fromChar ',' `mappend` fromValue a `mappend` z
 fromValue (Object m) =
-    case M.toList m of
+    case H.toList m of
       (x:xs) -> fromChar '{' `mappend`
                 one x `mappend`
                 foldr f (fromChar '}') xs

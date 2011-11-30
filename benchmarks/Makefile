@@ -1,7 +1,7 @@
 ghc := ghc
 ghcflags := -O
 
-binaries := AesonParse AesonEncode JsonParse
+binaries := AesonParse AesonEncode JsonParse AesonCompareAutoInstances
 
 all: $(binaries) $(binaries:%=%_p)
 

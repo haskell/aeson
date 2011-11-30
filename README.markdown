@@ -11,7 +11,7 @@ in your work.
 
 For complete details, including a workaround, see the writeup in [the
 blaze-textual
-README](https://github.com/mailrank/blaze-textual#readme).
+README](https://github.com/bos/blaze-textual#readme).
 
 # Join in!
 
@@ -19,11 +19,11 @@ We are happy to receive bug reports, fixes, documentation enhancements,
 and other improvements.
 
 Please report bugs via the
-[github issue tracker](http://github.com/mailrank/aeson/issues).
+[github issue tracker](http://github.com/bos/aeson/issues).
 
-Master [git repository](http://github.com/mailrank/aeson):
+Master [git repository](http://github.com/bos/aeson):
 
-* `git clone git://github.com/mailrank/aeson.git`
+* `git clone git://github.com/bos/aeson.git`
 
 There's also a [Mercurial mirror](http://bitbucket.org/bos/aeson):
 
@@ -35,4 +35,4 @@ Authors
 -------
 
 This library is written and maintained by Bryan O'Sullivan,
-<bos@mailrank.com>.
+<bos@serpentine.com>.
