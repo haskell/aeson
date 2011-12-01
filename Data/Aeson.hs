@@ -14,6 +14,7 @@ module Data.Aeson
     (
     -- * Encoding and decoding
       decode
+    , decode'
     , encode
     -- * Core JSON types
     , Value(..)
@@ -34,21 +35,30 @@ module Data.Aeson
     , object
     -- * Parsing
     , json
+    , json'
     ) where
 
 import Data.Aeson.Encode (encode)
-import Data.Aeson.Parser (json)
+import Data.Aeson.Parser.Internal (decodeWith, json, json')
 import Data.Aeson.Types
 import qualified Data.ByteString.Lazy as L
-import qualified Data.Attoparsec.Lazy as L
 
 -- | Efficiently deserialize a JSON value from a lazy 'L.ByteString'.
 -- If this fails due to incomplete or invalid input, 'Nothing' is
 -- returned.
+--
+-- This function parses immediately, but defers conversion.  See
+-- 'json' for details.
 decode :: (FromJSON a) => L.ByteString -> Maybe a
-decode s = case L.parse json s of
-             L.Done _ v -> case fromJSON v of
-                             Success a -> Just a
-                             _         -> Nothing
-             _          -> Nothing
+decode = decodeWith json fromJSON
 {-# INLINE decode #-}
+
+-- | Efficiently deserialize a JSON value from a lazy 'L.ByteString'.
+-- If this fails due to incomplete or invalid input, 'Nothing' is
+-- returned.
+--
+-- This function parses and performs conversion immediately.  See
+-- 'json'' for details.
+decode' :: (FromJSON a) => L.ByteString -> Maybe a
+decode' = decodeWith json' fromJSON
+{-# INLINE decode' #-}

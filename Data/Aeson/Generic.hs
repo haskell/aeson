@@ -18,6 +18,7 @@ module Data.Aeson.Generic
     (
     -- * Decoding and encoding
       decode
+    , decode'
     , encode
     -- * Lower-level conversion functions
     , fromJSON
@@ -39,11 +40,10 @@ import Data.Text (Text, pack, unpack)
 import Data.Text.Encoding (encodeUtf8)
 import Data.Time.Clock (UTCTime)
 import Data.Word (Word, Word8, Word16, Word32, Word64)
-import Data.Aeson.Parser (json)
+import Data.Aeson.Parser.Internal (decodeWith, json, json')
 import qualified Data.Aeson.Encode as E
 import qualified Data.Aeson.Functions as F
 import qualified Data.Aeson.Types as T
-import qualified Data.Attoparsec.Lazy as L
 import qualified Data.ByteString as B
 import qualified Data.ByteString.Lazy as L
 import qualified Data.HashMap.Strict as H
@@ -62,12 +62,22 @@ encode = E.encode . toJSON
 -- | Efficiently deserialize a JSON value from a lazy 'L.ByteString'.
 -- If this fails due to incomplete or invalid input, 'Nothing' is
 -- returned.
+--
+-- This function parses immediately, but defers conversion.  See
+-- 'json' for details.
 decode :: (Data a) => L.ByteString -> Maybe a
-decode s = case L.parse json s of
-             L.Done _ v -> case fromJSON v of
-                             Success a -> Just a
-                             _         -> Nothing
-             _          -> Nothing
+decode = decodeWith json fromJSON
+{-# INLINE decode #-}
+
+-- | Efficiently deserialize a JSON value from a lazy 'L.ByteString'.
+-- If this fails due to incomplete or invalid input, 'Nothing' is
+-- returned.
+--
+-- This function parses and performs conversion immediately.  See
+-- 'json'' for details.
+decode' :: (Data a) => L.ByteString -> Maybe a
+decode' = decodeWith json' fromJSON
+{-# INLINE decode' #-}
 
 type T a = a -> Value
 

@@ -48,3 +48,21 @@ how to use SYB generics, refer to
 
 * Instances of `ToJSON` and `FromJSON` for tuples are between 45% and
   70% faster than in 0.3.
+
+
+## Evaluation control
+
+This version of aeson makes explicit the decoupling between
+*identifying* an element of a JSON document and *converting* it to
+Haskell.  See the
+[`Data.Aeson.Parser`](http://hackage.haskell.org/packages/archive/aeson/latest/doc/html/Data-Aeson-Parser.html)
+documentation for details.
+
+The normal aeson `decode` function performs identification strictly,
+but defers conversion until needed.  This can result in improved
+performance (e.g. if the results of some conversions are never
+needed), but at a cost in increased memory consumption.
+
+The new `decode'` function performs identification and conversion
+immediately.  This incurs an up-front cost in CPU cycles, but reduces
+reduce memory consumption.
