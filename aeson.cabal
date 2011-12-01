@@ -3,15 +3,16 @@ version:         0.4.0.0
 license:         BSD3
 license-file:    LICENSE
 category:        Text, Web, JSON
-copyright:       Copyright 2011 MailRank, Inc.
+copyright:       (c) 2011 Bryan O'Sullivan
+                 (c) 2011 MailRank, Inc.
 author:          Bryan O'Sullivan <bos@serpentine.com>
 maintainer:      Bryan O'Sullivan <bos@serpentine.com>
 stability:       experimental
-tested-with:     GHC == 6.12.3
+tested-with:     GHC == 6.12.3, GHC == 7.0.4, GHC == 7.2.2
 synopsis:        Fast JSON parsing and encoding
 cabal-version:   >= 1.8
-homepage:        http://github.com/bos/aeson
-bug-reports:     http://github.com/bos/aeson/issues
+homepage:        https://github.com/bos/aeson
+bug-reports:     https://github.com/bos/aeson/issues
 build-type:      Simple
 description:
     A JSON parsing and encoding library optimized for ease of use
@@ -19,6 +20,9 @@ description:
     .
     To get started, see the documentation for the @Data.Aeson@ module
     below.
+    .
+    For release notes, see
+    <https://github.com/bos/aeson/blob/master/release-notes.markdown>
     .
     /Note/: if you use GHCi or Template Haskell, please see the
     @README@ file for important details about building this package,
@@ -80,6 +84,7 @@ description:
 
 extra-source-files:
     README.markdown
+    release-notes.markdown
     benchmarks/AesonEncode.hs
     benchmarks/AesonParse.hs
     benchmarks/JsonParse.hs
@@ -98,7 +103,7 @@ extra-source-files:
     benchmarks/json-data/twitter50.json
     benchmarks/json-data/twitter100.json
     tests/Properties.hs
-    examples/Demo.hs
+    examples/*.hs
 
 flag developer
   description: operate in developer mode
@@ -170,8 +175,8 @@ test-suite tests
 
 source-repository head
   type:     git
-  location: http://github.com/bos/aeson
+  location: git://github.com/bos/aeson.git
 
 source-repository head
   type:     mercurial
-  location: http://bitbucket.org/bos/aeson
+  location: https://bitbucket.org/bos/aeson
