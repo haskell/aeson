@@ -31,6 +31,7 @@ module Data.Aeson
     , (.=)
     , (.:)
     , (.:?)
+    , (.!=)
     , (.:/)
     , object
     -- * Parsing
