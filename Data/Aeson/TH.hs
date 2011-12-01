@@ -2,6 +2,8 @@
 
 {-|
 Module:      Data.Aeson.TH
+Copyright:   (c) 2011 Bryan O'Sullivan
+             (c) 2011 MailRank, Inc.
 License:     Apache
 Stability:   experimental
 Portability: portable

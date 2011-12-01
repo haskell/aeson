@@ -1,6 +1,7 @@
 -- |
 -- Module:      Data.Aeson
--- Copyright:   (c) 2011 MailRank, Inc.
+-- Copyright:   (c) 2011 Bryan O'Sullivan
+--              (c) 2011 MailRank, Inc.
 -- License:     Apache
 -- Maintainer:  Bryan O'Sullivan <bos@serpentine.com>
 -- Stability:   experimental

@@ -2,7 +2,8 @@
 
 -- |
 -- Module:      Data.Aeson.Generic
--- Copyright:   (c) 2011 MailRank, Inc.
+-- Copyright:   (c) 2011 Bryan O'Sullivan
+--              (c) 2011 MailRank, Inc.
 --              (c) 2008, 2009 Lennart Augustsson
 -- License:     BSD3
 -- Maintainer:  Bryan O'Sullivan <bos@serpentine.com>

@@ -1,3 +1,12 @@
+-- |
+-- Module:      Data.Aeson.Functions
+-- Copyright:   (c) 2011 Bryan O'Sullivan
+--              (c) 2011 MailRank, Inc.
+-- License:     Apache
+-- Maintainer:  Bryan O'Sullivan <bos@serpentine.com>
+-- Stability:   experimental
+-- Portability: portable
+
 module Data.Aeson.Functions
     ( mapHashKeyVal
     , hashMapKey
