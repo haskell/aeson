@@ -16,14 +16,18 @@
 
 module Data.Aeson.Generic
     (
-      fromJSON
+    -- * Decoding and encoding
+      decode
+    , encode
+    -- * Lower-level conversion functions
+    , fromJSON
     , toJSON
     ) where
 
 import Control.Applicative ((<$>))
 import Control.Arrow (first)
 import Control.Monad.State.Strict
-import Data.Aeson.Functions
+import Data.Aeson.Functions hiding (decode)
 import Data.Aeson.Types hiding (FromJSON(..), ToJSON(..), fromJSON)
 import Data.Attoparsec.Number (Number)
 import Data.Generics
@@ -35,7 +39,11 @@ import Data.Text (Text, pack, unpack)
 import Data.Text.Encoding (encodeUtf8)
 import Data.Time.Clock (UTCTime)
 import Data.Word (Word, Word8, Word16, Word32, Word64)
+import Data.Aeson.Parser (json)
+import qualified Data.Aeson.Encode as E
+import qualified Data.Aeson.Functions as F
 import qualified Data.Aeson.Types as T
+import qualified Data.Attoparsec.Lazy as L
 import qualified Data.ByteString as B
 import qualified Data.ByteString.Lazy as L
 import qualified Data.HashMap.Strict as H
@@ -45,6 +53,21 @@ import qualified Data.Text as DT
 import qualified Data.Text.Lazy as LT
 import qualified Data.Traversable as T
 import qualified Data.Vector as V
+
+-- | Efficiently serialize a JSON value as a lazy 'L.ByteString'.
+encode :: (Data a) => a -> L.ByteString
+encode = E.encode . toJSON
+{-# INLINE encode #-}
+
+-- | Efficiently deserialize a JSON value from a lazy 'L.ByteString'.
+-- If this fails due to incomplete or invalid input, 'Nothing' is
+-- returned.
+decode :: (Data a) => L.ByteString -> Maybe a
+decode s = case L.parse json s of
+             L.Done _ v -> case fromJSON v of
+                             Success a -> Just a
+                             _         -> Nothing
+             _          -> Nothing
 
 type T a = a -> Value
 
@@ -93,7 +116,7 @@ toJSON = toJSON_generic
       | tyrep == typeOf DT.empty = remap id
       | tyrep == typeOf LT.empty = remap LT.toStrict
       | tyrep == typeOf ""       = remap pack
-      | tyrep == typeOf B.empty  = remap decode
+      | tyrep == typeOf B.empty  = remap F.decode
       | tyrep == typeOf L.empty  = remap strict
       | otherwise = modError "toJSON" $
                              "cannot convert map keyed by type " ++ show tyrep
@@ -104,7 +127,7 @@ toJSON = toJSON_generic
       | tyrep == typeOf DT.empty = remap id
       | tyrep == typeOf LT.empty = remap LT.toStrict
       | tyrep == typeOf ""       = remap pack
-      | tyrep == typeOf B.empty  = remap decode
+      | tyrep == typeOf B.empty  = remap F.decode
       | tyrep == typeOf L.empty  = remap strict
       | otherwise = modError "toJSON" $
                              "cannot convert map keyed by type " ++ show tyrep
