@@ -33,6 +33,7 @@ module Data.Aeson.Types.Class
     , fromJSON
     , (.:)
     , (.:?)
+    , (.!=)
     , (.:/)
     , (.=)
     , typeMismatch
@@ -44,6 +45,7 @@ import Data.Aeson.Types.Internal
 import Data.Attoparsec.Char8 (Number(..))
 import Data.Hashable (Hashable(..))
 import Data.Int (Int8, Int16, Int32, Int64)
+import Data.Maybe (fromMaybe)
 import Data.Monoid (Dual(..), First(..), Last(..))
 import Data.Ratio (Ratio)
 import Data.Text (Text, pack, unpack)
@@ -745,6 +747,22 @@ obj .:? key = case H.lookup key obj of
                Just v  -> parseJSON v
 {-# INLINE (.:?) #-}
 
+-- | Helper for use in combination with '.:?' to provide default
+-- values for optional JSON object fields.
+-- 
+-- Example usage:
+--
+-- @ v1 <- o '.:?' \"opt_field_with_dfl\" .!= \"default_val\"
+-- v2 <- o '.:'  \"mandatory_field\"
+-- v3 <- o '.:?' \"opt_field2\"
+--
+-- \-- alternative version of v1 using the '.:/' operator
+-- v1' <- o '.:/' (\"opt_field_with_dfl\", \"default_val\")
+-- @
+(.!=) :: Parser (Maybe a) -> a -> Parser a
+pmval .!= val = fromMaybe val <$> pmval
+{-# INLINE (.!=) #-}
+
 -- | Retrieve the value associated with the given key of an 'Object'.
 -- The result is a default value if the key is not present, or 'empty' 
 -- if the value cannot be converted to the desired type.
@@ -753,6 +771,9 @@ obj .:? key = case H.lookup key obj of
 -- from an object without affecting its validity and we know a 
 -- default value to assign in that case.  If the key and value 
 -- are mandatory, use '(.:)' instead.
+--
+-- See also '.!=' for an alternative way to represent optional fields
+-- with defaulting.
 (.:/) :: (FromJSON a) => Object -> (Text, a) -> Parser a
 obj .:/ (key, val) = case H.lookup key obj of
                        Nothing -> pure val
