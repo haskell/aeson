@@ -22,7 +22,7 @@ import qualified Data.ByteString.Lazy.Char8 as BL
 data Coord = Coord { x :: Double, y :: Double }
              deriving (Show, Typeable, Data)
 
-main ::IO ()
+main :: IO ()
 main = do
   let req = decode "{\"x\":3.0,\"y\":-1.0}" :: Maybe Coord
   print req

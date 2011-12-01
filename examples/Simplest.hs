@@ -22,7 +22,7 @@ instance FromJSON Coord where
                          v .: "y"
   parseJSON _          = empty
 
-main ::IO ()
+main :: IO ()
 main = do
   let req = decode "{\"x\":3.0,\"y\":-1.0}" :: Maybe Coord
   print req

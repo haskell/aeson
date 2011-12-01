@@ -30,7 +30,7 @@ data Coord = Coord { x :: Double, y :: Double }
 instance FromJSON Coord
 instance ToJSON Coord
 
-main ::IO ()
+main :: IO ()
 main = do
   let req = decode "{\"x\":3.0,\"y\":-1.0}" :: Maybe Coord
   print req
