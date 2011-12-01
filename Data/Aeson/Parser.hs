@@ -20,6 +20,12 @@
 -- * Conversion of a JSON value to a Haskell value.  This may be
 --   either immediate (strict) or deferred (lazy); see below for
 --   details.
+--
+-- The question of whether to choose a lazy or strict parser is
+-- subtle, but it can have significant performance implications,
+-- resulting in changes in CPU use and memory footprint of 30% to 50%,
+-- or occasionally more.  Measure the performance of your application
+-- with each!
 
 module Data.Aeson.Parser
     (
