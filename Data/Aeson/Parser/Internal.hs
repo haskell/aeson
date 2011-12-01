@@ -47,16 +47,17 @@ import qualified Data.ByteString.Unsafe as B
 import qualified Data.HashMap.Strict as H
 
 -- | Parse a top-level JSON value.  This must be either an object or
--- an array.
+-- an array, per RFC 4627.
 --
--- The conversion of parsed values to Haskell values is deferred.
--- This may improve performance if not all of the results of
--- conversions are needed, but at a cost in thunk allocation.
+-- The conversion of a parsed value to a Haskell value is deferred
+-- until the Haskell value is needed.  This may improve performance if
+-- only a subset of the results of conversions are needed, but at a
+-- cost in thunk allocation.
 json :: Parser Value
 json = json_ object_ array_
 
 -- | Parse a top-level JSON value.  This must be either an object or
--- an array.
+-- an array, per RFC 4627.
 --
 -- This is a strict version of 'json' which avoids building up thunks
 -- during parsing; it performs all conversions immediately.  Prefer
@@ -111,8 +112,15 @@ arrayValues val = do
 {-# INLINE arrayValues #-}
 
 -- | Parse any JSON value.  You should usually 'json' in preference to
--- this function.  This is only safe to use if you are parsing data
--- from an untrusted source.
+-- this function, as this function relaxes the object-or-array
+-- requirement of RFC 4627.
+--
+-- In particular, be careful in using this function if you think your
+-- code might interoperate with Javascript.  A na&#xef;ve Javascript
+-- library that parses JSON data using @eval@ is vulnerable to attack
+-- unless the encoded data represents an object or an array.  JSON
+-- implementations in other languages conform to that same restriction
+-- to preserve interoperability and security.
 value :: Parser Value
 value = most <|> (Number <$> number)
  where
