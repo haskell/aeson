@@ -120,6 +120,7 @@ library
 
   other-modules:
     Data.Aeson.Functions
+    Data.Aeson.Parser.Internal
     Data.Aeson.Types.Class
     Data.Aeson.Types.Internal
 
