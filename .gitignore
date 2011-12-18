@@ -6,3 +6,5 @@ dist
 benchmarks/AesonEncode
 
 tests/qc
+/.project
+/.dist-buildwrapper

@@ -12,7 +12,9 @@ import Data.Data (Typeable, Data)
 import Data.Text (Text)
 import Test.Framework (Test, defaultMain, testGroup)
 import Test.Framework.Providers.QuickCheck2 (testProperty)
+import Test.Framework.Providers.HUnit (testCase)
 import Test.QuickCheck (Arbitrary(..))
+import Test.HUnit (Assertion, (@=?))
 import qualified Data.Aeson.Generic as G
 import qualified Data.Attoparsec.Lazy as L
 import qualified Data.ByteString.Lazy.Char8 as L
@@ -150,6 +152,29 @@ tests = [
     , testProperty "Either Integer Integer" (toFromJSON :: Either Integer Integer -> Bool)
     ],
   testGroup "genericToFromJSON" [
-      testProperty "_UFoo" (genericToFromJSON :: UFoo -> Bool)
+      testProperty "_UFoo" (genericToFromJSON :: UFoo -> Bool),
+      testCase "Decode" caseSimpleGeneric
     ]
   ]
+  
+-- Generic
+
+data UAlone = UAlone {
+    _id :: Int,
+    st :: String
+} deriving (Show, Eq, Data, Typeable)
+
+data Solid = Solid {
+    _solId :: Int,
+    solId :: Int,
+    solTwo :: String
+} deriving (Show, Eq, Data, Typeable)
+
+caseSimpleGeneric :: Assertion
+caseSimpleGeneric = do
+    let rs = "{\"_solId\":1,\"solId\":5,\"solTwo\":\"a\"}"
+    let es = Solid {_solId=1, solId=5, solTwo="a"}
+    let ra = "{\"_id\":3,\"st\":\"s\"}"
+    let ea = UAlone {_id = 3, st = "s"}
+    Just es @=? (G.decode rs :: Maybe Solid) 
+    Just ea @=? (G.decode ra :: Maybe UAlone)

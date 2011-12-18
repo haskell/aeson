@@ -8,7 +8,10 @@ copyright:       (c) 2011 Bryan O'Sullivan
 author:          Bryan O'Sullivan <bos@serpentine.com>
 maintainer:      Bryan O'Sullivan <bos@serpentine.com>
 stability:       experimental
-tested-with:     GHC == 6.12.3, GHC == 7.0.4, GHC == 7.2.2
+tested-with:     
+                 GHC == 6.12.3,
+                 GHC == 7.0.4,
+                 GHC == 7.2.2
 synopsis:        Fast JSON parsing and encoding
 cabal-version:   >= 1.8
 homepage:        https://github.com/bos/aeson
@@ -151,6 +154,7 @@ test-suite tests
 
   build-depends:
     QuickCheck,
+    HUnit,
     aeson,
     attoparsec,
     base,
@@ -159,6 +163,7 @@ test-suite tests
     template-haskell,
     test-framework,
     test-framework-quickcheck2,
+    test-framework-hunit,
     text
 
 source-repository head
