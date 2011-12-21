@@ -18,13 +18,13 @@ instance NFData J.JSValue where
   rnf (J.JSArray lst) = rnf lst
   rnf (J.JSObject o) = rnf o
 
-encodeJ :: J.JSObject J.JSValue -> Int
+encodeJ :: J.JSValue -> Int
 encodeJ = length . J.encode
 
 encodeA :: A.Value -> Int64
 encodeA = BL.length . A.encode
 
-decodeJ :: String -> J.JSObject J.JSValue
+decodeJ :: String -> J.JSValue
 decodeJ s =
   case J.decodeStrict s of
     J.Ok v -> v
