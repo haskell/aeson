@@ -1,5 +1,7 @@
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 
+import Blaze.ByteString.Builder (toLazyByteString)
+import Blaze.ByteString.Builder.Char.Utf8 (fromString)
 import Control.DeepSeq (NFData(rnf))
 import Criterion.Main
 import qualified Data.Aeson as A
@@ -33,6 +35,9 @@ decodeA s = case A.decode s of
               Just v -> v
               Nothing -> error "fail to parse via Aeson"
 
+encodeJ :: J.JSValue -> BL.ByteString
+encodeJ = toLazyByteString . fromString . J.encode
+
 main :: IO ()
 main = do
   let enFile = "json-data/twitter100.json"
@@ -55,11 +60,11 @@ main = do
     , bgroup "encode" [
         bgroup "en" [
           bench "aeson" $ nf A.encode (decodeA enA)
-        , bench "json"  $ nf J.encode (decodeJ enJ)
+        , bench "json"  $ nf encodeJ (decodeJ enJ)
         ]
       , bgroup "jp" [
           bench "aeson" $ nf A.encode (decodeA jpA)
-        , bench "json"  $ nf J.encode (decodeJ jpJ)
+        , bench "json"  $ nf encodeJ (decodeJ jpJ)
         ]
       ]
     ]
