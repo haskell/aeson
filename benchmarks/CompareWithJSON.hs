@@ -1,11 +1,11 @@
-{-# OPTIONS_GHC -fno-warn-orphans#-}
+{-# OPTIONS_GHC -fno-warn-orphans #-}
 
+import Control.DeepSeq (NFData(rnf))
 import Criterion.Main
-import Control.DeepSeq
-import Data.Int
-import qualified Data.ByteString.Lazy as BL
-import qualified Text.JSON as J
 import qualified Data.Aeson as A
+import qualified Data.ByteString.Lazy as BL
+import qualified Data.ByteString.Lazy.Internal as BL
+import qualified Text.JSON as J
 
 instance (NFData v) => NFData (J.JSObject v) where
   rnf o = rnf (J.fromJSObject o)
@@ -18,11 +18,9 @@ instance NFData J.JSValue where
   rnf (J.JSArray lst) = rnf lst
   rnf (J.JSObject o) = rnf o
 
-encodeJ :: J.JSValue -> Int
-encodeJ = length . J.encode
-
-encodeA :: A.Value -> Int64
-encodeA = BL.length . A.encode
+instance NFData BL.ByteString where
+  rnf (BL.Chunk _ bs) = rnf bs
+  rnf BL.Empty        = ()
 
 decodeJ :: String -> J.JSValue
 decodeJ s =
@@ -31,9 +29,9 @@ decodeJ s =
     J.Error _ -> error "fail to parse via JSON"
 
 decodeA :: BL.ByteString -> A.Value
-decodeA s = case A.decode' s of
-              Nothing -> error "fail to parse via Aeson"
+decodeA s = case A.decode s of
               Just v -> v
+              Nothing -> error "fail to parse via Aeson"
 
 jsonData :: FilePath
 jsonData = "json-data/jp100.json"
@@ -48,7 +46,7 @@ main = do
         bgroup "decode" [ bench "json"  $ nf decodeJ js
                         , bench "aeson" $ nf decodeA as
                         ],
-        bgroup "encode" [ bench "json"  $ nf encodeJ jdata
-                        , bench "aeson" $ nf encodeA adata
+        bgroup "encode" [ bench "json"  $ nf J.encode jdata
+                        , bench "aeson" $ nf A.encode adata
                         ]
        ]
