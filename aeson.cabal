@@ -84,6 +84,7 @@ description:
 
 extra-source-files:
     README.markdown
+    benchmarks/*.cabal
     benchmarks/*.hs
     benchmarks/*.py
     benchmarks/Makefile

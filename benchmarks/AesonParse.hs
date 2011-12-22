@@ -1,10 +1,8 @@
 {-# LANGUAGE BangPatterns, OverloadedStrings #-}
 
-import Control.DeepSeq
 import Control.Exception
 import Control.Monad
 import Data.Aeson
-import Data.Aeson.Parser
 import Data.Attoparsec
 import Data.Time.Clock
 import System.Environment (getArgs)
