@@ -33,20 +33,33 @@ decodeA s = case A.decode s of
               Just v -> v
               Nothing -> error "fail to parse via Aeson"
 
-jsonData :: FilePath
-jsonData = "json-data/jp100.json"
-
 main :: IO ()
 main = do
-  js <- readFile jsonData
-  as <- BL.readFile jsonData
-  let jdata = decodeJ js
-      adata = decodeA as
+  let enFile = "json-data/twitter100.json"
+      jpFile = "json-data/jp100.json"
+  enA <- BL.readFile enFile
+  enJ <- readFile enFile
+  jpA <- BL.readFile jpFile
+  jpJ <- readFile jpFile
   defaultMain [
-        bgroup "decode" [ bench "json"  $ nf decodeJ js
-                        , bench "aeson" $ nf decodeA as
-                        ],
-        bgroup "encode" [ bench "json"  $ nf J.encode jdata
-                        , bench "aeson" $ nf A.encode adata
-                        ]
-       ]
+      bgroup "decode" [
+        bgroup "en" [
+          bench "aeson" $ nf decodeA enA
+        , bench "json"  $ nf decodeJ enJ
+        ]
+      , bgroup "jp" [
+          bench "aeson" $ nf decodeA jpA
+        , bench "json"  $ nf decodeJ jpJ
+        ]
+      ]
+    , bgroup "encode" [
+        bgroup "en" [
+          bench "aeson" $ nf A.encode (decodeA enA)
+        , bench "json"  $ nf J.encode (decodeJ enJ)
+        ]
+      , bgroup "jp" [
+          bench "aeson" $ nf A.encode (decodeA jpA)
+        , bench "json"  $ nf J.encode (decodeJ jpJ)
+        ]
+      ]
+    ]
