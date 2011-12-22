@@ -36,7 +36,7 @@ decodeA s = case A.decode' s of
               Just v -> v
 
 jsonData :: FilePath
-jsonData = "benchmarks/json-data/jp100.json"
+jsonData = "json-data/jp100.json"
 
 main :: IO ()
 main = do
@@ -44,7 +44,7 @@ main = do
   as <- BL.readFile jsonData
   let jdata = decodeJ js
       adata = decodeA as
-  (jdata, adata) `deepseq` defaultMain [
+  defaultMain [
         bgroup "decode" [ bench "json"  $ nf decodeJ js
                         , bench "aeson" $ nf decodeA as
                         ],

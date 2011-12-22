@@ -1,13 +1,12 @@
 {-# LANGUAGE BangPatterns, ScopedTypeVariables #-}
+{-# OPTIONS_GHC -fno-warn-orphans #-}
 
 import Control.DeepSeq
-import Control.Exception
 import Control.Monad
 import Text.JSON
 import Data.Time.Clock
 import System.Environment (getArgs)
 import System.IO
-import qualified Data.ByteString as B
 
 instance NFData JSValue where
     rnf JSNull = ()

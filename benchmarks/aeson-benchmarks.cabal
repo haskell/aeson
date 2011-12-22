@@ -1,0 +1,39 @@
+name:                aeson-benchmarks
+version:             0
+build-type:          Simple
+
+cabal-version:       >=1.2
+
+executable aeson-benchmark-compare-with-json
+  main-is: CompareWithJSON.hs
+  ghc-options: -Wall -O2
+  build-depends:
+    aeson == 0.4.0.0,
+    base,
+    bytestring,
+    criterion,
+    json
+
+executable aeson-benchmark-aeson-encode
+  main-is: AesonEncode.hs
+  ghc-options: -Wall -O2
+  build-depends:
+    aeson == 0.4.0.0,
+    base
+
+executable aeson-benchmark-aeson-parse
+  main-is: AesonParse.hs
+  ghc-options: -Wall -O2
+  build-depends:
+    aeson == 0.4.0.0,
+    attoparsec,
+    base
+
+executable aeson-benchmark-json-parse
+  main-is: JsonParse.hs
+  ghc-options: -Wall -O2
+  build-depends:
+    base,
+    deepseq,
+    json,
+    time
