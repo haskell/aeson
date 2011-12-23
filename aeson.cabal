@@ -140,7 +140,7 @@ library
     ghc-options: -Werror
     ghc-prof-options: -auto-all
 
-  ghc-options:      -Wall
+  ghc-options: -O2 -Wall
 
 test-suite tests
   type:           exitcode-stdio-1.0
