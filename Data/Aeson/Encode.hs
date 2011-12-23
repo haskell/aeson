@@ -8,8 +8,13 @@
 -- Stability:   experimental
 -- Portability: portable
 --
--- Efficiently serialize a JSON value as a lazy 'L.ByteString',
--- encoded as UTF-8.
+-- Efficiently serialize a JSON value.
+--
+-- Most frequently, you'll probably want to encode straight to UTF-8
+-- (the standard JSON encoding) using 'encode'.
+--
+-- You can convert a 'Builder' (as returned by 'fromValue') to a
+-- string using e.g. 'toLazyText'.
 
 module Data.Aeson.Encode
     (
@@ -30,36 +35,35 @@ import qualified Data.HashMap.Strict as H
 import qualified Data.Text as T
 import qualified Data.Vector as V
 
--- | Encode a JSON value to a 'Builder'.
+-- | Encode a JSON value to a 'Builder'.  You can convert this to a
+-- string using e.g. 'toLazyText', or encode straight to UTF-8 (the
+-- standard JSON encoding) using 'encode'.
 fromValue :: Value -> Builder
 fromValue Null = {-# SCC "fromValue/Null" #-} "null"
 fromValue (Bool b) = {-# SCC "fromValue/Bool" #-}
-                     if b then "true"
-                     else "false"
+                     if b then "true" else "false"
 fromValue (Number n) = {-# SCC "fromValue/Number" #-} fromNumber n
 fromValue (String s) = {-# SCC "fromValue/String" #-} string s
 fromValue (Array v)
     | V.null v = {-# SCC "fromValue/Array" #-} "[]"
     | otherwise = {-# SCC "fromValue/Array" #-}
-                  singleton '[' `mappend`
-                  fromValue (V.unsafeHead v) `mappend`
+                  singleton '[' <>
+                  fromValue (V.unsafeHead v) <>
                   V.foldr f (singleton ']') (V.unsafeTail v)
-  where f a z = singleton ',' `mappend` fromValue a `mappend` z
+  where f a z = singleton ',' <> fromValue a <> z
 fromValue (Object m) = {-# SCC "fromValue/Object" #-}
     case H.toList m of
-      (x:xs) -> singleton '{' `mappend`
-                one x `mappend` foldr f (singleton '}') xs
+      (x:xs) -> singleton '{' <> one x <> foldr f (singleton '}') xs
       _      -> "{}"
-  where f a z     = singleton ',' `mappend` one a `mappend` z
-        one (k,v) = string k `mappend` singleton ':' `mappend` fromValue v
+  where f a z     = singleton ',' <> one a <> z
+        one (k,v) = string k <> singleton ':' <> fromValue v
 
 string :: T.Text -> Builder
-string s = {-# SCC "string" #-}
-           singleton '"' `mappend` quote s `mappend` singleton '"'
+string s = {-# SCC "string" #-} singleton '"' <> quote s <> singleton '"'
   where
     quote q = case T.uncons t of
-                Just (c,t') -> fromText h `mappend` escape c `mappend` quote t'
                 Nothing     -> fromText h
+                Just (c,t') -> fromText h <> escape c <> quote t'
         where (h,t) = {-# SCC "break" #-} T.break isEscape q
     isEscape c = c == '\"' || c == '\\' || c < '\x20'
     escape '\"' = "\\\""
@@ -68,8 +72,7 @@ string s = {-# SCC "string" #-}
     escape '\r' = "\\r"
     escape '\t' = "\\t"
     escape c
-        | c < '\x20' = fromString $
-                       "\\u" ++ replicate (4 - length h) '0' ++ h
+        | c < '\x20' = fromString $ "\\u" ++ replicate (4 - length h) '0' ++ h
         | otherwise  = singleton c
         where h = showHex (fromEnum c) ""
 
@@ -84,3 +87,8 @@ encode :: ToJSON a => a -> L.ByteString
 encode = {-# SCC "encode" #-} encodeUtf8 . toLazyText . fromValue .
          {-# SCC "toJSON" #-} toJSON
 {-# INLINE encode #-}
+
+(<>) :: Builder -> Builder -> Builder
+(<>) = mappend
+{-# INLINE (<>) #-}
+infixr 6 <>
