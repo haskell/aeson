@@ -1,3 +1,14 @@
+# 0.4 to 0.5
+
+When used with the UTF-8 encoding performance improvements introduced
+in version 0.11.1.12 of the text package, this release improves
+aeson's JSON encoding performance by 33% relative to aeson 0.4.
+
+As part of achieving this improvement, an API change was necessary.
+The `fromValue` function in the `Data.Aeson.Encode` module now uses
+the text package's `Builder` type instead of the blaze-builder
+package's `Builder` type.
+
 # 0.3 to 0.4
 
 ## Ease of use
