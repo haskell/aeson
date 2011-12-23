@@ -8,7 +8,7 @@ executable aeson-benchmark-compare-with-json
   main-is: CompareWithJSON.hs
   ghc-options: -Wall -O2
   build-depends:
-    aeson == 0.4.0.0,
+    aeson,
     base,
     blaze-builder,
     bytestring,
@@ -19,14 +19,14 @@ executable aeson-benchmark-aeson-encode
   main-is: AesonEncode.hs
   ghc-options: -Wall -O2
   build-depends:
-    aeson == 0.4.0.0,
+    aeson,
     base
 
 executable aeson-benchmark-aeson-parse
   main-is: AesonParse.hs
   ghc-options: -Wall -O2
   build-depends:
-    aeson == 0.4.0.0,
+    aeson,
     attoparsec,
     base
 
