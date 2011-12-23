@@ -55,7 +55,8 @@ fromValue (Object m) = {-# SCC "fromValue/Object" #-}
         one (k,v) = string k `mappend` Char8.fromChar ':' `mappend` fromValue v
 
 string :: T.Text -> Builder
-string s = Char8.fromChar '"' `mappend` (quote s) `mappend` Char8.fromChar '"'
+string s = {-# SCC "string" #-}
+           Char8.fromChar '"' `mappend` quote s `mappend` Char8.fromChar '"'
   where
     quote q = case T.uncons t of
                 Just (c,t') -> fromText h `mappend` escape c `mappend` quote t'
