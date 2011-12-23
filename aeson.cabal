@@ -122,7 +122,6 @@ library
     attoparsec >= 0.8.6.1,
     base == 4.*,
     blaze-builder >= 0.2.1.4,
-    blaze-textual >= 0.2.0.2,
     bytestring,
     containers,
     deepseq,
