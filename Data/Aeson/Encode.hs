@@ -1,4 +1,4 @@
-{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE BangPatterns, OverloadedStrings #-}
 
 -- |
 -- Module:      Data.Aeson.Encode
@@ -63,7 +63,7 @@ string s = {-# SCC "string" #-} singleton '"' <> quote s <> singleton '"'
   where
     quote q = case T.uncons t of
                 Nothing     -> fromText h
-                Just (c,t') -> fromText h <> escape c <> quote t'
+                Just (!c,t') -> fromText h <> escape c <> quote t'
         where (h,t) = {-# SCC "break" #-} T.break isEscape q
     isEscape c = c == '\"' || c == '\\' || c < '\x20'
     escape '\"' = "\\\""
