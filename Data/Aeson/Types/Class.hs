@@ -36,6 +36,7 @@ module Data.Aeson.Types.Class
     , (.:?)
     , (.!=)
     , (.=)
+    , (<.:>)
     , typeMismatch
     ) where
 
@@ -770,11 +771,14 @@ pmval .!= val = fromMaybe val <$> pmval
 -- Example usage:
 --
 -- > o <.:> ["_links", "comments", "href"]
+(<.:>) :: (FromJSON a) => Object -> [Text] -> Parser a
+_ <.:> [] = fail $ "attempted to traverse an Object without a path"
 obj <.:> [key] = obj .: key
 obj <.:> (key:keys) =
-  let (Object nextObj) = findWithDefault (Object H.empty) key obj in
-      nextObj <.:> keys
-  where findWithDefault def k m = fromMaybe def $ H.lookup k m
+    case next of
+      (Object nextObj) -> nextObj <.:> keys
+      other            -> typeMismatch "Object" other
+  where next = fromMaybe (Object H.empty) $ H.lookup key obj
 
 -- | Fail parsing due to a type mismatch, with a descriptive message.
 typeMismatch :: String -- ^ The name of the type you are trying to parse.
