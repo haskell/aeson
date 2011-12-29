@@ -765,6 +765,17 @@ obj .:? key = case H.lookup key obj of
 pmval .!= val = fromMaybe val <$> pmval
 {-# INLINE (.!=) #-}
 
+-- | Produce the value for the last key by traversing through the JSON.
+--
+-- Example usage:
+--
+-- > o <.:> ["_links", "comments", "href"]
+obj <.:> [key] = obj .: key
+obj <.:> (key:keys) =
+  let (Object nextObj) = findWithDefault (Object H.empty) key obj in
+      nextObj <.:> keys
+  where findWithDefault def k m = fromMaybe def $ H.lookup k m
+
 -- | Fail parsing due to a type mismatch, with a descriptive message.
 typeMismatch :: String -- ^ The name of the type you are trying to parse.
              -> Value  -- ^ The actual value encountered.
