@@ -30,6 +30,7 @@ module Data.Aeson.Types.Class
 #endif
     -- * Types
     , DotNetTime(..)
+    , TimeWithZone(..)
     -- * Functions
     , fromJSON
     , (.:)
@@ -609,6 +610,26 @@ instance FromJSON DotNetTime where
       where (s,m) = T.splitAt (T.length t - 5) t
             t'    = T.concat [s,".",m]
     parseJSON v   = typeMismatch "DotNetTime" v
+    {-# INLINE parseJSON #-}
+
+-- | A newtype wrapper for 'UTCTime' that uses the same ISO-8601 format that
+-- Rails uses by default for its TimeWithZone type. The time format is
+-- @%FT%T%Z@, which is one of the many allowed variants of ISO-8601.
+newtype TimeWithZone = TimeWithZone {
+      fromTimeWithZone :: UTCTime
+   } deriving (Eq, Ord, Read, Show, Typeable, FormatTime)
+
+instance ToJSON TimeWithZone where
+    toJSON t = String (pack str)
+      where str = formatTime defaultTimeLocale "%FT%T%Z" t
+    {-# INLINE toJSON #-}
+
+instance FromJSON TimeWithZone where
+    parseJSON (String t) =
+        case parseTime defaultTimeLocale "%FT%T%Z" (unpack t) of
+          Just d -> pure $ TimeWithZone d
+          _      -> fail "could not parse ISO-8601 date from Rails default format"
+    parseJSON v   = typeMismatch "UTCTime" v
     {-# INLINE parseJSON #-}
 
 instance ToJSON UTCTime where

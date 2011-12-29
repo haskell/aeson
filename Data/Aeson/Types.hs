@@ -22,6 +22,7 @@ module Data.Aeson.Types
     , emptyObject
     -- * Convenience types and functions
     , DotNetTime(..)
+    , TimeWithZone(..)
     , typeMismatch
     -- * Type conversion
     , Parser
