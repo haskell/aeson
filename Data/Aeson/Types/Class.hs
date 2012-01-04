@@ -30,6 +30,7 @@ module Data.Aeson.Types.Class
 #endif
     -- * Types
     , DotNetTime(..)
+    , TimeWithZone(..)
     -- * Functions
     , fromJSON
     , (.:)
@@ -39,7 +40,7 @@ module Data.Aeson.Types.Class
     , typeMismatch
     ) where
 
-import Control.Applicative ((<$>), (<*>), pure)
+import Control.Applicative ((<$>), (<*>), pure, (<|>), empty)
 import Data.Aeson.Functions
 import Data.Aeson.Types.Internal
 import Data.Attoparsec.Char8 (Number(..))
@@ -50,7 +51,7 @@ import Data.Monoid (Dual(..), First(..), Last(..))
 import Data.Ratio (Ratio)
 import Data.Text (Text, pack, unpack)
 import Data.Text.Encoding (encodeUtf8)
-import Data.Time.Clock (UTCTime)
+import Data.Time (UTCTime, ZonedTime(..),TimeZone(..))
 import Data.Time.Format (FormatTime, formatTime, parseTime)
 import Data.Traversable (traverse)
 import Data.Typeable (Typeable)
@@ -610,6 +611,39 @@ instance FromJSON DotNetTime where
             t'    = T.concat [s,".",m]
     parseJSON v   = typeMismatch "DotNetTime" v
     {-# INLINE parseJSON #-}
+
+-- | A newtype wrapper for 'ZonedTime' that uses the same ISO-8601 formats that
+-- Rails uses by default for its TimeWithZone type.
+-- This can be either UTC, in which case it follows the @%FT%T%Z@ format, or
+-- a localtime, in which case it follows the @%FT%T%z@ format (note the @%z@ vs
+-- @%Z@).
+-- TODO
+newtype TimeWithZone = TimeWithZone ZonedTime deriving (Eq, Show)
+instance Eq ZonedTime where
+  x == y =
+    zonedTimeToLocalTime x == zonedTimeToLocalTime y &&
+      zonedTimeZone x == zonedTimeZone y
+
+instance ToJSON TimeWithZone where
+  toJSON (TimeWithZone t) = String $ pack $ formattedTime
+    where
+      formattedTime
+        | 0 == timeZoneMinutes (zonedTimeZone t) =
+          formatTime defaultTimeLocale "%FT%T%QZ" t
+        | otherwise =
+          formatTime defaultTimeLocale "%FT%T%Q%z" t
+
+instance FromJSON TimeWithZone where
+  parseJSON (String t) =
+    timeFormat "%FT%T%QZ" <|> timeFormat "%FT%T%Q%z" <|>
+      fail "could not parse Rails-style ISO-8601 date"
+    where
+      timeFormat f =
+        case parseTime defaultTimeLocale f (unpack t) of
+          Just d -> pure $ TimeWithZone d
+          Nothing -> empty
+
+  parseJSON v = typeMismatch "TimeWithZone" v
 
 instance ToJSON UTCTime where
     toJSON t = String (pack (take 23 str ++ "Z"))
