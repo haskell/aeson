@@ -100,9 +100,6 @@ instance (Ord k, Arbitrary k, Arbitrary v) => Arbitrary (Map.Map k v) where
 instance Arbitrary Foo where
     arbitrary = liftM4 Foo arbitrary arbitrary arbitrary arbitrary
 
-{-
-   Test for Data.Aeson.Generic handling '_' names
--}
 data UFoo = UFoo {
       _UFooInt :: Int
     , uFooInt :: Int
