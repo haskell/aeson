@@ -290,10 +290,8 @@ parseJSON_generic j = generic
         decodeArgs c0 = go (numConstrArgs (resType generic) c0) c0
                            (constrFields c0)
          where
-          go 0 c  _       Null       = construct c []   -- nullary constructor
           go 1 c []       jd         = construct c [jd] -- unary constructor
-          go n c []       (Array js)
-              | n > 1 = construct c (V.toList js)   -- no field names
+          go _ c []       (Array js) = construct c (V.toList js) -- no field names
           -- FIXME? We could allow reading an array into a constructor
           -- with field names.
           go _ c fs@(_:_) (Object o) = selectFields o fs >>=
