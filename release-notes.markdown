@@ -8,6 +8,10 @@ with a "`_`" character would have this character removed.  This no
 longer occurs, as [it was both buggy and
 surprising](https://github.com/bos/aeson/issues/53).
 
+Also:
+
+* Fixed [a bug in generic decoding of nullary constructors](https://github.com/bos/aeson/issues/62)
+
 # 0.4 to 0.5
 
 When used with the UTF-8 encoding performance improvements introduced
