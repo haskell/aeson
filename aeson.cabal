@@ -159,7 +159,8 @@ test-suite tests
     template-haskell,
     test-framework,
     test-framework-quickcheck2,
-    text
+    text,
+    time
 
 source-repository head
   type:     git
