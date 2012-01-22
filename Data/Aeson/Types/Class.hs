@@ -1,6 +1,8 @@
 {-# LANGUAGE CPP, DeriveDataTypeable, FlexibleContexts, FlexibleInstances,
     GeneralizedNewtypeDeriving, IncoherentInstances, OverlappingInstances,
-    OverloadedStrings, UndecidableInstances, ViewPatterns #-}
+    OverloadedStrings, UndecidableInstances, ViewPatterns,
+    StandaloneDeriving #-}
+{-# OPTIONS_GHC -fno-warn-orphans #-}
 
 #ifdef GENERICS
 {-# LANGUAGE DefaultSignatures #-}
@@ -39,18 +41,18 @@ module Data.Aeson.Types.Class
     , typeMismatch
     ) where
 
-import Control.Applicative ((<$>), (<*>), pure)
+import Control.Applicative ((<$>), (<*>), (<|>), pure, empty)
 import Data.Aeson.Functions
 import Data.Aeson.Types.Internal
 import Data.Attoparsec.Char8 (Number(..))
 import Data.Hashable (Hashable(..))
 import Data.Int (Int8, Int16, Int32, Int64)
 import Data.Maybe (fromMaybe)
-import Data.Monoid (Dual(..), First(..), Last(..))
+import Data.Monoid (Dual(..), First(..), Last(..), mappend)
 import Data.Ratio (Ratio)
 import Data.Text (Text, pack, unpack)
 import Data.Text.Encoding (encodeUtf8)
-import Data.Time.Clock (UTCTime)
+import Data.Time (UTCTime, ZonedTime(..), TimeZone(..))
 import Data.Time.Format (FormatTime, formatTime, parseTime)
 import Data.Traversable (traverse)
 import Data.Typeable (Typeable)
@@ -610,6 +612,37 @@ instance FromJSON DotNetTime where
             t'    = T.concat [s,".",m]
     parseJSON v   = typeMismatch "DotNetTime" v
     {-# INLINE parseJSON #-}
+
+deriving instance Eq ZonedTime
+
+instance ToJSON ZonedTime where
+  toJSON t = String $ pack $ formattedTime
+    where
+      formattedTime
+        | 0 == timeZoneMinutes (zonedTimeZone t) =
+          formatTime defaultTimeLocale "%FT%T%QZ" t
+        | otherwise =
+          formatTime defaultTimeLocale "%FT%T%Q%z" t
+
+instance FromJSON ZonedTime where
+  parseJSON (String t) =
+    tryFormats alternateFormats
+    <|> fail "could not parse ECMA-262 ISO-8601 date"
+    where
+      tryFormat f =
+        case parseTime defaultTimeLocale f (unpack t) of
+          Just d -> pure d
+          Nothing -> empty
+      tryFormats = foldr1 (<|>) . map tryFormat
+      alternateFormats =
+        distributeList ["%Y", "%Y-%m", "%F"]
+                       ["T%R", "T%T", "T%T%Q", "T%T%QZ", "T%T%Q%z"]
+
+      distributeList xs ys =
+        foldr (\x acc -> acc ++ distribute x ys) [] xs
+      distribute x = map (mappend x)
+
+  parseJSON v = typeMismatch "ZonedTime" v
 
 instance ToJSON UTCTime where
     toJSON t = String (pack (take 23 str ++ "Z"))
