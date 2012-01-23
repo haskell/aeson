@@ -616,13 +616,13 @@ instance FromJSON DotNetTime where
 deriving instance Eq ZonedTime
 
 instance ToJSON ZonedTime where
-  toJSON t = String $ pack $ formattedTime
+  toJSON t = String $ pack $ formatTime defaultTimeLocale format t
     where
-      formattedTime
-        | 0 == timeZoneMinutes (zonedTimeZone t) =
-          formatTime defaultTimeLocale "%FT%T%QZ" t
-        | otherwise =
-          formatTime defaultTimeLocale "%FT%T%Q%z" t
+      format = "%FT%T" ++ milliseconds ++ tzFormat
+      milliseconds = take 4 $ formatTime defaultTimeLocale "%Q" t
+      tzFormat
+        | 0 == timeZoneMinutes (zonedTimeZone t) = "Z"
+        | otherwise = "%z"
 
 instance FromJSON ZonedTime where
   parseJSON (String t) =
