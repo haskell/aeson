@@ -524,24 +524,34 @@ consFromJSON tName withField cons = do
                           `appE` ([|T.unpack|] `appE` varE conKey)
                         )
                ]
-      parseNullary =
-          [ match (conP 'String [varP str])
-                  (guardedB
+      parseNullary = case nullaryCons of
+          [] -> []
+          _  -> [ match (conP 'String [varP str])
+                  (guardedB $
                      [ normalGE (infixApp (varE str)
                                           [|(==)|]
                                           ( [|T.pack|]
                                             `appE` conNameExp con ))
                                 ([|return|] `appE` conE (getConName con))
                      | con <- nullaryCons
+                     ] ++
+                     [ normalGE [e|otherwise|]
+                                ( [|nullaryConNotFoundFail|]
+                                  `appE` (litE $ stringL $ show tName)
+                                  `appE` listE (map (litE . stringL . nameBase . getConName) nullaryCons)
+                                  `appE` ([|T.unpack|] `appE` varE str) )
                      ]
                   )
                   []
-          ]
-      parseNormal =
-          [ match (conP 'Object [varP obj])
-                  (normalB caseLst)
-                  []
-          , do other <- newName "other"
+                ]
+      parseNormal = case normalCons of
+          [] -> []
+          _  -> [ match (conP 'Object [varP obj])
+                        (normalB caseLst)
+                        []
+                ]
+      parseOther =
+          [ do other <- newName "other"
                match (varP other)
                      ( normalB
                      $ [|noObjectFail|]
@@ -552,7 +562,7 @@ consFromJSON tName withField cons = do
           ]
 
   lam1E (varP value)
-        $ caseE (varE value) (parseNullary ++ parseNormal)
+        $ caseE (varE value) (parseNullary ++ parseNormal ++ parseOther)
 
 -- | Generates code to parse the JSON encoding of a single constructor.
 parseArgs :: Name -- ^ Name of the type to which the constructor belongs.
@@ -706,23 +716,27 @@ unknownFieldFail tName rec key =
 
 noObjectFail :: String -> String -> Parser fail
 noObjectFail t o =
-    fail $ printf "When parsing %s expected Object but got %s." t o
+    fail $ printf "When parsing %s expected a String for nullary constructors or Object but got %s." t o
 
 wrongPairCountFail :: String -> String -> Parser fail
 wrongPairCountFail t n =
-    fail $ printf "When parsing %s expected an Object with a single name/value pair but got %s pairs."
-                  t n
+    fail $ printf "When parsing %s expected a String for nullary constructors or Object with a single name/value pair but got %s pairs."
+           t n
 
 conNotFoundFail :: String -> [String] -> String -> Parser fail
 conNotFoundFail t cs o =
-    fail $ printf "When parsing %s expected an Object with a name/value pair where the name is one of [%s], but got %s."
-                  t (intercalate ", " cs) o
+    fail $ printf "When parsing %s expected a String for nullary constructors or Object with a name/value pair where the name is one of [%s], but got %s."
+           t (intercalate ", " cs) o
 
 parseTypeMismatch' :: String -> String -> String -> String -> Parser fail
 parseTypeMismatch' tName conName expected actual =
     fail $ printf "When parsing the constructor %s of type %s expected %s but got %s."
                   conName tName expected actual
 
+nullaryConNotFoundFail :: String -> [String] -> String -> Parser fail
+nullaryConNotFoundFail t cs o =
+    fail $ printf "When parsing %s expected an Object with a single name/value pair or String for nullary constructors which should be one of [%s], but got %s."
+           t (intercalate ", " cs) o
 
 --------------------------------------------------------------------------------
 -- Utility functions
