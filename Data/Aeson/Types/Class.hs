@@ -103,11 +103,11 @@ class GFromJSON f where
 -- Instead of manually writing your 'ToJSON' instance, there are three options
 -- to do it automatically:
 --
--- * 'Data.Aeson.TH' provides template-haskell functions which will derive an
+-- * "Data.Aeson.TH" provides template-haskell functions which will derive an
 -- instance at compile-time. The generated instance is optimized for your type
 -- so will probably be more efficient than the following two options:
 --
--- * 'Data.Aeson.Generic' provides a generic @toJSON@ function that accepts any
+-- * "Data.Aeson.Generic" provides a generic @toJSON@ function that accepts any
 -- type which is an instance of 'Data'.
 --
 -- * If your compiler has support for the @DeriveGeneric@ and
@@ -164,11 +164,11 @@ class ToJSON a where
 -- Instead of manually writing your 'FromJSON' instance, there are three options
 -- to do it automatically:
 --
--- * 'Data.Aeson.TH' provides template-haskell functions which will derive an
+-- * "Data.Aeson.TH" provides template-haskell functions which will derive an
 -- instance at compile-time. The generated instance is optimized for your type
 -- so will probably be more efficient than the following two options:
 --
--- * 'Data.Aeson.Generic' provides a generic @fromJSON@ function that parses to
+-- * "Data.Aeson.Generic" provides a generic @fromJSON@ function that parses to
 -- any type which is an instance of 'Data'.
 --
 -- * If your compiler has support for the @DeriveGeneric@ and
