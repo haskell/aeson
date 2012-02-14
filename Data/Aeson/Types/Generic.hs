@@ -25,7 +25,6 @@
 module Data.Aeson.Types.Generic ( ) where
 
 import Control.Applicative
-import Control.Monad.State.Strict
 import Data.Bits (shiftR)
 import Data.Aeson.Types.Class
 import Data.Aeson.Types.Internal
