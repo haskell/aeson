@@ -1,20 +1,13 @@
-{-# LANGUAGE DefaultSignatures
-           , EmptyDataDecls
-           , FlexibleInstances
-           , FunctionalDependencies
-           , KindSignatures
-           , OverlappingInstances
-           , ScopedTypeVariables
-           , TypeOperators
-           , UndecidableInstances
-           , ViewPatterns
-  #-}
-
+{-# LANGUAGE DefaultSignatures, EmptyDataDecls, FlexibleInstances,
+    FunctionalDependencies, KindSignatures, OverlappingInstances,
+    ScopedTypeVariables, TypeOperators, UndecidableInstances, ViewPatterns #-}
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 
 -- |
 -- Module:      Data.Aeson.Types.Generic
--- Copyright:   (c) 2011 MailRank, Inc.
+-- Copyright:   (c) 2012 Bryan O'Sullivan
+--              (c) 2011 Bas Van Dijk
+--              (c) 2011 MailRank, Inc.
 -- License:     Apache
 -- Maintainer:  Bryan O'Sullivan <bos@serpentine.com>
 -- Stability:   experimental
@@ -24,15 +17,15 @@
 
 module Data.Aeson.Types.Generic ( ) where
 
-import Control.Applicative
-import Data.Bits (shiftR)
+import Control.Applicative ((<*>), (<$>), (<|>), pure)
+import Control.Monad.ST (ST)
 import Data.Aeson.Types.Class
 import Data.Aeson.Types.Internal
-import Data.Text (pack, unpack)
+import Data.Bits (shiftR)
 import Data.DList (DList, toList)
 import Data.Monoid (mappend)
+import Data.Text (pack, unpack)
 import GHC.Generics
-import Control.Monad.ST (ST)
 import qualified Data.HashMap.Strict as H
 import qualified Data.Text as T
 import qualified Data.Vector as V
