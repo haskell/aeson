@@ -49,7 +49,7 @@ instance 'ToJSON' a => 'ToJSON' (D a) where
       \value ->
         case value of
           Nullary ->
-              'object' [T.pack \"Nullary\" .= 'toJSON' ([] :: [()])]
+              'String' (T.pack \"Nullary\")
           Unary arg1 ->
               'object' [T.pack \"Unary\" .= 'toJSON' arg1]
           Product arg1 arg2 arg3 ->
@@ -75,18 +75,13 @@ instance 'FromJSON' a => 'FromJSON' (D a) where
     'parseJSON' =
       \value ->
         case value of
+          'String' str
+            | str == T.pack \"Nullary\" -> Nullary
           'Object' obj ->
             case H.toList obj of
               [(conKey, conVal)] ->
                 case conKey of
-                  _ | conKey == T.pack \"Nullary\" ->
-                        case conVal of
-                          'Array' arr ->
-                            if V.null arr
-                            then pure Nullary
-                            else fail \"\<error message\>\"
-                          _ -> fail \"\<error message\>\"
-                    | conKey == T.pack \"Unary\" ->
+                  _ | conKey == T.pack \"Unary\" ->
                         case conVal of
                           arg -> Unary \<$\> parseJSON arg
                     | conKey == T.pack \"Product\" ->
@@ -160,12 +155,13 @@ import Data.Aeson.Types ( Value(..), Parser )
 -- from base:
 import Control.Applicative ( pure, (<$>), (<*>) )
 import Control.Monad       ( return, mapM, liftM2, fail )
-import Data.Bool           ( otherwise )
+import Data.Bool           ( otherwise, Bool(True, False) )
 import Data.Eq             ( (==) )
 import Data.Function       ( ($), (.), id )
 import Data.Functor        ( fmap )
 import Data.List           ( (++), foldl, foldl', intercalate
                            , length, map, zip, genericLength
+                           , partition
                            )
 import Data.Maybe          ( Maybe(Nothing, Just) )
 import Prelude             ( String, (-), Integer, fromIntegral, error )
@@ -329,9 +325,11 @@ encodeArgs :: (Q Exp -> Q Exp) -> (String -> String) -> Con -> Q Match
 -- Nullary constructors. Generates code that explicitly matches against the
 -- constructor even though it doesn't contain data. This is useful to prevent
 -- type errors.
-encodeArgs withExp _ (NormalC conName []) =
+encodeArgs _ _ (NormalC conName []) =
     match (conP conName [])
-          (normalB $ withExp [e|toJSON ([] :: [()])|])
+          (normalB $ [e|String|]
+                     `appE` ([e|T.pack|]
+                             `appE` (litE . stringL . nameBase $ conName)))
           []
 -- Polyadic constructors with special case for unary constructors.
 encodeArgs withExp _ (NormalC conName ts) = do
@@ -483,10 +481,13 @@ consFromJSON tName withField [con] = do
 consFromJSON tName withField cons = do
   value  <- newName "value"
   obj    <- newName "obj"
+  str    <- newName "str"
   conKey <- newName "conKey"
   conVal <- newName "conVal"
 
-  let -- Convert the Data.Map inside the Object to a list and pattern match
+  let (nullaryCons, normalCons) = partition isNullary cons
+
+      -- Convert the Data.Map inside the Object to a list and pattern match
       -- against it. It must contain a single element otherwise the parse will
       -- fail.
       caseLst = caseE ([e|H.toList|] `appE` varE obj)
@@ -512,32 +513,56 @@ consFromJSON tName withField cons = do
                     e <- caseE (varE conVal)
                                (parseArgs tName withField con)
                     return (g, e)
-               | con <- cons
+               | con <- normalCons
                ]
                ++
                [ liftM2 (,)
                         (normalG [e|otherwise|])
                         ( [|conNotFoundFail|]
                           `appE` (litE $ stringL $ show tName)
-                          `appE` listE (map (litE . stringL . nameBase . getConName) cons)
+                          `appE` listE (map (litE . stringL . nameBase . getConName) normalCons)
                           `appE` ([|T.unpack|] `appE` varE conKey)
                         )
                ]
-
-  lam1E (varP value)
-        $ caseE (varE value)
-                [ match (conP 'Object [varP obj])
+      parseNullary = case nullaryCons of
+          [] -> []
+          _  -> [ match (conP 'String [varP str])
+                  (guardedB $
+                     [ normalGE (infixApp (varE str)
+                                          [|(==)|]
+                                          ( [|T.pack|]
+                                            `appE` conNameExp con ))
+                                ([|return|] `appE` conE (getConName con))
+                     | con <- nullaryCons
+                     ] ++
+                     [ normalGE [e|otherwise|]
+                                ( [|nullaryConNotFoundFail|]
+                                  `appE` (litE $ stringL $ show tName)
+                                  `appE` listE (map (litE . stringL . nameBase . getConName) nullaryCons)
+                                  `appE` ([|T.unpack|] `appE` varE str) )
+                     ]
+                  )
+                  []
+                ]
+      parseNormal = case normalCons of
+          [] -> []
+          _  -> [ match (conP 'Object [varP obj])
                         (normalB caseLst)
                         []
-                , do other <- newName "other"
-                     match (varP other)
-                           ( normalB
-                           $ [|noObjectFail|]
-                             `appE` (litE $ stringL $ show tName)
-                             `appE` ([|valueConName|] `appE` varE other)
-                           )
-                           []
                 ]
+      parseOther =
+          [ do other <- newName "other"
+               match (varP other)
+                     ( normalB
+                     $ [|noObjectFail|]
+                       `appE` (litE $ stringL $ show tName)
+                       `appE` ([|valueConName|] `appE` varE other)
+                     )
+                     []
+          ]
+
+  lam1E (varP value)
+        $ caseE (varE value) (parseNullary ++ parseNormal ++ parseOther)
 
 -- | Generates code to parse the JSON encoding of a single constructor.
 parseArgs :: Name -- ^ Name of the type to which the constructor belongs.
@@ -691,23 +716,27 @@ unknownFieldFail tName rec key =
 
 noObjectFail :: String -> String -> Parser fail
 noObjectFail t o =
-    fail $ printf "When parsing %s expected Object but got %s." t o
+    fail $ printf "When parsing %s expected a String for nullary constructors or Object but got %s." t o
 
 wrongPairCountFail :: String -> String -> Parser fail
 wrongPairCountFail t n =
-    fail $ printf "When parsing %s expected an Object with a single name/value pair but got %s pairs."
-                  t n
+    fail $ printf "When parsing %s expected a String for nullary constructors or Object with a single name/value pair but got %s pairs."
+           t n
 
 conNotFoundFail :: String -> [String] -> String -> Parser fail
 conNotFoundFail t cs o =
-    fail $ printf "When parsing %s expected an Object with a name/value pair where the name is one of [%s], but got %s."
-                  t (intercalate ", " cs) o
+    fail $ printf "When parsing %s expected a String for nullary constructors or Object with a name/value pair where the name is one of [%s], but got %s."
+           t (intercalate ", " cs) o
 
 parseTypeMismatch' :: String -> String -> String -> String -> Parser fail
 parseTypeMismatch' tName conName expected actual =
     fail $ printf "When parsing the constructor %s of type %s expected %s but got %s."
                   conName tName expected actual
 
+nullaryConNotFoundFail :: String -> [String] -> String -> Parser fail
+nullaryConNotFoundFail t cs o =
+    fail $ printf "When parsing %s expected an Object with a single name/value pair or String for nullary constructors which should be one of [%s], but got %s."
+           t (intercalate ", " cs) o
 
 --------------------------------------------------------------------------------
 -- Utility functions
@@ -766,3 +795,8 @@ valueConName (String _) = "String"
 valueConName (Number _) = "Number"
 valueConName (Bool   _) = "Boolean"
 valueConName Null       = "Null"
+
+-- | If constructor is nullary.
+isNullary :: Con -> Bool
+isNullary (NormalC _ []) = True
+isNullary _ = False
