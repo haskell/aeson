@@ -1,4 +1,4 @@
-{-# LANGUAGE DefaultSignatures, EmptyDataDecls, FlexibleInstances,
+{-# LANGUAGE CPP, DefaultSignatures, EmptyDataDecls, FlexibleInstances,
     FunctionalDependencies, KindSignatures, OverlappingInstances,
     ScopedTypeVariables, TypeOperators, UndecidableInstances, ViewPatterns #-}
 {-# OPTIONS_GHC -fno-warn-orphans #-}
@@ -21,7 +21,7 @@ import Control.Applicative ((<*>), (<$>), (<|>), pure)
 import Control.Monad.ST (ST)
 import Data.Aeson.Types.Class
 import Data.Aeson.Types.Internal
-import Data.Bits (shiftR)
+import Data.Bits
 import Data.DList (DList, toList)
 import Data.Monoid (mappend)
 import Data.Text (pack, unpack)
@@ -106,7 +106,11 @@ instance (GProductToValues a, GProductToValues b) => GProductToValues (a :*: b) 
     gProductToValues mv ix len (a :*: b) = do gProductToValues mv ix  lenL a
                                               gProductToValues mv ixR lenR b
         where
+#if MIN_VERSION_base(4,5,0)
+          lenL = len `unsafeShiftR` 1
+#else
           lenL = len `shiftR` 1
+#endif
           ixR  = ix + lenL
           lenR = len - lenL
     {-# INLINE gProductToValues #-}
@@ -235,7 +239,11 @@ instance (GFromProduct a, GFromProduct b) => GFromProduct (a :*: b) where
     gParseProduct arr ix len = (:*:) <$> gParseProduct arr ix  lenL
                                      <*> gParseProduct arr ixR lenR
         where
+#if MIN_VERSION_base(4,5,0)
+          lenL = len `unsafeShiftR` 1
+#else
           lenL = len `shiftR` 1
+#endif
           ixR  = ix + lenL
           lenR = len - lenL
     {-# INLINE gParseProduct #-}
