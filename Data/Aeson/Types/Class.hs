@@ -40,6 +40,7 @@ module Data.Aeson.Types.Class
     ) where
 
 import Control.Applicative ((<$>), (<*>), pure)
+import Control.Monad (MonadPlus(..), mzero)
 import Data.Aeson.Functions
 import Data.Aeson.Types.Internal
 import Data.Attoparsec.Char8 (Number(..))
@@ -735,15 +736,17 @@ obj .: key = case H.lookup key obj of
 {-# INLINE (.:) #-}
 
 -- | Retrieve the value associated with the given key of an 'Object'.
--- The result is 'Nothing' if the key is not present, or 'empty' if
--- the value cannot be converted to the desired type.
+-- If the key is not present the result is decided by 'mzero'; it is 'Nothing'
+-- when a 'Maybe' is desired, '[]' when a list is desired, and so on.  The
+-- result is 'empty' if the  key is present but the value cannot be converted
+-- to the desired type.
 --
 -- This accessor is most useful if the key and value can be absent
 -- from an object without affecting its validity.  If the key and
 -- value are mandatory, use '(.:)' instead.
-(.:?) :: (FromJSON a) => Object -> Text -> Parser (Maybe a)
+(.:?) :: (FromJSON (m a), MonadPlus m) => Object -> Text -> Parser (m a)
 obj .:? key = case H.lookup key obj of
-               Nothing -> pure Nothing
+               Nothing -> pure mzero
                Just v  -> parseJSON v
 {-# INLINE (.:?) #-}
 
