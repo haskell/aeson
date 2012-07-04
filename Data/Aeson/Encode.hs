@@ -62,15 +62,25 @@ string :: T.Text -> Builder
 string s = {-# SCC "string" #-} singleton '"' <> quote s <> singleton '"'
   where
     quote q = case T.uncons t of
-                Nothing     -> fromText h
+                Nothing      -> fromText h
                 Just (!c,t') -> fromText h <> escape c <> quote t'
         where (h,t) = {-# SCC "break" #-} T.break isEscape q
-    isEscape c = c == '\"' || c == '\\' || c < '\x20'
+    isEscape c = c == '\"' ||
+                 c == '\\' ||
+                 c == '<'  ||
+                 c == '>'  ||
+                 c < '\x20'
     escape '\"' = "\\\""
     escape '\\' = "\\\\"
     escape '\n' = "\\n"
     escape '\r' = "\\r"
     escape '\t' = "\\t"
+
+    -- The following prevents untrusted JSON strings containing </script> or -->
+    -- from causing an XSS vulnerability:
+    escape '<'  = "\\u003c"
+    escape '>'  = "\\u003e"
+
     escape c
         | c < '\x20' = fromString $ "\\u" ++ replicate (4 - length h) '0' ++ h
         | otherwise  = singleton c
