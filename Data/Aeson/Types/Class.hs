@@ -111,8 +111,8 @@ class GFromJSON f where
 -- type which is an instance of 'Data'.
 --
 -- * If your compiler has support for the @DeriveGeneric@ and
--- @DefaultSignatures@ language extensions, @toJSON@ will have a default generic
--- implementation.
+-- @DefaultSignatures@ language extensions (GHC 7.2 and newer),
+-- @toJSON@ will have a default generic implementation.
 --
 -- To use the latter option, simply add a @deriving 'Generic'@ clause to your
 -- datatype and declare a @ToJSON@ instance for your datatype without giving a
@@ -754,7 +754,7 @@ obj .:? key = case H.lookup key obj of
 -- from an object without affecting its validity and we know a default
 -- value to assign in that case.  If the key and value are mandatory,
 -- use '(.:)' instead.
--- 
+--
 -- Example usage:
 --
 -- @ v1 <- o '.:?' \"opt_field_with_dfl\" .!= \"default_val\"
