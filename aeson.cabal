@@ -24,11 +24,6 @@ description:
     For release notes, see
     <https://github.com/bos/aeson/blob/master/release-notes.markdown>
     .
-    /Note/: if you use GHCi or Template Haskell, please see the
-    @README@ file for important details about building this package,
-    and other packages that depend on it:
-    <https://github.com/bos/aeson#readme>
-    .
     Parsing performance on a late 2010 MacBook Pro (2.66GHz Core i7),
     for mostly-English tweets from Twitter's JSON search API:
     .
