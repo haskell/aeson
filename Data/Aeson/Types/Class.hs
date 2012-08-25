@@ -43,6 +43,7 @@ import Control.Applicative ((<$>), (<*>), pure)
 import Data.Aeson.Functions
 import Data.Aeson.Types.Internal
 import Data.Attoparsec.Char8 (Number(..))
+import Data.Char (isSpace)
 import Data.Hashable (Hashable(..))
 import Data.Int (Int8, Int16, Int32, Int64)
 import Data.Maybe (fromMaybe)
@@ -51,7 +52,8 @@ import Data.Ratio (Ratio)
 import Data.Text (Text, pack, unpack)
 import Data.Text.Encoding (encodeUtf8)
 import Data.Time.Clock (UTCTime)
-import Data.Time.Format (FormatTime, formatTime, parseTime)
+import Data.Time.LocalTime (ZonedTime(..), TimeZone(..), utc, utcToZonedTime, zonedTimeToUTC)
+import Data.Time.Format (FormatTime, formatTime, parseTime, readsTime)
 import Data.Traversable (traverse)
 import Data.Typeable (Typeable)
 import Data.Vector (Vector)
@@ -611,17 +613,39 @@ instance FromJSON DotNetTime where
     parseJSON v   = typeMismatch "DotNetTime" v
     {-# INLINE parseJSON #-}
 
+instance ToJSON ZonedTime where
+    toJSON (ZonedTime lt tz) = (String . pack)
+        (fmt "%FT%T" lt ++ take prec (fmt "%Q" lt) ++ tzs)
+      where prec = 4 -- including decimal point
+            fmt s = formatTime defaultTimeLocale s
+            -- print Z for no offset
+            tzs
+              | timeZoneMinutes tz == 0 = "Z"
+              | otherwise = fmt "%z" tz
+    {-# INLINE toJSON #-}
+
+instance FromJSON ZonedTime where
+    parseJSON (String t) =
+        case readsTime defaultTimeLocale "%FT%T%Q" (unpack t) of
+          [(t, r@(c:r'))]
+            -- Z means UTC
+            | c == 'Z' -> if all isSpace r'
+                then pure (ZonedTime t utc)
+                else fail ("trailing garbage in date: " ++ show r')
+            -- otherwise, expect an offset
+            | otherwise -> case parseTime defaultTimeLocale "%z" r of
+                Just tz -> pure (ZonedTime t tz)
+                Nothing -> fail ("could not parse timezone offset: " ++ show r)
+          _ -> fail ("could not parse ISO-8601 date: " ++ show t)
+    parseJSON v = typeMismatch "time string" v
+    {-# INLINE parseJSON #-}
+
 instance ToJSON UTCTime where
-    toJSON t = String (pack (take 23 str ++ "Z"))
-      where str = formatTime defaultTimeLocale "%FT%T%Q" t
+    toJSON = toJSON . utcToZonedTime utc
     {-# INLINE toJSON #-}
 
 instance FromJSON UTCTime where
-    parseJSON (String t) =
-        case parseTime defaultTimeLocale "%FT%T%QZ" (unpack t) of
-          Just d -> pure d
-          _      -> fail "could not parse ISO-8601 date"
-    parseJSON v   = typeMismatch "UTCTime" v
+    parseJSON = fmap zonedTimeToUTC . parseJSON
     {-# INLINE parseJSON #-}
 
 instance (ToJSON a, ToJSON b) => ToJSON (a,b) where
