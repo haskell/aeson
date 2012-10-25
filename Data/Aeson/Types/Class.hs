@@ -307,12 +307,12 @@ instance FromJSON (Ratio Integer) where
     {-# INLINE parseJSON #-}
 
 instance HasResolution a => ToJSON (Fixed a) where
-    toJSON = Number . fromRational . toRational
+    toJSON = Number . realToFrac
     {-# INLINE toJSON #-}
 
 instance HasResolution a => FromJSON (Fixed a) where
     parseJSON (Number n) = pure $ case n of
-                                    D d -> fromRational $ toRational d
+                                    D d -> realToFrac d
                                     I i -> fromIntegral i
     parseJSON v          = typeMismatch "Fixed" v
     {-# INLINE parseJSON #-}
