@@ -28,6 +28,12 @@ module Data.Aeson
     , Result(..)
     , fromJSON
     , ToJSON(..)
+    -- * Inspecting @'Value's@
+    , withObject
+    , withText
+    , withArray
+    , withNumber
+    , withBool
     -- * Constructors and accessors
     , (.=)
     , (.:)
