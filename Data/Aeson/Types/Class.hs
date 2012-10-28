@@ -236,8 +236,7 @@ instance ToJSON Bool where
     {-# INLINE toJSON #-}
 
 instance FromJSON Bool where
-    parseJSON (Bool b) = pure b
-    parseJSON v        = typeMismatch "Bool" v
+    parseJSON = withBool "Bool" pure
     {-# INLINE parseJSON #-}
 
 instance ToJSON () where
@@ -245,8 +244,10 @@ instance ToJSON () where
     {-# INLINE toJSON #-}
 
 instance FromJSON () where
-    parseJSON (Array v) | V.null v = pure ()
-    parseJSON v        = typeMismatch "()" v
+    parseJSON = withArray "()" $ \v ->
+                  if V.null v
+                    then pure ()
+                    else fail "Expected an empty array"
     {-# INLINE parseJSON #-}
 
 instance ToJSON [Char] where
@@ -254,8 +255,7 @@ instance ToJSON [Char] where
     {-# INLINE toJSON #-}
 
 instance FromJSON [Char] where
-    parseJSON (String t) = pure (T.unpack t)
-    parseJSON v          = typeMismatch "String" v
+    parseJSON = withText "String" $ pure . T.unpack
     {-# INLINE parseJSON #-}
 
 instance ToJSON Char where
@@ -263,9 +263,10 @@ instance ToJSON Char where
     {-# INLINE toJSON #-}
 
 instance FromJSON Char where
-    parseJSON (String t)
-        | T.compareLength t 1 == EQ = pure (T.head t)
-    parseJSON v          = typeMismatch "Char" v
+    parseJSON = withText "Char" $ \t ->
+                  if T.compareLength t 1 == EQ
+                    then pure $ T.head t
+                    else fail "Expected a string of length 1"
     {-# INLINE parseJSON #-}
 
 instance ToJSON Double where
@@ -307,10 +308,10 @@ instance ToJSON (Ratio Integer) where
     {-# INLINE toJSON #-}
 
 instance FromJSON (Ratio Integer) where
-    parseJSON (Number n) = pure $ case n of
-                                    D d -> toRational d
-                                    I i -> fromIntegral i
-    parseJSON v          = typeMismatch "Ratio Integer" v
+    parseJSON = withNumber "Ration Integer" $ \n ->
+                  pure $ case n of
+                           D d -> toRational d
+                           I i -> fromIntegral i
     {-# INLINE parseJSON #-}
 
 instance ToJSON Int where
@@ -322,8 +323,7 @@ instance FromJSON Int where
     {-# INLINE parseJSON #-}
 
 parseIntegral :: Integral a => Value -> Parser a
-parseIntegral (Number n) = pure (floor n)
-parseIntegral v          = typeMismatch "Integral" v
+parseIntegral = withNumber "Integral" $ pure . floor
 {-# INLINE parseIntegral #-}
 
 instance ToJSON Integer where
@@ -411,8 +411,7 @@ instance ToJSON Text where
     {-# INLINE toJSON #-}
 
 instance FromJSON Text where
-    parseJSON (String t) = pure t
-    parseJSON v          = typeMismatch "Text" v
+    parseJSON = withText "Text" pure
     {-# INLINE parseJSON #-}
 
 instance ToJSON LT.Text where
@@ -420,8 +419,7 @@ instance ToJSON LT.Text where
     {-# INLINE toJSON #-}
 
 instance FromJSON LT.Text where
-    parseJSON (String t) = pure (LT.fromStrict t)
-    parseJSON v          = typeMismatch "Lazy Text" v
+    parseJSON = withText "Lazy Text" $ pure . LT.fromStrict
     {-# INLINE parseJSON #-}
 
 instance ToJSON B.ByteString where
@@ -429,8 +427,7 @@ instance ToJSON B.ByteString where
     {-# INLINE toJSON #-}
 
 instance FromJSON B.ByteString where
-    parseJSON (String t) = pure . encodeUtf8 $ t
-    parseJSON v          = typeMismatch "ByteString" v
+    parseJSON = withText "ByteString" $ pure . encodeUtf8
     {-# INLINE parseJSON #-}
 
 instance ToJSON LB.ByteString where
@@ -438,8 +435,7 @@ instance ToJSON LB.ByteString where
     {-# INLINE toJSON #-}
 
 instance FromJSON LB.ByteString where
-    parseJSON (String t) = pure . lazy $ t
-    parseJSON v          = typeMismatch "Lazy ByteString" v
+    parseJSON = withText "Lazy ByteString" $ pure . lazy
     {-# INLINE parseJSON #-}
 
 instance (ToJSON a) => ToJSON [a] where
@@ -447,8 +443,7 @@ instance (ToJSON a) => ToJSON [a] where
     {-# INLINE toJSON #-}
 
 instance (FromJSON a) => FromJSON [a] where
-    parseJSON (Array a) = mapM parseJSON (V.toList a)
-    parseJSON v         = typeMismatch "[a]" v
+    parseJSON = withArray "[a]" $ mapM parseJSON . V.toList
     {-# INLINE parseJSON #-}
 
 instance (ToJSON a) => ToJSON (Vector a) where
@@ -456,8 +451,7 @@ instance (ToJSON a) => ToJSON (Vector a) where
     {-# INLINE toJSON #-}
 
 instance (FromJSON a) => FromJSON (Vector a) where
-    parseJSON (Array a) = V.mapM parseJSON a
-    parseJSON v         = typeMismatch "Vector a" v
+    parseJSON = withArray "Vector a" $ V.mapM parseJSON
     {-# INLINE parseJSON #-}
 
 vectorToJSON :: (VG.Vector v a, ToJSON a) => v a -> Value
@@ -465,8 +459,7 @@ vectorToJSON = Array . V.map toJSON . V.convert
 {-# INLINE vectorToJSON #-}
 
 vectorParseJSON :: (FromJSON a, VG.Vector w a) => String -> Value -> Parser (w a)
-vectorParseJSON _ (Array a) = V.convert <$> V.mapM parseJSON a
-vectorParseJSON s v         = typeMismatch s v
+vectorParseJSON s = withArray s $ fmap V.convert . V.mapM parseJSON
 {-# INLINE vectorParseJSON #-}
 
 instance (Storable a, ToJSON a) => ToJSON (VS.Vector a) where
@@ -524,8 +517,8 @@ instance (ToJSON v) => ToJSON (M.Map Text v) where
     {-# INLINE toJSON #-}
 
 instance (FromJSON v) => FromJSON (M.Map Text v) where
-    parseJSON (Object o) = H.foldrWithKey M.insert M.empty <$> traverse parseJSON o
-    parseJSON v          = typeMismatch "Map Text a" v
+    parseJSON = withObject "Map Text a" $
+                  fmap (H.foldrWithKey M.insert M.empty) . traverse parseJSON
 
 instance (ToJSON v) => ToJSON (M.Map LT.Text v) where
     toJSON = Object . mapHashKeyVal LT.toStrict toJSON
@@ -556,8 +549,7 @@ instance (ToJSON v) => ToJSON (H.HashMap Text v) where
     {-# INLINE toJSON #-}
 
 instance (FromJSON v) => FromJSON (H.HashMap Text v) where
-    parseJSON (Object o) = traverse parseJSON o
-    parseJSON v          = typeMismatch "HashMap Text a" v
+    parseJSON = withObject "HashMap Text a" $ traverse parseJSON
 
 instance (ToJSON v) => ToJSON (H.HashMap LT.Text v) where
     toJSON = Object . mapKeyVal LT.toStrict toJSON
@@ -610,13 +602,12 @@ instance ToJSON DotNetTime where
     {-# INLINE toJSON #-}
 
 instance FromJSON DotNetTime where
-    parseJSON (String t) =
-        case parseTime defaultTimeLocale "/Date(%s%Q)/" (unpack t') of
-          Just d -> pure (DotNetTime d)
-          _      -> fail "could not parse .NET time"
-      where (s,m) = T.splitAt (T.length t - 5) t
+    parseJSON = withText "DotNetTime" $ \t ->
+        let (s,m) = T.splitAt (T.length t - 5) t
             t'    = T.concat [s,".",m]
-    parseJSON v   = typeMismatch "DotNetTime" v
+        in case parseTime defaultTimeLocale "/Date(%s%Q)/" (unpack t') of
+             Just d -> pure (DotNetTime d)
+             _      -> fail "could not parse .NET time"
     {-# INLINE parseJSON #-}
 
 instance ToJSON UTCTime where
@@ -625,11 +616,10 @@ instance ToJSON UTCTime where
     {-# INLINE toJSON #-}
 
 instance FromJSON UTCTime where
-    parseJSON (String t) =
+    parseJSON = withText "UTCTime" $ \t ->
         case parseTime defaultTimeLocale "%FT%T%QZ" (unpack t) of
           Just d -> pure d
           _      -> fail "could not parse ISO-8601 date"
-    parseJSON v   = typeMismatch "UTCTime" v
     {-# INLINE parseJSON #-}
 
 instance (ToJSON a, ToJSON b) => ToJSON (a,b) where
@@ -641,14 +631,13 @@ instance (ToJSON a, ToJSON b) => ToJSON (a,b) where
     {-# INLINE toJSON #-}
 
 instance (FromJSON a, FromJSON b) => FromJSON (a,b) where
-    parseJSON (Array ab)
-        | n == 2    = (,) <$> parseJSON (V.unsafeIndex ab 0)
-                          <*> parseJSON (V.unsafeIndex ab 1)
-        | otherwise = fail $ "cannot unpack array of length " ++
-                        show n ++ " into a pair"
-          where
-            n = V.length ab
-    parseJSON v = typeMismatch "(a,b)" v
+    parseJSON = withArray "(a,b)" $ \ab ->
+        let n = V.length ab
+        in if n == 2
+             then (,) <$> parseJSON (V.unsafeIndex ab 0)
+                      <*> parseJSON (V.unsafeIndex ab 1)
+             else fail $ "cannot unpack array of length " ++
+                         show n ++ " into a pair"
     {-# INLINE parseJSON #-}
 
 instance (ToJSON a, ToJSON b, ToJSON c) => ToJSON (a,b,c) where
@@ -661,15 +650,14 @@ instance (ToJSON a, ToJSON b, ToJSON c) => ToJSON (a,b,c) where
     {-# INLINE toJSON #-}
 
 instance (FromJSON a, FromJSON b, FromJSON c) => FromJSON (a,b,c) where
-    parseJSON (Array abc)
-        | n == 3    = (,,) <$> parseJSON (V.unsafeIndex abc 0)
-                           <*> parseJSON (V.unsafeIndex abc 1)
-                           <*> parseJSON (V.unsafeIndex abc 2)
-        | otherwise = fail $ "cannot unpack array of length " ++
-                        show n ++ " into a 3-tuple"
-          where
-            n = V.length abc
-    parseJSON v = typeMismatch "(a,b,c)" v
+    parseJSON = withArray "(a,b,c)" $ \abc ->
+        let n = V.length abc
+        in if n == 3
+             then (,,) <$> parseJSON (V.unsafeIndex abc 0)
+                       <*> parseJSON (V.unsafeIndex abc 1)
+                       <*> parseJSON (V.unsafeIndex abc 2)
+             else fail $ "cannot unpack array of length " ++
+                          show n ++ " into a 3-tuple"
     {-# INLINE parseJSON #-}
 
 instance (ToJSON a, ToJSON b, ToJSON c, ToJSON d) => ToJSON (a,b,c,d) where
@@ -683,16 +671,15 @@ instance (ToJSON a, ToJSON b, ToJSON c, ToJSON d) => ToJSON (a,b,c,d) where
     {-# INLINE toJSON #-}
 
 instance (FromJSON a, FromJSON b, FromJSON c, FromJSON d) => FromJSON (a,b,c,d) where
-    parseJSON (Array abcd)
-        | n == 4    = (,,,) <$> parseJSON (V.unsafeIndex abcd 0)
-                            <*> parseJSON (V.unsafeIndex abcd 1)
-                            <*> parseJSON (V.unsafeIndex abcd 2)
-                            <*> parseJSON (V.unsafeIndex abcd 3)
-        | otherwise = fail $ "cannot unpack array of length " ++
-                        show n ++ " into a 4-tuple"
-          where
-            n = V.length abcd
-    parseJSON v = typeMismatch "(a,b,c,d)" v
+    parseJSON = withArray "(a,b,c,d)" $ \abcd ->
+        let n = V.length abcd
+        in if n == 4
+             then (,,,) <$> parseJSON (V.unsafeIndex abcd 0)
+                        <*> parseJSON (V.unsafeIndex abcd 1)
+                        <*> parseJSON (V.unsafeIndex abcd 2)
+                        <*> parseJSON (V.unsafeIndex abcd 3)
+             else fail $ "cannot unpack array of length " ++
+                         show n ++ " into a 4-tuple"
     {-# INLINE parseJSON #-}
 
 instance ToJSON a => ToJSON (Dual a) where
