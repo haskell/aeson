@@ -30,6 +30,14 @@ module Data.Aeson.Types.Class
 #endif
     -- * Types
     , DotNetTime(..)
+
+      -- * Inspecting @'Value's@
+    , withObject
+    , withText
+    , withArray
+    , withNumber
+    , withBool
+
     -- * Functions
     , fromJSON
     , (.:)
@@ -710,6 +718,41 @@ instance ToJSON a => ToJSON (Last a) where
 instance FromJSON a => FromJSON (Last a) where
     parseJSON = fmap Last . parseJSON
     {-# INLINE parseJSON #-}
+
+-- | @withObject expected f value@ applies @f@ to the 'Object' when @value@ is an @Object@
+--   and fails using @'typeMismatch' expected@ otherwise.
+withObject :: String -> (Object -> Parser a) -> Value -> Parser a
+withObject _        f (Object obj) = f obj
+withObject expected _ v            = typeMismatch expected v
+{-# INLINE withObject #-}
+
+-- | @withObject expected f value@ applies @f@ to the 'Text' when @value@ is a @String@
+--   and fails using @'typeMismatch' expected@ otherwise.
+withText :: String -> (Text -> Parser a) -> Value -> Parser a
+withText _        f (String txt) = f txt
+withText expected _ v            = typeMismatch expected v
+{-# INLINE withText #-}
+
+-- | @withObject expected f value@ applies @f@ to the 'Array' when @value@ is an @Array@
+--   and fails using @'typeMismatch' expected@ otherwise.
+withArray :: String -> (Array -> Parser a) -> Value -> Parser a
+withArray _        f (Array arr) = f arr
+withArray expected _ v           = typeMismatch expected v
+{-# INLINE withArray #-}
+
+-- | @withObject expected f value@ applies @f@ to the 'Number' when @value@ is a @Number@
+--   and fails using @'typeMismatch' expected@ otherwise.
+withNumber :: String -> (Number -> Parser a) -> Value -> Parser a
+withNumber _        f (Number num) = f num
+withNumber expected _ v            = typeMismatch expected v
+{-# INLINE withNumber #-}
+
+-- | @withObject expected f value@ applies @f@ to the 'Bool' when @value@ is a @Bool@
+--   and fails using @'typeMismatch' expected@ otherwise.
+withBool :: String -> (Bool -> Parser a) -> Value -> Parser a
+withBool _        f (Bool arr) = f arr
+withBool expected _ v          = typeMismatch expected v
+{-# INLINE withBool #-}
 
 -- | Construct a 'Pair' from a key and a value.
 (.=) :: ToJSON a => Text -> a -> Pair

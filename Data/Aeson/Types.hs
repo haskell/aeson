@@ -32,6 +32,14 @@ module Data.Aeson.Types
     , parseEither
     , parseMaybe
     , ToJSON(..)
+
+    -- * Inspecting @'Value's@
+    , withObject
+    , withText
+    , withArray
+    , withNumber
+    , withBool
+
     -- * Constructors and accessors
     , (.=)
     , (.:)
