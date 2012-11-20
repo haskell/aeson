@@ -16,6 +16,8 @@ module Data.Aeson
     -- * Encoding and decoding
       decode
     , decode'
+    , eitherDecode
+    , eitherDecode'
     , encode
     -- * Core JSON types
     , Value(..)
@@ -46,7 +48,7 @@ module Data.Aeson
     ) where
 
 import Data.Aeson.Encode (encode)
-import Data.Aeson.Parser.Internal (decodeWith, json, json')
+import Data.Aeson.Parser.Internal (decodeWith, eitherDecodeWith, json, json')
 import Data.Aeson.Types
 import qualified Data.ByteString.Lazy as L
 
@@ -69,3 +71,13 @@ decode = decodeWith json fromJSON
 decode' :: (FromJSON a) => L.ByteString -> Maybe a
 decode' = decodeWith json' fromJSON
 {-# INLINE decode' #-}
+
+-- | Like 'decode' but returns an error message when decoding fails.
+eitherDecode :: (FromJSON a) => L.ByteString -> Either String a
+eitherDecode = eitherDecodeWith json fromJSON
+{-# INLINE eitherDecode #-}
+
+-- | Like 'decode'' but returns an error message when decoding fails.
+eitherDecode' :: (FromJSON a) => L.ByteString -> Either String a
+eitherDecode' = eitherDecodeWith json' fromJSON
+{-# INLINE eitherDecode' #-}
