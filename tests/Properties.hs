@@ -61,6 +61,9 @@ genericToFromJSON x = case G.fromJSON . G.toJSON $ x of
                 Error _ -> False
                 Success x' -> x == x'
 
+regress_gh72 :: [(String, Maybe String)] -> Bool
+regress_gh72 ys = G.decode (G.encode m) == Just m
+    where m = Map.fromList ys
 
 data Foo = Foo {
       fooInt :: Int
@@ -114,6 +117,9 @@ main = defaultMain tests
 
 tests :: [Test]
 tests = [
+  testGroup "regression" [
+      testProperty "gh-72" regress_gh72
+  ],
   testGroup "encode" [
       testProperty "encodeDouble" encodeDouble
     , testProperty "encodeInteger" encodeInteger
