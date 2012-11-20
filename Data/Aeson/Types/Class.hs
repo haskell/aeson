@@ -1,7 +1,6 @@
 {-# LANGUAGE CPP, DeriveDataTypeable, FlexibleContexts, FlexibleInstances,
     GeneralizedNewtypeDeriving, IncoherentInstances, OverlappingInstances,
-    OverloadedStrings, UndecidableInstances, ViewPatterns,
-    StandaloneDeriving #-}
+    OverloadedStrings, UndecidableInstances, ViewPatterns #-}
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 
 #ifdef GENERICS
@@ -624,8 +623,6 @@ instance FromJSON DotNetTime where
             t'    = T.concat [s,".",m]
     parseJSON v   = typeMismatch "DotNetTime" v
     {-# INLINE parseJSON #-}
-
-deriving instance Eq ZonedTime
 
 instance ToJSON ZonedTime where
   toJSON t = String $ pack $ formatTime defaultTimeLocale format t
