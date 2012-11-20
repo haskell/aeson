@@ -43,6 +43,7 @@ import Control.Applicative ((<$>), (<*>), pure)
 import Data.Aeson.Functions
 import Data.Aeson.Types.Internal
 import Data.Attoparsec.Char8 (Number(..))
+import Data.Fixed
 import Data.Hashable (Hashable(..))
 import Data.Int (Int8, Int16, Int32, Int64)
 import Data.Maybe (fromMaybe)
@@ -303,6 +304,17 @@ instance FromJSON (Ratio Integer) where
                                     D d -> toRational d
                                     I i -> fromIntegral i
     parseJSON v          = typeMismatch "Ratio Integer" v
+    {-# INLINE parseJSON #-}
+
+instance HasResolution a => ToJSON (Fixed a) where
+    toJSON = Number . realToFrac
+    {-# INLINE toJSON #-}
+
+instance HasResolution a => FromJSON (Fixed a) where
+    parseJSON (Number n) = pure $ case n of
+                                    D d -> realToFrac d
+                                    I i -> fromIntegral i
+    parseJSON v          = typeMismatch "Fixed" v
     {-# INLINE parseJSON #-}
 
 instance ToJSON Int where
