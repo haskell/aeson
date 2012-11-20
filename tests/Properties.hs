@@ -12,12 +12,13 @@ import Data.Data (Typeable, Data)
 import Data.Text (Text)
 import Test.Framework (Test, defaultMain, testGroup)
 import Test.Framework.Providers.QuickCheck2 (testProperty)
-import Test.QuickCheck (Arbitrary(..))
+import Test.QuickCheck (Arbitrary(..), choose, Gen)
 import qualified Data.Aeson.Generic as G
 import qualified Data.Attoparsec.Lazy as L
 import qualified Data.ByteString.Lazy.Char8 as L
 import qualified Data.Text as T
 import qualified Data.Map as Map
+import Data.Time (ZonedTime(..), LocalTime(..), TimeZone(..), hoursToTimeZone, Day(..), TimeOfDay(..))
 
 encodeDouble :: Double -> Double -> Bool
 encodeDouble num denom
@@ -103,6 +104,17 @@ instance (Ord k, Arbitrary k, Arbitrary v) => Arbitrary (Map.Map k v) where
 instance Arbitrary Foo where
     arbitrary = liftM4 Foo arbitrary arbitrary arbitrary arbitrary
 
+instance Arbitrary LocalTime where
+    arbitrary = return $ LocalTime (ModifiedJulianDay 1) (TimeOfDay 1 2 3)
+
+instance Arbitrary TimeZone where
+    arbitrary = do
+      offset <- choose (0,2) :: Gen Int
+      return $ hoursToTimeZone offset
+
+instance Arbitrary ZonedTime where
+    arbitrary = liftM2 ZonedTime arbitrary arbitrary
+
 data UFoo = UFoo {
       _UFooInt :: Int
     , uFooInt :: Int
@@ -144,6 +156,7 @@ tests = [
     , testProperty "String" $ roundTripEq (""::String)
     , testProperty "Text" $ roundTripEq T.empty
     , testProperty "Foo" $ roundTripEq (undefined::Foo)
+    , testProperty "ZonedTime" $ roundTripEq (undefined::ZonedTime)
     ],
   testGroup "toFromJSON" [
       testProperty "Integer" (toFromJSON :: Integer -> Bool)
