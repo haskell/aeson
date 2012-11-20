@@ -625,33 +625,33 @@ instance FromJSON DotNetTime where
     {-# INLINE parseJSON #-}
 
 instance ToJSON ZonedTime where
-  toJSON t = String $ pack $ formatTime defaultTimeLocale format t
-    where
-      format = "%FT%T" ++ milliseconds ++ tzFormat
-      milliseconds = take 4 $ formatTime defaultTimeLocale "%Q" t
-      tzFormat
-        | 0 == timeZoneMinutes (zonedTimeZone t) = "Z"
-        | otherwise = "%z"
+    toJSON t = String $ pack $ formatTime defaultTimeLocale format t
+      where
+        format = "%FT%T" ++ milliseconds ++ tzFormat
+        milliseconds = take 4 $ formatTime defaultTimeLocale "%Q" t
+        tzFormat
+          | 0 == timeZoneMinutes (zonedTimeZone t) = "Z"
+          | otherwise = "%z"
 
 instance FromJSON ZonedTime where
-  parseJSON (String t) =
-    tryFormats alternateFormats
-    <|> fail "could not parse ECMA-262 ISO-8601 date"
-    where
-      tryFormat f =
-        case parseTime defaultTimeLocale f (unpack t) of
-          Just d -> pure d
-          Nothing -> empty
-      tryFormats = foldr1 (<|>) . map tryFormat
-      alternateFormats =
-        distributeList ["%Y", "%Y-%m", "%F"]
-                       ["T%R", "T%T", "T%T%Q", "T%T%QZ", "T%T%Q%z"]
+    parseJSON (String t) =
+      tryFormats alternateFormats
+      <|> fail "could not parse ECMA-262 ISO-8601 date"
+      where
+        tryFormat f =
+          case parseTime defaultTimeLocale f (unpack t) of
+            Just d -> pure d
+            Nothing -> empty
+        tryFormats = foldr1 (<|>) . map tryFormat
+        alternateFormats =
+          distributeList ["%Y", "%Y-%m", "%F"]
+                         ["T%R", "T%T", "T%T%Q", "T%T%QZ", "T%T%Q%z"]
 
-      distributeList xs ys =
-        foldr (\x acc -> acc ++ distribute x ys) [] xs
-      distribute x = map (mappend x)
+        distributeList xs ys =
+          foldr (\x acc -> acc ++ distribute x ys) [] xs
+        distribute x = map (mappend x)
 
-  parseJSON v = typeMismatch "ZonedTime" v
+    parseJSON v = typeMismatch "ZonedTime" v
 
 instance ToJSON UTCTime where
     toJSON t = String (pack (take 23 str ++ "Z"))
