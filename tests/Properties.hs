@@ -1,5 +1,5 @@
 {-# LANGUAGE DeriveDataTypeable, OverloadedStrings, RecordWildCards,
-    ScopedTypeVariables #-}
+    ScopedTypeVariables, StandaloneDeriving #-}
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 
 import Control.Monad
@@ -126,6 +126,8 @@ instance Arbitrary UFoo where
 
 main :: IO ()
 main = defaultMain tests
+
+deriving instance Eq ZonedTime
 
 tests :: [Test]
 tests = [
