@@ -46,7 +46,7 @@ import qualified Data.Vector as V
 
 instance 'ToJSON' a => 'ToJSON' (D a) where
     'toJSON' =
-      \value ->
+      \\value ->
         case value of
           Nullary ->
               'object' [T.pack \"Nullary\" .= 'toJSON' ([] :: [()])]
@@ -73,7 +73,7 @@ instance 'ToJSON' a => 'ToJSON' (D a) where
 @
 instance 'FromJSON' a => 'FromJSON' (D a) where
     'parseJSON' =
-      \value ->
+      \\value ->
         case value of
           'Object' obj ->
             case H.toList obj of
@@ -234,7 +234,7 @@ The above (ToJSON a) constraint is not necessary and perhaps undesirable.
 -- @
 -- instance 'ToJSON' Foo where
 --      'toJSON' =
---          \value -> case value of
+--          \\value -> case value of
 --                      Foo arg1 arg2 -> 'Array' $ 'V.create' $ do
 --                        mv <- 'VM.unsafeNew' 2
 --                        'VM.unsafeWrite' mv 0 ('toJSON' arg1)
@@ -281,7 +281,7 @@ deriveToJSON withField name =
 -- This will splice in the following code:
 --
 -- @
--- \value -> case value of Foo arg1 -> 'toJSON' arg1
+-- \\value -> case value of Foo arg1 -> 'toJSON' arg1
 -- @
 mkToJSON :: (String -> String) -- ^ Function to change field names.
          -> Name -- ^ Name of the type to encode.
@@ -406,7 +406,7 @@ encodeArgs withExp withField (ForallC _ _ con) =
 -- @
 -- instance 'FromJSON' Foo where
 --     'parseJSON' =
---         \value -> case value of
+--         \\value -> case value of
 --                     'Array' arr ->
 --                       if (V.length arr == 2)
 --                       then Foo \<$\> 'parseJSON' (arr `V.unsafeIndex` 0)
