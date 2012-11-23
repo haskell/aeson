@@ -18,10 +18,10 @@
 -- class. For representing arbitrary JSON AST there is a 'Value' type,
 -- which is an instance of 'FromJSON'. For example:
 --
--- > λ> decode "{\"foo\":123}" :: Maybe Value
--- > Just (Object (fromList [("foo",Number 123)]))
--- > λ> decode "{\"foo\":[\"abc\",\"def\"]}" :: Maybe Value
--- > Just (Object (fromList [("foo",Array (fromList [String "abc",String "def"]))]))
+-- >>> decode "{\"foo\":123}" :: Maybe Value
+-- Just (Object (fromList [("foo",Number 123)]))
+-- >>> decode "{\"foo\":[\"abc\",\"def\"]}" :: Maybe Value
+-- Just (Object (fromList [("foo",Array (fromList [String "abc",String "def"]))]))
 --
 -- To run these examples, you need to enable @OverloadedStrings@ (in
 -- GHCi you can write @:set -XOverloadedStrings@) so that you can use
@@ -35,16 +35,16 @@
 --
 -- Any instance of 'FromJSON' can be specified (but see the PITFALLS section):
 --
--- > λ> decode "[1,2,3]" :: Maybe [Int]
--- > Just [1,2,3]
+-- >>> decode "[1,2,3]" :: Maybe [Int]
+-- Just [1,2,3]
 --
 -- Alternatively, there are instances for standard data types, so you
 -- can use them directly. For example, use the 'Data.Map.Map' type to
 -- get a map of 'Int's.
 --
--- > λ> :m + Data.Map
--- > λ> decode "{\"foo\":1,\"bar\":2}" :: Maybe (Map String Int)
--- > Just (fromList [("bar",2),("foo",1)])
+-- >>> :m + Data.Map
+-- >>> decode "{\"foo\":1,\"bar\":2}" :: Maybe (Map String Int)
+-- Just (fromList [("bar",2),("foo",1)])
 --
 -- /DECODING A HETEROGENOUS OBJECT/
 --
@@ -54,19 +54,21 @@
 --
 -- The 'Object' type contains JSON objects:
 --
--- > λ> decode "{\"name\":\"Dave\",\"age\":2}" :: Maybe Object
--- > Just (fromList) [("name",String "Dave"),("age",Number 2)]
+-- >>> decode "{\"name\":\"Dave\",\"age\":2}" :: Maybe Object
+-- Just (fromList) [("name",String "Dave"),("age",Number 2)]
 --
 -- And you extract values from it with a parser using 'parse',
 -- 'parseEither' or, in this example, 'parseMaybe':
 --
--- > λ> do result <- decode "{\"name\":\"Dave\",\"age\":2}"
--- >       flip parseMaybe result $ \obj -> do
--- >         age <- obj .: "age"
--- >         name <- obj .: "name"
--- >         return (name ++ ": " ++ show (age*2))
--- >
--- > Just "Dave: 4"
+-- > dave =
+-- >   do result <- decode "{\"name\":\"Dave\",\"age\":2}"
+-- >      flip parseMaybe result $ \obj -> do
+-- >        age <- obj .: "age"
+-- >        name <- obj .: "name"
+-- >        return (name ++ ": " ++ show (age*2))
+--
+-- >>> dave
+-- Just "Dave: 4"
 --
 -- Considering that any type that implements 'FromJSON' can be used
 -- here, this is quite a powerful way to parse JSON. See the
@@ -85,23 +87,21 @@
 -- based on 'Data.Typeable.Typeable' and 'Data.Data.Data'. Switch to
 -- the 'Data.Aeson.Generic' module, and you can do the following:
 --
--- > λ> decode "[1]" :: Maybe [Int]
--- > Just [1]
--- > λ> :m + Data.Typeable Data.Data
--- > λ> :set -XDeriveDataTypeable
--- > λ> data Person = Person { personName :: String, personAge :: Int } deriving (Data,Typeable,Show)
--- > λ> encode Person { personName = "Chris", personAge = 123 }
--- > "{\"personAge\":123,\"personName\":\"Chris\"}"
--- > λ> decode "{\"personAge\":123,\"personName\":\"Chris\"}" :: Maybe Person
--- > Just (Person {
--- > personName = "Chris", personAge = 123
--- > })
+-- >>> decode "[1]" :: Maybe [Int]
+-- Just [1]
+-- >>> :m + Data.Typeable Data.Data
+-- >>> :set -XDeriveDataTypeable
+-- >>> data Person = Person { personName :: String, personAge :: Int } deriving (Data,Typeable,Show)
+-- >>> encode Person { personName = "Chris", personAge = 123 }
+-- "{\"personAge\":123,\"personName\":\"Chris\"}"
+-- >>> decode "{\"personAge\":123,\"personName\":\"Chris\"}" :: Maybe Person
+-- Just (Person { personName = "Chris", personAge = 123 })
 --
 -- Be aware that the encoding might not be what you expect:
 --
--- > λ> data Foo = Foo Int Int deriving (Data,Typeable,Show)
--- > λ> encode (Foo 1 2)
--- > "[1,2]"
+-- >>> data Foo = Foo Int Int deriving (Data,Typeable,Show)
+-- >>> encode (Foo 1 2)
+-- "[1,2]"
 --
 -- So it's better to treat the 'Data.Aeson.Generic.decode' and
 -- 'Data.Aeson.Generic.encode' functions as an isomorphism, but do not
@@ -112,28 +112,28 @@
 -- Note that the JSON standard only allows arrays or objects of things
 -- at the top-level, so calling decode on a simple type will not work:
 --
--- > λ> decode "1" :: Maybe Int
--- > Nothing
--- > λ> decode "1" :: Maybe String
--- > Nothing
+-- >>> decode "1" :: Maybe Int
+-- Nothing
+-- >>> decode "1" :: Maybe String
+-- Nothing
 --
 -- So stick to objects (e.g. maps in Haskell) or arrays (lists in Haskell):
 --
--- > λ> decode "[1,2,3]" :: Maybe [Int]
--- > Just [1,2,3]
+-- >>> decode "[1,2,3]" :: Maybe [Int]
+-- Just [1,2,3]
 --
 -- Likewise, for encoding to JSON you can encode anything that's an
 -- instance of 'ToJSON', which does include simple types. So beware
 -- that this aspect of the API is not isomorphic:
 --
--- > λ> encode [1,2,3]
--- > "[1,2,3]"
--- > λ> decode (encode [1]) :: Maybe [Int]
--- > Just [1]
--- > λ> encode 1
--- > "1"
--- > λ> decode (encode (1 :: Int)) :: Maybe Int
--- > Nothing
+-- >>> encode [1,2,3]
+-- "[1,2,3]"
+-- >>> decode (encode [1]) :: Maybe [Int]
+-- Just [1]
+-- >>> encode 1
+-- "1"
+-- >>> decode (encode (1 :: Int)) :: Maybe Int
+-- Nothing
 --
 -- Alternatively see 'Data.Aeson.Parser.value' to parse non-toplevel
 -- JSON values.
