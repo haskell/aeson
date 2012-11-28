@@ -24,7 +24,7 @@ module Data.Aeson.Types
     , DotNetTime(..)
     , typeMismatch
     -- * Type conversion
-    , Parser
+    , Parser(..)
     , Result(..)
     , FromJSON(..)
     , fromJSON
