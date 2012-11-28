@@ -21,7 +21,7 @@ module Data.Aeson.Types.Internal
     , Object
     , emptyObject
     -- * Type conversion
-    , Parser
+    , Parser(..)
     , Result(..)
     , parse
     , parseEither
