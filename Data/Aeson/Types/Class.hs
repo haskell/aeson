@@ -9,7 +9,7 @@
 
 -- |
 -- Module:      Data.Aeson.Types.Class
--- Copyright:   (c) 2011 Bryan O'Sullivan
+-- Copyright:   (c) 2011, 2012 Bryan O'Sullivan
 --              (c) 2011 MailRank, Inc.
 -- License:     Apache
 -- Maintainer:  Bryan O'Sullivan <bos@serpentine.com>

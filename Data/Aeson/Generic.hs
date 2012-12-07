@@ -2,7 +2,7 @@
 
 -- |
 -- Module:      Data.Aeson.Generic
--- Copyright:   (c) 2011 Bryan O'Sullivan
+-- Copyright:   (c) 2011, 2012 Bryan O'Sullivan
 --              (c) 2011 MailRank, Inc.
 --              (c) 2008, 2009 Lennart Augustsson
 -- License:     BSD3
