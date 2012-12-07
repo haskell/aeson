@@ -1,3 +1,23 @@
+# 0.6 series
+
+Much improved documentation.
+
+Angle brackets are now escaped in JSON strings, to help avoid XSS
+attacks.
+
+Fixed up handling of nullary constructors when using generic encoding.
+
+Added ToJSON/FromJSON instances for:
+
+* The `Fixed` class
+
+* ISO-8601 dates: `UTCTime`, `ZonedTime`, and `TimeZone`
+
+Added accessor functions for inspecting `Value`s.
+
+Added `eitherDecode` function that returns an error message if
+decoding fails.
+
 # 0.5 to 0.6
 
 This release introduces a slightly obscure, but
