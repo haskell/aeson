@@ -177,12 +177,16 @@ instance IsString Value where
     {-# INLINE fromString #-}
 
 instance Hashable Value where
-    hash (Object o) = H.foldl' hashWithSalt 0 o
-    hash (Array a)  = V.foldl' hashWithSalt 1 a
-    hash (String s) = 2 `hashWithSalt` s
-    hash (Number n) = 3 `hashWithSalt` case n of I i -> hash i; D d -> hash d
-    hash (Bool b)   = 4 `hashWithSalt` b
-    hash Null       = 5
+    hashWithSalt s (Object o)   = H.foldl' hashWithSalt
+                                  (s `hashWithSalt` (0::Int)) o
+    hashWithSalt s (Array a)    = V.foldl' hashWithSalt
+                                  (s `hashWithSalt` (1::Int)) a
+    hashWithSalt s (String str) = s `hashWithSalt` (2::Int) `hashWithSalt` str
+    hashWithSalt s (Number n)   = 3 `hashWithSalt`
+                                  case n of I i -> hashWithSalt s i
+                                            D d -> hashWithSalt s d
+    hashWithSalt s (Bool b)   = s `hashWithSalt` (4::Int) `hashWithSalt` b
+    hashWithSalt s Null       = s `hashWithSalt` (5::Int)
 
 -- | The empty array.
 emptyArray :: Value
