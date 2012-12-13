@@ -16,8 +16,8 @@ module Data.Aeson
     -- * How to use this library
     -- $use
 
-    -- ** Basic use
-    -- $basic
+    -- ** Working with the AST
+    -- $ast
 
     -- ** Decoding to a Haskell value
     -- $haskell
@@ -32,6 +32,7 @@ module Data.Aeson
     -- $pitfalls
 
     -- * Encoding and decoding
+    -- $encoding_and_decoding
       decode
     , decode'
     , eitherDecode
@@ -106,31 +107,85 @@ eitherDecode' = eitherDecodeWith json' fromJSON
 -- decode data using this library. These range from simple but
 -- inflexible, to complex but flexible.
 --
+-- The most common way to use the library is to define a data type,
+-- corresponding to some JSON data you want to work with, and then
+-- write either a 'FromJSON' instance, a to 'ToJSON' instance, or both
+-- for that type. For example, given this JSON data:
+--
+-- > { "name": "Joe", "age": 12 }
+--
+-- we create a matching data type:
+--
+-- > data Person = Person
+-- >     { name :: Text
+-- >     , age  :: Int
+-- >     } deriving Show-
+--
+-- To decode data, we need to define a 'FromJSON' instance:
+--
+-- > {-# LANGUAGE OverloadedStrings #-}
+-- >
+-- > instance FromJSON Coord where
+-- >     parseJSON (Object v) = Person <$>
+-- >                            v .: "name" <*>
+-- >                            v .: "age"
+-- >     -- A non-Object value is of the wrong type, so fail.
+-- >     parseJSON _          = mzero
+--
+-- We can now parse the JSON data like so:
+--
+-- > >>> decode "{\"name\":\"Joe\",\"age\":12}" :: Maybe Person
+-- > Just (Person {name = "Joe", age = 12})
+--
+-- To encode data, we need to define a 'ToJSON' instance:
+--
+-- > instance ToJSON Person where
+-- >     toJSON (Person name age) = object ["name" .= name, "age" .= age]
+--
+-- We can now encode a value like so:
+--
+-- > >>> encode (Person {name = "Joe", age = 12})
+-- > "{\"name\":\"Joe\",\"age\":12}"
+--
+-- There are predefined 'FromJSON' and 'ToJSON' instances for many
+-- types. Here's an example using lists and 'Int's:
+--
+-- > >>> decode "[1,2,3]" :: Maybe [Int]
+-- > Just [1,2,3]
+--
+-- And here's an example using the 'Data.Map.Map' type to get a map of
+-- 'Int's.
+--
+-- > >>> decode "{\"foo\":1,\"bar\":2}" :: Maybe (Map String Int)
+-- > Just (fromList [("bar",2),("foo",1)])
+
 -- While the notes below focus on decoding, you can apply almost the
 -- same techniques to /encoding/ data. (The main difference is that
 -- encoding always succeeds, but decoding has to handle the
 -- possibility of failure, where an input doesn't match our
 -- expectations.)
+--
+-- See the documentation of 'FromJSON' and 'ToJSON' for some examples
+-- of how you can automatically derive instances in some
+-- circumstances.
 
--- $basic
+-- $ast
 --
--- To parse JSON into something useful, everything goes through the
--- 'decode' function, which is polymorphic on the 'FromJSON'
--- class. For representing arbitrary JSON values, there is a 'Value'
--- type, which is an instance of 'FromJSON'. For example:
+-- Sometimes you want to work with JSON data directly, without first
+-- converting it to a custom data type. This can be useful if you want
+-- to e.g. convert JSON data to YAML data, without knowing what the
+-- contents of the original JSON data was. The 'Value' type, which is
+-- an instance of 'FromJSON', is used to represent an arbitrary JSON
+-- AST (abstract syntax tree). Example usage:
 --
--- > λ> decode "{\"foo\":123}" :: Maybe Value
+-- > >>> decode "{\"foo\": 123}" :: Maybe Value
 -- > Just (Object (fromList [("foo",Number 123)]))
--- > λ> decode "{\"foo\":[\"abc\",\"def\"]}" :: Maybe Value
+--
+-- > >>> decode "{\"foo\": [\"abc\",\"def\"]}" :: Maybe Value
 -- > Just (Object (fromList [("foo",Array (fromList [String "abc",String "def"]))]))
 --
--- To run these examples, you need to enable @OverloadedStrings@ (in
--- GHCi you can write @:set -XOverloadedStrings@) so that you can use
--- string literals for non-'String' types. We're using (the lazy
--- version of) 'Data.ByteString.Lazy.ByteString'. (This requires at
--- least version 0.9.0.4 of the bytestring package to provide the
--- 'Data.String.IsString' instance. You almost certainly have a
--- suitably recent version of the library installed.)
+-- Once you have a 'Value' you can write functions to traverse it and
+-- make arbitrary transformations.
 
 -- $haskell
 --
@@ -214,33 +269,50 @@ eitherDecode' = eitherDecodeWith json' fromJSON
 -- $pitfalls
 -- #pitfalls#
 --
--- For historical reasons, the JSON standard requires the outermost
--- (topmost) value in a structure to be an array or object.  Calling
--- 'decode' on a simple type will typecheck, but will never succeed:
+-- Note that the JSON standard only allows arrays or objects of things
+-- at the top-level. Since this library follows the standard, calling
+-- 'decode' on an unsupported result type will typecheck, but will
+-- always \"fail\":
 --
--- > λ> decode "1" :: Maybe Int
+-- > >>> decode "1" :: Maybe Int
 -- > Nothing
--- > λ> decode "1" :: Maybe String
+-- > >>> decode "1" :: Maybe String
 -- > Nothing
 --
 -- So stick to objects (e.g. maps in Haskell) or arrays (lists or
 -- vectors in Haskell):
 --
--- > λ> decode "[1,2,3]" :: Maybe [Int]
+-- > >>> decode "[1,2,3]" :: Maybe [Int]
 -- > Just [1,2,3]
 --
--- Likewise, for encoding to JSON you can encode anything that's an
--- instance of 'ToJSON', and this may include simple types. So beware
--- that this aspect of the API is not isomorphic:
+-- When encoding to JSON you can encode anything that's an instance of
+-- 'ToJSON', and this may include simple types. So beware that this
+-- aspect of the API is not isomorphic. You can round-trip arrays and
+-- maps, but not simple values:
 --
--- > λ> encode [1,2,3]
+-- > >>> encode [1,2,3]
 -- > "[1,2,3]"
--- > λ> decode (encode [1]) :: Maybe [Int]
+-- > >>> decode (encode [1]) :: Maybe [Int]
 -- > Just [1]
--- > λ> encode 1
+-- > >>> encode 1
 -- > "1"
--- > λ> decode (encode (1 :: Int)) :: Maybe Int
+-- > >>> decode (encode (1 :: Int)) :: Maybe Int
 -- > Nothing
 --
--- Alternatively, see 'Data.Aeson.Parser.value' for functions to parse
--- non-top-level JSON values.
+-- Alternatively, see 'Data.Aeson.Parser.value' to parse non-top-level
+-- JSON values.
+
+-- $encoding_and_decoding
+--
+-- Encoding and decoding are each two-step processes.
+--
+-- * To encode a value, it is first converted to an abstract syntax
+--   tree (AST), using 'ToJSON'. This generic representation is then
+--   encoded as bytes.
+--
+-- * When decoding a value, the process is reversed: the bytes are
+--   converted to an AST, then the 'FromJSON' class is used to convert
+--   to the desired type.
+--
+-- For convenience, the 'encode' and
+-- 'decode' functions combine both steps for convenience.
