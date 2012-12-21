@@ -84,6 +84,7 @@ type T a = a -> Value
 
 toJSON :: (Data a) => a -> Value
 toJSON = toJSON_generic
+         `ext1Q` maybe
          `ext1Q` list
          `ext1Q` vector
          `ext1Q` set
@@ -119,6 +120,8 @@ toJSON = toJSON_generic
          `extQ` (T.toJSON :: T ())
          --`extQ` (T.toJSON :: T Ordering)
   where
+    maybe (Just a) = toJSON a
+    maybe Nothing = Null
     list xs = Array . V.fromList . map toJSON $ xs
     vector v = Array . V.map toJSON $ v
     set s = Array . V.fromList . map toJSON . Set.toList $ s
@@ -187,6 +190,7 @@ type F a = Parser a
 
 parseJSON :: (Data a) => Value -> Parser a
 parseJSON j = parseJSON_generic j
+             `ext1R` maybeP
              `ext1R` list
              `ext1R` vector
              `ext2R'` mapAny
@@ -222,6 +226,8 @@ parseJSON j = parseJSON_generic j
   where
     value :: (T.FromJSON a) => Parser a
     value = T.parseJSON j
+    maybeP :: (Data a) => Parser (Maybe a)
+    maybeP = if j == Null then return Nothing else Just <$> parseJSON j
     list :: (Data a) => Parser [a]
     list = V.toList <$> parseJSON j
     vector :: (Data a) => Parser (V.Vector a)
