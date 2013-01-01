@@ -32,6 +32,7 @@ module Data.Aeson.Types
     , parseEither
     , parseMaybe
     , ToJSON(..)
+    , modifyFailure
 
     -- * Inspecting @'Value's@
     , withObject

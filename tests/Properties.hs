@@ -66,6 +66,14 @@ regress_gh72 :: [(String, Maybe String)] -> Bool
 regress_gh72 ys = G.decode (G.encode m) == Just m
     where m = Map.fromList ys
 
+modifyFailureProp :: String -> String -> Bool
+modifyFailureProp orig added =
+    result == Error (added ++ orig)
+  where
+    parser = const $ modifyFailure (added ++) $ fail orig
+    result :: Result ()
+    result = parse parser ()
+
 data Foo = Foo {
       fooInt :: Int
     , fooDouble :: Double
@@ -169,5 +177,8 @@ tests = [
     ],
   testGroup "genericToFromJSON" [
       testProperty "_UFoo" (genericToFromJSON :: UFoo -> Bool)
+    ],
+  testGroup "failure messages" [
+      testProperty "modify failure" modifyFailureProp
     ]
   ]

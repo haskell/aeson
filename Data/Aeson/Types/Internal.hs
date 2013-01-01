@@ -26,6 +26,7 @@ module Data.Aeson.Types.Internal
     , parse
     , parseEither
     , parseMaybe
+    , modifyFailure
     -- * Constructors and accessors
     , object
     ) where
@@ -225,3 +226,18 @@ type Pair = (Text, Value)
 object :: [Pair] -> Value
 object = Object . H.fromList
 {-# INLINE object #-}
+
+-- | If the inner @Parser@ failed, modify the failure message using the
+-- provided function. This allows you to create more meaningful error messages.
+-- For example:
+--
+-- > parseJSON (Object o) = modifyFailure
+-- >     ("Parsing of the Foo value failed: " ++)
+-- >     (Foo <$> o .: "someField")
+--
+-- Since 0.6.2.0
+modifyFailure :: (String -> String) -> Parser a -> Parser a
+modifyFailure f (Parser p) =
+    Parser $ \failure success -> p (modifyFailure' failure) success
+  where
+    modifyFailure' failure original = failure $ f original
