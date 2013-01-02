@@ -1,10 +1,5 @@
-{-# LANGUAGE CPP
-           , NoImplicitPrelude
-           , TemplateHaskell
-           , NamedFieldPuns
-           , FlexibleInstances
-           , UndecidableInstances
-           , OverlappingInstances
+{-# LANGUAGE CPP, FlexibleInstances, NamedFieldPuns, NoImplicitPrelude,
+    OverlappingInstances, TemplateHaskell, UndecidableInstances
   #-}
 
 {-|
