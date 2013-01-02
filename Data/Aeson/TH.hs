@@ -96,7 +96,7 @@ import Prelude             ( String, (-), Integer, fromIntegral, error )
 import Text.Printf         ( printf )
 import Text.Show           ( show )
 #if __GLASGOW_HASKELL__ < 700
-import Control.Monad       ( (>>=) )
+import Control.Monad       ( (>>=), (>>) )
 import Prelude             ( fromInteger )
 #endif
 -- from unordered-containers:
