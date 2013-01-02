@@ -228,7 +228,7 @@ object = Object . H.fromList
 {-# INLINE object #-}
 
 -- | If the inner @Parser@ failed, modify the failure message using the
--- provided function. This allows you to create more meaningful error messages.
+-- provided function. This allows you to create more descriptive error messages.
 -- For example:
 --
 -- > parseJSON (Object o) = modifyFailure
@@ -237,7 +237,4 @@ object = Object . H.fromList
 --
 -- Since 0.6.2.0
 modifyFailure :: (String -> String) -> Parser a -> Parser a
-modifyFailure f (Parser p) =
-    Parser $ \failure success -> p (modifyFailure' failure) success
-  where
-    modifyFailure' failure original = failure $ f original
+modifyFailure f (Parser p) = Parser $ \kf -> p (kf . f)
