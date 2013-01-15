@@ -151,12 +151,14 @@ tests = [
     , testProperty "Double" $ genericFrom (1::Double)
     , testProperty "Int" $ genericFrom (1::Int)
     , testProperty "Foo" $ genericFrom (undefined::Foo)
+    , testProperty "Maybe" $ genericFrom (Just 1 :: Maybe Int)
     ],
   testGroup "genericTo" [
       testProperty "Bool" $ genericTo True
     , testProperty "Double" $ genericTo (1::Double)
     , testProperty "Int" $ genericTo (1::Int)
     , testProperty "Foo" $ genericTo (undefined::Foo)
+    , testProperty "Maybe" $ genericTo (Just 1 :: Maybe Int)
     ],
   testGroup "roundTrip" [
       testProperty "Bool" $ roundTripEq True
