@@ -84,7 +84,7 @@ type T a = a -> Value
 
 toJSON :: (Data a) => a -> Value
 toJSON = toJSON_generic
-         `ext1Q` maybe
+         `ext1Q` maybe Null toJSON
          `ext1Q` list
          `ext1Q` vector
          `ext1Q` set
@@ -120,8 +120,6 @@ toJSON = toJSON_generic
          `extQ` (T.toJSON :: T ())
          --`extQ` (T.toJSON :: T Ordering)
   where
-    maybe (Just a) = toJSON a
-    maybe Nothing = Null
     list xs = Array . V.fromList . map toJSON $ xs
     vector v = Array . V.map toJSON $ v
     set s = Array . V.fromList . map toJSON . Set.toList $ s
