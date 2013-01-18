@@ -34,6 +34,12 @@ module Data.Aeson.Types
     , ToJSON(..)
     , modifyFailure
 
+#ifdef GENERICS
+    -- ** Generic JSON classes
+    , GFromJSON(..)
+    , GToJSON(..)
+#endif
+
     -- * Inspecting @'Value's@
     , withObject
     , withText
@@ -47,6 +53,12 @@ module Data.Aeson.Types
     , (.:?)
     , (.!=)
     , object
+
+    -- * Generic and TH encoding configuration
+    , Options(..)
+    , SumEncoding(..)
+    , defaultOptions
+    , defaultObjectWithType
     ) where
 
 import Data.Aeson.Types.Class

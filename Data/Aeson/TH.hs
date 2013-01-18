@@ -59,8 +59,10 @@ $('deriveJSON' 'defaultOptions' ''(,,,))
 -}
 
 module Data.Aeson.TH
-    ( Options(..), SumEncoding(..), defaultOptions, defaultObjectWithType
+    ( -- * Encoding configuration
+      Options(..), SumEncoding(..), defaultOptions, defaultObjectWithType
 
+     -- * FromJSON and ToJSON derivation
     , deriveJSON
 
     , deriveToJSON
@@ -79,13 +81,18 @@ import Data.Aeson ( toJSON, Object, object, (.=), (.:), (.:?)
                   , ToJSON, toJSON
                   , FromJSON, parseJSON
                   )
-import Data.Aeson.Types ( Value(..), Parser )
+import Data.Aeson.Types ( Value(..), Parser
+                        , Options(..)
+                        , SumEncoding(..)
+                        , defaultOptions
+                        , defaultObjectWithType
+                        )
 -- from base:
 import Control.Applicative ( pure, (<$>), (<*>) )
 import Control.Monad       ( return, mapM, liftM2, fail )
 import Data.Bool           ( Bool(False, True), otherwise, (&&) )
 import Data.Eq             ( (==) )
-import Data.Function       ( ($), (.), id )
+import Data.Function       ( ($), (.) )
 import Data.Functor        ( fmap )
 import Data.Int            ( Int )
 import Data.Either         ( Either(Left, Right) )
@@ -111,74 +118,6 @@ import qualified Data.Text as T ( Text, pack, unpack )
 import qualified Data.Vector as V ( unsafeIndex, null, length, create, fromList )
 import qualified Data.Vector.Mutable as VM ( unsafeNew, unsafeWrite )
 
-
---------------------------------------------------------------------------------
--- Configuration
---------------------------------------------------------------------------------
-
--- | Options that specify how to encode your datatype to JSON.
-data Options = Options
-    { fieldNameModifier :: String -> String
-      -- ^ Function applied to field names.
-      -- Handy for removing common record prefixes for example.
-    , constructorNameModifier :: String -> String
-      -- ^ Function applied to constructor names.
-      -- Handy for lower-casing constructor names for example.
-    , nullaryToString   :: Bool
-      -- ^ If 'True' the constructors of a datatypes, with all nullary
-      -- constructors, will be encoded to a string with the
-      -- constructor name. If 'False' the encoding will always follow
-      -- the `sumEncoding`.
-    , sumEncoding       :: SumEncoding
-      -- ^ Specifies how to encode constructors of a sum datatype.
-    }
-
--- | Specifies how to encode constructors of a sum datatype.
-data SumEncoding =
-    TwoElemArray -- ^ A constructor will be encoded to a 2-element
-                 -- array where the first element is the name of the
-                 -- constructor (modified by the
-                 -- 'constructorNameModifier') and the second element
-                 -- the content of the constructor.
-  | ObjectWithType { typeFieldName  :: String
-                   , valueFieldName :: String
-                   }
-    -- ^ A constructor will be encoded to an object with a field
-    -- 'typeFieldName' which specifies the constructor name (modified
-    -- by the 'constructorNameModifier'). If the constructor is not a
-    -- record the constructor content will be stored under the
-    -- 'valueFieldName' field.
-  | ObjectWithSingleField
-    -- ^ A constructor will be encoded to an object with a single
-    -- field named after the constructor (modified by the
-    -- 'constructorNameModifier') and the value will be the contents
-    -- of the constructor.
-
--- | Default encoding options which specify to not modify field and
--- constructor names, encode the constructors of a datatype with all
--- nullary constructors to just strings with the name of the
--- constructor and use a 2-element array for other sum datatypes.
-defaultOptions :: Options
-defaultOptions = Options
-                 { fieldNameModifier       = id
-                 , constructorNameModifier = id
-                 , nullaryToString         = True
-                 , sumEncoding             = TwoElemArray
-                 }
-
--- | Note that:
---
--- @
--- defaultObjectWithType = 'ObjectWithType'
---                         { 'typeFieldName'  = \"type\"
---                         , 'valueFieldName' = \"value\"
---                         }
--- @
-defaultObjectWithType :: SumEncoding
-defaultObjectWithType = ObjectWithType
-                        { typeFieldName  = "type"
-                        , valueFieldName = "value"
-                        }
 
 --------------------------------------------------------------------------------
 -- Convenience
