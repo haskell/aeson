@@ -120,6 +120,9 @@ data Options = Options
     { fieldNameModifier :: String -> String
       -- ^ Function applied to field names.
       -- Handy for removing common record prefixes for example.
+    , constructorNameModifier :: String -> String
+      -- ^ Function applied to constructor names.
+      -- Handy for lower-casing constructor names for example.
     , nullaryToString   :: Bool
       -- ^ If 'True' the constructors of a datatypes, with all nullary
       -- constructors, will be encoded to a string with the
@@ -153,9 +156,10 @@ data SumEncoding =
 -- 2-element array for other sum datatypes.
 defaultOptions :: Options
 defaultOptions = Options
-                 { fieldNameModifier = id
-                 , nullaryToString   = True
-                 , sumEncoding       = TwoElemArray
+                 { fieldNameModifier       = id
+                 , constructorNameModifier = id
+                 , nullaryToString         = True
+                 , sumEncoding             = TwoElemArray
                  }
 
 --------------------------------------------------------------------------------
@@ -245,26 +249,22 @@ consToJSON opts cons = do
     value <- newName "value"
     lam1E (varP value) $ caseE (varE value) matches
   where
-    -- Constructors of a datatype with all nullary constructors are encoded to
-    -- just a string with the constructor name:
-    matches | nullaryToString opts && all isNullary cons =
-      [ match (conP conName []) (normalB $ conStr conName) []
-      | con <- cons
-      , let conName = getConName con
-      ]
-      -- Constructors of a datatype having some constructors with arity > 0 are
-      -- encoded to a 2-element array where the first element is a string with
-      -- the constructor name and the second element is the encoded argument or
-      -- arguments of the constructor.
-      | otherwise = [ encodeArgs opts True con
-                    | con <- cons
-                    ]
+    matches
+        | nullaryToString opts && all isNullary cons =
+              [ match (conP conName []) (normalB $ conStr opts conName) []
+              | con <- cons
+              , let conName = getConName con
+              ]
+        | otherwise = [encodeArgs opts True con | con <- cons]
 
-conStr :: Name -> Q Exp
-conStr = appE [|String|] . conTxt
+conStr :: Options -> Name -> Q Exp
+conStr opts = appE [|String|] . conTxt opts
 
-conTxt :: Name -> Q Exp
-conTxt = appE [|T.pack|] . stringE . nameBase
+conTxt :: Options -> Name -> Q Exp
+conTxt opts = appE [|T.pack|] . conStringE opts
+
+conStringE :: Options -> Name -> Q Exp
+conStringE opts = stringE . constructorNameModifier opts . nameBase
 
 -- | If constructor is nullary.
 isNullary :: Con -> Bool
@@ -276,15 +276,15 @@ encodeSum opts multiCons conName exp
     | multiCons =
         case sumEncoding opts of
           TwoElemArray ->
-              [|Array|] `appE` ([|V.fromList|] `appE` listE [conStr conName, exp])
+              [|Array|] `appE` ([|V.fromList|] `appE` listE [conStr opts conName, exp])
           ObjectWithType{typeFieldName, valueFieldName} ->
               [|object|] `appE` listE
-                [ infixApp [|T.pack typeFieldName|]  [|(.=)|] (conStr conName)
+                [ infixApp [|T.pack typeFieldName|]  [|(.=)|] (conStr opts conName)
                 , infixApp [|T.pack valueFieldName|] [|(.=)|] exp
                 ]
           ObjectWithSingleField ->
               [|object|] `appE` listE
-                [ infixApp (conTxt conName) [|(.=)|] exp
+                [ infixApp (conTxt opts conName) [|(.=)|] exp
                 ]
 
     | otherwise = exp
@@ -340,16 +340,16 @@ encodeArgs opts multiCons (RecC conName ts) = do
           ( normalB
           $ if multiCons
             then case sumEncoding opts of
-                   TwoElemArray -> [|toJSON|] `appE` tupE [conStr conName, exp]
+                   TwoElemArray -> [|toJSON|] `appE` tupE [conStr opts conName, exp]
                    ObjectWithType{typeFieldName} ->
                        [|object|] `appE` listE
                          ( infixApp [|T.pack typeFieldName|] [|(.=)|]
-                                    (conStr conName)
+                                    (conStr opts conName)
                          : js
                          )
                    ObjectWithSingleField ->
                        [|object|] `appE` listE
-                         [ infixApp (conTxt conName) [|(.=)|] exp ]
+                         [ infixApp (conTxt opts conName) [|(.=)|] exp ]
             else exp
           ) []
 
@@ -441,7 +441,8 @@ consFromJSON tName opts cons = do
                                   infixApp (varE txt)
                                            [|(==)|]
                                            ([|T.pack|] `appE`
-                                              stringE (nameBase conName)))
+                                              conStringE opts conName)
+                               )
                                ([|pure|] `appE` conE conName)
                   | con <- cons
                   , let conName = getConName con
@@ -563,7 +564,8 @@ consFromJSON tName opts cons = do
                       ( guardedB $
                         [ do g <- normalG $ infixApp (varE conKey)
                                                      [|(==)|]
-                                                     ([|T.pack|] `appE` conNameExp con)
+                                                     ([|T.pack|] `appE`
+                                                        conNameExp opts con)
                              e <- parseArgs tName opts con contents
                              return (g, e)
                         | con <- cons
@@ -573,7 +575,13 @@ consFromJSON tName opts cons = do
                                  (normalG [e|otherwise|])
                                  ( varE errorFun
                                    `appE` (litE $ stringL $ show tName)
-                                   `appE` listE (map (litE . stringL . nameBase . getConName) cons)
+                                   `appE` listE (map ( litE
+                                                     . stringL
+                                                     . constructorNameModifier opts
+                                                     . nameBase
+                                                     . getConName
+                                                     ) cons
+                                                )
                                    `appE` ([|T.unpack|] `appE` varE conKey)
                                  )
                         ]
@@ -621,7 +629,7 @@ parseRecord opts tName conName ts obj =
     where
       x:xs = [ [|lookupField|]
                `appE` (litE $ stringL $ show tName)
-               `appE` (litE $ stringL $ nameBase conName)
+               `appE` (litE $ stringL $ constructorNameModifier opts $ nameBase conName)
                `appE` (varE obj)
                `appE` ( [|T.pack|] `appE` fieldNameExp opts field
                       )
@@ -846,8 +854,12 @@ tvbName (PlainTV  name  ) = name
 tvbName (KindedTV name _) = name
 
 -- | Makes a string literal expression from a constructor's name.
-conNameExp :: Con -> Q Exp
-conNameExp = litE . stringL . nameBase . getConName
+conNameExp :: Options -> Con -> Q Exp
+conNameExp opts = litE
+                . stringL
+                . constructorNameModifier opts
+                . nameBase
+                . getConName
 
 -- | Creates a string literal expression from a record field name.
 fieldNameExp :: Options -- ^ Encoding options
