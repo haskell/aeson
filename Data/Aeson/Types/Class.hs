@@ -88,11 +88,17 @@ import qualified Data.Vector.Mutable as VM ( unsafeNew, unsafeWrite )
 #ifdef GENERICS
 import GHC.Generics
 
+-- | Class of generic representation types ('Rep') that can be converted to JSON.
 class GToJSON f where
-    gToJSON :: f a -> Value
+    -- | This method (applied to 'defaultOptions') is used as the
+    -- default generic implementation of 'toJSON'.
+    gToJSON :: Options -> f a -> Value
 
+-- | Class of generic representation types ('Rep') that can be converted from JSON.
 class GFromJSON f where
-    gParseJSON :: Value -> Parser (f a)
+    -- | This method (applied to 'defaultOptions') is used as the
+    -- default generic implementation of 'parseJSON'.
+    gParseJSON :: Options -> Value -> Parser (f a)
 #endif
 
 -- | A type that can be converted to JSON.
@@ -143,7 +149,7 @@ class ToJSON a where
 
 #ifdef GENERICS
     default toJSON :: (Generic a, GToJSON (Rep a)) => a -> Value
-    toJSON = gToJSON . from
+    toJSON = gToJSON defaultOptions . from
 #endif
 
 -- | A type that can be converted from JSON, with the possibility of
@@ -204,7 +210,7 @@ class FromJSON a where
 
 #ifdef GENERICS
     default parseJSON :: (Generic a, GFromJSON (Rep a)) => Value -> Parser a
-    parseJSON = fmap to . gParseJSON
+    parseJSON = fmap to . gParseJSON defaultOptions
 #endif
 
 instance (ToJSON a) => ToJSON (Maybe a) where
