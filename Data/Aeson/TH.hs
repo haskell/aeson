@@ -84,10 +84,10 @@ import Control.Applicative ( pure, (<$>), (<*>) )
 import Control.Monad       ( return, mapM, liftM2, fail )
 import Data.Bool           ( Bool(False, True), otherwise, (&&) )
 import Data.Eq             ( (==) )
-import Data.Function       ( ($), (.), id, const )
+import Data.Function       ( ($), (.), id )
 import Data.Functor        ( fmap )
 import Data.Int            ( Int )
-import Data.Either         ( Either(Left, Right), either )
+import Data.Either         ( Either(Left, Right) )
 import Data.List           ( (++), foldl, foldl', intercalate
                            , length, map, zip, genericLength, all
                            )
@@ -100,7 +100,7 @@ import Control.Monad       ( (>>=), (>>) )
 import Prelude             ( fromInteger )
 #endif
 -- from unordered-containers:
-import qualified Data.HashMap.Strict as H ( lookup )
+import qualified Data.HashMap.Strict as H ( lookup, toList )
 -- from template-haskell:
 import Language.Haskell.TH
 import Language.Haskell.TH.Syntax ( VarStrictType )
@@ -142,6 +142,10 @@ data SumEncoding =
     -- 'typeFieldName' which specifies the constructor name. If the
     -- constructor is not a record the constructor content will be
     -- stored under the 'valueFieldName' field.
+  | ObjectWithSingleField
+    -- ^ A constructor will be encoded to an object with a single
+    -- field named after the constructor and the value will be the
+    -- contents of the constructor.
 
 -- | Default encoding options which specify to not modify field names,
 -- encode the constructors of a datatype with all nullary constructors
@@ -257,7 +261,10 @@ consToJSON opts cons = do
                     ]
 
 conStr :: Name -> Q Exp
-conStr = appE [|String|] . appE [|T.pack|] . stringE . nameBase
+conStr = appE [|String|] . conTxt
+
+conTxt :: Name -> Q Exp
+conTxt = appE [|T.pack|] . stringE . nameBase
 
 -- | If constructor is nullary.
 isNullary :: Con -> Bool
@@ -275,6 +282,11 @@ encodeSum opts multiCons conName exp
                 [ infixApp [|T.pack typeFieldName|]  [|(.=)|] (conStr conName)
                 , infixApp [|T.pack valueFieldName|] [|(.=)|] exp
                 ]
+          ObjectWithSingleField ->
+              [|object|] `appE` listE
+                [ infixApp (conTxt conName) [|(.=)|] exp
+                ]
+
     | otherwise = exp
 
 -- | Generates code to generate the JSON encoding of a single constructor.
@@ -335,6 +347,9 @@ encodeArgs opts multiCons (RecC conName ts) = do
                                     (conStr conName)
                          : js
                          )
+                   ObjectWithSingleField ->
+                       [|object|] `appE` listE
+                         [ infixApp (conTxt conName) [|(.=)|] exp ]
             else exp
           ) []
 
@@ -453,19 +468,9 @@ consFromJSON tName opts cons = do
     mixedMatches =
         case sumEncoding opts of
           ObjectWithType {typeFieldName, valueFieldName} ->
-            [ do obj <- newName "obj"
-                 match (conP 'Object [varP obj])
-                       (normalB $ parseObject typeFieldName valueFieldName obj)
-                       []
-            , do other <- newName "other"
-                 match (varP other)
-                       ( normalB
-                         $ [|noObjectFail|]
-                             `appE` (litE $ stringL $ show tName)
-                             `appE` ([|valueConName|] `appE` varE other)
-                       )
-                       []
-            ]
+            parseObject $ parseObjectWithType typeFieldName valueFieldName
+          ObjectWithSingleField ->
+            parseObject $ parseObjectWithSingleField
           TwoElemArray ->
             [ do arr <- newName "array"
                  match (conP 'Array [varP arr])
@@ -491,13 +496,26 @@ consFromJSON tName opts cons = do
                        []
             ]
 
-    parseObject typFieldName valFieldName obj = do
+    parseObject f =
+        [ do obj <- newName "obj"
+             match (conP 'Object [varP obj]) (normalB $ f obj) []
+        , do other <- newName "other"
+             match (varP other)
+                   ( normalB
+                     $ [|noObjectFail|]
+                         `appE` (litE $ stringL $ show tName)
+                         `appE` ([|valueConName|] `appE` varE other)
+                   )
+                   []
+        ]
+
+    parseObjectWithType typFieldName valFieldName obj = do
       conKey <- newName "conKey"
       doE [ bindS (varP conKey)
                   (infixApp (varE obj)
                             [|(.:)|]
                             ([|T.pack|] `appE` stringE typFieldName))
-          , noBindS $ parseContents conKey (Left (valFieldName, obj))
+          , noBindS $ parseContents conKey (Left (valFieldName, obj)) 'conNotFoundFailObjectWithType
           ]
 
     parse2ElemArray arr = do
@@ -512,50 +530,56 @@ consFromJSON tName opts cons = do
       letE [ letIx conKey 0
            , letIx conVal 1
            ]
-           (parseContents conKey (Right conVal))
+           (caseE (varE conKey)
+                  [ do txt <- newName "txt"
+                       match (conP 'String [varP txt])
+                             (normalB $ parseContents txt
+                                                      (Right conVal)
+                                                      'conNotFoundFail2ElemArray
+                             )
+                             []
+                  ]
+           )
 
-    parseContents conKey contents =
+    parseObjectWithSingleField obj = do
+      conKey <- newName "conKey"
+      conVal <- newName "conVal"
+      caseE ([e|H.toList|] `appE` varE obj)
+            [ match (listP [tupP [varP conKey, varP conVal]])
+                    (normalB $ parseContents conKey (Right conVal) 'conNotFoundFailObjectSingleField)
+                    []
+            , do other <- newName "other"
+                 match (varP other)
+                       (normalB $ [|wrongPairCountFail|]
+                                  `appE` (litE $ stringL $ show tName)
+                                  `appE` ([|show . length|] `appE` varE other)
+                       )
+                       []
+            ]
+
+    parseContents conKey contents errorFun =
         caseE (varE conKey)
-              [ do txt <- newName "txt"
-                   match (conP 'String [varP txt])
-                         (guardedB $
-                          [ liftM2 (,) (normalG $
-                                          infixApp (varE txt)
-                                                   [|(==)|]
-                                                   ([|T.pack|] `appE`
-                                                     conNameExp con))
-                                       (parseArgs tName opts con contents)
-                          | con <- cons
-                          ]
-                          ++
-                          [ liftM2 (,)
-                              (normalG [|otherwise|])
-                              ( [|conNotFoundFail|]
-                                `appE` (litE $ stringL $ show tName)
-                                `appE` listE (map ( litE
-                                                  . stringL
-                                                  . nameBase
-                                                  . getConName
-                                                  )
-                                                  cons
-                                             )
-                                `appE` ([|T.unpack|] `appE` varE txt)
-                              )
-                          ]
-                         )
-                         []
-              , do other <- newName "other"
-                   match (varP other)
-                         ( normalB $
-                           (either (const [|typeNotString|])
-                                   (const [|firstElemNotString|])
-                                   contents)
-                             `appE` (litE $ stringL $ show tName)
-                             `appE` ([|valueConName|] `appE` varE other)
-                         )
-                         []
+              [ match wildP
+                      ( guardedB $
+                        [ do g <- normalG $ infixApp (varE conKey)
+                                                     [|(==)|]
+                                                     ([|T.pack|] `appE` conNameExp con)
+                             e <- parseArgs tName opts con contents
+                             return (g, e)
+                        | con <- cons
+                        ]
+                        ++
+                        [ liftM2 (,)
+                                 (normalG [e|otherwise|])
+                                 ( varE errorFun
+                                   `appE` (litE $ stringL $ show tName)
+                                   `appE` listE (map (litE . stringL . nameBase . getConName) cons)
+                                   `appE` ([|T.unpack|] `appE` varE conKey)
+                                 )
+                        ]
+                      )
+                      []
               ]
-
 
 parseNullaryMatches :: Name -> Name -> [Q Match]
 parseNullaryMatches tName conName =
@@ -746,6 +770,11 @@ noArrayFail t o = fail $ printf "When parsing %s expected Array but got %s." t o
 noObjectFail :: String -> String -> Parser fail
 noObjectFail t o = fail $ printf "When parsing %s expected Object but got %s." t o
 
+wrongPairCountFail :: String -> String -> Parser fail
+wrongPairCountFail t n =
+    fail $ printf "When parsing %s expected an Object with a single name/value pair but got %s pairs."
+                  t n
+
 noStringFail :: String -> String -> Parser fail
 noStringFail t o = fail $ printf "When parsing %s expected String but got %s." t o
 
@@ -754,17 +783,21 @@ noMatchFail t o =
     fail $ printf "When parsing %s expected a String with the name of a constructor but got %s." t o
 
 not2ElemArray :: String -> Int -> Parser fail
-not2ElemArray t i = fail $ printf "When parsing %s expected an Array of 2-elements but got %i elements"
-                                   t i
-typeNotString :: String -> String -> Parser fail
-typeNotString t o = fail $ printf "When parsing %s expected an Object where the type field is a String with the name of a constructor but got %s." t o
+not2ElemArray t i = fail $ printf "When parsing %s expected an Array of 2-elements but got %i elements" t i
 
-firstElemNotString :: String -> String -> Parser fail
-firstElemNotString t o = fail $ printf "When parsing %s expected an Array where the first element is a String with the name of a constructor but got %s." t o
-
-conNotFoundFail :: String -> [String] -> String -> Parser fail
-conNotFoundFail t cs o =
+conNotFoundFail2ElemArray :: String -> [String] -> String -> Parser fail
+conNotFoundFail2ElemArray t cs o =
     fail $ printf "When parsing %s expected a 2-element Array with a name and value element where the name is one of [%s], but got %s."
+                  t (intercalate ", " cs) o
+
+conNotFoundFailObjectSingleField :: String -> [String] -> String -> Parser fail
+conNotFoundFailObjectSingleField t cs o =
+    fail $ printf "When parsing %s expected an Object with a name/value pair where the name is one of [%s], but got %s."
+                  t (intercalate ", " cs) o
+
+conNotFoundFailObjectWithType :: String -> [String] -> String -> Parser fail
+conNotFoundFailObjectWithType t cs o =
+    fail $ printf "When parsing %s expected an Object with a type field where the value is one of [%s], but got %s."
                   t (intercalate ", " cs) o
 
 parseTypeMismatch' :: String -> String -> String -> String -> Parser fail
