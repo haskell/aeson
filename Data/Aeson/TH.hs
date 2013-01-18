@@ -27,12 +27,13 @@ data D a = Nullary
                   } deriving Eq
 @
 
-Next we derive the necessary instances. Note that we make use of the feature to
-change record field names. In this case we drop the first 4 characters of every
-field name.
+Next we derive the necessary instances. Note that we make use of the
+feature to change record field names. In this case we drop the first 4
+characters of every field name. We also modify constructor names by
+lower-casing them:
 
 @
-$('deriveJSON' 'defaultOptions'{'fieldNameModifier' = 'drop' 4} ''D)
+$('deriveJSON' 'defaultOptions'{'fieldNameModifier' = 'drop' 4, 'constructorNameModifier' = map toLower} ''D)
 @
 
 Now we can use the newly created instances.
@@ -58,7 +59,7 @@ $('deriveJSON' 'defaultOptions' ''(,,,))
 -}
 
 module Data.Aeson.TH
-    ( Options(..), SumEncoding(..), defaultOptions
+    ( Options(..), SumEncoding(..), defaultOptions, defaultObjectWithType
 
     , deriveJSON
 
@@ -136,24 +137,27 @@ data Options = Options
 data SumEncoding =
     TwoElemArray -- ^ A constructor will be encoded to a 2-element
                  -- array where the first element is the name of the
-                 -- constructor and the second element the content of
-                 -- the constructor.
+                 -- constructor (modified by the
+                 -- 'constructorNameModifier') and the second element
+                 -- the content of the constructor.
   | ObjectWithType { typeFieldName  :: String
                    , valueFieldName :: String
                    }
     -- ^ A constructor will be encoded to an object with a field
-    -- 'typeFieldName' which specifies the constructor name. If the
-    -- constructor is not a record the constructor content will be
-    -- stored under the 'valueFieldName' field.
+    -- 'typeFieldName' which specifies the constructor name (modified
+    -- by the 'constructorNameModifier'). If the constructor is not a
+    -- record the constructor content will be stored under the
+    -- 'valueFieldName' field.
   | ObjectWithSingleField
     -- ^ A constructor will be encoded to an object with a single
-    -- field named after the constructor and the value will be the
-    -- contents of the constructor.
+    -- field named after the constructor (modified by the
+    -- 'constructorNameModifier') and the value will be the contents
+    -- of the constructor.
 
--- | Default encoding options which specify to not modify field names,
--- encode the constructors of a datatype with all nullary constructors
--- to just strings with the name of the constructor and use a
--- 2-element array for other sum datatypes.
+-- | Default encoding options which specify to not modify field and
+-- constructor names, encode the constructors of a datatype with all
+-- nullary constructors to just strings with the name of the
+-- constructor and use a 2-element array for other sum datatypes.
 defaultOptions :: Options
 defaultOptions = Options
                  { fieldNameModifier       = id
@@ -161,6 +165,20 @@ defaultOptions = Options
                  , nullaryToString         = True
                  , sumEncoding             = TwoElemArray
                  }
+
+-- | Note that:
+--
+-- @
+-- defaultObjectWithType = 'ObjectWithType'
+--                         { 'typeFieldName'  = \"type\"
+--                         , 'valueFieldName' = \"value\"
+--                         }
+-- @
+defaultObjectWithType :: SumEncoding
+defaultObjectWithType = ObjectWithType
+                        { typeFieldName  = "type"
+                        , valueFieldName = "value"
+                        }
 
 --------------------------------------------------------------------------------
 -- Convenience
