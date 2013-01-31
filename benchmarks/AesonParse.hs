@@ -10,8 +10,9 @@ import System.IO
 import qualified Data.ByteString as B
 
 main = do
-  (cnt:args) <- getArgs
+  (bs:cnt:args) <- getArgs
   let count = read cnt :: Int
+      blkSize = read bs
   forM_ args $ \arg -> bracket (openFile arg ReadMode) hClose $ \h -> do
     putStrLn $ arg ++ ":"
     start <- getCurrentTime
@@ -19,7 +20,7 @@ main = do
             | good+bad >= count = return (good, bad)
             | otherwise = do
           hSeek h AbsoluteSeek 0
-          let refill = B.hGet h 16384
+          let refill = B.hGet h blkSize
           result <- parseWith refill json =<< refill
           case result of
             Done _ r -> loop (good+1) bad
