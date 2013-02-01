@@ -1,6 +1,7 @@
 {-# LANGUAGE DefaultSignatures, EmptyDataDecls, FlexibleInstances,
     FunctionalDependencies, KindSignatures, OverlappingInstances,
-    ScopedTypeVariables, TypeOperators, UndecidableInstances, ViewPatterns #-}
+    ScopedTypeVariables, TypeOperators, UndecidableInstances,
+    ViewPatterns, NamedFieldPuns #-}
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 
 -- |
@@ -61,10 +62,107 @@ instance ( GProductToValues a, GProductToValues b
           lenProduct = unTagged2 (productSize :: Tagged2 (a :*: b) Int)
     {-# INLINE gToJSON #-}
 
-instance (GObject a, GObject b) => GToJSON (a :+: b) where
-    gToJSON opts (L1 x) = Object $ gObject opts x
-    gToJSON opts (R1 x) = Object $ gObject opts x
+instance (AllNullary (a :+: b) c, GSumToJSON' c (a :+: b)) => GToJSON (a :+: b) where
+    gToJSON = unTagged (gSumToJSON' :: Tagged c (Options -> (a :+: b) d -> Value))
     {-# INLINE gToJSON #-}
+
+class GSumToJSON' b f where
+    gSumToJSON' :: Tagged b (Options -> f a -> Value)
+
+instance ( GSumToString           f
+         , GExtractSum            f
+         , GObjectWithType        f
+         , GObjectWithSingleField f
+         ) => GSumToJSON' True f where
+    gSumToJSON' = Tagged $ \opts x ->
+                    if nullaryToString opts
+                    then gSumToString  opts x
+                    else sumToJSON     opts x
+    {-# INLINE gSumToJSON' #-}
+
+instance (GExtractSum f, GObjectWithType f, GObjectWithSingleField f) => GSumToJSON' False f where
+    gSumToJSON' = Tagged sumToJSON
+    {-# INLINE gSumToJSON' #-}
+
+sumToJSON :: (GExtractSum f, GObjectWithType f, GObjectWithSingleField f) => Options -> f a -> Value
+sumToJSON opts x =
+    case sumEncoding opts of
+      TwoElemArray ->
+          Array $ V.create $ do
+            let (typ, val) = gExtractSum x opts
+            mv <- VM.unsafeNew 2
+            VM.unsafeWrite mv 0 typ
+            VM.unsafeWrite mv 1 val
+            return mv
+      ObjectWithType{typeFieldName,valueFieldName} ->
+          object $ gObjectWithType opts typeFieldName valueFieldName x
+      ObjectWithSingleField ->
+          Object $ gObjectWithSingleField opts x
+{-# INLINE sumToJSON #-}
+
+--------------------------------------------------------------------------------
+
+class GObjectWithType f where
+    gObjectWithType :: Options -> String -> String -> f a -> [Pair]
+
+instance (GObjectWithType a, GObjectWithType b) => GObjectWithType (a :+: b) where
+    gObjectWithType     opts typeFieldName valueFieldName (L1 x) =
+        gObjectWithType opts typeFieldName valueFieldName     x
+    gObjectWithType     opts typeFieldName valueFieldName (R1 x) =
+        gObjectWithType opts typeFieldName valueFieldName     x
+    {-# INLINE gObjectWithType #-}
+
+instance (IsRecord a b, Constructor c, GObjectWithType' b a) =>
+    GObjectWithType (C1 c a) where
+    gObjectWithType opts typeFieldName valueFieldName x =
+        (pack typeFieldName .= constructorNameModifier opts
+                                 (conName (undefined :: t c a p))) :
+        unTagged (gObjectWithType' opts valueFieldName (unM1 x) :: Tagged b [Pair])
+    {-# INLINE gObjectWithType #-}
+
+class GObjectWithType' b f where
+    gObjectWithType' :: Options -> String -> f a -> Tagged b [Pair]
+
+instance (GRecordToPairs f) => GObjectWithType' True f where
+    gObjectWithType' opts _ x = Tagged $ toList $ gRecordToPairs opts x
+    {-# INLINE gObjectWithType' #-}
+
+instance (GToJSON f) => GObjectWithType' False f where
+    gObjectWithType' opts valueFieldName x =
+        Tagged [pack valueFieldName .= gToJSON opts x]
+    {-# INLINE gObjectWithType' #-}
+
+--------------------------------------------------------------------------------
+
+class GSumToString f where
+    gSumToString :: Options -> f a -> Value
+
+instance (GSumToString a, GSumToString b) => GSumToString (a :+: b) where
+    gSumToString opts (L1 x) = gSumToString opts x
+    gSumToString opts (R1 x) = gSumToString opts x
+    {-# INLINE gSumToString #-}
+
+instance (Constructor c, GToJSON a, ConsToJSON a) => GSumToString (C1 c a) where
+    gSumToString opts _ = String $ pack $ constructorNameModifier opts
+                                        $ conName (undefined :: t c a p)
+    {-# INLINE gSumToString #-}
+
+--------------------------------------------------------------------------------
+
+class GExtractSum f where
+    gExtractSum :: f a -> Options -> (Value, Value)
+
+instance (GExtractSum a, GExtractSum b) => GExtractSum (a :+: b) where
+    gExtractSum (L1 x) = gExtractSum x
+    gExtractSum (R1 x) = gExtractSum x
+    {-# INLINE gExtractSum #-}
+
+instance (Constructor c, GToJSON a, ConsToJSON a) => GExtractSum (C1 c a) where
+    gExtractSum x opts = ( String $ pack $ constructorNameModifier opts
+                                         $ conName (undefined :: t c a p)
+                         , gToJSON opts x
+                         )
+    {-# INLINE gExtractSum #-}
 
 --------------------------------------------------------------------------------
 
@@ -127,19 +225,22 @@ instance (GToJSON a) => GProductToValues a where
 
 --------------------------------------------------------------------------------
 
-class GObject f where
-    gObject :: Options -> f a -> Object
+class GObjectWithSingleField f where
+    gObjectWithSingleField :: Options -> f a -> Object
 
-instance (GObject a, GObject b) => GObject (a :+: b) where
-    gObject opts (L1 x) = gObject opts x
-    gObject opts (R1 x) = gObject opts x
-    {-# INLINE gObject #-}
+instance (GObjectWithSingleField a, GObjectWithSingleField b) =>
+    GObjectWithSingleField (a :+: b) where
+    gObjectWithSingleField opts (L1 x) = gObjectWithSingleField opts x
+    gObjectWithSingleField opts (R1 x) = gObjectWithSingleField opts x
+    {-# INLINE gObjectWithSingleField #-}
 
-instance (Constructor c, GToJSON a, ConsToJSON a) => GObject (C1 c a) where
-    gObject opts = H.singleton (pack $ constructorNameModifier opts
-                                     $ conName (undefined :: t c a p))
-                 . gToJSON opts
-    {-# INLINE gObject #-}
+instance (Constructor c, GToJSON a, ConsToJSON a) =>
+    GObjectWithSingleField (C1 c a) where
+    gObjectWithSingleField opts x =
+        H.singleton ( pack $ constructorNameModifier opts
+                    $ conName (undefined :: t c a p)
+                    ) $ gToJSON opts x
+    {-# INLINE gObjectWithSingleField #-}
 
 --------------------------------------------------------------------------------
 -- Generic parseJSON
@@ -293,5 +394,24 @@ instance IsRecord (M1 S NoSelector f) False
 instance (IsRecord f b) => IsRecord (M1 S c f) b
 instance IsRecord (K1 i c) True
 instance IsRecord U1 False
+
+--------------------------------------------------------------------------------
+
+class AllNullary (f :: * -> *) b | f -> b
+
+instance (AllNullary a b1, AllNullary c b2, And b1 b2 b3) =>
+    AllNullary (a :+: c) b3
+instance AllNullary a b => AllNullary (M1 i c a) b
+instance AllNullary (a :*: c) False
+instance AllNullary (K1 i c) False
+instance AllNullary U1 True
+
+class And b1 b2 b3 | b1 b2 -> b3
+
+instance And True True    True
+
+instance And False False  False
+instance And False True   False
+instance And True  False  False
 
 --------------------------------------------------------------------------------
