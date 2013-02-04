@@ -1,7 +1,7 @@
 {-# LANGUAGE DefaultSignatures, EmptyDataDecls, FlexibleInstances,
     FunctionalDependencies, KindSignatures, OverlappingInstances,
     ScopedTypeVariables, TypeOperators, UndecidableInstances,
-    ViewPatterns, NamedFieldPuns #-}
+    ViewPatterns, NamedFieldPuns, FlexibleContexts, PatternGuards #-}
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 
 -- |
@@ -25,10 +25,9 @@ import Data.Aeson.Types.Internal
 import Data.Bits (shiftR)
 import Data.DList (DList, toList)
 import Data.Monoid (mappend)
-import Data.Text (pack, unpack)
+import Data.Text (Text, pack, unpack)
 import GHC.Generics
 import qualified Data.HashMap.Strict as H
-import qualified Data.Text as T
 import qualified Data.Vector as V
 import qualified Data.Vector.Mutable as VM
 
@@ -278,17 +277,135 @@ instance ( GFromProduct a, GFromProduct b
     gParseJSON _opts v = typeMismatch "product (:*:)" v
     {-# INLINE gParseJSON #-}
 
-instance (GFromSum a, GFromSum b) => GFromJSON (a :+: b) where
-    gParseJSON opts (Object (H.toList -> [keyVal@(key, _)])) =
-        case gParseSum opts keyVal of
-          Nothing -> notFound $ unpack key
-          Just p  -> p
-    gParseJSON _opts v = typeMismatch "sum (:+:)" v
+instance (AllNullary (a :+: b) c, GParseSum' c (a :+: b)) => GFromJSON (a :+: b) where
+    gParseJSON = unTagged (gParseSum' :: Tagged c (Options -> Value -> Parser ((a :+: b) d)))
     {-# INLINE gParseJSON #-}
+
+class GParseSum' b f where
+    gParseSum' :: Tagged b (Options -> Value -> Parser (f a))
+
+instance (GSumFromString (a :+: b), GFromPair (a :+: b), GFromObjectWithType (a :+: b)) =>
+    GParseSum' True (a :+: b) where
+    gParseSum' = Tagged $ \opts v ->
+                   if nullaryToString      opts
+                   then parseSumFromString opts v
+                   else parseSum           opts v
+    {-# INLINE gParseSum' #-}
+
+instance (GFromPair (a :+: b), GFromObjectWithType (a :+: b)) => GParseSum' False (a :+: b) where
+    gParseSum' = Tagged parseSum
+    {-# INLINE gParseSum' #-}
+
+--------------------------------------------------------------------------------
+
+parseSumFromString :: GSumFromString f => Options -> Value -> Parser (f a)
+parseSumFromString opts (String key) = case gParseSumFromString opts key of
+                                         Nothing -> notFound $ unpack key
+                                         Just x  -> return x
+parseSumFromString _ v = typeMismatch "String" v
+{-# INLINE parseSumFromString #-}
+
+class GSumFromString f where
+    gParseSumFromString :: Options -> Text -> Maybe (f a)
+
+instance (GSumFromString a, GSumFromString b) => GSumFromString (a :+: b) where
+    gParseSumFromString opts key = (L1 <$> gParseSumFromString opts key) <|>
+                                   (R1 <$> gParseSumFromString opts key)
+    {-# INLINE gParseSumFromString #-}
+
+instance (Constructor c) => GSumFromString (C1 c U1) where
+    gParseSumFromString opts key | key == name = Just $ M1 U1
+                                 | otherwise   = Nothing
+        where
+          name = pack $ constructorNameModifier opts $ conName (undefined :: t c U1 p)
+    {-# INLINE gParseSumFromString #-}
+
+--------------------------------------------------------------------------------
+
+parseSum :: (GFromPair (a :+: b), GFromObjectWithType (a :+: b)) =>
+            Options -> Value -> Parser ((a :+: b) c)
+parseSum opts v =
+    case sumEncoding opts of
+      TwoElemArray -> parseTwoElemArray opts v
+      ObjectWithType{typeFieldName,valueFieldName} ->
+          parseFromObjectWithType opts typeFieldName valueFieldName v
+      ObjectWithSingleField -> parseFromObjectWithSingleField opts v
+{-# INLINE parseSum #-}
+
+parseFromObjectWithSingleField :: (GFromPair (a :+: b)) => Options -> Value -> Parser ((a :+: b) c)
+parseFromObjectWithSingleField opts (Object (H.toList -> [keyVal@(key, _)])) =
+    case gParsePair opts keyVal of
+      Nothing -> notFound $ unpack key
+      Just p  -> p
+parseFromObjectWithSingleField _opts v = typeMismatch "Object with single field" v
+{-# INLINE parseFromObjectWithSingleField #-}
 
 notFound :: String -> Parser a
 notFound key = fail $ "The key \"" ++ key ++ "\" was not found"
 {-# INLINE notFound #-}
+
+--------------------------------------------------------------------------------
+
+parseTwoElemArray :: GFromPair f => Options -> Value -> Parser (f a)
+parseTwoElemArray opts (Array arr)
+    | V.length arr == 2
+    , String key <- V.unsafeIndex arr 0 =
+        case gParsePair opts (key, V.unsafeIndex arr 1) of
+          Nothing -> notFound $ unpack key
+          Just p  -> p
+parseTwoElemArray _ v = typeMismatch "Array with a key and value element" v
+{-# INLINE parseTwoElemArray #-}
+
+--------------------------------------------------------------------------------
+
+parseFromObjectWithType :: (GFromObjectWithType f)
+                        => Options -> String -> String -> Value -> Parser (f a)
+parseFromObjectWithType opts typeFieldName valueFieldName (Object obj) = do
+  key <- obj .: pack typeFieldName
+  case gParseFromObjectWithType opts valueFieldName obj key of
+    Nothing -> notFound $ unpack key
+    Just p  -> p
+parseFromObjectWithType _ _ _ v = typeMismatch "Object" v
+{-# INLINE parseFromObjectWithType #-}
+
+class GFromObjectWithType f where
+    gParseFromObjectWithType :: Options -> String -> Object -> Text -> Maybe (Parser (f a))
+
+instance (GFromObjectWithType a, GFromObjectWithType b) =>
+    GFromObjectWithType (a :+: b) where
+        gParseFromObjectWithType opts valueFieldName obj key =
+            (fmap L1 <$> gParseFromObjectWithType opts valueFieldName obj key) <|>
+            (fmap R1 <$> gParseFromObjectWithType opts valueFieldName obj key)
+        {-# INLINE gParseFromObjectWithType #-}
+
+instance (GFromObjectWithType' f, Constructor c) => GFromObjectWithType (C1 c f) where
+    gParseFromObjectWithType opts valueFieldName obj key
+        | key == name = Just $ M1 <$> gParseFromObjectWithType' opts valueFieldName obj
+        | otherwise = Nothing
+        where
+          name = pack $ constructorNameModifier opts $ conName (undefined :: t c f p)
+    {-# INLINE gParseFromObjectWithType #-}
+
+class GFromObjectWithType' f where
+    gParseFromObjectWithType' :: Options -> String -> Object -> Parser (f a)
+
+instance (IsRecord f b, GFromObjectWithType'' b f) => GFromObjectWithType' f where
+    gParseFromObjectWithType' =
+        unTagged (gParseFromObjectWithType'' ::
+                      Tagged b (Options -> String -> Object -> Parser (f a)))
+    {-# INLINE gParseFromObjectWithType' #-}
+
+class GFromObjectWithType'' b f where
+    gParseFromObjectWithType'' :: Tagged b (Options -> String -> Object -> Parser (f a))
+
+instance (GFromRecord f) => GFromObjectWithType'' True f where
+    gParseFromObjectWithType'' = Tagged $ \opts _ obj -> gParseRecord opts obj
+    {-# INLINE gParseFromObjectWithType'' #-}
+
+instance (GFromJSON f) => GFromObjectWithType'' False f where
+    gParseFromObjectWithType'' = Tagged $ \opts valueFieldName obj ->
+      gParseJSON opts =<< (obj .: pack valueFieldName)
+    {-# INLINE gParseFromObjectWithType'' #-}
 
 --------------------------------------------------------------------------------
 
@@ -325,7 +442,7 @@ instance (GFromRecord a, GFromRecord b) => GFromRecord (a :*: b) where
 
 instance (Selector s, GFromJSON a) => GFromRecord (S1 s a) where
     gParseRecord opts = maybe (notFound key) (gParseJSON opts)
-                      . H.lookup (T.pack key)
+                      . H.lookup (pack key)
         where
           key = fieldNameModifier opts $ selName (undefined :: t s a p)
     {-# INLINE gParseRecord #-}
@@ -340,9 +457,11 @@ newtype Tagged2 (s :: * -> *) b = Tagged2 {unTagged2 :: b}
 instance (ProductSize a, ProductSize b) => ProductSize (a :*: b) where
     productSize = Tagged2 $ unTagged2 (productSize :: Tagged2 a Int) +
                             unTagged2 (productSize :: Tagged2 b Int)
+    {-# INLINE productSize #-}
 
 instance ProductSize (S1 s a) where
     productSize = Tagged2 1
+    {-# INLINE productSize #-}
 
 --------------------------------------------------------------------------------
 
@@ -365,22 +484,21 @@ instance (GFromJSON a) => GFromProduct (S1 s a) where
 
 --------------------------------------------------------------------------------
 
-class GFromSum f where
-    gParseSum :: Options -> Pair -> Maybe (Parser (f a))
+class GFromPair f where
+    gParsePair :: Options -> Pair -> Maybe (Parser (f a))
 
-instance (GFromSum a, GFromSum b) => GFromSum (a :+: b) where
-    gParseSum opts keyVal = (fmap L1 <$> gParseSum opts keyVal) <|>
-                            (fmap R1 <$> gParseSum opts keyVal)
-    {-# INLINE gParseSum #-}
+instance (GFromPair a, GFromPair b) => GFromPair (a :+: b) where
+    gParsePair opts keyVal = (fmap L1 <$> gParsePair opts keyVal) <|>
+                             (fmap R1 <$> gParsePair opts keyVal)
+    {-# INLINE gParsePair #-}
 
-instance (Constructor c, GFromJSON a, ConsFromJSON a) => GFromSum (C1 c a) where
-    gParseSum opts (key, value)
-        | key == pack ( constructorNameModifier opts
-                      $ conName (undefined :: t c a p)
-                      )
-                    = Just $ gParseJSON opts value
-        | otherwise = Nothing
-    {-# INLINE gParseSum #-}
+instance (Constructor c, GFromJSON a, ConsFromJSON a) => GFromPair (C1 c a) where
+    gParsePair opts (key, value)
+        | key == name = Just $ gParseJSON opts value
+        | otherwise   = Nothing
+        where
+          name = pack $ constructorNameModifier opts $ conName (undefined :: t c a p)
+    {-# INLINE gParsePair #-}
 
 --------------------------------------------------------------------------------
 
