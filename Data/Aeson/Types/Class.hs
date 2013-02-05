@@ -144,6 +144,15 @@ class GFromJSON f where
 --
 -- instance ToJSON Coord
 -- @
+--
+-- Note that, instead of using @DefaultSignatures@, it's also possible
+-- to parameterize the generic encoding by using 'gToJSON' applied to
+-- the encoding 'Options':
+--
+-- @
+-- instance ToJSON Coord where
+--     toJSON = 'gToJSON' 'defaultOptions' . from
+-- @
 class ToJSON a where
     toJSON   :: a -> Value
 
@@ -205,6 +214,16 @@ class ToJSON a where
 --
 -- instance FromJSON Coord
 -- @
+--
+-- Note that, instead of using @DefaultSignatures@, it's also possible
+-- to parameterize the generic decoding by using 'gParseJSON' applied
+-- to the encoding 'Options':
+--
+-- @
+-- instance FromJSON Coord where
+--     parseJSON = fmap to . 'gParseJSON' 'defaultOptions'
+-- @
+
 class FromJSON a where
     parseJSON :: Value -> Parser a
 
