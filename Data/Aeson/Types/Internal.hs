@@ -216,11 +216,11 @@ parseMaybe m v = runParser (m v) (const Nothing) Just
 -- | Run a 'Parser' with an 'Either' result type.
 parseEither :: (a -> Parser b) -> a -> Either String b
 parseEither m v = runParser (m v) Left Right
+{-# INLINE parseEither #-}
 
 -- | A key\/value pair for an 'Object'.
 type Pair = (Text, Value)
 
-{-# INLINE parseEither #-}
 -- | Create a 'Value' from a list of name\/value 'Pair's.  If duplicate
 -- keys arise, earlier keys and their associated values win.
 object :: [Pair] -> Value
