@@ -37,7 +37,7 @@ import Data.ByteString as B
 import Data.Char (chr)
 import Data.Monoid (mappend, mempty)
 import Data.Text as T
-import Data.Text.Encoding (decodeUtf8)
+import Data.Text.Encoding (decodeUtf8')
 import Data.Vector as Vector hiding ((++))
 import Data.Word (Word8)
 import qualified Data.Attoparsec as A
@@ -175,11 +175,16 @@ jstring_ = {-# SCC "jstring_" #-} do
                                         then Nothing
                                         else Just (c == backslash)
   _ <- A.word8 doubleQuote
-  if backslash `B.elem` s
-    then case Z.parse unescape s of
-           Right r  -> return (decodeUtf8 r)
-           Left err -> fail err
-    else return (decodeUtf8 s)
+  s' <- if backslash `B.elem` s
+        then case Z.parse unescape s of
+            Right r  -> return r
+            Left err -> fail err
+         else return s
+
+  case decodeUtf8' s' of
+      Right r  -> return r
+      Left err -> fail $ show err
+
 {-# INLINE jstring_ #-}
 
 unescape :: Z.Parser ByteString
