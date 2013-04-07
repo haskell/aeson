@@ -1,5 +1,5 @@
 {-# LANGUAGE CPP, FlexibleInstances, NamedFieldPuns, NoImplicitPrelude,
-    OverlappingInstances, TemplateHaskell, UndecidableInstances
+    OverlappingInstances, TemplateHaskell, UndecidableInstances, IncoherentInstances
   #-}
 
 {-|
@@ -496,6 +496,14 @@ consFromJSON tName opts cons = do
                                                       'conNotFoundFail2ElemArray
                              )
                              []
+                  , do other <- newName "other"
+                       match (varP other)
+                             ( normalB
+                               $ [|firstElemNoStringFail|]
+                                     `appE` (litE $ stringL $ show tName)
+                                     `appE` ([|valueConName|] `appE` varE other)
+                             )
+                             []
                   ]
            )
 
@@ -735,6 +743,9 @@ noArrayFail t o = fail $ printf "When parsing %s expected Array but got %s." t o
 noObjectFail :: String -> String -> Parser fail
 noObjectFail t o = fail $ printf "When parsing %s expected Object but got %s." t o
 
+firstElemNoStringFail :: String -> String -> Parser fail
+firstElemNoStringFail t o = fail $ printf "When parsing %s expected an Array of 2 elements where the first element is a String but got %s at the first element." t o
+
 wrongPairCountFail :: String -> String -> Parser fail
 wrongPairCountFail t n =
     fail $ printf "When parsing %s expected an Object with a single name/value pair but got %s pairs."
@@ -748,7 +759,7 @@ noMatchFail t o =
     fail $ printf "When parsing %s expected a String with the name of a constructor but got %s." t o
 
 not2ElemArray :: String -> Int -> Parser fail
-not2ElemArray t i = fail $ printf "When parsing %s expected an Array of 2-elements but got %i elements" t i
+not2ElemArray t i = fail $ printf "When parsing %s expected an Array of 2 elements but got %i elements" t i
 
 conNotFoundFail2ElemArray :: String -> [String] -> String -> Parser fail
 conNotFoundFail2ElemArray t cs o =
