@@ -125,10 +125,10 @@ instance Arbitrary Nullary where
     arbitrary = elements [C1, C2, C3]
 
 thNullaryToJSONString :: Nullary -> Value
-thNullaryToJSONString = $(mkToJSON defaultOptions ''Nullary)
+thNullaryToJSONString = $(mkToJSON optsDefault ''Nullary)
 
 thNullaryParseJSONString :: Value -> Parser Nullary
-thNullaryParseJSONString = $(mkParseJSON defaultOptions ''Nullary)
+thNullaryParseJSONString = $(mkParseJSON optsDefault ''Nullary)
 
 
 thNullaryToJSON2ElemArray :: Nullary -> Value
@@ -155,10 +155,10 @@ thNullaryParseJSONObjectWithSingleField = $(mkParseJSON optsObjectWithSingleFiel
 deriving instance Generic Nullary
 
 gNullaryToJSONString :: Nullary -> Value
-gNullaryToJSONString = gToJSON defaultOptions . from
+gNullaryToJSONString = gToJSON optsDefault . from
 
 gNullaryParseJSONString :: Value -> Parser Nullary
-gNullaryParseJSONString = fmap to . gParseJSON defaultOptions
+gNullaryParseJSONString = fmap to . gParseJSON optsDefault
 
 
 gNullaryToJSON2ElemArray :: Nullary -> Value
