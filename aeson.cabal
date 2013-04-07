@@ -140,9 +140,14 @@ test-suite tests
   type:           exitcode-stdio-1.0
   hs-source-dirs: tests
   main-is:        Properties.hs
+  other-modules:  Options
 
   ghc-options:
     -Wall -threaded -rtsopts
+
+  if impl(ghc >= 7.2.1)
+    cpp-options: -DGENERICS
+    build-depends: ghc-prim >= 0.2
 
   build-depends:
     QuickCheck,
@@ -155,7 +160,9 @@ test-suite tests
     test-framework,
     test-framework-quickcheck2,
     text,
-    time
+    time,
+    unordered-containers,
+    vector
 
 source-repository head
   type:     git
