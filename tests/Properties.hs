@@ -14,6 +14,7 @@ import Data.Aeson.Types
 import Data.Aeson.TH
 import Data.Attoparsec.Number
 import Data.Data (Typeable, Data)
+import Data.Function (on)
 import Data.Text (Text)
 import Test.Framework (Test, defaultMain, testGroup)
 import Test.Framework.Providers.QuickCheck2 (testProperty)
@@ -25,8 +26,10 @@ import qualified Data.ByteString.Lazy.Char8 as L
 import qualified Data.Text as T
 import qualified Data.Map as Map
 import qualified Data.HashMap.Strict as H
-import Data.Time (ZonedTime(..), LocalTime(..), TimeZone(..), hoursToTimeZone, Day(..), TimeOfDay(..))
-
+import Data.Time.Calendar (Day)
+import Data.Time.Clock (DiffTime, UTCTime(..), picosecondsToDiffTime)
+import Data.Time (ZonedTime(..), LocalTime(..), TimeZone(..),
+                  hoursToTimeZone, Day(..), TimeOfDay(..))
 import Options
 
 #ifdef GENERICS
@@ -57,13 +60,24 @@ genericTo _ v = G.toJSON v == toJSON v
 genericFrom :: (Eq a, Data a, ToJSON a) => a -> a -> Bool
 genericFrom _ v = G.fromJSON (toJSON v) == Success v
 
-approxEq :: Double -> Double -> Bool
-approxEq a b = a == b ||
-               d < maxAbsoluteError ||
-                 d / max (abs b) (abs a) <= maxRelativeError
-    where d = abs (a - b)
-          maxAbsoluteError = 1e-15
-          maxRelativeError = 1e-15
+approxEq :: (Fractional a, Ord a) => a -> a -> Bool
+approxEq = approxEqWith 1e-15 1e-15
+
+approxEqWith :: (Fractional a, Ord a) => a -> a -> a -> a -> Bool
+approxEqWith maxAbsoluteError maxRelativeError a b =
+    a == b || d < maxAbsoluteError ||
+    d / max (abs b) (abs a) <= maxRelativeError
+  where d = abs (a - b)
+
+-- Compare equality to within a millisecond, allowing for rounding
+-- error (ECMA 262 requires milliseconds to rounded to zero, not
+-- rounded to nearest).
+approxEqUTC :: UTCTime -> UTCTime -> Bool
+approxEqUTC a b = ((==) `on` utctDay) a b &&
+                  (approxEqWith 1 1 `on` ((* 1e3) . utctDayTime)) a b
+
+approxEqNet :: DotNetTime -> DotNetTime -> Bool
+approxEqNet (DotNetTime a) (DotNetTime b) = approxEqUTC a b
 
 toFromJSON :: (Arbitrary a, Eq a, FromJSON a, ToJSON a) => a -> Bool
 toFromJSON x = case fromJSON . toJSON $ x of
@@ -297,6 +311,18 @@ instance Arbitrary TimeZone where
       offset <- choose (0,2) :: Gen Int
       return $ hoursToTimeZone offset
 
+instance Arbitrary Day where
+    arbitrary = ModifiedJulianDay `liftM` arbitrary
+
+instance Arbitrary DiffTime where
+    arbitrary = picosecondsToDiffTime `liftM` choose (0, 86400000000000000)
+
+instance Arbitrary UTCTime where
+    arbitrary = liftM2 UTCTime arbitrary arbitrary
+
+instance Arbitrary DotNetTime where
+    arbitrary = DotNetTime `liftM` arbitrary
+
 instance Arbitrary ZonedTime where
     arbitrary = liftM2 ZonedTime arbitrary arbitrary
 
@@ -345,6 +371,8 @@ tests = [
     , testProperty "String" $ roundTripEq (""::String)
     , testProperty "Text" $ roundTripEq T.empty
     , testProperty "Foo" $ roundTripEq (undefined::Foo)
+    , testProperty "DotNetTime" $ roundTrip approxEqNet undefined
+    , testProperty "UTCTime" $ roundTrip approxEqUTC undefined
     , testProperty "ZonedTime" $ roundTripEq (undefined::ZonedTime)
     ],
   testGroup "toFromJSON" [

@@ -1,3 +1,4 @@
+{-# LANGUAGE CPP #-}
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 
 import Blaze.ByteString.Builder (toLazyByteString)
@@ -6,8 +7,15 @@ import Control.DeepSeq (NFData(rnf))
 import Criterion.Main
 import qualified Data.Aeson as A
 import qualified Data.ByteString.Lazy as BL
-import qualified Data.ByteString.Lazy.Internal as BL
 import qualified Text.JSON as J
+
+#if !MIN_VERSION_bytestring(0,10,0)
+import qualified Data.ByteString.Lazy.Internal as BL
+
+instance NFData BL.ByteString where
+  rnf (BL.Chunk _ bs) = rnf bs
+  rnf BL.Empty        = ()
+#endif
 
 instance (NFData v) => NFData (J.JSObject v) where
   rnf o = rnf (J.fromJSObject o)
@@ -19,10 +27,6 @@ instance NFData J.JSValue where
   rnf (J.JSString s) = rnf (J.fromJSString s)
   rnf (J.JSArray lst) = rnf lst
   rnf (J.JSObject o) = rnf o
-
-instance NFData BL.ByteString where
-  rnf (BL.Chunk _ bs) = rnf bs
-  rnf BL.Empty        = ()
 
 decodeJ :: String -> J.JSValue
 decodeJ s =
