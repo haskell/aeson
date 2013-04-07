@@ -447,6 +447,13 @@ instance (Selector s, GFromJSON a) => GFromRecord (S1 s a) where
           key = fieldNameModifier opts $ selName (undefined :: t s a p)
     {-# INLINE gParseRecord #-}
 
+instance (Selector s, FromJSON a) => GFromRecord (S1 s (K1 i (Maybe a))) where
+    gParseRecord opts obj = (M1 . K1) <$> obj .:? pack key
+        where
+          key = fieldNameModifier opts $
+                  selName (undefined :: t s (K1 i (Maybe a)) p)
+    {-# INLINE gParseRecord #-}
+
 --------------------------------------------------------------------------------
 
 class ProductSize f where
