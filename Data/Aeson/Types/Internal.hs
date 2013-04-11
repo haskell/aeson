@@ -249,7 +249,7 @@ modifyFailure f (Parser p) = Parser $ \kf -> p (kf . f)
 -- Generic and TH encoding configuration
 --------------------------------------------------------------------------------
 
--- | Options that specify how to encode your datatype to JSON.
+-- | Options that specify how to encode/decode your datatype to/from JSON.
 data Options = Options
     { fieldNameModifier :: String -> String
       -- ^ Function applied to field names.
@@ -258,10 +258,14 @@ data Options = Options
       -- ^ Function applied to constructor names.
       -- Handy for lower-casing constructor names for example.
     , nullaryToString   :: Bool
-      -- ^ If 'True' the constructors of a datatypes, with all nullary
+      -- ^ If 'True' the constructors of a datatype, with all nullary
       -- constructors, will be encoded to a string with the
       -- constructor name. If 'False' the encoding will always follow
       -- the `sumEncoding`.
+    , omitNothingFields :: Bool
+      -- ^ If 'True' record fields with a 'Nothing' value will be
+      -- omitted from the resulting object. If 'False' the resulting
+      -- object will include those fields with @null@ values.
     , sumEncoding       :: SumEncoding
       -- ^ Specifies how to encode constructors of a sum datatype.
     }
@@ -287,19 +291,27 @@ data SumEncoding =
     -- 'constructorNameModifier') and the value will be the contents
     -- of the constructor.
 
--- | Default encoding options which specify to not modify field and
--- constructor names, encode the constructors of a datatype with all
--- nullary constructors to just strings with the name of the
--- constructor and use a 2-element array for other sum datatypes.
+-- | Default encoding 'Options':
+--
+-- @
+-- 'Options'
+-- { 'fieldNameModifier'       = id
+-- , 'constructorNameModifier' = id
+-- , 'nullaryToString'         = True
+-- , 'omitNothingFields'       = True
+-- , 'sumEncoding'             = 'TwoElemArray'
+-- }
+-- @
 defaultOptions :: Options
 defaultOptions = Options
                  { fieldNameModifier       = id
                  , constructorNameModifier = id
                  , nullaryToString         = True
+                 , omitNothingFields       = True
                  , sumEncoding             = TwoElemArray
                  }
 
--- | Note that:
+-- | Default 'ObjectWithType' 'SumEncoding' options:
 --
 -- @
 -- defaultObjectWithType = 'ObjectWithType'

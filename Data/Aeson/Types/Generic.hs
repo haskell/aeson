@@ -23,7 +23,7 @@ import Control.Monad.ST (ST)
 import Data.Aeson.Types.Class
 import Data.Aeson.Types.Internal
 import Data.Bits (shiftR)
-import Data.DList (DList, toList)
+import Data.DList (DList, toList, empty)
 import Data.Monoid (mappend)
 import Data.Text (Text, pack, unpack)
 import GHC.Generics
@@ -193,6 +193,14 @@ instance (GRecordToPairs a, GRecordToPairs b) => GRecordToPairs (a :*: b) where
     {-# INLINE gRecordToPairs #-}
 
 instance (Selector s, GToJSON a) => GRecordToPairs (S1 s a) where
+    gRecordToPairs opts m1 = pure ( pack $ fieldNameModifier opts $ selName m1
+                                  , gToJSON opts (unM1 m1)
+                                  )
+    {-# INLINE gRecordToPairs #-}
+
+instance (Selector s, ToJSON a) => GRecordToPairs (S1 s (K1 i (Maybe a))) where
+    gRecordToPairs opts (M1 k1) | omitNothingFields opts
+                                , K1 Nothing <- k1 = empty
     gRecordToPairs opts m1 = pure ( pack $ fieldNameModifier opts $ selName m1
                                   , gToJSON opts (unM1 m1)
                                   )
