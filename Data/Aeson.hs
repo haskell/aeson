@@ -269,8 +269,8 @@ eitherDecode' = eitherDecodeWith json' fromJSON
 -- $pitfalls
 -- #pitfalls#
 --
--- Note that the JSON standard only allows arrays or objects of things
--- at the top-level. Since this library follows the standard, calling
+-- Note that the JSON standard that the top-level be either an array
+-- or an object. Since this library follows the standard, calling
 -- 'decode' on an unsupported result type will typecheck, but will
 -- always \"fail\":
 --
