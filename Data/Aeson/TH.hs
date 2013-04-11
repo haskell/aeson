@@ -97,9 +97,9 @@ import Data.Functor        ( fmap )
 import Data.Int            ( Int )
 import Data.Either         ( Either(Left, Right) )
 import Data.List           ( (++), foldl, foldl', intercalate
-                           , length, map, zip, genericLength, all
+                           , length, map, zip, genericLength, all, partition
                            )
-import Data.Maybe          ( Maybe(Nothing, Just) )
+import Data.Maybe          ( Maybe(Nothing, Just), catMaybes )
 import Prelude             ( String, (-), Integer, fromIntegral, error )
 import Text.Printf         ( printf )
 import Text.Show           ( show )
@@ -287,23 +287,52 @@ encodeArgs opts multiCons (NormalC conName ts) = do
 -- Records.
 encodeArgs opts multiCons (RecC conName ts) = do
     args <- mapM newName ["arg" ++ show n | (_, n) <- zip ts [1 :: Integer ..]]
-    let js = [ infixApp ([|T.pack|] `appE` fieldNameExp opts field)
-                        [|(.=)|]
-                        (varE arg)
-             | (arg, (field, _, _)) <- zip args ts
-             ]
-        exp = [|object|] `appE` listE js
+    let exp = [|object|] `appE` pairs
+
+        pairs | omitNothingFields opts = infixApp maybeFields
+                                                  [|(++)|]
+                                                  restFields
+              | otherwise = listE $ map toPair argCons
+
+        argCons = zip args ts
+
+        maybeFields = [|catMaybes|] `appE` listE (map maybeToPair maybes)
+
+        restFields = listE $ map toPair rest
+
+        (maybes, rest) = partition isMaybe argCons
+
+        isMaybe (_, (_, _, AppT (ConT t) _)) = t == ''Maybe
+        isMaybe _ = False
+
+        maybeToPair (arg, (field, _, _)) =
+            infixApp (infixE (Just $ toFieldName field)
+                             [|(.=)|]
+                             Nothing)
+                     [|(<$>)|]
+                     (varE arg)
+
+        toPair (arg, (field, _, _)) =
+            infixApp (toFieldName field)
+                     [|(.=)|]
+                     (varE arg)
+
+        toFieldName field = [|T.pack|] `appE` fieldNameExp opts field
+
     match (conP conName $ map varP args)
           ( normalB
           $ if multiCons
             then case sumEncoding opts of
                    TwoElemArray -> [|toJSON|] `appE` tupE [conStr opts conName, exp]
                    ObjectWithType{typeFieldName} ->
-                       [|object|] `appE` listE
-                         ( infixApp [|T.pack typeFieldName|] [|(.=)|]
-                                    (conStr opts conName)
-                         : js
-                         )
+                       [|object|] `appE`
+                         -- TODO: Maybe throw an error in case
+                         -- typeFieldName overwrites a field in pairs.
+                         infixApp (infixApp [|T.pack typeFieldName|]
+                                            [|(.=)|]
+                                            (conStr opts conName))
+                                  [|(:)|]
+                                  pairs
                    ObjectWithSingleField ->
                        [|object|] `appE` listE
                          [ infixApp (conTxt opts conName) [|(.=)|] exp ]
