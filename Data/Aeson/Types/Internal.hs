@@ -298,7 +298,7 @@ data SumEncoding =
 -- { 'fieldNameModifier'       = id
 -- , 'constructorNameModifier' = id
 -- , 'nullaryToString'         = True
--- , 'omitNothingFields'       = True
+-- , 'omitNothingFields'       = False
 -- , 'sumEncoding'             = 'defaultObjectWithType'
 -- }
 -- @
@@ -307,7 +307,7 @@ defaultOptions = Options
                  { fieldNameModifier       = id
                  , constructorNameModifier = id
                  , nullaryToString         = True
-                 , omitNothingFields       = True
+                 , omitNothingFields       = False
                  , sumEncoding             = defaultObjectWithType
                  }
 
