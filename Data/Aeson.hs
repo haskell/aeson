@@ -314,5 +314,5 @@ eitherDecode' = eitherDecodeWith json' fromJSON
 --   converted to an AST, then the 'FromJSON' class is used to convert
 --   to the desired type.
 --
--- For convenience, the 'encode' and
--- 'decode' functions combine both steps for convenience.
+-- For convenience, the 'encode' and 'decode' functions combine both
+-- steps.
