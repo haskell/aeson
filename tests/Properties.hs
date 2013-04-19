@@ -5,7 +5,7 @@ import Data.Aeson.Parser (value)
 import Data.Aeson.Types
 import Data.Attoparsec.Number
 import Data.Data (Data)
-import Data.Function (on)
+import Data.Int
 import Test.Framework (Test, defaultMain, testGroup)
 import Test.Framework.Providers.QuickCheck2 (testProperty)
 import Test.QuickCheck (Arbitrary(..))
@@ -17,8 +17,8 @@ import qualified Data.Map as Map
 import Data.Time.Clock (UTCTime(..))
 import Data.Time (ZonedTime(..))
 import Types (Foo(..), UFoo(..))
-import Functions
 import Instances ()
+import Types (Approx(..), OneConstructor(..), Product2, Product6, Sum4)
 
 encodeDouble :: Double -> Double -> Bool
 encodeDouble num denom
@@ -43,16 +43,6 @@ genericTo _ v = G.toJSON v == toJSON v
 
 genericFrom :: (Eq a, Data a, ToJSON a) => a -> a -> Bool
 genericFrom _ v = G.fromJSON (toJSON v) == Success v
-
--- Compare equality to within a millisecond, allowing for rounding
--- error (ECMA 262 requires milliseconds to rounded to zero, not
--- rounded to nearest).
-approxEqUTC :: UTCTime -> UTCTime -> Bool
-approxEqUTC a b = ((==) `on` utctDay) a b &&
-                  (approxEqWith 1 1 `on` ((* 1e3) . utctDayTime)) a b
-
-approxEqNet :: DotNetTime -> DotNetTime -> Bool
-approxEqNet (DotNetTime a) (DotNetTime b) = approxEqUTC a b
 
 toFromJSON :: (Arbitrary a, Eq a, FromJSON a, ToJSON a) => a -> Bool
 toFromJSON x = case fromJSON . toJSON $ x of
@@ -79,6 +69,9 @@ modifyFailureProp orig added =
 main :: IO ()
 main = defaultMain tests
 
+type P6 = Product6 Int Bool String (Approx Double) (Int, Approx Double) ()
+type S4 = Sum4 Int8 ZonedTime T.Text (Map.Map String Int)
+
 tests :: [Test]
 tests = [
   testGroup "regression" [
@@ -104,15 +97,21 @@ tests = [
     ],
   testGroup "roundTrip" [
       testProperty "Bool" $ roundTripEq True
-    , testProperty "Double" $ roundTrip approxEq (1::Double)
+    , testProperty "Double" $ roundTripEq (1 :: Approx Double)
     , testProperty "Int" $ roundTripEq (1::Int)
     , testProperty "Integer" $ roundTripEq (1::Integer)
     , testProperty "String" $ roundTripEq (""::String)
     , testProperty "Text" $ roundTripEq T.empty
     , testProperty "Foo" $ roundTripEq (undefined::Foo)
-    , testProperty "DotNetTime" $ roundTrip approxEqNet undefined
-    , testProperty "UTCTime" $ roundTrip approxEqUTC undefined
+    , testProperty "DotNetTime" $ roundTripEq (undefined :: Approx DotNetTime)
+    , testProperty "UTCTime" $ roundTripEq (undefined :: Approx UTCTime)
     , testProperty "ZonedTime" $ roundTripEq (undefined::ZonedTime)
+    , testGroup "ghcGenerics" [
+        testProperty "OneConstructor" $ roundTripEq OneConstructor
+      , testProperty "Product2" $ roundTripEq (undefined :: Product2 Int Bool)
+      , testProperty "Product6" $ roundTripEq (undefined :: P6)
+      , testProperty "Sum4" $ roundTripEq (undefined :: S4)
+      ]
     ],
   testGroup "toFromJSON" [
       testProperty "Integer" (toFromJSON :: Integer -> Bool)
