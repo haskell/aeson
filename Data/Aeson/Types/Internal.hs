@@ -299,7 +299,7 @@ data SumEncoding =
 -- , 'constructorNameModifier' = id
 -- , 'nullaryToString'         = True
 -- , 'omitNothingFields'       = True
--- , 'sumEncoding'             = 'TwoElemArray'
+-- , 'sumEncoding'             = 'defaultObjectWithType'
 -- }
 -- @
 defaultOptions :: Options
@@ -308,7 +308,7 @@ defaultOptions = Options
                  , constructorNameModifier = id
                  , nullaryToString         = True
                  , omitNothingFields       = True
-                 , sumEncoding             = TwoElemArray
+                 , sumEncoding             = defaultObjectWithType
                  }
 
 -- | Default 'ObjectWithType' 'SumEncoding' options:

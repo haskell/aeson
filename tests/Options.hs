@@ -5,8 +5,9 @@ import Data.Char
 
 optsDefault :: Options
 optsDefault = defaultOptions{ fieldNameModifier       = map toLower
-                             , constructorNameModifier = map toLower
-                             }
+                            , constructorNameModifier = map toLower
+                            , sumEncoding             = TwoElemArray
+                            }
 
 opts2ElemArray :: Options
 opts2ElemArray = optsDefault{ nullaryToString = False }
