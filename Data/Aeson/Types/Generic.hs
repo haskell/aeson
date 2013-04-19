@@ -24,6 +24,7 @@ import Data.Aeson.Types.Class
 import Data.Aeson.Types.Internal
 import Data.Bits (shiftR)
 import Data.DList (DList, toList, empty)
+import Data.Maybe (fromMaybe)
 import Data.Monoid (mappend)
 import Data.Text (Text, pack, unpack)
 import GHC.Generics
@@ -272,17 +273,14 @@ instance (ConsFromJSON a) => GFromJSON (C1 c a) where
 
 instance ( GFromProduct a, GFromProduct b
          , ProductSize a, ProductSize b) => GFromJSON (a :*: b) where
-    gParseJSON opts (Array arr)
-        | lenArray == lenProduct = gParseProduct opts arr 0 lenProduct
-        | otherwise =
-            fail $ "When expecting a product of " ++ show lenProduct ++
-                   " values, encountered an Array of " ++ show lenArray ++
-                   " elements instead"
-        where
-          lenArray = V.length arr
-          lenProduct = unTagged2 (productSize :: Tagged2 (a :*: b) Int)
-
-    gParseJSON _opts v = typeMismatch "product (:*:)" v
+    gParseJSON opts = withArray "product (:*:)" $ \arr ->
+      let lenArray = V.length arr
+          lenProduct = unTagged2 (productSize :: Tagged2 (a :*: b) Int) in
+      if lenArray == lenProduct
+      then gParseProduct opts arr 0 lenProduct
+      else fail $ "When expecting a product of " ++ show lenProduct ++
+                  " values, encountered an Array of " ++ show lenArray ++
+                  " elements instead"
     {-# INLINE gParseJSON #-}
 
 instance (AllNullary (a :+: b) c, GParseSum' c (a :+: b)) => GFromJSON (a :+: b) where
@@ -307,10 +305,9 @@ instance (GFromPair (a :+: b), GFromObjectWithType (a :+: b)) => GParseSum' Fals
 --------------------------------------------------------------------------------
 
 parseSumFromString :: GSumFromString f => Options -> Value -> Parser (f a)
-parseSumFromString opts (String key) = case gParseSumFromString opts key of
-                                         Nothing -> notFound $ unpack key
-                                         Just x  -> return x
-parseSumFromString _ v = typeMismatch "String" v
+parseSumFromString opts = withText "Text" $ \key ->
+                            maybe (notFound $ unpack key) return $
+                              gParseSumFromString opts key
 {-# INLINE parseSumFromString #-}
 
 class GSumFromString f where
@@ -341,11 +338,10 @@ parseSum opts v =
 {-# INLINE parseSum #-}
 
 parseFromObjectWithSingleField :: (GFromPair (a :+: b)) => Options -> Value -> Parser ((a :+: b) c)
-parseFromObjectWithSingleField opts (Object (H.toList -> [keyVal@(key, _)])) =
-    case gParsePair opts keyVal of
-      Nothing -> notFound $ unpack key
-      Just p  -> p
-parseFromObjectWithSingleField _opts v = typeMismatch "Object with single field" v
+parseFromObjectWithSingleField opts = withObject "Object" $ \obj ->
+  case H.toList obj of
+    [keyVal@(key, _)] -> fromMaybe (notFound $ unpack key) $ gParsePair opts keyVal
+    _ -> fail "Object doesn't have a single field"
 {-# INLINE parseFromObjectWithSingleField #-}
 
 notFound :: String -> Parser a
@@ -355,25 +351,23 @@ notFound key = fail $ "The key \"" ++ key ++ "\" was not found"
 --------------------------------------------------------------------------------
 
 parseTwoElemArray :: GFromPair f => Options -> Value -> Parser (f a)
-parseTwoElemArray opts (Array arr)
-    | V.length arr == 2
-    , String key <- V.unsafeIndex arr 0 =
-        case gParsePair opts (key, V.unsafeIndex arr 1) of
-          Nothing -> notFound $ unpack key
-          Just p  -> p
-parseTwoElemArray _ v = typeMismatch "Array with a key and value element" v
+parseTwoElemArray opts = withArray "Array" $ \arr ->
+  if V.length arr == 2
+  then case V.unsafeIndex arr 0 of
+         String key -> fromMaybe (notFound $ unpack key) $
+                         gParsePair opts (key, V.unsafeIndex arr 1)
+         _ -> fail "First element is not a String"
+  else fail "Array doesn't have 2 elements"
 {-# INLINE parseTwoElemArray #-}
 
 --------------------------------------------------------------------------------
 
 parseFromObjectWithType :: (GFromObjectWithType f)
                         => Options -> String -> String -> Value -> Parser (f a)
-parseFromObjectWithType opts typeFieldName valueFieldName (Object obj) = do
+parseFromObjectWithType opts typeFieldName valueFieldName = withObject "Object" $ \obj -> do
   key <- obj .: pack typeFieldName
-  case gParseFromObjectWithType opts valueFieldName obj key of
-    Nothing -> notFound $ unpack key
-    Just p  -> p
-parseFromObjectWithType _ _ _ v = typeMismatch "Object" v
+  fromMaybe (notFound $ unpack key) $
+    gParseFromObjectWithType opts valueFieldName obj key
 {-# INLINE parseFromObjectWithType #-}
 
 class GFromObjectWithType f where
@@ -428,10 +422,7 @@ instance (IsRecord f b, ConsFromJSON' b f) => ConsFromJSON f where
     {-# INLINE consParseJSON #-}
 
 instance (GFromRecord f) => ConsFromJSON' True f where
-    consParseJSON' = Tagged parseRecord
-        where
-          parseRecord  opts (Object obj) = gParseRecord opts obj
-          parseRecord _opts v = typeMismatch "record (:*:)" v
+    consParseJSON' = Tagged $ withObject "record (:*:)" . gParseRecord
     {-# INLINE consParseJSON' #-}
 
 instance (GFromJSON f) => ConsFromJSON' False f where
