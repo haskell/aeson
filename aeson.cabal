@@ -86,7 +86,6 @@ extra-source-files:
     benchmarks/json-data/*.json
     examples/*.hs
     release-notes.markdown
-    tests/Properties.hs
 
 flag developer
   description: operate in developer mode
@@ -140,6 +139,9 @@ test-suite tests
   type:           exitcode-stdio-1.0
   hs-source-dirs: tests
   main-is:        Properties.hs
+  other-modules:  Functions
+                  Instances
+                  Types
 
   ghc-options:
     -Wall -threaded -rtsopts
