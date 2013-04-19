@@ -4,8 +4,9 @@
 module Instances where
 
 import Types
+import Data.Function (on)
 import Control.Monad
-import Test.QuickCheck (Arbitrary(..), choose, Gen)
+import Test.QuickCheck (Arbitrary(..), Gen, choose, oneof)
 import Data.Time.Clock (DiffTime, UTCTime(..), picosecondsToDiffTime)
 import Data.Time (ZonedTime(..), LocalTime(..), TimeZone(..),
                   hoursToTimeZone, Day(..), TimeOfDay(..))
@@ -49,6 +50,18 @@ instance Arbitrary ZonedTime where
 
 deriving instance Eq ZonedTime
 
+-- Compare equality to within a millisecond, allowing for rounding
+-- error (ECMA 262 requires milliseconds to rounded to zero, not
+-- rounded to nearest).
+instance ApproxEq UTCTime where
+    a =~ b = ((==) `on` utctDay) a b &&
+             (approxEqWith 1 1 `on` ((* 1e3) . utctDayTime)) a b
+
+instance ApproxEq DotNetTime
+
+instance ApproxEq Double where
+    (=~) = approxEq
+
 -- Test-related types.
 
 instance Arbitrary Foo where
@@ -77,3 +90,43 @@ instance FromJSON Foo where
 instance Arbitrary UFoo where
     arbitrary = UFoo <$> arbitrary <*> arbitrary
         where _ = uFooInt
+
+instance Arbitrary OneConstructor where
+    arbitrary = return OneConstructor
+
+instance FromJSON OneConstructor
+instance ToJSON OneConstructor
+
+instance (Arbitrary a, Arbitrary b) => Arbitrary (Product2 a b) where
+    arbitrary = liftM2 Product2 arbitrary arbitrary
+
+instance (FromJSON a, FromJSON b) => FromJSON (Product2 a b)
+instance (ToJSON a, ToJSON b) => ToJSON (Product2 a b)
+
+instance (Arbitrary a, Arbitrary b, Arbitrary c, Arbitrary d, Arbitrary e,
+          Arbitrary f) => Arbitrary (Product6 a b c d e f) where
+    arbitrary = Product6 <$> arbitrary <*> arbitrary <*> arbitrary <*>
+                             arbitrary <*> arbitrary <*> arbitrary
+
+instance (FromJSON a, FromJSON b, FromJSON c, FromJSON d, FromJSON e,
+          FromJSON f) => FromJSON (Product6 a b c d e f)
+instance (ToJSON a, ToJSON b, ToJSON c, ToJSON d, ToJSON e,
+          ToJSON f) => ToJSON (Product6 a b c d e f)
+
+instance (Arbitrary a, Arbitrary b, Arbitrary c, Arbitrary d)
+    => Arbitrary (Sum4 a b c d) where
+    arbitrary = oneof [Alt1 <$> arbitrary, Alt2 <$> arbitrary,
+                       Alt3 <$> arbitrary, Alt4 <$> arbitrary]
+
+instance (FromJSON a, FromJSON b, FromJSON c, FromJSON d)
+    => FromJSON (Sum4 a b c d)
+instance (ToJSON a, ToJSON b, ToJSON c, ToJSON d) => ToJSON (Sum4 a b c d)
+
+instance (Arbitrary a) => Arbitrary (Approx a) where
+    arbitrary = Approx <$> arbitrary
+
+instance (FromJSON a) => FromJSON (Approx a) where
+    parseJSON a = Approx <$> parseJSON a
+
+instance (ToJSON a) => ToJSON (Approx a) where
+    toJSON = toJSON . fromApprox
