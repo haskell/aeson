@@ -55,6 +55,8 @@ module Data.Aeson
     -- ** Generic JSON classes
     , GFromJSON(..)
     , GToJSON(..)
+    , genericToJSON
+    , genericParseJSON
 #endif
     -- * Inspecting @'Value's@
     , withObject
