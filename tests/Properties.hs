@@ -1,28 +1,24 @@
-{-# LANGUAGE DeriveDataTypeable, OverloadedStrings, RecordWildCards,
-    ScopedTypeVariables, StandaloneDeriving #-}
-{-# OPTIONS_GHC -fno-warn-orphans #-}
+{-# LANGUAGE OverloadedStrings, RecordWildCards, ScopedTypeVariables #-}
 
-import Control.Monad
-import Control.Applicative
 import Data.Aeson.Encode
 import Data.Aeson.Parser (value)
 import Data.Aeson.Types
 import Data.Attoparsec.Number
-import Data.Data (Typeable, Data)
+import Data.Data (Data)
 import Data.Function (on)
-import Data.Text (Text)
 import Test.Framework (Test, defaultMain, testGroup)
 import Test.Framework.Providers.QuickCheck2 (testProperty)
-import Test.QuickCheck (Arbitrary(..), choose, Gen)
+import Test.QuickCheck (Arbitrary(..))
 import qualified Data.Aeson.Generic as G
 import qualified Data.Attoparsec.Lazy as L
 import qualified Data.ByteString.Lazy.Char8 as L
 import qualified Data.Text as T
 import qualified Data.Map as Map
-import Data.Time.Calendar (Day)
-import Data.Time.Clock (DiffTime, UTCTime(..), picosecondsToDiffTime)
-import Data.Time (ZonedTime(..), LocalTime(..), TimeZone(..),
-                  hoursToTimeZone, Day(..), TimeOfDay(..))
+import Data.Time.Clock (UTCTime(..))
+import Data.Time (ZonedTime(..))
+import Types (Foo(..), UFoo(..))
+import Functions
+import Instances ()
 
 encodeDouble :: Double -> Double -> Bool
 encodeDouble num denom
@@ -47,15 +43,6 @@ genericTo _ v = G.toJSON v == toJSON v
 
 genericFrom :: (Eq a, Data a, ToJSON a) => a -> a -> Bool
 genericFrom _ v = G.fromJSON (toJSON v) == Success v
-
-approxEq :: (Fractional a, Ord a) => a -> a -> Bool
-approxEq = approxEqWith 1e-15 1e-15
-
-approxEqWith :: (Fractional a, Ord a) => a -> a -> a -> a -> Bool
-approxEqWith maxAbsoluteError maxRelativeError a b =
-    a == b || d < maxAbsoluteError ||
-    d / max (abs b) (abs a) <= maxRelativeError
-  where d = abs (a - b)
 
 -- Compare equality to within a millisecond, allowing for rounding
 -- error (ECMA 262 requires milliseconds to rounded to zero, not
@@ -89,80 +76,8 @@ modifyFailureProp orig added =
     result :: Result ()
     result = parse parser ()
 
-data Foo = Foo {
-      fooInt :: Int
-    , fooDouble :: Double
-    , fooTuple :: (String, Text, Int)
-    -- This definition causes an infinite loop in genericTo and genericFrom!
-    -- , fooMap :: Map.Map String Foo
-    , fooMap :: Map.Map String (Text,Int)
-    } deriving (Show, Typeable, Data)
-
-instance Eq Foo where
-    a == b = fooInt a == fooInt b &&
-             fooDouble a `approxEq` fooDouble b &&
-             fooTuple a == fooTuple b
-
-instance ToJSON Foo where
-    toJSON Foo{..} = object [ "fooInt" .= fooInt
-                            , "fooDouble" .= fooDouble
-                            , "fooTuple" .= fooTuple
-                            , "fooMap" .= fooMap
-                            ]
-
-instance FromJSON Foo where
-    parseJSON (Object v) = Foo <$>
-                           v .: "fooInt" <*>
-                           v .: "fooDouble" <*>
-                           v .: "fooTuple" <*>
-                           v .: "fooMap"
-    parseJSON _ = empty
-
-instance Arbitrary Text where
-    arbitrary = T.pack <$> arbitrary
-
-instance (Ord k, Arbitrary k, Arbitrary v) => Arbitrary (Map.Map k v) where
-    arbitrary = Map.fromList <$> arbitrary
-
-instance Arbitrary Foo where
-    arbitrary = liftM4 Foo arbitrary arbitrary arbitrary arbitrary
-
-instance Arbitrary LocalTime where
-    arbitrary = return $ LocalTime (ModifiedJulianDay 1) (TimeOfDay 1 2 3)
-
-instance Arbitrary TimeZone where
-    arbitrary = do
-      offset <- choose (0,2) :: Gen Int
-      return $ hoursToTimeZone offset
-
-instance Arbitrary Day where
-    arbitrary = ModifiedJulianDay `liftM` arbitrary
-
-instance Arbitrary DiffTime where
-    arbitrary = picosecondsToDiffTime `liftM` choose (0, 86400000000000000)
-
-instance Arbitrary UTCTime where
-    arbitrary = liftM2 UTCTime arbitrary arbitrary
-
-instance Arbitrary DotNetTime where
-    arbitrary = DotNetTime `liftM` arbitrary
-
-instance Arbitrary ZonedTime where
-    arbitrary = liftM2 ZonedTime arbitrary arbitrary
-
-data UFoo = UFoo {
-      _UFooInt :: Int
-    , uFooInt :: Int
-    } deriving (Show, Eq, Data, Typeable)
-
-instance Arbitrary UFoo where
-    arbitrary = UFoo <$> arbitrary <*> arbitrary
-        where _ = uFooInt
-
 main :: IO ()
 main = defaultMain tests
-
-deriving instance Eq ZonedTime
 
 tests :: [Test]
 tests = [
