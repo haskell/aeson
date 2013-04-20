@@ -86,7 +86,6 @@ extra-source-files:
     benchmarks/json-data/*.json
     examples/*.hs
     release-notes.markdown
-    tests/Properties.hs
 
 flag developer
   description: operate in developer mode
@@ -140,14 +139,14 @@ test-suite tests
   type:           exitcode-stdio-1.0
   hs-source-dirs: tests
   main-is:        Properties.hs
-  other-modules:  Options
+  other-modules:  Functions
+                  Instances
+                  Types
+                  Options
+                  Encoders
 
   ghc-options:
     -Wall -threaded -rtsopts
-
-  if impl(ghc >= 7.2.1)
-    cpp-options: -DGENERICS
-    build-depends: ghc-prim >= 0.2
 
   build-depends:
     QuickCheck,
@@ -162,7 +161,8 @@ test-suite tests
     text,
     time,
     unordered-containers,
-    vector
+    vector,
+    ghc-prim >= 0.2
 
 source-repository head
   type:     git

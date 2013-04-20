@@ -278,10 +278,11 @@ eitherDecode' = eitherDecodeWith json' fromJSON
 -- $pitfalls
 -- #pitfalls#
 --
--- Note that the JSON standard only allows arrays or objects of things
--- at the top-level. Since this library follows the standard, calling
--- 'decode' on an unsupported result type will typecheck, but will
--- always \"fail\":
+-- Note that the JSON standard requires that the top-level value be
+-- either an array or an object. If you try to use 'decode' with a
+-- result type that is /not/ represented in JSON as an array or
+-- object, your code will typecheck, but it will always \"fail\" at
+-- runtime:
 --
 -- > >>> decode "1" :: Maybe Int
 -- > Nothing
@@ -323,5 +324,5 @@ eitherDecode' = eitherDecodeWith json' fromJSON
 --   converted to an AST, then the 'FromJSON' class is used to convert
 --   to the desired type.
 --
--- For convenience, the 'encode' and
--- 'decode' functions combine both steps for convenience.
+-- For convenience, the 'encode' and 'decode' functions combine both
+-- steps.
