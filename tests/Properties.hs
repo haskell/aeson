@@ -9,16 +9,20 @@ import Data.Int
 import Test.Framework (Test, defaultMain, testGroup)
 import Test.Framework.Providers.QuickCheck2 (testProperty)
 import Test.QuickCheck (Arbitrary(..))
+import qualified Data.Vector as V
 import qualified Data.Aeson.Generic as G
 import qualified Data.Attoparsec.Lazy as L
 import qualified Data.ByteString.Lazy.Char8 as L
 import qualified Data.Text as T
 import qualified Data.Map as Map
+import qualified Data.HashMap.Strict as H
 import Data.Time.Clock (UTCTime(..))
 import Data.Time (ZonedTime(..))
 import Types (Foo(..), UFoo(..))
 import Instances ()
 import Types (Approx(..), OneConstructor(..), Product2, Product6, Sum4)
+import Encoders
+
 
 encodeDouble :: Double -> Double -> Bool
 encodeDouble num denom
@@ -28,6 +32,12 @@ encodeDouble num denom
 
 encodeInteger :: Integer -> Bool
 encodeInteger i = encode (Number (I i)) == L.pack (show i)
+
+toParseJSON :: (Arbitrary a, Eq a) => (Value -> Parser a) -> (a -> Value) -> a -> Bool
+toParseJSON parsejson tojson x =
+    case parse parsejson . tojson $ x of
+      Error _ -> False
+      Success x' -> x == x'
 
 roundTrip :: (FromJSON a, ToJSON a) => (a -> a -> Bool) -> a -> a -> Bool
 roundTrip eq _ i =
@@ -71,6 +81,33 @@ main = defaultMain tests
 
 type P6 = Product6 Int Bool String (Approx Double) (Int, Approx Double) ()
 type S4 = Sum4 Int8 ZonedTime T.Text (Map.Map String Int)
+
+--------------------------------------------------------------------------------
+-- Value properties
+--------------------------------------------------------------------------------
+
+isString :: Value -> Bool
+isString (String _) = True
+isString _          = False
+
+is2ElemArray :: Value -> Bool
+is2ElemArray (Array v) = V.length v == 2 && isString (V.head v)
+is2ElemArray _         = False
+
+isObjectWithTypeValue :: Value -> Bool
+isObjectWithTypeValue (Object obj) = "type"  `H.member` obj &&
+                                     "value" `H.member` obj
+isObjectWithTypeValue _            = False
+
+isObjectWithType :: Value -> Bool
+isObjectWithType (Object obj) = "type" `H.member` obj
+isObjectWithType _            = False
+
+isObjectWithSingleField :: Value -> Bool
+isObjectWithSingleField (Object obj) = H.size obj == 1
+isObjectWithSingleField _            = False
+
+--------------------------------------------------------------------------------
 
 tests :: [Test]
 tests = [
@@ -125,5 +162,67 @@ tests = [
     ],
   testGroup "failure messages" [
       testProperty "modify failure" modifyFailureProp
+    ],
+  testGroup "template-haskell" [
+      testGroup "Nullary" [
+          testProperty "string"                (isString                . thNullaryToJSONString)
+        , testProperty "2ElemArray"            (is2ElemArray            . thNullaryToJSON2ElemArray)
+        , testProperty "ObjectWithType"        (isObjectWithTypeValue   . thNullaryToJSONObjectWithType)
+        , testProperty "ObjectWithSingleField" (isObjectWithSingleField . thNullaryToJSONObjectWithSingleField)
+
+        , testGroup "roundTrip" [
+              testProperty "string"                (toParseJSON thNullaryParseJSONString                thNullaryToJSONString)
+            , testProperty "2ElemArray"            (toParseJSON thNullaryParseJSON2ElemArray            thNullaryToJSON2ElemArray)
+            , testProperty "ObjectWithType"        (toParseJSON thNullaryParseJSONObjectWithType        thNullaryToJSONObjectWithType)
+            , testProperty "ObjectWithSingleField" (toParseJSON thNullaryParseJSONObjectWithSingleField thNullaryToJSONObjectWithSingleField)
+          ]
+        ]
+    , testGroup "SomeType" [
+          testProperty "2ElemArray"            (is2ElemArray            . (thSomeTypeToJSON2ElemArray            :: SomeTypeToJSON))
+        , testProperty "ObjectWithType"        (isObjectWithType        . (thSomeTypeToJSONObjectWithType        :: SomeTypeToJSON))
+        , testProperty "ObjectWithSingleField" (isObjectWithSingleField . (thSomeTypeToJSONObjectWithSingleField :: SomeTypeToJSON))
+
+        , testGroup "roundTrip" [
+              testProperty "2ElemArray"            (toParseJSON thSomeTypeParseJSON2ElemArray            (thSomeTypeToJSON2ElemArray            :: SomeTypeToJSON))
+            , testProperty "ObjectWithType"        (toParseJSON thSomeTypeParseJSONObjectWithType        (thSomeTypeToJSONObjectWithType        :: SomeTypeToJSON))
+            , testProperty "ObjectWithSingleField" (toParseJSON thSomeTypeParseJSONObjectWithSingleField (thSomeTypeToJSONObjectWithSingleField :: SomeTypeToJSON))
+          ]
+      ]
+    ]
+  , testGroup "GHC-generics" [
+        testGroup "Nullary" [
+            testProperty "string"                (isString                . gNullaryToJSONString)
+          , testProperty "2ElemArray"            (is2ElemArray            . gNullaryToJSON2ElemArray)
+          , testProperty "ObjectWithType"        (isObjectWithTypeValue   . gNullaryToJSONObjectWithType)
+          , testProperty "ObjectWithSingleField" (isObjectWithSingleField . gNullaryToJSONObjectWithSingleField)
+          , testGroup "eq" [
+                testProperty "string"                (\n -> gNullaryToJSONString                n == thNullaryToJSONString                n)
+              , testProperty "2ElemArray"            (\n -> gNullaryToJSON2ElemArray            n == thNullaryToJSON2ElemArray            n)
+              , testProperty "ObjectWithType"        (\n -> gNullaryToJSONObjectWithType        n == thNullaryToJSONObjectWithType        n)
+              , testProperty "ObjectWithSingleField" (\n -> gNullaryToJSONObjectWithSingleField n == thNullaryToJSONObjectWithSingleField n)
+            ]
+          , testGroup "roundTrip" [
+              testProperty "string"                (toParseJSON gNullaryParseJSONString                gNullaryToJSONString)
+            , testProperty "2ElemArray"            (toParseJSON gNullaryParseJSON2ElemArray            gNullaryToJSON2ElemArray)
+            , testProperty "ObjectWithType"        (toParseJSON gNullaryParseJSONObjectWithType        gNullaryToJSONObjectWithType)
+            , testProperty "ObjectWithSingleField" (toParseJSON gNullaryParseJSONObjectWithSingleField gNullaryToJSONObjectWithSingleField)
+            ]
+          ]
+    , testGroup "SomeType" [
+          testProperty "2ElemArray"            (is2ElemArray            . (gSomeTypeToJSON2ElemArray            :: SomeTypeToJSON))
+        , testProperty "ObjectWithType"        (isObjectWithType        . (gSomeTypeToJSONObjectWithType        :: SomeTypeToJSON))
+        , testProperty "ObjectWithSingleField" (isObjectWithSingleField . (gSomeTypeToJSONObjectWithSingleField :: SomeTypeToJSON))
+
+        , testGroup "eq" [
+              testProperty "2ElemArray"            (\n -> (gSomeTypeToJSON2ElemArray            :: SomeTypeToJSON) n == thSomeTypeToJSON2ElemArray            n)
+            , testProperty "ObjectWithType"        (\n -> (gSomeTypeToJSONObjectWithType        :: SomeTypeToJSON) n == thSomeTypeToJSONObjectWithType        n)
+            , testProperty "ObjectWithSingleField" (\n -> (gSomeTypeToJSONObjectWithSingleField :: SomeTypeToJSON) n == thSomeTypeToJSONObjectWithSingleField n)
+          ]
+        , testGroup "roundTrip" [
+            testProperty "2ElemArray"            (toParseJSON gSomeTypeParseJSON2ElemArray            (gSomeTypeToJSON2ElemArray            :: SomeTypeToJSON))
+          , testProperty "ObjectWithType"        (toParseJSON gSomeTypeParseJSONObjectWithType        (gSomeTypeToJSONObjectWithType        :: SomeTypeToJSON))
+          , testProperty "ObjectWithSingleField" (toParseJSON gSomeTypeParseJSONObjectWithSingleField (gSomeTypeToJSONObjectWithSingleField :: SomeTypeToJSON))
+          ]
+      ]
     ]
   ]

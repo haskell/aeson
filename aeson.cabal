@@ -142,6 +142,8 @@ test-suite tests
   other-modules:  Functions
                   Instances
                   Types
+                  Options
+                  Encoders
 
   ghc-options:
     -Wall -threaded -rtsopts
@@ -157,7 +159,10 @@ test-suite tests
     test-framework,
     test-framework-quickcheck2,
     text,
-    time
+    time,
+    unordered-containers,
+    vector,
+    ghc-prim >= 0.2
 
 source-repository head
   type:     git

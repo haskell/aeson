@@ -28,6 +28,8 @@ module Data.Aeson.Types.Class
     -- ** Generic JSON classes
     , GFromJSON(..)
     , GToJSON(..)
+    , genericToJSON
+    , genericParseJSON
 #endif
     -- * Types
     , DotNetTime(..)
@@ -88,11 +90,29 @@ import qualified Data.Vector.Mutable as VM ( unsafeNew, unsafeWrite )
 #ifdef GENERICS
 import GHC.Generics
 
+-- | Class of generic representation types ('Rep') that can be converted to JSON.
 class GToJSON f where
-    gToJSON :: f a -> Value
+    -- | This method (applied to 'defaultOptions') is used as the
+    -- default generic implementation of 'toJSON'.
+    gToJSON :: Options -> f a -> Value
 
+-- | Class of generic representation types ('Rep') that can be converted from JSON.
 class GFromJSON f where
-    gParseJSON :: Value -> Parser (f a)
+    -- | This method (applied to 'defaultOptions') is used as the
+    -- default generic implementation of 'parseJSON'.
+    gParseJSON :: Options -> Value -> Parser (f a)
+
+-- | A configurable generic JSON encoder. This function applied to
+-- 'defaultOptions' is used as the default for 'toJSON' when the type
+-- is an instance of 'Generic'.
+genericToJSON :: (Generic a, GToJSON (Rep a)) => Options -> a -> Value
+genericToJSON opts = gToJSON opts . from
+
+-- | A configurable generic JSON decoder. This function applied to
+-- 'defaultOptions' is used as the default for 'parseJSON' when the
+-- type is an instance of 'Generic'.
+genericParseJSON :: (Generic a, GFromJSON (Rep a)) => Options -> Value -> Parser a
+genericParseJSON opts = fmap to . gParseJSON opts
 #endif
 
 -- | A type that can be converted to JSON.
@@ -138,12 +158,21 @@ class GFromJSON f where
 --
 -- instance ToJSON Coord
 -- @
+--
+-- Note that, instead of using @DefaultSignatures@, it's also possible
+-- to parameterize the generic encoding using 'genericToJSON' applied
+-- to your encoding/decoding 'Options':
+--
+-- @
+-- instance ToJSON Coord where
+--     toJSON = 'genericToJSON' 'defaultOptions'
+-- @
 class ToJSON a where
     toJSON   :: a -> Value
 
 #ifdef GENERICS
     default toJSON :: (Generic a, GToJSON (Rep a)) => a -> Value
-    toJSON = gToJSON . from
+    toJSON = genericToJSON defaultOptions
 #endif
 
 -- | A type that can be converted from JSON, with the possibility of
@@ -199,12 +228,22 @@ class ToJSON a where
 --
 -- instance FromJSON Coord
 -- @
+--
+-- Note that, instead of using @DefaultSignatures@, it's also possible
+-- to parameterize the generic decoding using 'genericParseJSON' applied
+-- to your encoding/decoding 'Options':
+--
+-- @
+-- instance FromJSON Coord where
+--     parseJSON = 'genericParseJSON' 'defaultOptions'
+-- @
+
 class FromJSON a where
     parseJSON :: Value -> Parser a
 
 #ifdef GENERICS
     default parseJSON :: (Generic a, GFromJSON (Rep a)) => Value -> Parser a
-    parseJSON = fmap to . gParseJSON
+    parseJSON = genericParseJSON defaultOptions
 #endif
 
 instance (ToJSON a) => ToJSON (Maybe a) where

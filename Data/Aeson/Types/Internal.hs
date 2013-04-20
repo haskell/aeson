@@ -29,6 +29,12 @@ module Data.Aeson.Types.Internal
     , modifyFailure
     -- * Constructors and accessors
     , object
+
+    -- * Generic and TH encoding configuration
+    , Options(..)
+    , SumEncoding(..)
+    , defaultOptions
+    , defaultObjectWithType
     ) where
 
 import Control.Applicative
@@ -238,3 +244,83 @@ object = Object . H.fromList
 -- Since 0.6.2.0
 modifyFailure :: (String -> String) -> Parser a -> Parser a
 modifyFailure f (Parser p) = Parser $ \kf -> p (kf . f)
+
+--------------------------------------------------------------------------------
+-- Generic and TH encoding configuration
+--------------------------------------------------------------------------------
+
+-- | Options that specify how to encode/decode your datatype to/from JSON.
+data Options = Options
+    { fieldNameModifier :: String -> String
+      -- ^ Function applied to field names.
+      -- Handy for removing common record prefixes for example.
+    , constructorNameModifier :: String -> String
+      -- ^ Function applied to constructor names.
+      -- Handy for lower-casing constructor names for example.
+    , nullaryToString   :: Bool
+      -- ^ If 'True' the constructors of a datatype, with all nullary
+      -- constructors, will be encoded to a string with the
+      -- constructor name. If 'False' the encoding will always follow
+      -- the `sumEncoding`.
+    , omitNothingFields :: Bool
+      -- ^ If 'True' record fields with a 'Nothing' value will be
+      -- omitted from the resulting object. If 'False' the resulting
+      -- object will include those fields with @null@ values.
+    , sumEncoding       :: SumEncoding
+      -- ^ Specifies how to encode constructors of a sum datatype.
+    }
+
+-- | Specifies how to encode constructors of a sum datatype.
+data SumEncoding =
+    TwoElemArray -- ^ A constructor will be encoded to a 2-element
+                 -- array where the first element is the name of the
+                 -- constructor (modified by the
+                 -- 'constructorNameModifier') and the second element
+                 -- the content of the constructor.
+  | ObjectWithType { typeFieldName  :: String
+                   , valueFieldName :: String
+                   }
+    -- ^ A constructor will be encoded to an object with a field
+    -- 'typeFieldName' which specifies the constructor name (modified
+    -- by the 'constructorNameModifier'). If the constructor is not a
+    -- record the constructor content will be stored under the
+    -- 'valueFieldName' field.
+  | ObjectWithSingleField
+    -- ^ A constructor will be encoded to an object with a single
+    -- field named after the constructor (modified by the
+    -- 'constructorNameModifier') and the value will be the contents
+    -- of the constructor.
+
+-- | Default encoding 'Options':
+--
+-- @
+-- 'Options'
+-- { 'fieldNameModifier'       = id
+-- , 'constructorNameModifier' = id
+-- , 'nullaryToString'         = True
+-- , 'omitNothingFields'       = False
+-- , 'sumEncoding'             = 'defaultObjectWithType'
+-- }
+-- @
+defaultOptions :: Options
+defaultOptions = Options
+                 { fieldNameModifier       = id
+                 , constructorNameModifier = id
+                 , nullaryToString         = True
+                 , omitNothingFields       = False
+                 , sumEncoding             = defaultObjectWithType
+                 }
+
+-- | Default 'ObjectWithType' 'SumEncoding' options:
+--
+-- @
+-- defaultObjectWithType = 'ObjectWithType'
+--                         { 'typeFieldName'  = \"type\"
+--                         , 'valueFieldName' = \"value\"
+--                         }
+-- @
+defaultObjectWithType :: SumEncoding
+defaultObjectWithType = ObjectWithType
+                        { typeFieldName  = "type"
+                        , valueFieldName = "value"
+                        }

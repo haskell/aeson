@@ -6,7 +6,7 @@ module Instances where
 import Types
 import Data.Function (on)
 import Control.Monad
-import Test.QuickCheck (Arbitrary(..), Gen, choose, oneof)
+import Test.QuickCheck (Arbitrary(..), Gen, choose, oneof, elements)
 import Data.Time.Clock (DiffTime, UTCTime(..), picosecondsToDiffTime)
 import Data.Time (ZonedTime(..), LocalTime(..), TimeZone(..),
                   hoursToTimeZone, Day(..), TimeOfDay(..))
@@ -130,3 +130,13 @@ instance (FromJSON a) => FromJSON (Approx a) where
 
 instance (ToJSON a) => ToJSON (Approx a) where
     toJSON = toJSON . fromApprox
+
+instance Arbitrary Nullary where
+    arbitrary = elements [C1, C2, C3]
+
+instance Arbitrary a => Arbitrary (SomeType a) where
+    arbitrary = oneof [ pure Nullary
+                      , Unary   <$> arbitrary
+                      , Product <$> arbitrary <*> arbitrary <*> arbitrary
+                      , Record  <$> arbitrary <*> arbitrary <*> arbitrary
+                      ]

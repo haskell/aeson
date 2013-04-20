@@ -45,3 +45,13 @@ newtype Approx a = Approx { fromApprox :: a }
 
 instance (ApproxEq a) => Eq (Approx a) where
     Approx a == Approx b = a =~ b
+
+data Nullary = C1 | C2 | C3 deriving (Eq, Show, Generic)
+
+data SomeType a = Nullary
+                | Unary Int
+                | Product String (Maybe Char) a
+                | Record { testOne   :: Double
+                         , testTwo   :: Maybe Bool
+                         , testThree :: Maybe a
+                         } deriving (Eq, Show, Generic)
