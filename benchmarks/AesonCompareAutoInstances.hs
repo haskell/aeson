@@ -13,19 +13,25 @@ import Data.Data (Data)
 import GHC.Generics (Generic)
 
 import Data.Aeson.Types
-import Data.Aeson.TH (mkToJSON, mkParseJSON)
+import Data.Aeson.TH
 import qualified Data.Aeson.Generic as G (fromJSON, toJSON)
+
+import Data.Aeson.Encode
+
+import Options
 
 --------------------------------------------------------------------------------
 
--- Taken from the documentation of Data.Aeson.TH:
 data D a = Nullary
          | Unary Int
          | Product String Char a
          | Record { testOne   :: Double
                   , testTwo   :: Bool
                   , testThree :: D a
-                  } deriving (Show, Eq, Generic, Data, Typeable)
+                  }
+           deriving (Show, Eq, Data, Typeable)
+
+deriveJSON opts ''D
 
 instance NFData a => NFData (D a) where
     rnf Nullary         = ()
@@ -47,17 +53,42 @@ d = Record
                     }
     }
 
-instance ToJSON   a => ToJSON   (D a)
-instance FromJSON a => FromJSON (D a)
+--------------------------------------------------------------------------------
 
-thDToJSON :: ToJSON a => D a -> Value
-thDToJSON = $(mkToJSON defaultOptions ''D)
+data D' a = Nullary'
+          | Unary' Int
+          | Product' String Char a
+          | Record' { testOne'   :: Double
+                    , testTwo'   :: Bool
+                    , testThree' :: D' a
+                    }
+            deriving (Show, Eq, Generic, Data, Typeable)
 
-thDParseJSON :: FromJSON a => Value -> Parser (D a)
-thDParseJSON = $(mkParseJSON defaultOptions ''D)
+instance ToJSON a => ToJSON (D' a) where
+    toJSON = genericToJSON opts
 
-thDFromJSON :: FromJSON a => Value -> Result (D a)
-thDFromJSON = parse thDParseJSON
+instance FromJSON a => FromJSON (D' a) where
+    parseJSON = genericParseJSON opts
+
+instance NFData a => NFData (D' a) where
+    rnf Nullary'         = ()
+    rnf (Unary' n)       = rnf n
+    rnf (Product' s c x) = s `deepseq` c `deepseq` rnf x
+    rnf (Record' d b y)  = d `deepseq` b `deepseq` rnf y
+
+type T' = D' (D' (D' ()))
+
+d' :: T'
+d' = Record'
+    { testOne' = 1234.56789
+    , testTwo' = True
+    , testThree' = Product' "Hello World!" 'a' $
+                    Record'
+                    { testOne'   = 9876.54321
+                    , testTwo'   = False
+                    , testThree' = Product' "Yeehaa!!!" '\n' Nullary'
+                    }
+    }
 
 --------------------------------------------------------------------------------
 
@@ -77,17 +108,17 @@ bigRecord = BigRecord 1   2  3  4  5
                       16 17 18 19 20
                       21 22 23 24 25
 
-instance ToJSON   BigRecord
-instance FromJSON BigRecord
+gBigRecordToJSON :: BigRecord -> Value
+gBigRecordToJSON = genericToJSON opts
+
+gBigRecordFromJSON :: Value -> Result BigRecord
+gBigRecordFromJSON = parse $ genericParseJSON opts
 
 thBigRecordToJSON :: BigRecord -> Value
-thBigRecordToJSON = $(mkToJSON defaultOptions ''BigRecord)
-
-thBigRecordParseJSON :: Value -> Parser BigRecord
-thBigRecordParseJSON = $(mkParseJSON defaultOptions ''BigRecord)
+thBigRecordToJSON = $(mkToJSON opts ''BigRecord)
 
 thBigRecordFromJSON :: Value -> Result BigRecord
-thBigRecordFromJSON = parse thBigRecordParseJSON
+thBigRecordFromJSON = parse $(mkParseJSON opts ''BigRecord)
 
 --------------------------------------------------------------------------------
 
@@ -107,17 +138,17 @@ bigProduct = BigProduct 1   2  3  4  5
                         16 17 18 19 20
                         21 22 23 24 25
 
-instance ToJSON   BigProduct
-instance FromJSON BigProduct
+gBigProductToJSON :: BigProduct -> Value
+gBigProductToJSON = genericToJSON opts
+
+gBigProductFromJSON :: Value -> Result BigProduct
+gBigProductFromJSON = parse $ genericParseJSON opts
 
 thBigProductToJSON :: BigProduct -> Value
-thBigProductToJSON = $(mkToJSON defaultOptions ''BigProduct)
-
-thBigProductParseJSON :: Value -> Parser BigProduct
-thBigProductParseJSON = $(mkParseJSON defaultOptions ''BigProduct)
+thBigProductToJSON = $(mkToJSON opts ''BigProduct)
 
 thBigProductFromJSON :: Value -> Result BigProduct
-thBigProductFromJSON = parse thBigProductParseJSON
+thBigProductFromJSON = parse $(mkParseJSON opts ''BigProduct)
 
 --------------------------------------------------------------------------------
 
@@ -132,17 +163,17 @@ instance NFData BigSum
 
 bigSum = F25
 
-instance ToJSON   BigSum
-instance FromJSON BigSum
+gBigSumToJSON :: BigSum -> Value
+gBigSumToJSON = genericToJSON opts
+
+gBigSumFromJSON :: Value -> Result BigSum
+gBigSumFromJSON = parse $ genericParseJSON opts
 
 thBigSumToJSON :: BigSum -> Value
-thBigSumToJSON = $(mkToJSON defaultOptions ''BigSum)
-
-thBigSumParseJSON :: Value -> Parser BigSum
-thBigSumParseJSON = $(mkParseJSON defaultOptions ''BigSum)
+thBigSumToJSON = $(mkToJSON opts ''BigSum)
 
 thBigSumFromJSON :: Value -> Result BigSum
-thBigSumFromJSON = parse thBigSumParseJSON
+thBigSumFromJSON = parse $(mkParseJSON opts ''BigSum)
 
 --------------------------------------------------------------------------------
 
@@ -150,45 +181,45 @@ type FJ a = Value -> Result a
 
 main :: IO ()
 main = defaultMain
-  [ let v = thDToJSON d
-    in d `deepseq` v `deepseq`
+  [ let v = toJSON d
+    in (d, d', v) `deepseq`
        bgroup "D"
-       [ group "toJSON"   (nf thDToJSON d)
-                          (nf G.toJSON  d)
-                          (nf toJSON    d)
-       , group "fromJSON" (nf (thDFromJSON :: FJ T) v)
-                          (nf (G.fromJSON  :: FJ T) v)
-                          (nf (fromJSON    :: FJ T) v)
+       [ group "toJSON"   (nf   toJSON d)
+                          (nf G.toJSON d)
+                          (nf   toJSON d')
+       , group "fromJSON" (nf (  fromJSON :: FJ T ) v)
+                          (nf (G.fromJSON :: FJ T ) v)
+                          (nf (  fromJSON :: FJ T') v)
        ]
   , let v = thBigRecordToJSON bigRecord
     in bigRecord `deepseq` v `deepseq`
        bgroup "BigRecord"
        [ group "toJSON"   (nf thBigRecordToJSON bigRecord)
                           (nf G.toJSON          bigRecord)
-                          (nf toJSON            bigRecord)
+                          (nf gBigRecordToJSON  bigRecord)
        , group "fromJSON" (nf (thBigRecordFromJSON :: FJ BigRecord) v)
                           (nf (G.fromJSON          :: FJ BigRecord) v)
-                          (nf (fromJSON            :: FJ BigRecord) v)
+                          (nf (gBigRecordFromJSON  :: FJ BigRecord) v)
        ]
   , let v = thBigProductToJSON bigProduct
     in bigProduct `deepseq` v `deepseq`
        bgroup "BigProduct"
        [ group "toJSON"   (nf thBigProductToJSON bigProduct)
                           (nf G.toJSON           bigProduct)
-                          (nf toJSON             bigProduct)
+                          (nf gBigProductToJSON  bigProduct)
        , group "fromJSON" (nf (thBigProductFromJSON :: FJ BigProduct) v)
                           (nf (G.fromJSON           :: FJ BigProduct) v)
-                          (nf (fromJSON             :: FJ BigProduct) v)
+                          (nf (gBigProductFromJSON  :: FJ BigProduct) v)
        ]
   , let v = thBigSumToJSON bigSum
     in bigSum `deepseq` v `deepseq`
        bgroup "BigSum"
        [ group "toJSON"   (nf thBigSumToJSON bigSum)
                           (nf G.toJSON       bigSum)
-                          (nf toJSON         bigSum)
+                          (nf gBigSumToJSON  bigSum)
        , group "fromJSON" (nf (thBigSumFromJSON :: FJ BigSum) v)
                           (nf (G.fromJSON       :: FJ BigSum) v)
-                          (nf (fromJSON         :: FJ BigSum) v)
+                          (nf (gBigSumFromJSON  :: FJ BigSum) v)
        ]
   ]
 
