@@ -4,7 +4,7 @@ module Main where
 
 --------------------------------------------------------------------------------
 
-import Criterion.Main
+import Criterion.Main hiding (defaultOptions)
 
 import Control.DeepSeq (NFData, rnf, deepseq)
 
@@ -51,10 +51,10 @@ instance ToJSON   a => ToJSON   (D a)
 instance FromJSON a => FromJSON (D a)
 
 thDToJSON :: ToJSON a => D a -> Value
-thDToJSON = $(mkToJSON id ''D)
+thDToJSON = $(mkToJSON defaultOptions ''D)
 
 thDParseJSON :: FromJSON a => Value -> Parser (D a)
-thDParseJSON = $(mkParseJSON id ''D)
+thDParseJSON = $(mkParseJSON defaultOptions ''D)
 
 thDFromJSON :: FromJSON a => Value -> Result (D a)
 thDFromJSON = parse thDParseJSON
@@ -81,10 +81,10 @@ instance ToJSON   BigRecord
 instance FromJSON BigRecord
 
 thBigRecordToJSON :: BigRecord -> Value
-thBigRecordToJSON = $(mkToJSON id ''BigRecord)
+thBigRecordToJSON = $(mkToJSON defaultOptions ''BigRecord)
 
 thBigRecordParseJSON :: Value -> Parser BigRecord
-thBigRecordParseJSON = $(mkParseJSON id ''BigRecord)
+thBigRecordParseJSON = $(mkParseJSON defaultOptions ''BigRecord)
 
 thBigRecordFromJSON :: Value -> Result BigRecord
 thBigRecordFromJSON = parse thBigRecordParseJSON
@@ -111,10 +111,10 @@ instance ToJSON   BigProduct
 instance FromJSON BigProduct
 
 thBigProductToJSON :: BigProduct -> Value
-thBigProductToJSON = $(mkToJSON id ''BigProduct)
+thBigProductToJSON = $(mkToJSON defaultOptions ''BigProduct)
 
 thBigProductParseJSON :: Value -> Parser BigProduct
-thBigProductParseJSON = $(mkParseJSON id ''BigProduct)
+thBigProductParseJSON = $(mkParseJSON defaultOptions ''BigProduct)
 
 thBigProductFromJSON :: Value -> Result BigProduct
 thBigProductFromJSON = parse thBigProductParseJSON
@@ -136,10 +136,10 @@ instance ToJSON   BigSum
 instance FromJSON BigSum
 
 thBigSumToJSON :: BigSum -> Value
-thBigSumToJSON = $(mkToJSON id ''BigSum)
+thBigSumToJSON = $(mkToJSON defaultOptions ''BigSum)
 
 thBigSumParseJSON :: Value -> Parser BigSum
-thBigSumParseJSON = $(mkParseJSON id ''BigSum)
+thBigSumParseJSON = $(mkParseJSON defaultOptions ''BigSum)
 
 thBigSumFromJSON :: Value -> Result BigSum
 thBigSumFromJSON = parse thBigSumParseJSON
@@ -192,7 +192,9 @@ main = defaultMain
        ]
   ]
 
-group n th syb gen = bgroup n [ bench "th"      th
-                              , bench "syb"     syb
-                              , bench "generic" gen
-                              ]
+group n th syb gen = bcompare
+                     [ bgroup n [ bench "th"      th
+                                , bench "syb"     syb
+                                , bench "generic" gen
+                                ]
+                     ]
