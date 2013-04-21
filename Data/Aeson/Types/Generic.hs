@@ -54,15 +54,15 @@ instance GToJSON U1 where
 
 instance (ConsToJSON a) => GToJSON (C1 c a) where
     -- Constructors need to be encoded differently depending on whether they're
-    -- a record or not. This distinction is made by constToJSON:
+    -- a record or not. This distinction is made by 'constToJSON':
     gToJSON opts = consToJSON opts . unM1
     {-# INLINE gToJSON #-}
 
 instance ( WriteProduct a, WriteProduct b
          , ProductSize  a, ProductSize  b ) => GToJSON (a :*: b) where
     -- Products are encoded to an array. Here we allocate a mutable vector of
-    -- the the same size as the product and write the product's elements to it
-    -- using writeProduct:
+    -- the same size as the product and write the product's elements to it using
+    -- 'writeProduct':
     gToJSON opts p =
         Array $ V.create $ do
           mv <- VM.unsafeNew lenProduct
@@ -73,19 +73,19 @@ instance ( WriteProduct a, WriteProduct b
                        productSize
     {-# INLINE gToJSON #-}
 
-instance ( AllNullary (a :+: b) bool
-         , SumToJSON  (a :+: b) bool ) => GToJSON (a :+: b) where
+instance ( AllNullary (a :+: b) allNullary
+         , SumToJSON  (a :+: b) allNullary ) => GToJSON (a :+: b) where
     -- If all constructors of a sum datatype are nullary and the
     -- 'nullaryToString' option is set they are encoded to strings.
     -- This distinction is made by 'sumToJSON':
-    gToJSON opts = (unTagged :: Tagged bool Value -> Value)
+    gToJSON opts = (unTagged :: Tagged allNullary Value -> Value)
                  . sumToJSON opts
     {-# INLINE gToJSON #-}
 
 --------------------------------------------------------------------------------
 
-class SumToJSON f bool where
-    sumToJSON :: Options -> f a -> Tagged bool Value
+class SumToJSON f allNullary where
+    sumToJSON :: Options -> f a -> Tagged allNullary Value
 
 instance ( GetConName            f
          , ObjectWithType        f
@@ -128,21 +128,21 @@ instance ( ObjectWithType a
         objectWithType opts typeFieldName valueFieldName     x
     {-# INLINE objectWithType #-}
 
-instance ( IsRecord        a bool
-         , ObjectWithType' a bool
+instance ( IsRecord        a isRecord
+         , ObjectWithType' a isRecord
          , Constructor c ) => ObjectWithType (C1 c a) where
     objectWithType opts typeFieldName valueFieldName =
         (pack typeFieldName .= constructorNameModifier opts
                                  (conName (undefined :: t c a p)) :) .
-        (unTagged :: Tagged bool [Pair] -> [Pair]) .
+        (unTagged :: Tagged isRecord [Pair] -> [Pair]) .
           objectWithType' opts valueFieldName . unM1
     {-# INLINE objectWithType #-}
 
-class ObjectWithType' f bool where
-    objectWithType' :: Options -> String -> f a -> Tagged bool [Pair]
+class ObjectWithType' f isRecord where
+    objectWithType' :: Options -> String -> f a -> Tagged isRecord [Pair]
 
-instance (GRecordToPairs f) => ObjectWithType' f True where
-    objectWithType' opts _ = Tagged . toList . gRecordToPairs opts
+instance (RecordToPairs f) => ObjectWithType' f True where
+    objectWithType' opts _ = Tagged . toList . recordToPairs opts
     {-# INLINE objectWithType' #-}
 
 instance (GToJSON f) => ObjectWithType' f False where
@@ -190,17 +190,17 @@ instance ( GToJSON a, ConsToJSON a
 class ConsToJSON f where
     consToJSON  :: Options -> f a -> Value
 
-class ConsToJSON' f bool where
-    consToJSON' :: Options -> f a -> Tagged bool Value
+class ConsToJSON' f isRecord where
+    consToJSON' :: Options -> f a -> Tagged isRecord Value
 
-instance ( IsRecord    f bool
-         , ConsToJSON' f bool ) => ConsToJSON f where
-    consToJSON opts = (unTagged :: Tagged bool Value -> Value)
+instance ( IsRecord    f isRecord
+         , ConsToJSON' f isRecord ) => ConsToJSON f where
+    consToJSON opts = (unTagged :: Tagged isRecord Value -> Value)
                     . consToJSON' opts
     {-# INLINE consToJSON #-}
 
-instance (GRecordToPairs f) => ConsToJSON' f True where
-    consToJSON' opts = Tagged . object . toList . gRecordToPairs opts
+instance (RecordToPairs f) => ConsToJSON' f True where
+    consToJSON' opts = Tagged . object . toList . recordToPairs opts
     {-# INLINE consToJSON' #-}
 
 instance GToJSON f => ConsToJSON' f False where
@@ -209,27 +209,29 @@ instance GToJSON f => ConsToJSON' f False where
 
 --------------------------------------------------------------------------------
 
-class GRecordToPairs f where
-    gRecordToPairs :: Options -> f a -> DList Pair
+class RecordToPairs f where
+    recordToPairs :: Options -> f a -> DList Pair
 
-instance (GRecordToPairs a, GRecordToPairs b) => GRecordToPairs (a :*: b) where
-    gRecordToPairs opts (a :*: b) = gRecordToPairs opts a `mappend`
-                                    gRecordToPairs opts b
-    {-# INLINE gRecordToPairs #-}
+instance (RecordToPairs a, RecordToPairs b) => RecordToPairs (a :*: b) where
+    recordToPairs opts (a :*: b) = recordToPairs opts a `mappend`
+                                   recordToPairs opts b
+    {-# INLINE recordToPairs #-}
 
-instance (Selector s, GToJSON a) => GRecordToPairs (S1 s a) where
-    gRecordToPairs opts m1 = pure ( pack $ fieldNameModifier opts $ selName m1
-                                  , gToJSON opts (unM1 m1)
-                                  )
-    {-# INLINE gRecordToPairs #-}
+instance (Selector s, GToJSON a) => RecordToPairs (S1 s a) where
+    recordToPairs = fieldToPair
+    {-# INLINE recordToPairs #-}
 
-instance (Selector s, ToJSON a) => GRecordToPairs (S1 s (K1 i (Maybe a))) where
-    gRecordToPairs opts (M1 k1) | omitNothingFields opts
-                                , K1 Nothing <- k1 = empty
-    gRecordToPairs opts m1 = pure ( pack $ fieldNameModifier opts $ selName m1
-                                  , gToJSON opts (unM1 m1)
-                                  )
-    {-# INLINE gRecordToPairs #-}
+instance (Selector s, ToJSON a) => RecordToPairs (S1 s (K1 i (Maybe a))) where
+    recordToPairs opts (M1 k1) | omitNothingFields opts
+                               , K1 Nothing <- k1 = empty
+    recordToPairs opts m1 = fieldToPair opts m1
+    {-# INLINE recordToPairs #-}
+
+fieldToPair :: (Selector s, GToJSON a) => Options -> S1 s a p -> DList Pair
+fieldToPair opts m1 = pure ( pack $ fieldNameModifier opts $ selName m1
+                           , gToJSON opts (unM1 m1)
+                           )
+{-# INLINE fieldToPair #-}
 
 --------------------------------------------------------------------------------
 
@@ -318,20 +320,20 @@ instance ( FromProduct a, FromProduct b
                   " elements instead"
     {-# INLINE gParseJSON #-}
 
-instance ( AllNullary (a :+: b) bool
-         , ParseSum   (a :+: b) bool ) => GFromJSON   (a :+: b) where
+instance ( AllNullary (a :+: b) allNullary
+         , ParseSum   (a :+: b) allNullary ) => GFromJSON   (a :+: b) where
     -- If all constructors of a sum datatype are nullary and the
     -- 'nullaryToString' option is set they are expected to be encoded as
     -- strings.  This distinction is made by 'parseSum':
-    gParseJSON opts = (unTagged :: Tagged bool (Parser ((a :+: b) d)) ->
-                                               (Parser ((a :+: b) d)))
+    gParseJSON opts = (unTagged :: Tagged allNullary (Parser ((a :+: b) d)) ->
+                                                     (Parser ((a :+: b) d)))
                     . parseSum opts
     {-# INLINE gParseJSON #-}
 
 --------------------------------------------------------------------------------
 
-class ParseSum f bool where
-    parseSum :: Options -> Value -> Tagged bool (Parser (f a))
+class ParseSum f allNullary where
+    parseSum :: Options -> Value -> Tagged allNullary (Parser (f a))
 
 instance ( SumFromString      (a :+: b)
          , FromPair           (a :+: b)
@@ -429,15 +431,15 @@ instance ( FromObjectWithType' f
 class FromObjectWithType' f where
     parseFromObjectWithType' :: Options -> String -> Object -> Parser (f a)
 
-class FromObjectWithType'' f bool where
+class FromObjectWithType'' f isRecord where
     parseFromObjectWithType'' :: Options -> String -> Object
-                              -> Tagged bool (Parser (f a))
+                              -> Tagged isRecord (Parser (f a))
 
-instance ( IsRecord               f bool
-         , FromObjectWithType''   f bool
+instance ( IsRecord               f isRecord
+         , FromObjectWithType''   f isRecord
          ) => FromObjectWithType' f where
     parseFromObjectWithType' opts valueFieldName =
-        (unTagged :: Tagged bool (Parser (f a)) -> Parser (f a)) .
+        (unTagged :: Tagged isRecord (Parser (f a)) -> Parser (f a)) .
         parseFromObjectWithType'' opts valueFieldName
     {-# INLINE parseFromObjectWithType' #-}
 
@@ -455,13 +457,13 @@ instance (GFromJSON f) => FromObjectWithType'' f False where
 class ConsFromJSON f where
     consParseJSON  :: Options -> Value -> Parser (f a)
 
-class ConsFromJSON' f bool where
-    consParseJSON' :: Options -> Value -> Tagged bool (Parser (f a))
+class ConsFromJSON' f isRecord where
+    consParseJSON' :: Options -> Value -> Tagged isRecord (Parser (f a))
 
-instance ( IsRecord        f bool
-         , ConsFromJSON'   f bool
+instance ( IsRecord        f isRecord
+         , ConsFromJSON'   f isRecord
          ) => ConsFromJSON f where
-    consParseJSON opts = (unTagged :: Tagged bool (Parser (f a)) -> Parser (f a))
+    consParseJSON opts = (unTagged :: Tagged isRecord (Parser (f a)) -> Parser (f a))
                        . consParseJSON' opts
     {-# INLINE consParseJSON #-}
 
@@ -551,29 +553,31 @@ instance (Constructor c, GFromJSON a, ConsFromJSON a) => FromPair (C1 c a) where
 
 --------------------------------------------------------------------------------
 
-class IsRecord (f :: * -> *) bool | f -> bool
+class IsRecord (f :: * -> *) isRecord | f -> isRecord
 
-data True
-data False
-
-instance (IsRecord f bool) => IsRecord (f :*: g) bool
+instance (IsRecord f isRecord) => IsRecord (f :*: g) isRecord
 instance IsRecord (M1 S NoSelector f) False
-instance (IsRecord f bool) => IsRecord (M1 S c f) bool
+instance (IsRecord f isRecord) => IsRecord (M1 S c f) isRecord
 instance IsRecord (K1 i c) True
 instance IsRecord U1 False
 
 --------------------------------------------------------------------------------
 
-class AllNullary (f :: * -> *) bool | f -> bool
+class AllNullary (f :: * -> *) allNullary | f -> allNullary
 
-instance ( AllNullary a bool1
-         , AllNullary b bool2
-         , And bool1 bool2 bool3
-         ) => AllNullary (a :+: b) bool3
-instance AllNullary a bool => AllNullary (M1 i c a) bool
+instance ( AllNullary a allNullaryL
+         , AllNullary b allNullaryR
+         , And allNullaryL allNullaryR allNullary
+         ) => AllNullary (a :+: b) allNullary
+instance AllNullary a allNullary => AllNullary (M1 i c a) allNullary
 instance AllNullary (a :*: b) False
 instance AllNullary (K1 i c) False
 instance AllNullary U1 True
+
+--------------------------------------------------------------------------------
+
+data True
+data False
 
 class    And bool1 bool2 bool3 | bool1 bool2 -> bool3
 
