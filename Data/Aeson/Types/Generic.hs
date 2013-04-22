@@ -1,4 +1,4 @@
-{-# LANGUAGE DefaultSignatures, EmptyDataDecls, FlexibleInstances,
+{-# LANGUAGE CPP, DefaultSignatures, EmptyDataDecls, FlexibleInstances,
     FunctionalDependencies, KindSignatures, OverlappingInstances,
     ScopedTypeVariables, TypeOperators, UndecidableInstances,
     ViewPatterns, NamedFieldPuns, FlexibleContexts, PatternGuards,
@@ -24,7 +24,7 @@ import Control.Monad ((<=<))
 import Control.Monad.ST (ST)
 import Data.Aeson.Types.Class
 import Data.Aeson.Types.Internal
-import Data.Bits (shiftR)
+import Data.Bits
 import Data.DList (DList, toList, empty)
 import Data.Maybe (fromMaybe)
 import Data.Monoid (mappend)
@@ -249,7 +249,11 @@ instance ( WriteProduct a
       writeProduct opts mv ix  lenL a
       writeProduct opts mv ixR lenR b
         where
+#if MIN_VERSION_base(4,5,0)
+          lenL = len `unsafeShiftR` 1
+#else
           lenL = len `shiftR` 1
+#endif
           lenR = len - lenL
           ixR  = ix  + lenL
     {-# INLINE writeProduct #-}
@@ -523,7 +527,11 @@ instance (FromProduct a, FromProduct b) => FromProduct (a :*: b) where
         (:*:) <$> parseProduct opts arr ix  lenL
               <*> parseProduct opts arr ixR lenR
         where
+#if MIN_VERSION_base(4,5,0)
+          lenL = len `unsafeShiftR` 1
+#else
           lenL = len `shiftR` 1
+#endif
           ixR  = ix + lenL
           lenR = len - lenL
     {-# INLINE parseProduct #-}
