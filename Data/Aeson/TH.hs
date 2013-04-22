@@ -33,7 +33,7 @@ characters of every field name. We also modify constructor names by
 lower-casing them:
 
 @
-$('deriveJSON' 'defaultOptions'{'fieldNameModifier' = 'drop' 4, 'constructorTagModifier' = map toLower} ''D)
+$('deriveJSON' 'defaultOptions'{'fieldLabelModifier' = 'drop' 4, 'constructorTagModifier' = map toLower} ''D)
 @
 
 Now we can use the newly created instances.
@@ -317,7 +317,7 @@ encodeArgs opts multiCons (RecC conName ts) = do
                      [|(.=)|]
                      (varE arg)
 
-        toFieldName field = [|T.pack|] `appE` fieldNameExp opts field
+        toFieldName field = [|T.pack|] `appE` fieldLabelExp opts field
 
     match (conP conName $ map varP args)
           ( normalB
@@ -625,7 +625,7 @@ parseRecord opts tName conName ts obj =
                `appE` (litE $ stringL $ show tName)
                `appE` (litE $ stringL $ constructorTagModifier opts $ nameBase conName)
                `appE` (varE obj)
-               `appE` ( [|T.pack|] `appE` fieldNameExp opts field
+               `appE` ( [|T.pack|] `appE` fieldLabelExp opts field
                       )
              | (field, _, _) <- ts
              ]
@@ -858,11 +858,11 @@ conNameExp opts = litE
                 . nameBase
                 . getConName
 
--- | Creates a string literal expression from a record field name.
-fieldNameExp :: Options -- ^ Encoding options
-             -> Name
-             -> Q Exp
-fieldNameExp opts = litE . stringL . fieldNameModifier opts . nameBase
+-- | Creates a string literal expression from a record field label.
+fieldLabelExp :: Options -- ^ Encoding options
+              -> Name
+              -> Q Exp
+fieldLabelExp opts = litE . stringL . fieldLabelModifier opts . nameBase
 
 -- | The name of the outermost 'Value' constructor.
 valueConName :: Value -> String

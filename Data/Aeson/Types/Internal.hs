@@ -251,8 +251,8 @@ modifyFailure f (Parser p) = Parser $ \kf -> p (kf . f)
 
 -- | Options that specify how to encode\/decode your datatype to\/from JSON.
 data Options = Options
-    { fieldNameModifier :: String -> String
-      -- ^ Function applied to field names.
+    { fieldLabelModifier :: String -> String
+      -- ^ Function applied to field labels.
       -- Handy for removing common record prefixes for example.
     , constructorTagModifier :: String -> String
       -- ^ Function applied to constructor tags which could be handy
@@ -299,7 +299,7 @@ data SumEncoding =
 --
 -- @
 -- 'Options'
--- { 'fieldNameModifier'       = id
+-- { 'fieldLabelModifier'      = id
 -- , 'constructorTagModifier'  = id
 -- , 'nullaryToString'         = True
 -- , 'omitNothingFields'       = False
@@ -308,7 +308,7 @@ data SumEncoding =
 -- @
 defaultOptions :: Options
 defaultOptions = Options
-                 { fieldNameModifier       = id
+                 { fieldLabelModifier      = id
                  , constructorTagModifier  = id
                  , nullaryToString         = True
                  , omitNothingFields       = False
