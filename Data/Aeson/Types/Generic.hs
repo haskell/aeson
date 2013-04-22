@@ -88,67 +88,67 @@ class SumToJSON f allNullary where
     sumToJSON :: Options -> f a -> Tagged allNullary Value
 
 instance ( GetConName            f
-         , ObjectWithType        f
+         , TaggedObject          f
          , ObjectWithSingleField f
          , TwoElemArray          f ) => SumToJSON f True where
     sumToJSON opts
         | nullaryToString opts = Tagged . String . pack
-                               . constructorNameModifier opts . getConName
+                               . constructorTagModifier opts . getConName
         | otherwise = Tagged . nonAllNullarySumToJSON opts
     {-# INLINE sumToJSON #-}
 
 instance ( TwoElemArray          f
-         , ObjectWithType        f
+         , TaggedObject          f
          , ObjectWithSingleField f ) => SumToJSON f False where
     sumToJSON opts = Tagged . nonAllNullarySumToJSON opts
     {-# INLINE sumToJSON #-}
 
 nonAllNullarySumToJSON :: ( TwoElemArray          f
-                          , ObjectWithType        f
+                          , TaggedObject          f
                           , ObjectWithSingleField f
                           ) => Options -> f a -> Value
 nonAllNullarySumToJSON opts =
     case sumEncoding opts of
-      ObjectWithType{..}    -> object . objectWithType opts typeFieldName
-                                                            contentsFieldName
+      TaggedObject{..}      -> object . taggedObject opts tagFieldName
+                                                          contentsFieldName
       ObjectWithSingleField -> Object . objectWithSingleField opts
       TwoElemArray          -> Array  . twoElemArray opts
 {-# INLINE nonAllNullarySumToJSON #-}
 
 --------------------------------------------------------------------------------
 
-class ObjectWithType f where
-    objectWithType :: Options -> String -> String -> f a -> [Pair]
+class TaggedObject f where
+    taggedObject :: Options -> String -> String -> f a -> [Pair]
 
-instance ( ObjectWithType a
-         , ObjectWithType b ) => ObjectWithType (a :+: b) where
-    objectWithType     opts typeFieldName contentsFieldName (L1 x) =
-        objectWithType opts typeFieldName contentsFieldName     x
-    objectWithType     opts typeFieldName contentsFieldName (R1 x) =
-        objectWithType opts typeFieldName contentsFieldName     x
-    {-# INLINE objectWithType #-}
+instance ( TaggedObject a
+         , TaggedObject b ) => TaggedObject (a :+: b) where
+    taggedObject     opts tagFieldName contentsFieldName (L1 x) =
+        taggedObject opts tagFieldName contentsFieldName     x
+    taggedObject     opts tagFieldName contentsFieldName (R1 x) =
+        taggedObject opts tagFieldName contentsFieldName     x
+    {-# INLINE taggedObject #-}
 
-instance ( IsRecord        a isRecord
-         , ObjectWithType' a isRecord
-         , Constructor c ) => ObjectWithType (C1 c a) where
-    objectWithType opts typeFieldName contentsFieldName =
-        (pack typeFieldName .= constructorNameModifier opts
+instance ( IsRecord      a isRecord
+         , TaggedObject' a isRecord
+         , Constructor c ) => TaggedObject (C1 c a) where
+    taggedObject opts tagFieldName contentsFieldName =
+        (pack tagFieldName .= constructorTagModifier opts
                                  (conName (undefined :: t c a p)) :) .
         (unTagged :: Tagged isRecord [Pair] -> [Pair]) .
-          objectWithType' opts contentsFieldName . unM1
-    {-# INLINE objectWithType #-}
+          taggedObject' opts contentsFieldName . unM1
+    {-# INLINE taggedObject #-}
 
-class ObjectWithType' f isRecord where
-    objectWithType' :: Options -> String -> f a -> Tagged isRecord [Pair]
+class TaggedObject' f isRecord where
+    taggedObject' :: Options -> String -> f a -> Tagged isRecord [Pair]
 
-instance (RecordToPairs f) => ObjectWithType' f True where
-    objectWithType' opts _ = Tagged . toList . recordToPairs opts
-    {-# INLINE objectWithType' #-}
+instance (RecordToPairs f) => TaggedObject' f True where
+    taggedObject' opts _ = Tagged . toList . recordToPairs opts
+    {-# INLINE taggedObject' #-}
 
-instance (GToJSON f) => ObjectWithType' f False where
-    objectWithType' opts contentsFieldName =
+instance (GToJSON f) => TaggedObject' f False where
+    taggedObject' opts contentsFieldName =
         Tagged . (:[]) . (pack contentsFieldName .=) . gToJSON opts
-    {-# INLINE objectWithType' #-}
+    {-# INLINE taggedObject' #-}
 
 --------------------------------------------------------------------------------
 
@@ -179,7 +179,7 @@ instance ( GToJSON a, ConsToJSON a
          , Constructor c ) => TwoElemArray (C1 c a) where
     twoElemArray opts x = V.create $ do
       mv <- VM.unsafeNew 2
-      VM.unsafeWrite mv 0 $ String $ pack $ constructorNameModifier opts
+      VM.unsafeWrite mv 0 $ String $ pack $ constructorTagModifier opts
                                    $ conName (undefined :: t c a p)
       VM.unsafeWrite mv 1 $ gToJSON opts x
       return mv
@@ -277,7 +277,7 @@ instance ( GToJSON a, ConsToJSON a
          , Constructor c ) => ObjectWithSingleField (C1 c a) where
     objectWithSingleField opts = H.singleton typ . gToJSON opts
         where
-          typ = pack $ constructorNameModifier opts $
+          typ = pack $ constructorTagModifier opts $
                          conName (undefined :: t c a p)
     {-# INLINE objectWithSingleField #-}
 
@@ -339,16 +339,16 @@ instance ( AllNullary (a :+: b) allNullary
 class ParseSum f allNullary where
     parseSum :: Options -> Value -> Tagged allNullary (Parser (f a))
 
-instance ( SumFromString      (a :+: b)
-         , FromPair           (a :+: b)
-         , FromObjectWithType (a :+: b) ) => ParseSum (a :+: b) True where
+instance ( SumFromString    (a :+: b)
+         , FromPair         (a :+: b)
+         , FromTaggedObject (a :+: b) ) => ParseSum (a :+: b) True where
     parseSum opts
         | nullaryToString opts = Tagged . parseAllNullarySum    opts
         | otherwise            = Tagged . parseNonAllNullarySum opts
     {-# INLINE parseSum #-}
 
-instance ( FromPair           (a :+: b)
-         , FromObjectWithType (a :+: b) ) => ParseSum (a :+: b) False where
+instance ( FromPair         (a :+: b)
+         , FromTaggedObject (a :+: b) ) => ParseSum (a :+: b) False where
     parseSum opts = Tagged . parseNonAllNullarySum opts
     {-# INLINE parseSum #-}
 
@@ -372,89 +372,89 @@ instance (Constructor c) => SumFromString (C1 c U1) where
     parseSumFromString opts key | key == name = Just $ M1 U1
                                 | otherwise   = Nothing
         where
-          name = pack $ constructorNameModifier opts $
+          name = pack $ constructorTagModifier opts $
                           conName (undefined :: t c U1 p)
     {-# INLINE parseSumFromString #-}
 
 --------------------------------------------------------------------------------
 
 parseNonAllNullarySum :: ( FromPair                       (a :+: b)
-                         , FromObjectWithType             (a :+: b)
+                         , FromTaggedObject               (a :+: b)
                          ) => Options -> Value -> Parser ((a :+: b) c)
 parseNonAllNullarySum opts =
     case sumEncoding opts of
-      ObjectWithType{..}    ->
+      TaggedObject{..} ->
           withObject "Object" $ \obj -> do
-            key <- obj .: pack typeFieldName
-            fromMaybe (notFound $ unpack key) $
-              parseFromObjectWithType opts contentsFieldName obj key
+            tag <- obj .: pack tagFieldName
+            fromMaybe (notFound $ unpack tag) $
+              parseFromTaggedObject opts contentsFieldName obj tag
 
       ObjectWithSingleField ->
           withObject "Object" $ \obj ->
             case H.toList obj of
-              [keyVal@(key, _)] -> fromMaybe (notFound $ unpack key) $
-                                     parsePair opts keyVal
+              [pair@(tag, _)] -> fromMaybe (notFound $ unpack tag) $
+                                   parsePair opts pair
               _ -> fail "Object doesn't have a single field"
 
       TwoElemArray ->
           withArray "Array" $ \arr ->
             if V.length arr == 2
             then case V.unsafeIndex arr 0 of
-                   String key -> fromMaybe (notFound $ unpack key) $
-                                   parsePair opts (key, V.unsafeIndex arr 1)
+                   String tag -> fromMaybe (notFound $ unpack tag) $
+                                   parsePair opts (tag, V.unsafeIndex arr 1)
                    _ -> fail "First element is not a String"
             else fail "Array doesn't have 2 elements"
 {-# INLINE parseNonAllNullarySum #-}
 
 --------------------------------------------------------------------------------
 
-class FromObjectWithType f where
-    parseFromObjectWithType :: Options -> String -> Object -> Text
-                            -> Maybe (Parser (f a))
+class FromTaggedObject f where
+    parseFromTaggedObject :: Options -> String -> Object -> Text
+                          -> Maybe (Parser (f a))
 
-instance (FromObjectWithType a, FromObjectWithType b) =>
-    FromObjectWithType (a :+: b) where
-        parseFromObjectWithType opts contentsFieldName obj key =
-            (fmap L1 <$> parseFromObjectWithType opts contentsFieldName obj key) <|>
-            (fmap R1 <$> parseFromObjectWithType opts contentsFieldName obj key)
-        {-# INLINE parseFromObjectWithType #-}
+instance (FromTaggedObject a, FromTaggedObject b) =>
+    FromTaggedObject (a :+: b) where
+        parseFromTaggedObject opts contentsFieldName obj tag =
+            (fmap L1 <$> parseFromTaggedObject opts contentsFieldName obj tag) <|>
+            (fmap R1 <$> parseFromTaggedObject opts contentsFieldName obj tag)
+        {-# INLINE parseFromTaggedObject #-}
 
-instance ( FromObjectWithType' f
-         , Constructor c ) => FromObjectWithType (C1 c f) where
-    parseFromObjectWithType opts contentsFieldName obj key
-        | key == name = Just $ M1 <$> parseFromObjectWithType'
+instance ( FromTaggedObject' f
+         , Constructor c ) => FromTaggedObject (C1 c f) where
+    parseFromTaggedObject opts contentsFieldName obj tag
+        | tag == name = Just $ M1 <$> parseFromTaggedObject'
                                         opts contentsFieldName obj
         | otherwise = Nothing
         where
-          name = pack $ constructorNameModifier opts $
+          name = pack $ constructorTagModifier opts $
                           conName (undefined :: t c f p)
-    {-# INLINE parseFromObjectWithType #-}
+    {-# INLINE parseFromTaggedObject #-}
 
 --------------------------------------------------------------------------------
 
-class FromObjectWithType' f where
-    parseFromObjectWithType' :: Options -> String -> Object -> Parser (f a)
+class FromTaggedObject' f where
+    parseFromTaggedObject' :: Options -> String -> Object -> Parser (f a)
 
-class FromObjectWithType'' f isRecord where
-    parseFromObjectWithType'' :: Options -> String -> Object
-                              -> Tagged isRecord (Parser (f a))
+class FromTaggedObject'' f isRecord where
+    parseFromTaggedObject'' :: Options -> String -> Object
+                            -> Tagged isRecord (Parser (f a))
 
-instance ( IsRecord               f isRecord
-         , FromObjectWithType''   f isRecord
-         ) => FromObjectWithType' f where
-    parseFromObjectWithType' opts contentsFieldName =
+instance ( IsRecord             f isRecord
+         , FromTaggedObject''   f isRecord
+         ) => FromTaggedObject' f where
+    parseFromTaggedObject' opts contentsFieldName =
         (unTagged :: Tagged isRecord (Parser (f a)) -> Parser (f a)) .
-        parseFromObjectWithType'' opts contentsFieldName
-    {-# INLINE parseFromObjectWithType' #-}
+        parseFromTaggedObject'' opts contentsFieldName
+    {-# INLINE parseFromTaggedObject' #-}
 
-instance (FromRecord f) => FromObjectWithType'' f True where
-    parseFromObjectWithType'' opts _ = Tagged . parseRecord opts
-    {-# INLINE parseFromObjectWithType'' #-}
+instance (FromRecord f) => FromTaggedObject'' f True where
+    parseFromTaggedObject'' opts _ = Tagged . parseRecord opts
+    {-# INLINE parseFromTaggedObject'' #-}
 
-instance (GFromJSON f) => FromObjectWithType'' f False where
-    parseFromObjectWithType'' opts contentsFieldName = Tagged .
+instance (GFromJSON f) => FromTaggedObject'' f False where
+    parseFromTaggedObject'' opts contentsFieldName = Tagged .
       (gParseJSON opts <=< (.: pack contentsFieldName))
-    {-# INLINE parseFromObjectWithType'' #-}
+    {-# INLINE parseFromTaggedObject'' #-}
 
 --------------------------------------------------------------------------------
 
@@ -546,16 +546,16 @@ class FromPair f where
     parsePair :: Options -> Pair -> Maybe (Parser (f a))
 
 instance (FromPair a, FromPair b) => FromPair (a :+: b) where
-    parsePair opts keyVal = (fmap L1 <$> parsePair opts keyVal) <|>
-                            (fmap R1 <$> parsePair opts keyVal)
+    parsePair opts pair = (fmap L1 <$> parsePair opts pair) <|>
+                          (fmap R1 <$> parsePair opts pair)
     {-# INLINE parsePair #-}
 
 instance (Constructor c, GFromJSON a, ConsFromJSON a) => FromPair (C1 c a) where
-    parsePair opts (key, value)
-        | key == name = Just $ gParseJSON opts value
+    parsePair opts (tag, value)
+        | tag == tag' = Just $ gParseJSON opts value
         | otherwise   = Nothing
         where
-          name = pack $ constructorNameModifier opts $
+          tag' = pack $ constructorTagModifier opts $
                           conName (undefined :: t c a p)
     {-# INLINE parsePair #-}
 
