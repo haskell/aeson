@@ -272,8 +272,8 @@ data Options = Options
 
 -- | Specifies how to encode constructors of a sum datatype.
 data SumEncoding =
-    ObjectWithType { typeFieldName  :: String
-                   , valueFieldName :: String
+    ObjectWithType { typeFieldName     :: String
+                   , contentsFieldName :: String
                    }
     -- ^ A constructor will be encoded to an object with a field
     -- 'typeFieldName' which specifies the constructor name (modified
@@ -281,9 +281,9 @@ data SumEncoding =
     -- record the encoded record fields will be unpacked into this
     -- object. So make sure that your record doesn't have a field with
     -- the same name as the 'typeFieldName'. Otherwise the type gets
-    -- overwritten by that field. If the constructor is not a record
-    -- the encoded constructor content will be stored under the
-    -- 'valueFieldName' field.
+    -- overwritten by that field! If the constructor is not a record
+    -- the encoded constructor contents will be stored under the
+    -- 'contentsFieldName' field.
   | ObjectWithSingleField
     -- ^ A constructor will be encoded to an object with a single
     -- field named after the constructor (modified by the
@@ -293,7 +293,7 @@ data SumEncoding =
     -- ^ A constructor will be encoded to a 2-element array where the
     -- first element is the name of the constructor (modified by the
     -- 'constructorNameModifier') and the second element the encoded
-    -- content of the constructor.
+    -- contents of the constructor.
 
 -- | Default encoding 'Options':
 --
@@ -319,12 +319,12 @@ defaultOptions = Options
 --
 -- @
 -- defaultObjectWithType = 'ObjectWithType'
---                         { 'typeFieldName'  = \"type\"
---                         , 'valueFieldName' = \"value\"
+--                         { 'typeFieldName'     = \"type\"
+--                         , 'contentsFieldName' = \"contents\"
 --                         }
 -- @
 defaultObjectWithType :: SumEncoding
 defaultObjectWithType = ObjectWithType
-                        { typeFieldName  = "type"
-                        , valueFieldName = "value"
+                        { typeFieldName     = "type"
+                        , contentsFieldName = "contents"
                         }

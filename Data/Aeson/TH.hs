@@ -234,10 +234,10 @@ encodeSum opts multiCons conName exp
         case sumEncoding opts of
           TwoElemArray ->
               [|Array|] `appE` ([|V.fromList|] `appE` listE [conStr opts conName, exp])
-          ObjectWithType{typeFieldName, valueFieldName} ->
+          ObjectWithType{typeFieldName, contentsFieldName} ->
               [|object|] `appE` listE
-                [ infixApp [|T.pack typeFieldName|]  [|(.=)|] (conStr opts conName)
-                , infixApp [|T.pack valueFieldName|] [|(.=)|] exp
+                [ infixApp [|T.pack typeFieldName|]     [|(.=)|] (conStr opts conName)
+                , infixApp [|T.pack contentsFieldName|] [|(.=)|] exp
                 ]
           ObjectWithSingleField ->
               [|object|] `appE` listE
@@ -454,8 +454,8 @@ consFromJSON tName opts cons = do
 
     mixedMatches =
         case sumEncoding opts of
-          ObjectWithType {typeFieldName, valueFieldName} ->
-            parseObject $ parseObjectWithType typeFieldName valueFieldName
+          ObjectWithType {typeFieldName, contentsFieldName} ->
+            parseObject $ parseObjectWithType typeFieldName contentsFieldName
           ObjectWithSingleField ->
             parseObject $ parseObjectWithSingleField
           TwoElemArray ->
