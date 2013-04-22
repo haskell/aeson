@@ -76,8 +76,8 @@ instance ( WriteProduct a, WriteProduct b
 instance ( AllNullary (a :+: b) allNullary
          , SumToJSON  (a :+: b) allNullary ) => GToJSON (a :+: b) where
     -- If all constructors of a sum datatype are nullary and the
-    -- 'nullaryToString' option is set they are encoded to strings.
-    -- This distinction is made by 'sumToJSON':
+    -- 'allNullaryToStringTag' option is set they are encoded to
+    -- strings.  This distinction is made by 'sumToJSON':
     gToJSON opts = (unTagged :: Tagged allNullary Value -> Value)
                  . sumToJSON opts
     {-# INLINE gToJSON #-}
@@ -92,8 +92,8 @@ instance ( GetConName            f
          , ObjectWithSingleField f
          , TwoElemArray          f ) => SumToJSON f True where
     sumToJSON opts
-        | nullaryToString opts = Tagged . String . pack
-                               . constructorTagModifier opts . getConName
+        | allNullaryToStringTag opts = Tagged . String . pack
+                                     . constructorTagModifier opts . getConName
         | otherwise = Tagged . nonAllNullarySumToJSON opts
     {-# INLINE sumToJSON #-}
 
@@ -327,8 +327,8 @@ instance ( FromProduct a, FromProduct b
 instance ( AllNullary (a :+: b) allNullary
          , ParseSum   (a :+: b) allNullary ) => GFromJSON   (a :+: b) where
     -- If all constructors of a sum datatype are nullary and the
-    -- 'nullaryToString' option is set they are expected to be encoded as
-    -- strings.  This distinction is made by 'parseSum':
+    -- 'allNullaryToStringTag' option is set they are expected to be
+    -- encoded as strings.  This distinction is made by 'parseSum':
     gParseJSON opts = (unTagged :: Tagged allNullary (Parser ((a :+: b) d)) ->
                                                      (Parser ((a :+: b) d)))
                     . parseSum opts
@@ -343,8 +343,8 @@ instance ( SumFromString    (a :+: b)
          , FromPair         (a :+: b)
          , FromTaggedObject (a :+: b) ) => ParseSum (a :+: b) True where
     parseSum opts
-        | nullaryToString opts = Tagged . parseAllNullarySum    opts
-        | otherwise            = Tagged . parseNonAllNullarySum opts
+        | allNullaryToStringTag opts = Tagged . parseAllNullarySum    opts
+        | otherwise                  = Tagged . parseNonAllNullarySum opts
     {-# INLINE parseSum #-}
 
 instance ( FromPair         (a :+: b)
