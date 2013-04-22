@@ -110,7 +110,7 @@ nonAllNullarySumToJSON :: ( TwoElemArray          f
 nonAllNullarySumToJSON opts =
     case sumEncoding opts of
       ObjectWithType{..}    -> object . objectWithType opts typeFieldName
-                                                            valueFieldName
+                                                            contentsFieldName
       ObjectWithSingleField -> Object . objectWithSingleField opts
       TwoElemArray          -> Array  . twoElemArray opts
 {-# INLINE nonAllNullarySumToJSON #-}
@@ -122,20 +122,20 @@ class ObjectWithType f where
 
 instance ( ObjectWithType a
          , ObjectWithType b ) => ObjectWithType (a :+: b) where
-    objectWithType     opts typeFieldName valueFieldName (L1 x) =
-        objectWithType opts typeFieldName valueFieldName     x
-    objectWithType     opts typeFieldName valueFieldName (R1 x) =
-        objectWithType opts typeFieldName valueFieldName     x
+    objectWithType     opts typeFieldName contentsFieldName (L1 x) =
+        objectWithType opts typeFieldName contentsFieldName     x
+    objectWithType     opts typeFieldName contentsFieldName (R1 x) =
+        objectWithType opts typeFieldName contentsFieldName     x
     {-# INLINE objectWithType #-}
 
 instance ( IsRecord        a isRecord
          , ObjectWithType' a isRecord
          , Constructor c ) => ObjectWithType (C1 c a) where
-    objectWithType opts typeFieldName valueFieldName =
+    objectWithType opts typeFieldName contentsFieldName =
         (pack typeFieldName .= constructorNameModifier opts
                                  (conName (undefined :: t c a p)) :) .
         (unTagged :: Tagged isRecord [Pair] -> [Pair]) .
-          objectWithType' opts valueFieldName . unM1
+          objectWithType' opts contentsFieldName . unM1
     {-# INLINE objectWithType #-}
 
 class ObjectWithType' f isRecord where
@@ -146,8 +146,8 @@ instance (RecordToPairs f) => ObjectWithType' f True where
     {-# INLINE objectWithType' #-}
 
 instance (GToJSON f) => ObjectWithType' f False where
-    objectWithType' opts valueFieldName =
-        Tagged . (:[]) . (pack valueFieldName .=) . gToJSON opts
+    objectWithType' opts contentsFieldName =
+        Tagged . (:[]) . (pack contentsFieldName .=) . gToJSON opts
     {-# INLINE objectWithType' #-}
 
 --------------------------------------------------------------------------------
@@ -387,7 +387,7 @@ parseNonAllNullarySum opts =
           withObject "Object" $ \obj -> do
             key <- obj .: pack typeFieldName
             fromMaybe (notFound $ unpack key) $
-              parseFromObjectWithType opts valueFieldName obj key
+              parseFromObjectWithType opts contentsFieldName obj key
 
       ObjectWithSingleField ->
           withObject "Object" $ \obj ->
@@ -414,16 +414,16 @@ class FromObjectWithType f where
 
 instance (FromObjectWithType a, FromObjectWithType b) =>
     FromObjectWithType (a :+: b) where
-        parseFromObjectWithType opts valueFieldName obj key =
-            (fmap L1 <$> parseFromObjectWithType opts valueFieldName obj key) <|>
-            (fmap R1 <$> parseFromObjectWithType opts valueFieldName obj key)
+        parseFromObjectWithType opts contentsFieldName obj key =
+            (fmap L1 <$> parseFromObjectWithType opts contentsFieldName obj key) <|>
+            (fmap R1 <$> parseFromObjectWithType opts contentsFieldName obj key)
         {-# INLINE parseFromObjectWithType #-}
 
 instance ( FromObjectWithType' f
          , Constructor c ) => FromObjectWithType (C1 c f) where
-    parseFromObjectWithType opts valueFieldName obj key
+    parseFromObjectWithType opts contentsFieldName obj key
         | key == name = Just $ M1 <$> parseFromObjectWithType'
-                                        opts valueFieldName obj
+                                        opts contentsFieldName obj
         | otherwise = Nothing
         where
           name = pack $ constructorNameModifier opts $
@@ -442,9 +442,9 @@ class FromObjectWithType'' f isRecord where
 instance ( IsRecord               f isRecord
          , FromObjectWithType''   f isRecord
          ) => FromObjectWithType' f where
-    parseFromObjectWithType' opts valueFieldName =
+    parseFromObjectWithType' opts contentsFieldName =
         (unTagged :: Tagged isRecord (Parser (f a)) -> Parser (f a)) .
-        parseFromObjectWithType'' opts valueFieldName
+        parseFromObjectWithType'' opts contentsFieldName
     {-# INLINE parseFromObjectWithType' #-}
 
 instance (FromRecord f) => FromObjectWithType'' f True where
@@ -452,8 +452,8 @@ instance (FromRecord f) => FromObjectWithType'' f True where
     {-# INLINE parseFromObjectWithType'' #-}
 
 instance (GFromJSON f) => FromObjectWithType'' f False where
-    parseFromObjectWithType'' opts valueFieldName = Tagged .
-      (gParseJSON opts <=< (.: pack valueFieldName))
+    parseFromObjectWithType'' opts contentsFieldName = Tagged .
+      (gParseJSON opts <=< (.: pack contentsFieldName))
     {-# INLINE parseFromObjectWithType'' #-}
 
 --------------------------------------------------------------------------------
