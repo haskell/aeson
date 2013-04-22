@@ -5,22 +5,22 @@ import Data.Char
 
 optsDefault :: Options
 optsDefault = defaultOptions
-              { fieldNameModifier       = map toLower
-              , constructorNameModifier = map toLower
+              { fieldLabelModifier     = map toLower
+              , constructorTagModifier = map toLower
               }
 
 opts2ElemArray :: Options
 opts2ElemArray = optsDefault
-                 { nullaryToString = False
+                 { allNullaryToStringTag = False
                  , sumEncoding     = TwoElemArray
                  }
 
-optsObjectWithType :: Options
-optsObjectWithType = optsDefault
-                     { nullaryToString = False }
+optsTaggedObject :: Options
+optsTaggedObject = optsDefault
+                   { allNullaryToStringTag = False }
 
 optsObjectWithSingleField :: Options
 optsObjectWithSingleField = optsDefault
-                            { nullaryToString = False
-                            , sumEncoding     = ObjectWithSingleField
+                            { allNullaryToStringTag = False
+                            , sumEncoding           = ObjectWithSingleField
                             }
