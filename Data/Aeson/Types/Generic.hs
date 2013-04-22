@@ -228,7 +228,7 @@ instance (Selector s, ToJSON a) => RecordToPairs (S1 s (K1 i (Maybe a))) where
     {-# INLINE recordToPairs #-}
 
 fieldToPair :: (Selector s, GToJSON a) => Options -> S1 s a p -> DList Pair
-fieldToPair opts m1 = pure ( pack $ fieldNameModifier opts $ selName m1
+fieldToPair opts m1 = pure ( pack $ fieldLabelModifier opts $ selName m1
                            , gToJSON opts (unM1 m1)
                            )
 {-# INLINE fieldToPair #-}
@@ -490,17 +490,17 @@ instance (FromRecord a, FromRecord b) => FromRecord (a :*: b) where
     {-# INLINE parseRecord #-}
 
 instance (Selector s, GFromJSON a) => FromRecord (S1 s a) where
-    parseRecord opts = maybe (notFound key) (gParseJSON opts)
-                      . H.lookup (pack key)
+    parseRecord opts = maybe (notFound label) (gParseJSON opts)
+                      . H.lookup (pack label)
         where
-          key = fieldNameModifier opts $ selName (undefined :: t s a p)
+          label = fieldLabelModifier opts $ selName (undefined :: t s a p)
     {-# INLINE parseRecord #-}
 
 instance (Selector s, FromJSON a) => FromRecord (S1 s (K1 i (Maybe a))) where
-    parseRecord opts obj = (M1 . K1) <$> obj .:? pack key
+    parseRecord opts obj = (M1 . K1) <$> obj .:? pack label
         where
-          key = fieldNameModifier opts $
-                  selName (undefined :: t s (K1 i (Maybe a)) p)
+          label = fieldLabelModifier opts $
+                    selName (undefined :: t s (K1 i (Maybe a)) p)
     {-# INLINE parseRecord #-}
 
 --------------------------------------------------------------------------------
