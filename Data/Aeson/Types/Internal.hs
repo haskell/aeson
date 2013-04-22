@@ -249,7 +249,7 @@ modifyFailure f (Parser p) = Parser $ \kf -> p (kf . f)
 -- Generic and TH encoding configuration
 --------------------------------------------------------------------------------
 
--- | Options that specify how to encode/decode your datatype to/from JSON.
+-- | Options that specify how to encode\/decode your datatype to\/from JSON.
 data Options = Options
     { fieldNameModifier :: String -> String
       -- ^ Function applied to field names.
@@ -257,39 +257,43 @@ data Options = Options
     , constructorNameModifier :: String -> String
       -- ^ Function applied to constructor names.
       -- Handy for lower-casing constructor names for example.
-    , nullaryToString   :: Bool
-      -- ^ If 'True' the constructors of a datatype, with all nullary
+    , nullaryToString :: Bool
+      -- ^ If 'True' the constructors of a datatype, with /all/ nullary
       -- constructors, will be encoded to a string with the
       -- constructor name. If 'False' the encoding will always follow
       -- the `sumEncoding`.
     , omitNothingFields :: Bool
       -- ^ If 'True' record fields with a 'Nothing' value will be
       -- omitted from the resulting object. If 'False' the resulting
-      -- object will include those fields with @null@ values.
-    , sumEncoding       :: SumEncoding
+      -- object will include those fields mapping to @null@.
+    , sumEncoding :: SumEncoding
       -- ^ Specifies how to encode constructors of a sum datatype.
     }
 
 -- | Specifies how to encode constructors of a sum datatype.
 data SumEncoding =
-    TwoElemArray -- ^ A constructor will be encoded to a 2-element
-                 -- array where the first element is the name of the
-                 -- constructor (modified by the
-                 -- 'constructorNameModifier') and the second element
-                 -- the content of the constructor.
-  | ObjectWithType { typeFieldName  :: String
+    ObjectWithType { typeFieldName  :: String
                    , valueFieldName :: String
                    }
     -- ^ A constructor will be encoded to an object with a field
     -- 'typeFieldName' which specifies the constructor name (modified
-    -- by the 'constructorNameModifier'). If the constructor is not a
-    -- record the constructor content will be stored under the
+    -- by the 'constructorNameModifier'). If the constructor is a
+    -- record the encoded record fields will be unpacked into this
+    -- object. So make sure that your record doesn't have a field with
+    -- the same name as the 'typeFieldName'. Otherwise the type gets
+    -- overwritten by that field. If the constructor is not a record
+    -- the encoded constructor content will be stored under the
     -- 'valueFieldName' field.
   | ObjectWithSingleField
     -- ^ A constructor will be encoded to an object with a single
     -- field named after the constructor (modified by the
-    -- 'constructorNameModifier') and the value will be the contents
+    -- 'constructorNameModifier') which maps to the encoded contents
     -- of the constructor.
+  | TwoElemArray
+    -- ^ A constructor will be encoded to a 2-element array where the
+    -- first element is the name of the constructor (modified by the
+    -- 'constructorNameModifier') and the second element the encoded
+    -- content of the constructor.
 
 -- | Default encoding 'Options':
 --
