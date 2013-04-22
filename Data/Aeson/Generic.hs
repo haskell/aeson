@@ -16,6 +16,7 @@
 -- by Lennart Augustsson.
 
 module Data.Aeson.Generic
+{-# DEPRECATED "Please use genericToJSON or genericParseJSON or Data.Aeson.TH instead. These alternatives are more efficient and configurable." #-}
     (
     -- * Decoding and encoding
       decode
