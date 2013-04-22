@@ -207,7 +207,7 @@ consToJSON opts cons = do
     lam1E (varP value) $ caseE (varE value) matches
   where
     matches
-        | nullaryToString opts && all isNullary cons =
+        | allNullaryToStringTag opts && all isNullary cons =
               [ match (conP conName []) (normalB $ conStr opts conName) []
               | con <- cons
               , let conName = getConName con
@@ -414,7 +414,7 @@ consFromJSON tName opts [con] = do
 consFromJSON tName opts cons = do
   value <- newName "value"
   lam1E (varP value) $ caseE (varE value) $
-    if nullaryToString opts && all isNullary cons
+    if allNullaryToStringTag opts && all isNullary cons
     then allNullaryMatches
     else mixedMatches
 

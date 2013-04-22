@@ -257,7 +257,7 @@ data Options = Options
     , constructorTagModifier :: String -> String
       -- ^ Function applied to constructor tags which could be handy
       -- for lower-casing them for example.
-    , nullaryToString :: Bool
+    , allNullaryToStringTag :: Bool
       -- ^ If 'True' the constructors of a datatype, with /all/
       -- nullary constructors, will be encoded to just a string with
       -- the constructor tag. If 'False' the encoding will always
@@ -301,7 +301,7 @@ data SumEncoding =
 -- 'Options'
 -- { 'fieldLabelModifier'      = id
 -- , 'constructorTagModifier'  = id
--- , 'nullaryToString'         = True
+-- , 'allNullaryToStringTag'   = True
 -- , 'omitNothingFields'       = False
 -- , 'sumEncoding'             = 'defaultTaggedObject'
 -- }
@@ -310,7 +310,7 @@ defaultOptions :: Options
 defaultOptions = Options
                  { fieldLabelModifier      = id
                  , constructorTagModifier  = id
-                 , nullaryToString         = True
+                 , allNullaryToStringTag   = True
                  , omitNothingFields       = False
                  , sumEncoding             = defaultTaggedObject
                  }
