@@ -60,7 +60,7 @@ module Data.Aeson.Types
     , Options(..)
     , SumEncoding(..)
     , defaultOptions
-    , defaultObjectWithType
+    , defaultTaggedObject
     ) where
 
 import Data.Aeson.Types.Class

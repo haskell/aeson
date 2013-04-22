@@ -33,7 +33,7 @@ characters of every field name. We also modify constructor names by
 lower-casing them:
 
 @
-$('deriveJSON' 'defaultOptions'{'fieldNameModifier' = 'drop' 4, 'constructorNameModifier' = map toLower} ''D)
+$('deriveJSON' 'defaultOptions'{'fieldNameModifier' = 'drop' 4, 'constructorTagModifier' = map toLower} ''D)
 @
 
 Now we can use the newly created instances.
@@ -60,7 +60,7 @@ $('deriveJSON' 'defaultOptions' ''(,,,))
 
 module Data.Aeson.TH
     ( -- * Encoding configuration
-      Options(..), SumEncoding(..), defaultOptions, defaultObjectWithType
+      Options(..), SumEncoding(..), defaultOptions, defaultTaggedObject
 
      -- * FromJSON and ToJSON derivation
     , deriveJSON
@@ -85,7 +85,7 @@ import Data.Aeson.Types ( Value(..), Parser
                         , Options(..)
                         , SumEncoding(..)
                         , defaultOptions
-                        , defaultObjectWithType
+                        , defaultTaggedObject
                         )
 -- from base:
 import Control.Applicative ( pure, (<$>), (<*>) )
@@ -221,7 +221,7 @@ conTxt :: Options -> Name -> Q Exp
 conTxt opts = appE [|T.pack|] . conStringE opts
 
 conStringE :: Options -> Name -> Q Exp
-conStringE opts = stringE . constructorNameModifier opts . nameBase
+conStringE opts = stringE . constructorTagModifier opts . nameBase
 
 -- | If constructor is nullary.
 isNullary :: Con -> Bool
@@ -234,9 +234,9 @@ encodeSum opts multiCons conName exp
         case sumEncoding opts of
           TwoElemArray ->
               [|Array|] `appE` ([|V.fromList|] `appE` listE [conStr opts conName, exp])
-          ObjectWithType{typeFieldName, contentsFieldName} ->
+          TaggedObject{tagFieldName, contentsFieldName} ->
               [|object|] `appE` listE
-                [ infixApp [|T.pack typeFieldName|]     [|(.=)|] (conStr opts conName)
+                [ infixApp [|T.pack tagFieldName|]     [|(.=)|] (conStr opts conName)
                 , infixApp [|T.pack contentsFieldName|] [|(.=)|] exp
                 ]
           ObjectWithSingleField ->
@@ -324,11 +324,11 @@ encodeArgs opts multiCons (RecC conName ts) = do
           $ if multiCons
             then case sumEncoding opts of
                    TwoElemArray -> [|toJSON|] `appE` tupE [conStr opts conName, exp]
-                   ObjectWithType{typeFieldName} ->
+                   TaggedObject{tagFieldName} ->
                        [|object|] `appE`
                          -- TODO: Maybe throw an error in case
-                         -- typeFieldName overwrites a field in pairs.
-                         infixApp (infixApp [|T.pack typeFieldName|]
+                         -- tagFieldName overwrites a field in pairs.
+                         infixApp (infixApp [|T.pack tagFieldName|]
                                             [|(.=)|]
                                             (conStr opts conName))
                                   [|(:)|]
@@ -454,8 +454,8 @@ consFromJSON tName opts cons = do
 
     mixedMatches =
         case sumEncoding opts of
-          ObjectWithType {typeFieldName, contentsFieldName} ->
-            parseObject $ parseObjectWithType typeFieldName contentsFieldName
+          TaggedObject {tagFieldName, contentsFieldName} ->
+            parseObject $ parseTaggedObject tagFieldName contentsFieldName
           ObjectWithSingleField ->
             parseObject $ parseObjectWithSingleField
           TwoElemArray ->
@@ -496,13 +496,13 @@ consFromJSON tName opts cons = do
                    []
         ]
 
-    parseObjectWithType typFieldName valFieldName obj = do
+    parseTaggedObject typFieldName valFieldName obj = do
       conKey <- newName "conKey"
       doE [ bindS (varP conKey)
                   (infixApp (varE obj)
                             [|(.:)|]
                             ([|T.pack|] `appE` stringE typFieldName))
-          , noBindS $ parseContents conKey (Left (valFieldName, obj)) 'conNotFoundFailObjectWithType
+          , noBindS $ parseContents conKey (Left (valFieldName, obj)) 'conNotFoundFailTaggedObject
           ]
 
     parse2ElemArray arr = do
@@ -571,7 +571,7 @@ consFromJSON tName opts cons = do
                                    `appE` (litE $ stringL $ show tName)
                                    `appE` listE (map ( litE
                                                      . stringL
-                                                     . constructorNameModifier opts
+                                                     . constructorTagModifier opts
                                                      . nameBase
                                                      . getConName
                                                      ) cons
@@ -623,7 +623,7 @@ parseRecord opts tName conName ts obj =
     where
       x:xs = [ [|lookupField|]
                `appE` (litE $ stringL $ show tName)
-               `appE` (litE $ stringL $ constructorNameModifier opts $ nameBase conName)
+               `appE` (litE $ stringL $ constructorTagModifier opts $ nameBase conName)
                `appE` (varE obj)
                `appE` ( [|T.pack|] `appE` fieldNameExp opts field
                       )
@@ -777,7 +777,7 @@ firstElemNoStringFail t o = fail $ printf "When parsing %s expected an Array of 
 
 wrongPairCountFail :: String -> String -> Parser fail
 wrongPairCountFail t n =
-    fail $ printf "When parsing %s expected an Object with a single name/value pair but got %s pairs."
+    fail $ printf "When parsing %s expected an Object with a single tag/contents pair but got %s pairs."
                   t n
 
 noStringFail :: String -> String -> Parser fail
@@ -785,24 +785,24 @@ noStringFail t o = fail $ printf "When parsing %s expected String but got %s." t
 
 noMatchFail :: String -> String -> Parser fail
 noMatchFail t o =
-    fail $ printf "When parsing %s expected a String with the name of a constructor but got %s." t o
+    fail $ printf "When parsing %s expected a String with the tag of a constructor but got %s." t o
 
 not2ElemArray :: String -> Int -> Parser fail
 not2ElemArray t i = fail $ printf "When parsing %s expected an Array of 2 elements but got %i elements" t i
 
 conNotFoundFail2ElemArray :: String -> [String] -> String -> Parser fail
 conNotFoundFail2ElemArray t cs o =
-    fail $ printf "When parsing %s expected a 2-element Array with a name and value element where the name is one of [%s], but got %s."
+    fail $ printf "When parsing %s expected a 2-element Array with a tag and contents element where the tag is one of [%s], but got %s."
                   t (intercalate ", " cs) o
 
 conNotFoundFailObjectSingleField :: String -> [String] -> String -> Parser fail
 conNotFoundFailObjectSingleField t cs o =
-    fail $ printf "When parsing %s expected an Object with a name/value pair where the name is one of [%s], but got %s."
+    fail $ printf "When parsing %s expected an Object with a single tag/contents pair where the tag is one of [%s], but got %s."
                   t (intercalate ", " cs) o
 
-conNotFoundFailObjectWithType :: String -> [String] -> String -> Parser fail
-conNotFoundFailObjectWithType t cs o =
-    fail $ printf "When parsing %s expected an Object with a type field where the value is one of [%s], but got %s."
+conNotFoundFailTaggedObject :: String -> [String] -> String -> Parser fail
+conNotFoundFailTaggedObject t cs o =
+    fail $ printf "When parsing %s expected an Object with a tag field where the value is one of [%s], but got %s."
                   t (intercalate ", " cs) o
 
 parseTypeMismatch' :: String -> String -> String -> String -> Parser fail
@@ -854,7 +854,7 @@ tvbName (KindedTV name _) = name
 conNameExp :: Options -> Con -> Q Exp
 conNameExp opts = litE
                 . stringL
-                . constructorNameModifier opts
+                . constructorTagModifier opts
                 . nameBase
                 . getConName
 
