@@ -25,11 +25,11 @@ thNullaryParseJSON2ElemArray :: Value -> Parser Nullary
 thNullaryParseJSON2ElemArray = $(mkParseJSON opts2ElemArray ''Nullary)
 
 
-thNullaryToJSONObjectWithType :: Nullary -> Value
-thNullaryToJSONObjectWithType = $(mkToJSON optsObjectWithType ''Nullary)
+thNullaryToJSONTaggedObject :: Nullary -> Value
+thNullaryToJSONTaggedObject = $(mkToJSON optsTaggedObject ''Nullary)
 
-thNullaryParseJSONObjectWithType :: Value -> Parser Nullary
-thNullaryParseJSONObjectWithType = $(mkParseJSON optsObjectWithType ''Nullary)
+thNullaryParseJSONTaggedObject :: Value -> Parser Nullary
+thNullaryParseJSONTaggedObject = $(mkParseJSON optsTaggedObject ''Nullary)
 
 
 thNullaryToJSONObjectWithSingleField :: Nullary -> Value
@@ -52,11 +52,11 @@ gNullaryParseJSON2ElemArray :: Value -> Parser Nullary
 gNullaryParseJSON2ElemArray = genericParseJSON opts2ElemArray
 
 
-gNullaryToJSONObjectWithType :: Nullary -> Value
-gNullaryToJSONObjectWithType = genericToJSON optsObjectWithType
+gNullaryToJSONTaggedObject :: Nullary -> Value
+gNullaryToJSONTaggedObject = genericToJSON optsTaggedObject
 
-gNullaryParseJSONObjectWithType :: Value -> Parser Nullary
-gNullaryParseJSONObjectWithType = genericParseJSON optsObjectWithType
+gNullaryParseJSONTaggedObject :: Value -> Parser Nullary
+gNullaryParseJSONTaggedObject = genericParseJSON optsTaggedObject
 
 
 gNullaryToJSONObjectWithSingleField :: Nullary -> Value
@@ -79,11 +79,11 @@ thSomeTypeParseJSON2ElemArray :: FromJSON a => Value -> Parser (SomeType a)
 thSomeTypeParseJSON2ElemArray = $(mkParseJSON opts2ElemArray ''SomeType)
 
 
-thSomeTypeToJSONObjectWithType :: ToJSON a => SomeType a -> Value
-thSomeTypeToJSONObjectWithType = $(mkToJSON optsObjectWithType ''SomeType)
+thSomeTypeToJSONTaggedObject :: ToJSON a => SomeType a -> Value
+thSomeTypeToJSONTaggedObject = $(mkToJSON optsTaggedObject ''SomeType)
 
-thSomeTypeParseJSONObjectWithType :: FromJSON a => Value -> Parser (SomeType a)
-thSomeTypeParseJSONObjectWithType = $(mkParseJSON optsObjectWithType ''SomeType)
+thSomeTypeParseJSONTaggedObject :: FromJSON a => Value -> Parser (SomeType a)
+thSomeTypeParseJSONTaggedObject = $(mkParseJSON optsTaggedObject ''SomeType)
 
 
 thSomeTypeToJSONObjectWithSingleField :: ToJSON a => SomeType a -> Value
@@ -100,11 +100,11 @@ gSomeTypeParseJSON2ElemArray :: FromJSON a => Value -> Parser (SomeType a)
 gSomeTypeParseJSON2ElemArray = genericParseJSON opts2ElemArray
 
 
-gSomeTypeToJSONObjectWithType :: ToJSON a => SomeType a -> Value
-gSomeTypeToJSONObjectWithType = genericToJSON optsObjectWithType
+gSomeTypeToJSONTaggedObject :: ToJSON a => SomeType a -> Value
+gSomeTypeToJSONTaggedObject = genericToJSON optsTaggedObject
 
-gSomeTypeParseJSONObjectWithType :: FromJSON a => Value -> Parser (SomeType a)
-gSomeTypeParseJSONObjectWithType = genericParseJSON optsObjectWithType
+gSomeTypeParseJSONTaggedObject :: FromJSON a => Value -> Parser (SomeType a)
+gSomeTypeParseJSONTaggedObject = genericParseJSON optsTaggedObject
 
 
 gSomeTypeToJSONObjectWithSingleField :: ToJSON a => SomeType a -> Value
