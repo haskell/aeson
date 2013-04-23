@@ -8,6 +8,9 @@ module Data.Aeson.Select
     , runSelect
     , select
 
+     -- * Converting selectors
+    , from
+
      -- * Value selectors
     , obj, array, text, number, bool
 
@@ -58,7 +61,16 @@ select = Select . Kleisli
 
 
 --------------------------------------------------------------------------------
--- Value Selectors
+-- Converting selectors
+--------------------------------------------------------------------------------
+
+-- | Parse the selected 'Value'.
+from :: FromJSON a => Value :-> a
+from = select parseJSON
+
+
+--------------------------------------------------------------------------------
+-- Value selectors
 --------------------------------------------------------------------------------
 
 -- | Select an 'Object' from a 'Value'.
@@ -88,7 +100,7 @@ bool = select $ withBool "Bool" pure
 
 
 --------------------------------------------------------------------------------
--- Object Selectors
+-- Object selectors
 --------------------------------------------------------------------------------
 
 -- | Select the named field from the 'Object'.
@@ -105,7 +117,7 @@ path (key:keys) = field key >>> obj >>> path keys
 
 
 --------------------------------------------------------------------------------
--- Number Selectors
+-- Number selectors
 --------------------------------------------------------------------------------
 
 -- | Select an 'Integer' from a 'Number'.
