@@ -9,7 +9,7 @@ module Data.Aeson.Select
     , select
 
      -- * Converting selectors
-    , from
+    , from, to
 
      -- * Value selectors
     , obj, array, text, number, bool
@@ -67,6 +67,10 @@ select = Select . Kleisli
 -- | Parse the selected 'Value'.
 from :: FromJSON a => Value :-> a
 from = select parseJSON
+
+-- | Convert the selected value into a JSON 'Value'.
+to :: ToJSON a => a :-> Value
+to = select $ pure . toJSON
 
 
 --------------------------------------------------------------------------------
