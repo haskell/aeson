@@ -38,8 +38,8 @@ module Data.Aeson.Types.Internal
     ) where
 
 import Control.Applicative
+import Control.Monad
 import Control.DeepSeq (NFData(..))
-import Control.Monad.State.Strict
 import Data.Attoparsec.Char8 (Number(..))
 import Data.Hashable (Hashable(..))
 import Data.HashMap.Strict (HashMap)
