@@ -144,6 +144,7 @@ test-suite tests
                   Types
                   Options
                   Encoders
+                  Properties.Deprecated
 
   ghc-options:
     -Wall -threaded -rtsopts
