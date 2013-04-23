@@ -99,6 +99,7 @@ library
     Data.Aeson.Parser
     Data.Aeson.Types
     Data.Aeson.TH
+    Data.Aeson.Select
 
   other-modules:
     Data.Aeson.Functions
