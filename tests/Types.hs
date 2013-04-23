@@ -1,4 +1,4 @@
-{-# LANGUAGE DefaultSignatures, DeriveDataTypeable, DeriveGeneric,
+{-# LANGUAGE DeriveDataTypeable, DeriveGeneric,
     GeneralizedNewtypeDeriving #-}
 
 module Types where
@@ -36,9 +36,6 @@ data Sum4 a b c d = Alt1 a | Alt2 b | Alt3 c | Alt4 d
 
 class ApproxEq a where
     (=~) :: a -> a -> Bool
-
-    default (=~) :: (Eq a) => a -> a -> Bool
-    (=~) = (==)
 
 newtype Approx a = Approx { fromApprox :: a }
     deriving (Show, Data, Typeable, Generic, ApproxEq, Num)
