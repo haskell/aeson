@@ -4,13 +4,11 @@ import Data.Aeson.Encode
 import Data.Aeson.Parser (value)
 import Data.Aeson.Types
 import Data.Attoparsec.Number
-import Data.Data (Data)
 import Data.Int
 import Test.Framework (Test, defaultMain, testGroup)
 import Test.Framework.Providers.QuickCheck2 (testProperty)
 import Test.QuickCheck (Arbitrary(..))
 import qualified Data.Vector as V
-import qualified Data.Aeson.Generic as G
 import qualified Data.Attoparsec.Lazy as L
 import qualified Data.ByteString.Lazy.Char8 as L
 import qualified Data.Text as T
@@ -18,10 +16,11 @@ import qualified Data.Map as Map
 import qualified Data.HashMap.Strict as H
 import Data.Time.Clock (UTCTime(..))
 import Data.Time (ZonedTime(..))
-import Types (Foo(..), UFoo(..))
+import Types (Foo(..))
 import Instances ()
 import Types (Approx(..), OneConstructor(..), Product2, Product6, Sum4)
 import Encoders
+import Properties.Deprecated (deprecatedTests)
 
 
 encodeDouble :: Double -> Double -> Bool
@@ -48,25 +47,10 @@ roundTrip eq _ i =
 roundTripEq :: (Eq a, FromJSON a, ToJSON a) => a -> a -> Bool
 roundTripEq x y = roundTrip (==) x y
 
-genericTo :: (Data a, ToJSON a) => a -> a -> Bool
-genericTo _ v = G.toJSON v == toJSON v
-
-genericFrom :: (Eq a, Data a, ToJSON a) => a -> a -> Bool
-genericFrom _ v = G.fromJSON (toJSON v) == Success v
-
 toFromJSON :: (Arbitrary a, Eq a, FromJSON a, ToJSON a) => a -> Bool
 toFromJSON x = case fromJSON . toJSON $ x of
                 Error _ -> False
                 Success x' -> x == x'
-
-genericToFromJSON :: (Arbitrary a, Eq a, Data a) => a -> Bool
-genericToFromJSON x = case G.fromJSON . G.toJSON $ x of
-                Error _ -> False
-                Success x' -> x == x'
-
-regress_gh72 :: [(String, Maybe String)] -> Bool
-regress_gh72 ys = G.decode (G.encode m) == Just m
-    where m = Map.fromList ys
 
 modifyFailureProp :: String -> String -> Bool
 modifyFailureProp orig added =
@@ -111,26 +95,9 @@ isObjectWithSingleField _            = False
 
 tests :: [Test]
 tests = [
-  testGroup "regression" [
-      testProperty "gh-72" regress_gh72
-  ],
   testGroup "encode" [
       testProperty "encodeDouble" encodeDouble
     , testProperty "encodeInteger" encodeInteger
-    ],
-  testGroup "genericFrom" [
-      testProperty "Bool" $ genericFrom True
-    , testProperty "Double" $ genericFrom (1::Double)
-    , testProperty "Int" $ genericFrom (1::Int)
-    , testProperty "Foo" $ genericFrom (undefined::Foo)
-    , testProperty "Maybe" $ genericFrom (Just 1 :: Maybe Int)
-    ],
-  testGroup "genericTo" [
-      testProperty "Bool" $ genericTo True
-    , testProperty "Double" $ genericTo (1::Double)
-    , testProperty "Int" $ genericTo (1::Int)
-    , testProperty "Foo" $ genericTo (undefined::Foo)
-    , testProperty "Maybe" $ genericTo (Just 1 :: Maybe Int)
     ],
   testGroup "roundTrip" [
       testProperty "Bool" $ roundTripEq True
@@ -157,9 +124,7 @@ tests = [
     , testProperty "Either Integer Double" (toFromJSON :: Either Integer Double -> Bool)
     , testProperty "Either Integer Integer" (toFromJSON :: Either Integer Integer -> Bool)
     ],
-  testGroup "genericToFromJSON" [
-      testProperty "_UFoo" (genericToFromJSON :: UFoo -> Bool)
-    ],
+  testGroup "deprecated" deprecatedTests,
   testGroup "failure messages" [
       testProperty "modify failure" modifyFailureProp
     ],
