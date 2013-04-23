@@ -57,7 +57,8 @@ instance ApproxEq UTCTime where
     a =~ b = ((==) `on` utctDay) a b &&
              (approxEqWith 1 1 `on` ((* 1e3) . utctDayTime)) a b
 
-instance ApproxEq DotNetTime
+instance ApproxEq DotNetTime where
+    (=~) = (=~) `on` fromDotNetTime
 
 instance ApproxEq Double where
     (=~) = approxEq
