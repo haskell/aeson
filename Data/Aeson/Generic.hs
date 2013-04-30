@@ -1,4 +1,4 @@
-{-# LANGUAGE PatternGuards, Rank2Types, ScopedTypeVariables #-}
+{-# LANGUAGE PatternGuards, Rank2Types, ScopedTypeVariables, CPP #-}
 
 -- |
 -- Module:      Data.Aeson.Generic
@@ -339,21 +339,33 @@ modError func err = error $ "Data.Aeson.Generic." ++ func ++ ": " ++ err
 -- Type extension for binary type constructors.
 
 -- | Flexible type extension
+#if MIN_VERSION_base(4,7,0)
+ext2' :: (Data a, Typeable t)
+#else
 ext2' :: (Data a, Typeable2 t)
+#endif
      => c a
      -> (forall d1 d2. (Data d1, Data d2) => c (t d1 d2))
      -> c a
 ext2' def ext = maybe def id (dataCast2 ext)
 
 -- | Type extension of queries for type constructors
+#if MIN_VERSION_base(4,7,0)
+ext2Q' :: (Data d, Typeable t)
+#else
 ext2Q' :: (Data d, Typeable2 t)
+#endif
       => (d -> q)
       -> (forall d1 d2. (Data d1, Data d2) => t d1 d2 -> q)
       -> d -> q
 ext2Q' def ext = unQ ((Q def) `ext2'` (Q ext))
 
 -- | Type extension of readers for type constructors
+#if MIN_VERSION_base(4,7,0)
+ext2R' :: (Monad m, Data d, Typeable t)
+#else
 ext2R' :: (Monad m, Data d, Typeable2 t)
+#endif
       => m d
       -> (forall d1 d2. (Data d1, Data d2) => m (t d1 d2))
       -> m d
