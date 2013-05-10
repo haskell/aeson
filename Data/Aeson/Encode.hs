@@ -67,11 +67,13 @@ string s = {-# SCC "string" #-} singleton '"' <> quote s <> singleton '"'
                 Just (!c,t') -> fromText h <> escape c <> quote t'
         where (h,t) = {-# SCC "break" #-} T.break isEscape q
     isEscape c = c == '\"' ||
+                 c == '\'' ||
                  c == '\\' ||
                  c == '<'  ||
                  c == '>'  ||
                  c < '\x20'
-    escape '\"' = "\\\""
+    escape '\"' = "\\u0022"
+    escape '\'' = "\\u0027"
     escape '\\' = "\\\\"
     escape '\n' = "\\n"
     escape '\r' = "\\r"
