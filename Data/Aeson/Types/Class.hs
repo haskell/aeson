@@ -69,7 +69,7 @@ import Data.Typeable (Typeable)
 import Data.Vector (Vector)
 import Data.Word (Word, Word8, Word16, Word32, Word64)
 import Foreign.Storable (Storable)
-import System.Locale (defaultTimeLocale)
+import System.Locale (defaultTimeLocale, dateTimeFmt)
 import qualified Data.ByteString as B
 import qualified Data.ByteString.Lazy as LB
 import qualified Data.HashMap.Strict as H
@@ -673,9 +673,10 @@ instance ToJSON ZonedTime where
 
 instance FromJSON ZonedTime where
     parseJSON (String t) =
-      tryFormats alternateFormats
+      tryFormats (defaultFormat : alternateFormats)
       <|> fail "could not parse ECMA-262 ISO-8601 date"
       where
+        defaultFormat = dateTimeFmt defaultTimeLocale
         tryFormat f =
           case parseTime defaultTimeLocale f (unpack t) of
             Just d -> pure d
