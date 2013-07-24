@@ -128,13 +128,13 @@ eitherDecode' = eitherDecodeWith json' fromJSON
 -- > data Person = Person
 -- >     { name :: Text
 -- >     , age  :: Int
--- >     } deriving Show-
+-- >     } deriving Show
 --
 -- To decode data, we need to define a 'FromJSON' instance:
 --
 -- > {-# LANGUAGE OverloadedStrings #-}
 -- >
--- > instance FromJSON Coord where
+-- > instance FromJSON Person where
 -- >     parseJSON (Object v) = Person <$>
 -- >                            v .: "name" <*>
 -- >                            v .: "age"
