@@ -134,7 +134,7 @@ eitherDecode' = eitherDecodeWith json' fromJSON
 --
 -- > {-# LANGUAGE OverloadedStrings #-}
 -- >
--- > instance FromJSON Coord where
+-- > instance FromJSON Person where
 -- >     parseJSON (Object v) = Person <$>
 -- >                            v .: "name" <*>
 -- >                            v .: "age"
