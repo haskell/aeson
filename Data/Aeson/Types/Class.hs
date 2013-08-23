@@ -847,7 +847,16 @@ obj .: key = case H.lookup key obj of
 
 -- | Retrieve the value associated with the given key of an 'Object'.
 -- The result is 'Nothing' if the key is not present, or 'empty' if
--- the value cannot be converted to the desired type.
+-- the value cannot be converted to the desired type. Attempting to 
+-- retrieve the same key twice with different types will cause a parse 
+-- failure. To retrieve the value for the same key twice with different
+-- types, use 'mplus' or '<|>'. For example, if an int might be encoded
+-- as a string in JSON:
+--
+-- @ mInt \<- o .:? \"intOrString\" \<|> 
+--   (fmap . fmap) (read . unpack) (o .:? \"intOrString\")
+-- -- mInt :: Maybe Int
+-- @
 --
 -- This accessor is most useful if the key and value can be absent
 -- from an object without affecting its validity.  If the key and
