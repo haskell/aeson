@@ -2,12 +2,12 @@
 
 -- |
 -- Module:      Data.Aeson.Generic
--- Copyright:   (c) 2011, 2012 Bryan O'Sullivan
+-- Copyright:   (c) 2011, 2012, 2013 Bryan O'Sullivan
 --              (c) 2011 MailRank, Inc.
 --              (c) 2008, 2009 Lennart Augustsson
 -- License:     BSD3
 -- Maintainer:  Bryan O'Sullivan <bos@serpentine.com>
--- Stability:   experimental
+-- Stability:   DEPRECATED
 -- Portability: portable
 --
 -- JSON handling using 'Data.Generics'.
@@ -16,7 +16,7 @@
 -- by Lennart Augustsson.
 
 module Data.Aeson.Generic
-{-# DEPRECATED "Please use genericToJSON or genericParseJSON or Data.Aeson.TH instead. These alternatives are more efficient and configurable." #-}
+{-# DEPRECATED "This module will be /REMOVED/ in version 0.7.0.0. Please switch to GHC generics or Data.Aeson.TH instead. These alternatives are less buggy, faster, and more configurable." #-}
     (
     -- * Decoding and encoding
       decode
