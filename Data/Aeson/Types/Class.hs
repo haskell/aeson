@@ -673,9 +673,10 @@ instance ToJSON ZonedTime where
 
 instance FromJSON ZonedTime where
     parseJSON (String t) =
-      tryFormats alternateFormats
+      tryFormats (defaultFormat : alternateFormats)
       <|> fail "could not parse ECMA-262 ISO-8601 date"
       where
+        defaultFormat = dateTimeFmt defaultTimeLocale
         tryFormat f =
           case parseTime defaultTimeLocale f (unpack t) of
             Just d -> pure d
