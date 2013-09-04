@@ -148,6 +148,8 @@ test-suite tests
 
   ghc-options:
     -Wall -threaded -rtsopts
+  if impl(ghc < 7.4)
+    ghc-options: -fcontext-stack=40
 
   build-depends:
     QuickCheck,
