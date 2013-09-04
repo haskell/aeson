@@ -76,13 +76,20 @@ module Data.Aeson
     ) where
 
 import Data.Aeson.Encode (encode)
-import Data.Aeson.Parser.Internal (decodeWith, eitherDecodeWith, jsonEOF, json, jsonEOF', json')
+import Data.Aeson.Parser.Internal (decodeWith, eitherDecodeWith, jsonEOF, json,
+                                   jsonEOF', json')
 import Data.Aeson.Types
 import qualified Data.ByteString.Lazy as L
 
 -- | Efficiently deserialize a JSON value from a lazy 'L.ByteString'.
 -- If this fails due to incomplete or invalid input, 'Nothing' is
 -- returned.
+--
+-- The input must consist solely of a JSON document, with no trailing
+-- data except for whitespace. This restriction is necessary to ensure
+-- that if data is being lazily read from a file handle, the file
+-- handle will be closed in a timely fashion once the document has
+-- been parsed.
 --
 -- This function parses immediately, but defers conversion.  See
 -- 'json' for details.
@@ -93,6 +100,12 @@ decode = decodeWith jsonEOF fromJSON
 -- | Efficiently deserialize a JSON value from a lazy 'L.ByteString'.
 -- If this fails due to incomplete or invalid input, 'Nothing' is
 -- returned.
+--
+-- The input must consist solely of a JSON document, with no trailing
+-- data except for whitespace. This restriction is necessary to ensure
+-- that if data is being lazily read from a file handle, the file
+-- handle will be closed in a timely fashion once the document has
+-- been parsed.
 --
 -- This function parses and performs conversion immediately.  See
 -- 'json'' for details.
