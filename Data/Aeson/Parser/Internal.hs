@@ -15,11 +15,11 @@
 module Data.Aeson.Parser.Internal
     (
     -- * Lazy parsers
-      json
+      json, jsonEOF
     , value
     , jstring
     -- * Strict parsers
-    , json'
+    , json', jsonEOF'
     , value'
     -- * Helpers
     , decodeWith
@@ -271,3 +271,13 @@ eitherDecodeWith p to s =
 -- The 'json'' and 'value'' parsers combine identification with
 -- conversion.  They consume more CPU cycles up front, but have a
 -- smaller memory footprint.
+
+-- | Parse a top-level JSON value followed by optional whitespace and
+-- end-of-input.  See also: 'json'.
+jsonEOF :: Parser Value
+jsonEOF = json <* skipSpace <* endOfInput
+
+-- | Parse a top-level JSON value followed by optional whitespace and
+-- end-of-input.  See also: 'json''.
+jsonEOF' :: Parser Value
+jsonEOF' = json' <* skipSpace <* endOfInput
