@@ -47,6 +47,7 @@ module Data.Aeson.Types.Class
     , (.:?)
     , (.!=)
     , (.=)
+    , (<.:>)
     , typeMismatch
     ) where
 
@@ -875,6 +876,20 @@ obj .:? key = case H.lookup key obj of
 (.!=) :: Parser (Maybe a) -> a -> Parser a
 pmval .!= val = fromMaybe val <$> pmval
 {-# INLINE (.!=) #-}
+
+-- | Produce the value for the last key by traversing through the JSON.
+--
+-- Example usage:
+--
+-- > o <.:> ["_links", "comments", "href"]
+(<.:>) :: (FromJSON a) => Object -> [Text] -> Parser a
+_ <.:> [] = fail $ "attempted to traverse an Object without a path"
+obj <.:> [key] = obj .: key
+obj <.:> (key:keys) =
+    case next of
+      (Object nextObj) -> nextObj <.:> keys
+      other            -> typeMismatch "Object" other
+  where next = fromMaybe (Object H.empty) $ H.lookup key obj
 
 -- | Fail parsing due to a type mismatch, with a descriptive message.
 typeMismatch :: String -- ^ The name of the type you are trying to parse.
