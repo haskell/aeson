@@ -151,7 +151,7 @@ test-suite tests
   if impl(ghc < 7.4)
     ghc-options: -fcontext-stack=40
   if impl(ghc >= 7.2)
-    ghc-options: -DGHC_GENERICS
+    cpp-options: -DGHC_GENERICS
 
   build-depends:
     QuickCheck,
