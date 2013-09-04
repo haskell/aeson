@@ -40,6 +40,11 @@ module Data.Aeson
     , eitherDecode
     , eitherDecode'
     , encode
+    -- ** Variants for strict bytestrings
+    , decodeStrict
+    , decodeStrict'
+    , eitherDecodeStrict
+    , eitherDecodeStrict'
     -- * Core JSON types
     , Value(..)
     , Array
@@ -76,9 +81,11 @@ module Data.Aeson
     ) where
 
 import Data.Aeson.Encode (encode)
-import Data.Aeson.Parser.Internal (decodeWith, eitherDecodeWith, jsonEOF, json,
-                                   jsonEOF', json')
+import Data.Aeson.Parser.Internal (decodeWith, decodeStrictWith,
+                                   eitherDecodeWith, eitherDecodeStrictWith,
+                                   jsonEOF, json, jsonEOF', json')
 import Data.Aeson.Types
+import qualified Data.ByteString as B
 import qualified Data.ByteString.Lazy as L
 
 -- | Efficiently deserialize a JSON value from a lazy 'L.ByteString'.
@@ -97,6 +104,19 @@ decode :: (FromJSON a) => L.ByteString -> Maybe a
 decode = decodeWith jsonEOF fromJSON
 {-# INLINE decode #-}
 
+-- | Efficiently deserialize a JSON value from a strict 'B.ByteString'.
+-- If this fails due to incomplete or invalid input, 'Nothing' is
+-- returned.
+--
+-- The input must consist solely of a JSON document, with no trailing
+-- data except for whitespace.
+--
+-- This function parses immediately, but defers conversion.  See
+-- 'json' for details.
+decodeStrict :: (FromJSON a) => B.ByteString -> Maybe a
+decodeStrict = decodeStrictWith jsonEOF fromJSON
+{-# INLINE decodeStrict #-}
+
 -- | Efficiently deserialize a JSON value from a lazy 'L.ByteString'.
 -- If this fails due to incomplete or invalid input, 'Nothing' is
 -- returned.
@@ -113,15 +133,38 @@ decode' :: (FromJSON a) => L.ByteString -> Maybe a
 decode' = decodeWith jsonEOF' fromJSON
 {-# INLINE decode' #-}
 
+-- | Efficiently deserialize a JSON value from a lazy 'L.ByteString'.
+-- If this fails due to incomplete or invalid input, 'Nothing' is
+-- returned.
+--
+-- The input must consist solely of a JSON document, with no trailing
+-- data except for whitespace.
+--
+-- This function parses and performs conversion immediately.  See
+-- 'json'' for details.
+decodeStrict' :: (FromJSON a) => B.ByteString -> Maybe a
+decodeStrict' = decodeStrictWith jsonEOF' fromJSON
+{-# INLINE decodeStrict' #-}
+
 -- | Like 'decode' but returns an error message when decoding fails.
 eitherDecode :: (FromJSON a) => L.ByteString -> Either String a
 eitherDecode = eitherDecodeWith jsonEOF fromJSON
 {-# INLINE eitherDecode #-}
 
+-- | Like 'decodeStrict' but returns an error message when decoding fails.
+eitherDecodeStrict :: (FromJSON a) => B.ByteString -> Either String a
+eitherDecodeStrict = eitherDecodeStrictWith jsonEOF fromJSON
+{-# INLINE eitherDecodeStrict #-}
+
 -- | Like 'decode'' but returns an error message when decoding fails.
 eitherDecode' :: (FromJSON a) => L.ByteString -> Either String a
 eitherDecode' = eitherDecodeWith jsonEOF' fromJSON
 {-# INLINE eitherDecode' #-}
+
+-- | Like 'decodeStrict'' but returns an error message when decoding fails.
+eitherDecodeStrict' :: (FromJSON a) => B.ByteString -> Either String a
+eitherDecodeStrict' = eitherDecodeStrictWith jsonEOF' fromJSON
+{-# INLINE eitherDecodeStrict' #-}
 
 -- $use
 --
