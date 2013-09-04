@@ -128,7 +128,7 @@ eitherDecode' = eitherDecodeWith json' fromJSON
 -- > data Person = Person
 -- >     { name :: Text
 -- >     , age  :: Int
--- >     } deriving Show-
+-- >     } deriving Show
 --
 -- To decode data, we need to define a 'FromJSON' instance:
 --
