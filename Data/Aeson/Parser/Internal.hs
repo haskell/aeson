@@ -23,7 +23,9 @@ module Data.Aeson.Parser.Internal
     , value'
     -- * Helpers
     , decodeWith
+    , decodeStrictWith
     , eitherDecodeWith
+    , eitherDecodeStrictWith
     ) where
 
 import Blaze.ByteString.Builder (fromByteString, toByteString)
@@ -244,7 +246,18 @@ decodeWith p to s =
       _          -> Nothing
 {-# INLINE decodeWith #-}
 
-eitherDecodeWith :: Parser Value -> (Value -> Result a) -> L.ByteString -> Either String a
+decodeStrictWith :: Parser Value -> (Value -> Result a) -> B.ByteString
+                 -> Maybe a
+decodeStrictWith p to s =
+    case A.parse p s of
+      A.Done _ v -> case to v of
+                      Success a -> Just a
+                      _         -> Nothing
+      _          -> Nothing
+{-# INLINE decodeStrictWith #-}
+
+eitherDecodeWith :: Parser Value -> (Value -> Result a) -> L.ByteString
+                 -> Either String a
 eitherDecodeWith p to s =
     case L.parse p s of
       L.Done _ v -> case to v of
@@ -252,6 +265,17 @@ eitherDecodeWith p to s =
                       Error msg -> Left msg
       L.Fail _ _ msg -> Left msg
 {-# INLINE eitherDecodeWith #-}
+
+eitherDecodeStrictWith :: Parser Value -> (Value -> Result a) -> B.ByteString
+                       -> Either String a
+eitherDecodeStrictWith p to s =
+    case A.parse p s of
+      A.Done _ v -> case to v of
+                      Success a -> Right a
+                      Error msg -> Left msg
+      A.Fail _ _ msg -> Left msg
+      A.Partial _    -> Left "incomplete input"
+{-# INLINE eitherDecodeStrictWith #-}
 
 -- $lazy
 --
