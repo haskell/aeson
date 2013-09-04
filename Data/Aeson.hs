@@ -76,7 +76,7 @@ module Data.Aeson
     ) where
 
 import Data.Aeson.Encode (encode)
-import Data.Aeson.Parser.Internal (decodeWith, eitherDecodeWith, json, json')
+import Data.Aeson.Parser.Internal (decodeWith, eitherDecodeWith, jsonEOF, json, jsonEOF', json')
 import Data.Aeson.Types
 import qualified Data.ByteString.Lazy as L
 
@@ -87,7 +87,7 @@ import qualified Data.ByteString.Lazy as L
 -- This function parses immediately, but defers conversion.  See
 -- 'json' for details.
 decode :: (FromJSON a) => L.ByteString -> Maybe a
-decode = decodeWith json fromJSON
+decode = decodeWith jsonEOF fromJSON
 {-# INLINE decode #-}
 
 -- | Efficiently deserialize a JSON value from a lazy 'L.ByteString'.
@@ -97,17 +97,17 @@ decode = decodeWith json fromJSON
 -- This function parses and performs conversion immediately.  See
 -- 'json'' for details.
 decode' :: (FromJSON a) => L.ByteString -> Maybe a
-decode' = decodeWith json' fromJSON
+decode' = decodeWith jsonEOF' fromJSON
 {-# INLINE decode' #-}
 
 -- | Like 'decode' but returns an error message when decoding fails.
 eitherDecode :: (FromJSON a) => L.ByteString -> Either String a
-eitherDecode = eitherDecodeWith json fromJSON
+eitherDecode = eitherDecodeWith jsonEOF fromJSON
 {-# INLINE eitherDecode #-}
 
 -- | Like 'decode'' but returns an error message when decoding fails.
 eitherDecode' :: (FromJSON a) => L.ByteString -> Either String a
-eitherDecode' = eitherDecodeWith json' fromJSON
+eitherDecode' = eitherDecodeWith jsonEOF' fromJSON
 {-# INLINE eitherDecode' #-}
 
 -- $use
