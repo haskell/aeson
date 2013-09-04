@@ -1,10 +1,9 @@
-{-# LANGUAGE OverloadedStrings, RecordWildCards, ScopedTypeVariables #-}
+{-# LANGUAGE CPP, OverloadedStrings, RecordWildCards, ScopedTypeVariables #-}
 
 import Data.Aeson.Encode
 import Data.Aeson.Parser (value)
 import Data.Aeson.Types
 import Data.Attoparsec.Number
-import Data.Int
 import Test.Framework (Test, defaultMain, testGroup)
 import Test.Framework.Providers.QuickCheck2 (testProperty)
 import Test.QuickCheck (Arbitrary(..))
@@ -12,15 +11,17 @@ import qualified Data.Vector as V
 import qualified Data.Attoparsec.Lazy as L
 import qualified Data.ByteString.Lazy.Char8 as L
 import qualified Data.Text as T
-import qualified Data.Map as Map
 import qualified Data.HashMap.Strict as H
 import Data.Time.Clock (UTCTime(..))
 import Data.Time (ZonedTime(..))
-import Types (Foo(..))
 import Instances ()
-import Types (Approx(..), OneConstructor(..), Product2, Product6, Sum4)
+import Types
 import Encoders
 import Properties.Deprecated (deprecatedTests)
+#ifdef GHC_GENERICS
+import Data.Int
+import qualified Data.Map as Map
+#endif
 
 
 encodeDouble :: Double -> Double -> Bool
@@ -63,8 +64,10 @@ modifyFailureProp orig added =
 main :: IO ()
 main = defaultMain tests
 
+#ifdef GHC_GENERICS
 type P6 = Product6 Int Bool String (Approx Double) (Int, Approx Double) ()
 type S4 = Sum4 Int8 ZonedTime T.Text (Map.Map String Int)
+#endif
 
 --------------------------------------------------------------------------------
 -- Value properties
@@ -110,12 +113,14 @@ tests = [
     , testProperty "DotNetTime" $ roundTripEq (undefined :: Approx DotNetTime)
     , testProperty "UTCTime" $ roundTripEq (undefined :: Approx UTCTime)
     , testProperty "ZonedTime" $ roundTripEq (undefined::ZonedTime)
+#ifdef GHC_GENERICS
     , testGroup "ghcGenerics" [
         testProperty "OneConstructor" $ roundTripEq OneConstructor
       , testProperty "Product2" $ roundTripEq (undefined :: Product2 Int Bool)
       , testProperty "Product6" $ roundTripEq (undefined :: P6)
       , testProperty "Sum4" $ roundTripEq (undefined :: S4)
       ]
+#endif
     ],
   testGroup "toFromJSON" [
       testProperty "Integer" (toFromJSON :: Integer -> Bool)
@@ -154,6 +159,7 @@ tests = [
           ]
       ]
     ]
+#ifdef GHC_GENERICS
   , testGroup "GHC-generics" [
         testGroup "Nullary" [
             testProperty "string"                (isString                . gNullaryToJSONString)
@@ -190,4 +196,5 @@ tests = [
           ]
       ]
     ]
+#endif
   ]
