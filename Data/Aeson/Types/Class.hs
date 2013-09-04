@@ -673,16 +673,16 @@ instance ToJSON ZonedTime where
 
 instance FromJSON ZonedTime where
     parseJSON (String t) =
-      tryFormats (defaultFormat : alternateFormats)
+      tryFormats alternateFormats
       <|> fail "could not parse ECMA-262 ISO-8601 date"
       where
-        defaultFormat = dateTimeFmt defaultTimeLocale
         tryFormat f =
           case parseTime defaultTimeLocale f (unpack t) of
             Just d -> pure d
             Nothing -> empty
         tryFormats = foldr1 (<|>) . map tryFormat
         alternateFormats =
+          dateTimeFmt defaultTimeLocale :
           distributeList ["%Y", "%Y-%m", "%F"]
                          ["T%R", "T%T", "T%T%Q", "T%T%QZ", "T%T%Q%z"]
 
