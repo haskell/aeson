@@ -1,4 +1,4 @@
-{-# LANGUAGE BangPatterns, OverloadedStrings #-}
+{-# LANGUAGE CPP, BangPatterns, OverloadedStrings #-}
 
 -- |
 -- Module:      Data.Aeson.Parser.Internal
@@ -28,9 +28,19 @@ module Data.Aeson.Parser.Internal
     , eitherDecodeStrictWith
     ) where
 
-import Blaze.ByteString.Builder (fromByteString, toByteString)
+#if defined(USE_BLAZE_BUILDER)
+import Blaze.ByteString.Builder (Builder, fromByteString, toByteString)
 import Blaze.ByteString.Builder.Char.Utf8 (fromChar)
 import Blaze.ByteString.Builder.Word (fromWord8)
+#else
+#if MIN_VERSION_bytestring(0,10,2)
+import Data.ByteString.Builder
+#else
+import Data.ByteString.Lazy.Builder
+#endif
+  (Builder, byteString, toLazyByteString, charUtf8, word8)
+#endif
+
 import Control.Applicative as A
 import Data.Aeson.Types (Result(..), Value(..))
 import Data.Attoparsec.Char8 hiding (Result)
@@ -203,24 +213,24 @@ unescape = toByteString <$> go mempty where
           if slash /= backslash || escape == 255
             then fail "invalid JSON escape sequence"
             else do
-            let cont m = go (acc `mappend` fromByteString h `mappend` m)
+            let cont m = go (acc `mappend` byteString h `mappend` m)
                 {-# INLINE cont #-}
             if t /= 117 -- 'u'
-              then cont (fromWord8 (B.unsafeIndex mapping escape))
+              then cont (word8 (B.unsafeIndex mapping escape))
               else do
                    a <- hexQuad
                    if a < 0xd800 || a > 0xdfff
-                     then cont (fromChar (chr a))
+                     then cont (charUtf8 (chr a))
                      else do
                        b <- Z.string "\\u" *> hexQuad
                        if a <= 0xdbff && b >= 0xdc00 && b <= 0xdfff
                          then let !c = ((a - 0xd800) `shiftL` 10) +
                                        (b - 0xdc00) + 0x10000
-                              in cont (fromChar (chr c))
+                              in cont (charUtf8 (chr c))
                          else fail "invalid UTF-16 surrogates"
     done <- Z.atEnd
     if done
-      then return (acc `mappend` fromByteString h)
+      then return (acc `mappend` byteString h)
       else rest
   mapping = "\"\\/\n\t\b\r\f"
 
@@ -305,3 +315,22 @@ jsonEOF = json <* skipSpace <* endOfInput
 -- end-of-input.  See also: 'json''.
 jsonEOF' :: Parser Value
 jsonEOF' = json' <* skipSpace <* endOfInput
+
+#if defined(USE_BLAZE_BUILDER)
+byteString :: ByteString -> Builder
+byteString = fromByteString
+{-# INLINE byteString #-}
+
+charUtf8 :: Char -> Builder
+charUtf8 = fromChar
+{-# INLINE charUtf8 #-}
+
+word8 :: Word8 -> Builder
+word8 = fromWord8
+{-# INLINE word8 #-}
+
+#else
+toByteString :: Builder -> ByteString
+toByteString = L.toStrict . toLazyByteString
+{-# INLINE toByteString #-}
+#endif
