@@ -474,22 +474,6 @@ instance FromJSON LT.Text where
     parseJSON = withText "Lazy Text" $ pure . LT.fromStrict
     {-# INLINE parseJSON #-}
 
-instance ToJSON B.ByteString where
-    toJSON = String . decode
-    {-# INLINE toJSON #-}
-
-instance FromJSON B.ByteString where
-    parseJSON = withText "ByteString" $ pure . encodeUtf8
-    {-# INLINE parseJSON #-}
-
-instance ToJSON LB.ByteString where
-    toJSON = toJSON . strict
-    {-# INLINE toJSON #-}
-
-instance FromJSON LB.ByteString where
-    parseJSON = withText "Lazy ByteString" $ pure . lazy
-    {-# INLINE parseJSON #-}
-
 instance (ToJSON a) => ToJSON [a] where
     toJSON = Array . V.fromList . map toJSON
     {-# INLINE toJSON #-}
