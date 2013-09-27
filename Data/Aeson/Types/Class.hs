@@ -61,7 +61,6 @@ import Data.Maybe (fromMaybe)
 import Data.Monoid (Dual(..), First(..), Last(..), mappend)
 import Data.Ratio (Ratio)
 import Data.Text (Text, pack, unpack)
-import Data.Text.Encoding (encodeUtf8)
 import Data.Time (UTCTime, ZonedTime(..), TimeZone(..))
 import Data.Time.Format (FormatTime, formatTime, parseTime)
 import Data.Traversable (traverse)
@@ -70,8 +69,6 @@ import Data.Vector (Vector)
 import Data.Word (Word, Word8, Word16, Word32, Word64)
 import Foreign.Storable (Storable)
 import System.Locale (defaultTimeLocale, dateTimeFmt)
-import qualified Data.ByteString as B
-import qualified Data.ByteString.Lazy as LB
 import qualified Data.HashMap.Strict as H
 import qualified Data.HashSet as HashSet
 import qualified Data.IntMap as IntMap
@@ -568,18 +565,6 @@ instance (ToJSON v) => ToJSON (M.Map String v) where
 instance (FromJSON v) => FromJSON (M.Map String v) where
     parseJSON = fmap (hashMapKey unpack) . parseJSON
 
-instance (ToJSON v) => ToJSON (M.Map B.ByteString v) where
-    toJSON = Object . mapHashKeyVal decode toJSON
-
-instance (FromJSON v) => FromJSON (M.Map B.ByteString v) where
-    parseJSON = fmap (hashMapKey encodeUtf8) . parseJSON
-
-instance (ToJSON v) => ToJSON (M.Map LB.ByteString v) where
-    toJSON = Object . mapHashKeyVal strict toJSON
-
-instance (FromJSON v) => FromJSON (M.Map LB.ByteString v) where
-    parseJSON = fmap (hashMapKey lazy) . parseJSON
-
 instance (ToJSON v) => ToJSON (H.HashMap Text v) where
     toJSON = Object . H.map toJSON
     {-# INLINE toJSON #-}
@@ -598,18 +583,6 @@ instance (ToJSON v) => ToJSON (H.HashMap String v) where
 
 instance (FromJSON v) => FromJSON (H.HashMap String v) where
     parseJSON = fmap (mapKey unpack) . parseJSON
-
-instance (ToJSON v) => ToJSON (H.HashMap B.ByteString v) where
-    toJSON = Object . mapKeyVal decode toJSON
-
-instance (FromJSON v) => FromJSON (H.HashMap B.ByteString v) where
-    parseJSON = fmap (mapKey encodeUtf8) . parseJSON
-
-instance (ToJSON v) => ToJSON (H.HashMap LB.ByteString v) where
-    toJSON = Object . mapKeyVal strict toJSON
-
-instance (FromJSON v) => FromJSON (H.HashMap LB.ByteString v) where
-    parseJSON = fmap (mapKey lazy) . parseJSON
 
 instance ToJSON Value where
     toJSON a = a
