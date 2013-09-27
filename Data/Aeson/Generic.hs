@@ -30,7 +30,7 @@ module Data.Aeson.Generic
 import Control.Applicative ((<$>))
 import Control.Arrow (first)
 import Control.Monad.State.Strict
-import Data.Aeson.Functions hiding (decode)
+import Data.Aeson.Functions
 import Data.Aeson.Types hiding (FromJSON(..), ToJSON(..), fromJSON)
 import Data.Attoparsec.Number (Number)
 import Data.Generics
@@ -39,14 +39,11 @@ import Data.Int (Int8, Int16, Int32, Int64)
 import Data.IntSet (IntSet)
 import Data.Maybe (fromJust)
 import Data.Text (Text, pack, unpack)
-import Data.Text.Encoding (encodeUtf8)
 import Data.Time.Clock (UTCTime)
 import Data.Word (Word, Word8, Word16, Word32, Word64)
 import Data.Aeson.Parser.Internal (decodeWith, json, json')
 import qualified Data.Aeson.Encode as E
-import qualified Data.Aeson.Functions as F
 import qualified Data.Aeson.Types as T
-import qualified Data.ByteString as B
 import qualified Data.ByteString.Lazy as L
 import qualified Data.HashMap.Strict as H
 import qualified Data.Map as Map
@@ -127,8 +124,6 @@ toJSON = toJSON_generic
       | tyrep == typeOf DT.empty = remap id
       | tyrep == typeOf LT.empty = remap LT.toStrict
       | tyrep == typeOf ""       = remap pack
-      | tyrep == typeOf B.empty  = remap F.decode
-      | tyrep == typeOf L.empty  = remap strict
       | otherwise = modError "toJSON" $
                              "cannot convert map keyed by type " ++ show tyrep
       where tyrep = typeOf . head . Map.keys $ m
@@ -138,8 +133,6 @@ toJSON = toJSON_generic
       | tyrep == typeOf DT.empty = remap id
       | tyrep == typeOf LT.empty = remap LT.toStrict
       | tyrep == typeOf ""       = remap pack
-      | tyrep == typeOf B.empty  = remap F.decode
-      | tyrep == typeOf L.empty  = remap strict
       | otherwise = modError "toJSON" $
                              "cannot convert map keyed by type " ++ show tyrep
       where tyrep = typeOf . head . H.keys $ m
@@ -235,8 +228,6 @@ parseJSON j = parseJSON_generic j
         | tyrep == typeOf DT.empty = process id
         | tyrep == typeOf LT.empty = process LT.fromStrict
         | tyrep == typeOf ""       = process DT.unpack
-        | tyrep == typeOf B.empty  = process encodeUtf8
-        | tyrep == typeOf L.empty  = process lazy
         | otherwise = myFail
         where
           process f = maybe myFail return . cast =<< parseWith f
@@ -252,8 +243,6 @@ parseJSON j = parseJSON_generic j
         | tyrep == typeOf DT.empty = process id
         | tyrep == typeOf LT.empty = process LT.fromStrict
         | tyrep == typeOf ""       = process DT.unpack
-        | tyrep == typeOf B.empty  = process encodeUtf8
-        | tyrep == typeOf L.empty  = process lazy
         | otherwise = myFail
       where
         process f = maybe myFail return . cast =<< parseWith f
