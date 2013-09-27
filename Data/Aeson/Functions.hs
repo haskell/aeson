@@ -12,17 +12,9 @@ module Data.Aeson.Functions
     , hashMapKey
     , mapKeyVal
     , mapKey
-    -- * String conversions
-    , decode
-    , strict
-    , lazy
     ) where
 
 import Data.Hashable (Hashable)
-import Data.Text (Text)
-import Data.Text.Encoding (decodeUtf8, encodeUtf8)
-import qualified Data.ByteString as B
-import qualified Data.ByteString.Lazy as L
 import qualified Data.HashMap.Strict as H
 import qualified Data.Map as M
 
@@ -48,15 +40,3 @@ mapKeyVal fk kv = H.foldrWithKey (\k v -> H.insert (fk k) (kv v)) H.empty
 mapKey :: (Eq k2, Hashable k2) => (k1 -> k2) -> H.HashMap k1 v -> H.HashMap k2 v
 mapKey fk = mapKeyVal fk id
 {-# INLINE mapKey #-}
-
-strict :: L.ByteString -> Text
-strict = decode . B.concat . L.toChunks
-{-# INLINE strict #-}
-
-lazy :: Text -> L.ByteString
-lazy = L.fromChunks . (:[]) . encodeUtf8
-{-# INLINE lazy #-}
-
-decode :: B.ByteString -> Text
-decode = decodeUtf8
-{-# INLINE decode #-}
