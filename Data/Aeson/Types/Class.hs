@@ -655,10 +655,17 @@ instance ToJSON UTCTime where
     {-# INLINE toJSON #-}
 
 instance FromJSON UTCTime where
-    parseJSON = withText "UTCTime" $ \t ->
-        case parseTime defaultTimeLocale "%FT%T%QZ" (unpack t) of
-          Just d -> pure d
-          _      -> fail "could not parse ISO-8601 date"
+    parseJSON (String t) =
+      tryFormats alternateFormats
+      <|> fail "could not parse ISO-8601 date"
+      where
+        tryFormat f =
+          case parseTime defaultTimeLocale f (unpack t) of
+            Just d -> pure d
+            Nothing -> empty
+        tryFormats = foldr1 (<|>) . map tryFormat
+        alternateFormats = ["%FT%T%QZ", "%FT%T%Q%z"]
+    parseJSON v = typeMismatch "UTCTime" v
     {-# INLINE parseJSON #-}
 
 instance (ToJSON a, ToJSON b) => ToJSON (a,b) where
