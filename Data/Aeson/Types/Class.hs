@@ -75,6 +75,7 @@ import qualified Data.IntMap as IntMap
 import qualified Data.IntSet as IntSet
 import qualified Data.Map as M
 import qualified Data.Set as Set
+import qualified Data.Tree as Tree
 import qualified Data.Text as T
 import qualified Data.Text.Lazy as LT
 import qualified Data.Vector as V
@@ -583,6 +584,12 @@ instance (ToJSON v) => ToJSON (H.HashMap String v) where
 
 instance (FromJSON v) => FromJSON (H.HashMap String v) where
     parseJSON = fmap (mapKey unpack) . parseJSON
+
+instance (ToJSON v) => ToJSON (Tree.Tree v) where
+    toJSON (Tree.Node root branches) = toJSON (root,branches)
+
+instance (FromJSON v) => FromJSON (Tree.Tree v) where
+    parseJSON j = uncurry Tree.Node <$> parseJSON j
 
 instance ToJSON Value where
     toJSON a = a
