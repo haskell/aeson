@@ -269,12 +269,9 @@ eitherDecodeWith p to s =
 eitherDecodeStrictWith :: Parser Value -> (Value -> Result a) -> B.ByteString
                        -> Either String a
 eitherDecodeStrictWith p to s =
-    case A.parse p s of
-      A.Done _ v -> case to v of
-                      Success a -> Right a
-                      Error msg -> Left msg
-      A.Fail _ _ msg -> Left msg
-      A.Partial _    -> Left "incomplete input"
+    case either Error to (A.parseOnly p s) of
+      Success a -> Right a
+      Error msg -> Left msg
 {-# INLINE eitherDecodeStrictWith #-}
 
 -- $lazy
