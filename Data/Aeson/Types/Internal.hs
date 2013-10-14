@@ -1,4 +1,4 @@
-{-# LANGUAGE CPP, DeriveDataTypeable, Rank2Types #-}
+{-# LANGUAGE CPP, DeriveDataTypeable, GeneralizedNewtypeDeriving, Rank2Types #-}
 
 -- |
 -- Module:      Data.Aeson.Types.Internal
@@ -35,6 +35,9 @@ module Data.Aeson.Types.Internal
     , SumEncoding(..)
     , defaultOptions
     , defaultTaggedObject
+
+    -- * Other types
+    , DotNetTime(..)
     ) where
 
 import Control.Applicative
@@ -46,6 +49,8 @@ import Data.HashMap.Strict (HashMap)
 import Data.Monoid (Monoid(..))
 import Data.String (IsString(..))
 import Data.Text (Text, pack)
+import Data.Time (UTCTime)
+import Data.Time.Format (FormatTime)
 import Data.Typeable (Typeable)
 import Data.Vector (Vector)
 import qualified Data.HashMap.Strict as H
@@ -170,6 +175,17 @@ data Value = Object !Object
            | Bool !Bool
            | Null
              deriving (Eq, Show, Typeable)
+
+-- | A newtype wrapper for 'UTCTime' that uses the same non-standard
+-- serialization format as Microsoft .NET, whose @System.DateTime@
+-- type is by default serialized to JSON as in the following example:
+--
+-- > /Date(1302547608878)/
+--
+-- The number represents milliseconds since the Unix epoch.
+newtype DotNetTime = DotNetTime {
+      fromDotNetTime :: UTCTime
+    } deriving (Eq, Ord, Read, Show, Typeable, FormatTime)
 
 instance NFData Value where
     rnf (Object o) = rnf o

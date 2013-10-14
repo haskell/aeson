@@ -108,6 +108,7 @@ library
     Data.Aeson.Functions
     Data.Aeson.Parser.Internal
     Data.Aeson.Types.Class
+    Data.Aeson.Types.Instances
     Data.Aeson.Types.Internal
 
   if impl(ghc >= 7.2.1)
