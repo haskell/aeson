@@ -63,7 +63,7 @@ module Data.Aeson.Types
     , defaultTaggedObject
     ) where
 
-import Data.Aeson.Types.Class
+import Data.Aeson.Types.Instances
 import Data.Aeson.Types.Internal
 
 #ifdef GENERICS
