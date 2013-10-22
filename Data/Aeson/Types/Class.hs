@@ -61,7 +61,7 @@ import Data.Hashable (Hashable(..))
 import Data.Int (Int8, Int16, Int32, Int64)
 import Data.Maybe (fromMaybe)
 import Data.Monoid (Dual(..), First(..), Last(..), mappend)
-import Data.Ratio (Ratio)
+import Data.Ratio (Ratio, (%), numerator, denominator)
 import Data.Text (Text, pack, unpack)
 import Data.Text.Encoding (encodeUtf8)
 import Data.Time (UTCTime, ZonedTime(..), TimeZone(..))
@@ -343,14 +343,15 @@ instance FromJSON Float where
     {-# INLINE parseJSON #-}
 
 instance ToJSON (Ratio Integer) where
-    toJSON = Number . fromRational
+    toJSON r = object [ "numerator"   .= numerator   r
+                      , "denominator" .= denominator r
+                      ]
     {-# INLINE toJSON #-}
 
 instance FromJSON (Ratio Integer) where
-    parseJSON = withNumber "Ration Integer" $ \n ->
-                  pure $ case n of
-                           D d -> toRational d
-                           I i -> fromIntegral i
+    parseJSON = withObject "Rational" $ \obj ->
+                  (%) <$> obj .: "numerator"
+                      <*> obj .: "denominator"
     {-# INLINE parseJSON #-}
 
 instance HasResolution a => ToJSON (Fixed a) where
