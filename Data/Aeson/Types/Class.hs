@@ -313,8 +313,14 @@ instance FromJSON Char where
     {-# INLINE parseJSON #-}
 
 instance ToJSON Double where
-    toJSON = Number . realToFrac
+    toJSON = realFloatToJSON
     {-# INLINE toJSON #-}
+
+realFloatToJSON :: RealFloat a => a -> Value
+realFloatToJSON d
+    | isNaN d || isInfinite d = Null
+    | otherwise = Number $ realToFrac d
+{-# INLINE realFloatToJSON #-}
 
 instance FromJSON Double where
     parseJSON (Number s) = pure $ realToFrac s
@@ -323,7 +329,8 @@ instance FromJSON Double where
     {-# INLINE parseJSON #-}
 
 instance ToJSON Number where
-    toJSON = Number . numberToScientific
+    toJSON (D d) = toJSON d
+    toJSON (I i) = Number $ fromInteger i
     {-# INLINE toJSON #-}
 
 instance FromJSON Number where
@@ -333,7 +340,7 @@ instance FromJSON Number where
     {-# INLINE parseJSON #-}
 
 instance ToJSON Float where
-    toJSON = Number . realToFrac
+    toJSON = realFloatToJSON
     {-# INLINE toJSON #-}
 
 instance FromJSON Float where
@@ -967,8 +974,3 @@ scientificToNumber s
     e = base10Exponent s
     c = coefficient s
 {-# INLINE scientificToNumber #-}
-
-numberToScientific :: Number -> Scientific
-numberToScientific (I i) = fromInteger i
-numberToScientific (D d) = realToFrac d
-{-# INLINE numberToScientific #-}
