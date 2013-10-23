@@ -366,8 +366,7 @@ instance HasResolution a => ToJSON (Fixed a) where
     {-# INLINE toJSON #-}
 
 instance HasResolution a => FromJSON (Fixed a) where
-    parseJSON (Number s) = pure $ realToFrac s
-    parseJSON v          = typeMismatch "Fixed" v
+    parseJSON = withScientific "Fixed" $ pure . realToFrac
     {-# INLINE parseJSON #-}
 
 instance ToJSON Int where
