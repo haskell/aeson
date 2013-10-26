@@ -35,19 +35,23 @@ module Data.Aeson.Types.Internal
     , SumEncoding(..)
     , defaultOptions
     , defaultTaggedObject
+
+    -- Used for changing CamelCase names into something else.
+    , camelTo
     ) where
 
 import Control.Applicative
 import Control.Monad
-import Control.DeepSeq (NFData(..))
-import Data.Attoparsec.Char8 (Number(..))
-import Data.Hashable (Hashable(..))
-import Data.HashMap.Strict (HashMap)
-import Data.Monoid (Monoid(..))
-import Data.String (IsString(..))
-import Data.Text (Text, pack)
-import Data.Typeable (Typeable)
-import Data.Vector (Vector)
+import Control.DeepSeq        ( NFData(..) )
+import Data.Attoparsec.Char8  ( Number(..) )
+import Data.Char              ( isUpper, toLower )
+import Data.Hashable          ( Hashable(..) )
+import Data.HashMap.Strict    ( HashMap )
+import Data.Monoid            ( Monoid(..) )
+import Data.String            ( IsString(..) )
+import Data.Text              ( Text, pack )
+import Data.Typeable          ( Typeable )
+import Data.Vector            ( Vector )
 import qualified Data.HashMap.Strict as H
 import qualified Data.Vector as V
 
@@ -328,3 +332,25 @@ defaultTaggedObject = TaggedObject
                       { tagFieldName      = "tag"
                       , contentsFieldName = "contents"
                       }
+
+-- | Converts from CamelCase to another lower case, interpsersing
+--   the character between all capital letters and their previous
+--   entries, except those capital letters that appear together,
+--   like 'API'.
+--
+--   For use by Aeson template haskell calls.
+--
+--   > camelTo '_' 'CamelCaseAPI' == "camel_case_api"
+camelTo :: Char -> String -> String
+camelTo c = lastWasCap True
+  where
+    lastWasCap :: Bool    -- ^ Previous was a capital letter
+              -> String  -- ^ The remaining string
+              -> String
+    lastWasCap _    []           = []
+    lastWasCap prev (x : xs)     = if isUpper x
+                                      then if prev
+                                             then toLower x : lastWasCap True xs
+                                             else c : toLower x : lastWasCap True xs
+                                      else x : lastWasCap False xs
+
