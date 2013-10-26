@@ -110,12 +110,14 @@ class GFromJSON f where
 genericToJSON :: (Generic a, GToJSON (Rep a), JSON json)
               => Options -> a -> json
 genericToJSON opts = gToJSON opts . from
+{-# INLINE genericToJSON #-}
 
 -- | A configurable generic JSON decoder. This function applied to
 -- 'defaultOptions' is used as the default for 'parseJSON' when the
 -- type is an instance of 'Generic'.
 genericParseJSON :: (Generic a, GFromJSON (Rep a)) => Options -> Value -> Parser a
 genericParseJSON opts = fmap to . gParseJSON opts
+{-# INLINE genericParseJSON #-}
 #endif
 
 -- | A type that can be converted to JSON.
@@ -177,6 +179,7 @@ class ToJSON a where
     default toJSON :: (Generic a, GToJSON (Rep a), JSON json)
                    => a -> json
     toJSON = genericToJSON defaultOptions
+    {-# INLINE toJSON #-}
 #endif
 
 -- | A type that can be converted from JSON, with the possibility of
@@ -248,6 +251,7 @@ class FromJSON a where
 #ifdef GENERICS
     default parseJSON :: (Generic a, GFromJSON (Rep a)) => Value -> Parser a
     parseJSON = genericParseJSON defaultOptions
+    {-# INLINE parseJSON #-}
 #endif
 
 instance (ToJSON a) => ToJSON (Maybe a) where
