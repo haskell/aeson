@@ -81,7 +81,7 @@ import Data.Aeson ( toJSON, Object, object, (.=), (.:), (.:?)
                   , ToJSON, toJSON
                   , FromJSON, parseJSON
                   )
-import Data.Aeson.Types ( Value(..), Parser
+import Data.Aeson.Types ( JSON(..), Value(..), Parser
                         , Options(..)
                         , SumEncoding(..)
                         , defaultOptions
@@ -215,7 +215,7 @@ consToJSON opts cons = do
         | otherwise = [encodeArgs opts True con | con <- cons]
 
 conStr :: Options -> Name -> Q Exp
-conStr opts = appE [|String|] . conTxt opts
+conStr opts = appE [|jsonString|] . conTxt opts
 
 conTxt :: Options -> Name -> Q Exp
 conTxt opts = appE [|T.pack|] . conStringE opts
@@ -233,7 +233,7 @@ encodeSum opts multiCons conName exp
     | multiCons =
         case sumEncoding opts of
           TwoElemArray ->
-              [|Array|] `appE` ([|V.fromList|] `appE` listE [conStr opts conName, exp])
+              [|jsonArray . elements|] `appE` ([|V.fromList|] `appE` listE [conStr opts conName, exp])
           TaggedObject{tagFieldName, contentsFieldName} ->
               [|object|] `appE` listE
                 [ infixApp [|T.pack tagFieldName|]     [|(.=)|] (conStr opts conName)
@@ -277,7 +277,7 @@ encodeArgs opts multiCons (NormalC conName ts) = do
                           | (ix, e) <- zip [(0::Integer)..] es
                           ]
                   ret = noBindS $ [|return|] `appE` varE mv
-              return $ [|Array|] `appE`
+              return $ [|jsonArray . elements|] `appE`
                          (varE 'V.create `appE`
                            doE (newMV:stmts++[ret]))
     match (conP conName $ map varP args)

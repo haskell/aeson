@@ -56,6 +56,7 @@ module Data.Aeson
     , Result(..)
     , fromJSON
     , ToJSON(..)
+    , JSON(..)
 #ifdef GENERICS
     -- ** Generic JSON classes
     , GFromJSON(..)

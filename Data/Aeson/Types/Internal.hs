@@ -1,5 +1,6 @@
-{-# LANGUAGE CPP, DeriveDataTypeable, Rank2Types #-}
-
+{-# LANGUAGE CPP, DeriveDataTypeable, Rank2Types,
+             TypeFamilies, ScopedTypeVariables,
+             FlexibleContexts, GeneralizedNewtypeDeriving #-}
 -- |
 -- Module:      Data.Aeson.Types.Internal
 -- Copyright:   (c) 2011, 2012 Bryan O'Sullivan
@@ -12,9 +13,10 @@
 -- Types for working with JSON data.
 
 module Data.Aeson.Types.Internal
-    (
+    ( JSON(..)
+
     -- * Core JSON types
-      Value(..)
+    , Value(..)
     , Array
     , emptyArray, isEmptyArray
     , Pair
@@ -41,9 +43,11 @@ import Control.Applicative
 import Control.Monad
 import Control.DeepSeq (NFData(..))
 import Data.Scientific (Scientific)
+import Data.Foldable (foldMap)
 import Data.Hashable (Hashable(..))
 import Data.HashMap.Strict (HashMap)
 import Data.Monoid (Monoid(..))
+import Data.List (foldl')
 import Data.String (IsString(..))
 import Data.Text (Text, pack)
 import Data.Typeable (Typeable)
@@ -156,6 +160,46 @@ apP d e = do
   return (b a)
 {-# INLINE apP #-}
 
+-- | Finally tagless representation of a JSON AST.
+class ( Monoid ((JsonObject json) json)
+      , Monoid ((JsonArray  json) json)) => JSON json where
+
+    data JsonArray  json :: * -> *
+    data JsonObject json :: * -> *
+
+    jsonObject   :: (JsonObject json) json -> json
+    jsonArray    :: (JsonArray  json) json -> json
+    jsonString   :: Text        -> json
+    jsonNumber   :: Scientific  -> json
+    jsonBool     :: Bool        -> json
+    jsonNull     :: json
+
+    insert       :: Text -> json -> (JsonObject json) json
+                                 -> (JsonObject json) json
+    element      :: json -> (JsonArray json) json
+    elements     :: Vector json -> (JsonArray json) json
+
+    elements = foldMap element
+    {-# INLINE elements #-}
+
+instance JSON Value where
+    newtype JsonArray Value json = JsonArray {unJsonArray  :: Vector json}
+        deriving Monoid
+
+    newtype JsonObject Value json = JsonObject {unJsonObject :: HashMap Text json}
+        deriving Monoid
+
+    jsonObject   = Object . unJsonObject
+    jsonArray    = Array  . unJsonArray
+    jsonString   = String
+    jsonNumber   = Number
+    jsonBool     = Bool
+    jsonNull     = Null
+
+    insert k v   = JsonObject . H.insert k v . unJsonObject
+    element      = JsonArray  . V.singleton
+    elements     = JsonArray
+
 -- | A JSON \"object\" (key\/value map).
 type Object = HashMap Text Value
 
@@ -194,8 +238,8 @@ instance Hashable Value where
     hashWithSalt s Null         = s `hashWithSalt` (5::Int)
 
 -- | The empty array.
-emptyArray :: Value
-emptyArray = Array V.empty
+emptyArray :: (JSON json) => json
+emptyArray = jsonArray mempty
 
 -- | Determines if the 'Value' is an empty 'Array'.
 -- Note that: @isEmptyArray 'emptyArray'@.
@@ -204,8 +248,8 @@ isEmptyArray (Array arr) = V.null arr
 isEmptyArray _ = False
 
 -- | The empty object.
-emptyObject :: Value
-emptyObject = Object H.empty
+emptyObject :: (JSON json) => json
+emptyObject = jsonObject mempty
 
 -- | Run a 'Parser'.
 parse :: (a -> Parser b) -> a -> Result b
@@ -222,13 +266,18 @@ parseEither :: (a -> Parser b) -> a -> Either String b
 parseEither m v = runParser (m v) Left Right
 {-# INLINE parseEither #-}
 
--- | A key\/value pair for an 'Object'.
-type Pair = (Text, Value)
+-- | A key\/value pair for a 'jsonObject'.
+type Pair json = (Text, json)
 
 -- | Create a 'Value' from a list of name\/value 'Pair's.  If duplicate
--- keys arise, earlier keys and their associated values win.
-object :: [Pair] -> Value
-object = Object . H.fromList
+-- keys arise, later keys and their associated values win.
+
+-- TODO: fold' is the right choice when the object is a HashMap.
+--       However, when the object is a Builder
+--       we might want to use foldr instead.
+--       Lets see if a rewrite RULE could make a difference here.
+object :: (JSON json) => [Pair json] -> json
+object = jsonObject . foldl' (\o (k, v) -> insert k v o) mempty
 {-# INLINE object #-}
 
 -- | If the inner @Parser@ failed, modify the failure message using the
