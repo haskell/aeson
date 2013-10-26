@@ -70,11 +70,6 @@ module Data.Aeson.TH
 
     , mkToJSON
     , mkParseJSON
-
-    -- * For the oft-conversion of CamelCase to underscore_case in JSON
-    , camelToUnderscore
-    , camelToUnderscoreDrop
-    , camelToUnderscoreDropChecked
     ) where
 
 --------------------------------------------------------------------------------
@@ -95,7 +90,6 @@ import Data.Aeson.Types ( Value(..), Parser
 -- from base:
 import Control.Applicative ( pure, (<$>), (<*>) )
 import Control.Monad       ( return, mapM, liftM2, fail )
-import Data.Char           ( isUpper, toLower)
 import Data.Bool           ( Bool(False, True), otherwise, (&&) )
 import Data.Eq             ( (==) )
 import Data.Function       ( ($), (.) )
@@ -103,10 +97,10 @@ import Data.Functor        ( fmap )
 import Data.Int            ( Int )
 import Data.Either         ( Either(Left, Right) )
 import Data.List           ( (++), foldl, foldl', intercalate
-                           , length, map, zip, genericLength, all, partition, drop
+                           , length, map, zip, genericLength, all, partition
                            )
 import Data.Maybe          ( Maybe(Nothing, Just), catMaybes )
-import Prelude             ( String, (-), Integer, fromIntegral, error, const )
+import Prelude             ( String, (-), Integer, fromIntegral, error )
 import Text.Printf         ( printf )
 import Text.Show           ( show )
 #if __GLASGOW_HASKELL__ < 700
@@ -878,41 +872,3 @@ valueConName (String _) = "String"
 valueConName (Number _) = "Number"
 valueConName (Bool   _) = "Boolean"
 valueConName Null       = "Null"
-
--- | Removes the first Int characters of string, then converts from
---   CamelCase to underscore_case.
---
---   For use by Aeson template haskell calls.
-camelToUnderscore :: String -> String
-camelToUnderscore = camelToUnderscoreDrop 0
-
--- | Removes the first Int characters of string, then converts from
---   CamelCase to underscore_case. Drops the first few characters from
---   the input.
---
---   For use by Aeson template haskell calls.
-camelToUnderscoreDrop :: Int -> String -> String
-camelToUnderscoreDrop i = camelToUnderscoreDropChecked (const i)
-
--- | Removes the first Int characters of string, then converts from
---   CamelCase to underscore_case. Investigates the input string to
---   see how many characters to drop.
---
---   For use by Aeson template haskell calls.
-camelToUnderscoreDropChecked :: (String -> Int) -> String -> String
-camelToUnderscoreDropChecked chk property =
-    underscore True input
-  where
-    input :: String
-    input = drop (chk property) property
-
-    underscore :: Bool    -- ^ Previous was a capital letter
-               -> String  -- ^ The remaining string
-               -> String
-    underscore _    []           = []
-    underscore prev (x : xs)     = if isUpper x
-                                      then if prev
-                                             then toLower x : underscore True xs
-                                             else '_' : toLower x : underscore True xs
-                                      else x : underscore False xs
-
