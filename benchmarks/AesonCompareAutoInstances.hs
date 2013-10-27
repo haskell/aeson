@@ -16,8 +16,6 @@ import Data.Aeson.Types
 import Data.Aeson.TH
 import qualified Data.Aeson.Generic as G (fromJSON, toJSON)
 
-import Data.Aeson.Encode
-
 import Options
 
 --------------------------------------------------------------------------------
@@ -37,7 +35,7 @@ instance NFData a => NFData (D a) where
     rnf Nullary         = ()
     rnf (Unary n)       = rnf n
     rnf (Product s c x) = s `deepseq` c `deepseq` rnf x
-    rnf (Record d b y)  = d `deepseq` b `deepseq` rnf y
+    rnf (Record f b y)  = f `deepseq` b `deepseq` rnf y
 
 type T = D (D (D ()))
 
@@ -74,7 +72,7 @@ instance NFData a => NFData (D' a) where
     rnf Nullary'         = ()
     rnf (Unary' n)       = rnf n
     rnf (Product' s c x) = s `deepseq` c `deepseq` rnf x
-    rnf (Record' d b y)  = d `deepseq` b `deepseq` rnf y
+    rnf (Record' f b y)  = f `deepseq` b `deepseq` rnf y
 
 type T' = D' (D' (D' ()))
 
@@ -102,6 +100,7 @@ data BigRecord = BigRecord
 
 instance NFData BigRecord
 
+bigRecord :: BigRecord
 bigRecord = BigRecord 1   2  3  4  5
                       6   7  8  9 10
                       11 12 13 14 15
@@ -132,6 +131,7 @@ data BigProduct = BigProduct
 
 instance NFData BigProduct
 
+bigProduct :: BigProduct
 bigProduct = BigProduct 1   2  3  4  5
                         6   7  8  9 10
                         11 12 13 14 15
@@ -161,6 +161,7 @@ data BigSum = F01 | F02 | F03 | F04 | F05
 
 instance NFData BigSum
 
+bigSum :: BigSum
 bigSum = F25
 
 gBigSumToJSON :: BigSum -> Value
@@ -227,6 +228,7 @@ main = defaultMain
        ]
   ]
 
+group :: (Benchmarkable b) => String -> b -> b -> b -> Benchmark
 group n th syb gen = bcompare
                      [ bgroup n [ bench "th"      th
                                 , bench "syb"     syb
