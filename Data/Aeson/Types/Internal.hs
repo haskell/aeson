@@ -333,7 +333,7 @@ defaultTaggedObject = TaggedObject
                       , contentsFieldName = "contents"
                       }
 
--- | Converts from CamelCase to another lower case, interpsersing
+-- | Converts from CamelCase to another lower case, interspersing
 --   the character between all capital letters and their previous
 --   entries, except those capital letters that appear together,
 --   like 'API'.
