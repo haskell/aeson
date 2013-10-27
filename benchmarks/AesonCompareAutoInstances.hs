@@ -179,14 +179,18 @@ thBigSumFromJSON = parse $(mkParseJSON opts ''BigSum)
 
 type FJ a = Value -> Result a
 
+toValue :: ToJSON a => a -> Value
+toValue = toJSON
+{-# INLINE toValue #-}
+
 main :: IO ()
 main = defaultMain
-  [ let v = toJSON d
+  [ let v = toValue d
     in (d, d', v) `deepseq`
        bgroup "D"
-       [ group "toJSON"   (nf   toJSON d)
+       [ group "toJSON"   (nf   toValue d)
                           (nf G.toJSON d)
-                          (nf   toJSON d')
+                          (nf   toValue d')
        , group "fromJSON" (nf (  fromJSON :: FJ T ) v)
                           (nf (G.fromJSON :: FJ T ) v)
                           (nf (  fromJSON :: FJ T') v)
