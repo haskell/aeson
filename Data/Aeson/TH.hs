@@ -172,6 +172,7 @@ deriveToJSON opts name =
                                   (normalB $ consToJSON opts cons)
                                   []
                          ]
+                  , pragInlD 'toJSON Inline FunLike AllPhases
                   ]
       where
         classType = conT ''ToJSON
@@ -379,6 +380,7 @@ deriveFromJSON opts name =
                                   (normalB $ consFromJSON name opts cons)
                                   []
                          ]
+                  , pragInlD 'parseJSON Inline FunLike AllPhases
                   ]
       where
         classType = conT ''FromJSON
