@@ -237,12 +237,12 @@ encodeSum opts multiCons conName exp
               [|jsonArray . elements|] `appE` ([|V.fromList|] `appE` listE [conStr opts conName, exp])
           TaggedObject{tagFieldName, contentsFieldName} ->
               [|object|] `appE` listE
-                [ infixApp [|T.pack tagFieldName|]     [|(.=)|] (conStr opts conName)
-                , infixApp [|T.pack contentsFieldName|] [|(.=)|] exp
+                [ infixApp [|T.pack tagFieldName|] [|(.=)|] (conStr opts conName)
+                , [|(,)|] `appE` [|T.pack contentsFieldName|] `appE` exp
                 ]
           ObjectWithSingleField ->
               [|object|] `appE` listE
-                [ infixApp (conTxt opts conName) [|(.=)|] exp
+                [ [|(,)|] `appE` conTxt opts conName `appE` exp
                 ]
 
     | otherwise = exp
@@ -336,7 +336,7 @@ encodeArgs opts multiCons (RecC conName ts) = do
                                   pairs
                    ObjectWithSingleField ->
                        [|object|] `appE` listE
-                         [ infixApp (conTxt opts conName) [|(.=)|] exp ]
+                         [ [|(,)|] `appE` conTxt opts conName `appE` exp ]
             else exp
           ) []
 
