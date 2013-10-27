@@ -38,6 +38,7 @@ import Data.Hashable (Hashable)
 import Data.Int (Int8, Int16, Int32, Int64)
 import Data.IntSet (IntSet)
 import Data.Maybe (fromJust)
+import Data.Monoid (mempty)
 import Data.Text (Text, pack, unpack)
 import Data.Text.Encoding (encodeUtf8)
 import Data.Time.Clock (UTCTime)
@@ -53,12 +54,14 @@ import qualified Data.Map as Map
 import qualified Data.Set as Set
 import qualified Data.Text as DT
 import qualified Data.Text.Lazy as LT
+import qualified Data.Text.Lazy.Encoding as LTE (encodeUtf8)
+import qualified Data.Text.Lazy.Builder as LTB (toLazyText)
 import qualified Data.Traversable as T
 import qualified Data.Vector as V
 
 -- | Efficiently serialize a JSON value as a lazy 'L.ByteString'.
 encode :: (Data a) => a -> L.ByteString
-encode = E.encode . toJSON
+encode = LTE.encodeUtf8 . LTB.toLazyText . E.toBuilder . toJSON
 {-# INLINE encode #-}
 
 -- | Efficiently deserialize a JSON value from a lazy 'L.ByteString'.
@@ -81,47 +84,45 @@ decode' :: (Data a) => L.ByteString -> Maybe a
 decode' = decodeWith json' fromJSON
 {-# INLINE decode' #-}
 
-type T a = a -> Value
-
-toJSON :: (Data a) => a -> Value
+toJSON :: forall a json. (Data a, T.JSON json) => a -> json
 toJSON = toJSON_generic
-         `ext1Q` maybe Null toJSON
+         `ext1Q` maybe T.jsonNull toJSON
          `ext1Q` list
          `ext1Q` vector
          `ext1Q` set
          `ext2Q'` mapAny
          `ext2Q'` hashMapAny
          -- Use the standard encoding for all base types.
-         `extQ` (T.toJSON :: T Integer)
-         `extQ` (T.toJSON :: T Int)
-         `extQ` (T.toJSON :: T Int8)
-         `extQ` (T.toJSON :: T Int16)
-         `extQ` (T.toJSON :: T Int32)
-         `extQ` (T.toJSON :: T Int64)
-         `extQ` (T.toJSON :: T Word)
-         `extQ` (T.toJSON :: T Word8)
-         `extQ` (T.toJSON :: T Word16)
-         `extQ` (T.toJSON :: T Word32)
-         `extQ` (T.toJSON :: T Word64)
-         `extQ` (T.toJSON :: T Double)
-         `extQ` (T.toJSON :: T Number)
-         `extQ` (T.toJSON :: T Float)
-         `extQ` (T.toJSON :: T Rational)
-         `extQ` (T.toJSON :: T Char)
-         `extQ` (T.toJSON :: T Text)
-         `extQ` (T.toJSON :: T LT.Text)
-         `extQ` (T.toJSON :: T String)
-         `extQ` (T.toJSON :: T T.Value)
-         `extQ` (T.toJSON :: T DotNetTime)
-         `extQ` (T.toJSON :: T UTCTime)
-         `extQ` (T.toJSON :: T IntSet)
-         `extQ` (T.toJSON :: T Bool)
-         `extQ` (T.toJSON :: T ())
-         --`extQ` (T.toJSON :: T Ordering)
+         `extQ` (T.toJSON :: Integer    -> json)
+         `extQ` (T.toJSON :: Int        -> json)
+         `extQ` (T.toJSON :: Int8       -> json)
+         `extQ` (T.toJSON :: Int16      -> json)
+         `extQ` (T.toJSON :: Int32      -> json)
+         `extQ` (T.toJSON :: Int64      -> json)
+         `extQ` (T.toJSON :: Word       -> json)
+         `extQ` (T.toJSON :: Word8      -> json)
+         `extQ` (T.toJSON :: Word16     -> json)
+         `extQ` (T.toJSON :: Word32     -> json)
+         `extQ` (T.toJSON :: Word64     -> json)
+         `extQ` (T.toJSON :: Double     -> json)
+         `extQ` (T.toJSON :: Number     -> json)
+         `extQ` (T.toJSON :: Float      -> json)
+         `extQ` (T.toJSON :: Rational   -> json)
+         `extQ` (T.toJSON :: Char       -> json)
+         `extQ` (T.toJSON :: Text       -> json)
+         `extQ` (T.toJSON :: LT.Text    -> json)
+         `extQ` (T.toJSON :: String     -> json)
+         `extQ` (T.toJSON :: T.Value    -> json)
+         `extQ` (T.toJSON :: DotNetTime -> json)
+         `extQ` (T.toJSON :: UTCTime    -> json)
+         `extQ` (T.toJSON :: IntSet     -> json)
+         `extQ` (T.toJSON :: Bool       -> json)
+         `extQ` (T.toJSON :: ()         -> json)
+         --`extQ` (T.toJSON :: Ordering -> json)
   where
-    list xs = Array . V.fromList . map toJSON $ xs
-    vector v = Array . V.map toJSON $ v
-    set s = Array . V.fromList . map toJSON . Set.toList $ s
+    list xs = T.jsonArray . T.elements . V.fromList . map toJSON $ xs
+    vector v = T.jsonArray . T.elements . V.map toJSON $ v
+    set s = T.jsonArray . T.elements . V.fromList . map toJSON . Set.toList $ s
 
     mapAny m
       | tyrep == typeOf DT.empty = remap id
@@ -132,7 +133,11 @@ toJSON = toJSON_generic
       | otherwise = modError "toJSON" $
                              "cannot convert map keyed by type " ++ show tyrep
       where tyrep = typeOf . head . Map.keys $ m
-            remap f = Object . mapHashKeyVal (f . fromJust . cast) toJSON $ m
+            remap f = T.jsonObject $
+                        Map.foldrWithKey
+                          (\k v -> T.insert (f $ fromJust $ cast k) (toJSON v))
+                          mempty
+                          m
 
     hashMapAny m
       | tyrep == typeOf DT.empty = remap id
@@ -143,9 +148,13 @@ toJSON = toJSON_generic
       | otherwise = modError "toJSON" $
                              "cannot convert map keyed by type " ++ show tyrep
       where tyrep = typeOf . head . H.keys $ m
-            remap f = Object . mapKeyVal (f . fromJust . cast) toJSON $ m
+            remap f = T.jsonObject $
+                        H.foldrWithKey
+                          (\k v -> T.insert (f $ fromJust $ cast k) (toJSON v))
+                          mempty
+                          m
 
-toJSON_generic :: (Data a) => a -> Value
+toJSON_generic :: (Data a, T.JSON json) => a -> json
 toJSON_generic = generic
   where
         -- Generic encoding of an algebraic data type.
@@ -153,7 +162,7 @@ toJSON_generic = generic
             case dataTypeRep (dataTypeOf a) of
                 -- No constructor, so it must be an error value.  Code
                 -- it anyway as Null.
-                AlgRep []  -> Null
+                AlgRep []  -> T.jsonNull
                 -- Elide a single constructor and just code the arguments.
                 AlgRep [c] -> encodeArgs c (gmapQ toJSON a)
                 -- For multiple constructors, make an object with a
@@ -169,14 +178,14 @@ toJSON_generic = generic
         -- name as the single field and the arguments as the value.
         -- Use an array if the are no field names, but elide singleton arrays,
         -- and use an object if there are field names.
-        encodeConstr c [] = String . constrString $ c
+        encodeConstr c [] = T.jsonString . constrString $ c
         encodeConstr c as = object [(constrString c, encodeArgs c as)]
 
         constrString = pack . showConstr
 
         encodeArgs c = encodeArgs' (constrFields c)
         encodeArgs' [] [j] = j
-        encodeArgs' [] js  = Array . V.fromList $ js
+        encodeArgs' [] js  = T.jsonArray . T.elements . V.fromList $ js
         encodeArgs' ns js  = object $ zip (map pack ns) js
 
 
