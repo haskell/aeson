@@ -7,8 +7,9 @@ cabal-version:       >=1.2
 executable aeson-compare-auto-instances
   main-is: AesonCompareAutoInstances.hs
   hs-source-dirs: . ..
-  ghc-options: -Wall -O2
+  ghc-options: -O2
   cpp-options: -DGENERICS
+               -DFINALLY_TAGLESS
   build-depends:
     criterion,
 

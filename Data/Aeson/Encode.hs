@@ -21,6 +21,7 @@
 module Data.Aeson.Encode
     ( JsonBuilder
     , toBuilder
+    , jsonBuilderToLazyByteString
 
     , fromValue
     , encode
@@ -53,6 +54,12 @@ newtype JsonBuilder   = JsonBuilder Builder
 -- | Convert a 'JsonBuilder' to a 'Builder'.
 toBuilder :: JsonBuilder -> Builder
 toBuilder (JsonBuilder builder) = builder
+
+-- | Convert a 'JsonBuilder' to a 'Builder' and convert the @Builder@
+-- into a lazy 'L.ByteString'.
+jsonBuilderToLazyByteString :: JsonBuilder -> L.ByteString
+jsonBuilderToLazyByteString = encodeUtf8 . toLazyText . toBuilder
+{-# INLINE jsonBuilderToLazyByteString #-}
 
 data CommaMonoid = Empty | Comma !Builder
 
@@ -162,6 +169,6 @@ fromScientific s
 
 -- | Efficiently serialize a JSON value as a lazy 'L.ByteString'.
 encode :: ToJSON a => a -> L.ByteString
-encode = {-# SCC "encode" #-} encodeUtf8 . toLazyText . toBuilder .
+encode = {-# SCC "encode" #-} jsonBuilderToLazyByteString .
          {-# SCC "toJSON" #-} toJSON
 {-# INLINE encode #-}
