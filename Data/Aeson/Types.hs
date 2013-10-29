@@ -47,6 +47,7 @@ module Data.Aeson.Types
     , withText
     , withArray
     , withNumber
+    , withScientific
     , withBool
 
     -- * Constructors and accessors

@@ -43,7 +43,7 @@ module Data.Aeson.Types.Internal
 import Control.Applicative
 import Control.Monad
 import Control.DeepSeq (NFData(..))
-import Data.Attoparsec.Char8 (Number(..))
+import Data.Scientific (Scientific)
 import Data.Hashable (Hashable(..))
 import Data.HashMap.Strict (HashMap)
 import Data.Monoid (Monoid(..))
@@ -171,7 +171,7 @@ type Array = Vector Value
 data Value = Object !Object
            | Array !Array
            | String !Text
-           | Number !Number
+           | Number !Scientific
            | Bool !Bool
            | Null
              deriving (Eq, Show, Typeable)
@@ -191,7 +191,7 @@ instance NFData Value where
     rnf (Object o) = rnf o
     rnf (Array a)  = V.foldl' (\x y -> rnf y `seq` x) () a
     rnf (String s) = rnf s
-    rnf (Number n) = case n of I i -> rnf i; D d -> rnf d
+    rnf (Number n) = rnf n
     rnf (Bool b)   = rnf b
     rnf Null       = ()
 
@@ -205,11 +205,9 @@ instance Hashable Value where
     hashWithSalt s (Array a)    = V.foldl' hashWithSalt
                                   (s `hashWithSalt` (1::Int)) a
     hashWithSalt s (String str) = s `hashWithSalt` (2::Int) `hashWithSalt` str
-    hashWithSalt s (Number n)   = 3 `hashWithSalt`
-                                  case n of I i -> hashWithSalt s i
-                                            D d -> hashWithSalt s d
-    hashWithSalt s (Bool b)   = s `hashWithSalt` (4::Int) `hashWithSalt` b
-    hashWithSalt s Null       = s `hashWithSalt` (5::Int)
+    hashWithSalt s (Number n)   = s `hashWithSalt` (3::Int) `hashWithSalt` n
+    hashWithSalt s (Bool b)     = s `hashWithSalt` (4::Int) `hashWithSalt` b
+    hashWithSalt s Null         = s `hashWithSalt` (5::Int)
 
 -- | The empty array.
 emptyArray :: Value

@@ -3,7 +3,6 @@
 import Data.Aeson.Encode
 import Data.Aeson.Parser (value)
 import Data.Aeson.Types
-import Data.Attoparsec.Number
 import Test.Framework (Test, defaultMain, testGroup)
 import Test.Framework.Providers.QuickCheck2 (testProperty)
 import Test.QuickCheck (Arbitrary(..))
@@ -26,12 +25,12 @@ import qualified Data.Map as Map
 
 encodeDouble :: Double -> Double -> Bool
 encodeDouble num denom
-    | isInfinite d || isNaN d = encode (Number (D d)) == "null"
-    | otherwise               = (read . L.unpack . encode . Number . D) d == d
+    | isInfinite d || isNaN d = encode d == "null"
+    | otherwise               = (read . L.unpack . encode) d == d
   where d = num / denom
 
 encodeInteger :: Integer -> Bool
-encodeInteger i = encode (Number (I i)) == L.pack (show i)
+encodeInteger i = encode i == L.pack (show i)
 
 toParseJSON :: (Arbitrary a, Eq a) => (Value -> Parser a) -> (a -> Value) -> a -> Bool
 toParseJSON parsejson tojson x =
