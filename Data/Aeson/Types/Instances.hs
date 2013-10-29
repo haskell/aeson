@@ -1,5 +1,5 @@
 {-# LANGUAGE CPP, DeriveDataTypeable, FlexibleContexts, FlexibleInstances,
-    IncoherentInstances, OverlappingInstances,
+    GeneralizedNewtypeDeriving, IncoherentInstances, OverlappingInstances,
     OverloadedStrings, UndecidableInstances, ViewPatterns #-}
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 
@@ -39,6 +39,7 @@ module Data.Aeson.Types.Instances
     , withText
     , withArray
     , withNumber
+    , withScientific
     , withBool
 
     -- * Functions
@@ -54,13 +55,14 @@ import Control.Applicative ((<$>), (<*>), (<|>), pure, empty)
 import Data.Aeson.Functions
 import Data.Aeson.Types.Class
 import Data.Aeson.Types.Internal
-import Data.Attoparsec.Char8 (Number(..))
+import Data.Scientific (Scientific, coefficient, base10Exponent)
+import Data.Attoparsec.Number (Number(..))
 import Data.Fixed
 import Data.Hashable (Hashable(..))
 import Data.Int (Int8, Int16, Int32, Int64)
 import Data.Maybe (fromMaybe)
 import Data.Monoid (Dual(..), First(..), Last(..), mappend)
-import Data.Ratio (Ratio)
+import Data.Ratio (Ratio, (%), numerator, denominator)
 import Data.Text (Text, pack, unpack)
 import Data.Time (UTCTime, ZonedTime(..), TimeZone(..))
 import Data.Time.Format (formatTime, parseTime)
@@ -150,48 +152,52 @@ instance FromJSON Char where
     {-# INLINE parseJSON #-}
 
 instance ToJSON Double where
-    toJSON = Number . D
+    toJSON = realFloatToJSON
     {-# INLINE toJSON #-}
 
+realFloatToJSON :: RealFloat a => a -> Value
+realFloatToJSON d
+    | isNaN d || isInfinite d = Null
+    | otherwise = Number $ realToFrac d
+{-# INLINE realFloatToJSON #-}
+
 instance FromJSON Double where
-    parseJSON (Number n) = case n of
-                             D d -> pure d
-                             I i -> pure (fromIntegral i)
+    parseJSON (Number s) = pure $ realToFrac s
     parseJSON Null       = pure (0/0)
     parseJSON v          = typeMismatch "Double" v
     {-# INLINE parseJSON #-}
 
 instance ToJSON Number where
-    toJSON = Number
+    toJSON (D d) = toJSON d
+    toJSON (I i) = Number $ fromInteger i
     {-# INLINE toJSON #-}
 
 instance FromJSON Number where
-    parseJSON (Number n) = pure n
+    parseJSON (Number s) = pure $ scientificToNumber s
     parseJSON Null       = pure (D (0/0))
     parseJSON v          = typeMismatch "Number" v
     {-# INLINE parseJSON #-}
 
 instance ToJSON Float where
-    toJSON = Number . realToFrac
+    toJSON = realFloatToJSON
     {-# INLINE toJSON #-}
 
 instance FromJSON Float where
-    parseJSON (Number n) = pure $ case n of
-                                    D d -> realToFrac d
-                                    I i -> fromIntegral i
+    parseJSON (Number s) = pure $ realToFrac s
     parseJSON Null       = pure (0/0)
     parseJSON v          = typeMismatch "Float" v
     {-# INLINE parseJSON #-}
 
 instance ToJSON (Ratio Integer) where
-    toJSON = Number . fromRational
+    toJSON r = object [ "numerator"   .= numerator   r
+                      , "denominator" .= denominator r
+                      ]
     {-# INLINE toJSON #-}
 
 instance FromJSON (Ratio Integer) where
-    parseJSON = withNumber "Ration Integer" $ \n ->
-                  pure $ case n of
-                           D d -> toRational d
-                           I i -> fromIntegral i
+    parseJSON = withObject "Rational" $ \obj ->
+                  (%) <$> obj .: "numerator"
+                      <*> obj .: "denominator"
     {-# INLINE parseJSON #-}
 
 instance HasResolution a => ToJSON (Fixed a) where
@@ -199,10 +205,7 @@ instance HasResolution a => ToJSON (Fixed a) where
     {-# INLINE toJSON #-}
 
 instance HasResolution a => FromJSON (Fixed a) where
-    parseJSON (Number n) = pure $ case n of
-                                    D d -> realToFrac d
-                                    I i -> fromIntegral i
-    parseJSON v          = typeMismatch "Fixed" v
+    parseJSON = withScientific "Fixed" $ pure . realToFrac
     {-# INLINE parseJSON #-}
 
 instance ToJSON Int where
@@ -214,7 +217,7 @@ instance FromJSON Int where
     {-# INLINE parseJSON #-}
 
 parseIntegral :: Integral a => Value -> Parser a
-parseIntegral = withNumber "Integral" $ pure . floor
+parseIntegral = withScientific "Integral" $ pure . floor
 {-# INLINE parseIntegral #-}
 
 instance ToJSON Integer where
@@ -667,28 +670,35 @@ withObject _        f (Object obj) = f obj
 withObject expected _ v            = typeMismatch expected v
 {-# INLINE withObject #-}
 
--- | @withObject expected f value@ applies @f@ to the 'Text' when @value@ is a @String@
+-- | @withText expected f value@ applies @f@ to the 'Text' when @value@ is a @String@
 --   and fails using @'typeMismatch' expected@ otherwise.
 withText :: String -> (Text -> Parser a) -> Value -> Parser a
 withText _        f (String txt) = f txt
 withText expected _ v            = typeMismatch expected v
 {-# INLINE withText #-}
 
--- | @withObject expected f value@ applies @f@ to the 'Array' when @value@ is an @Array@
+-- | @withArray expected f value@ applies @f@ to the 'Array' when @value@ is an @Array@
 --   and fails using @'typeMismatch' expected@ otherwise.
 withArray :: String -> (Array -> Parser a) -> Value -> Parser a
 withArray _        f (Array arr) = f arr
 withArray expected _ v           = typeMismatch expected v
 {-# INLINE withArray #-}
 
--- | @withObject expected f value@ applies @f@ to the 'Number' when @value@ is a @Number@
+-- | @withNumber expected f value@ applies @f@ to the 'Number' when @value@ is a 'Number'.
 --   and fails using @'typeMismatch' expected@ otherwise.
 withNumber :: String -> (Number -> Parser a) -> Value -> Parser a
-withNumber _        f (Number num) = f num
-withNumber expected _ v            = typeMismatch expected v
+withNumber expected f = withScientific expected (f . scientificToNumber)
 {-# INLINE withNumber #-}
+{-# DEPRECATED withNumber "Use withScientific instead" #-}
 
--- | @withObject expected f value@ applies @f@ to the 'Bool' when @value@ is a @Bool@
+-- | @withScientific expected f value@ applies @f@ to the 'Scientific' number when @value@ is a 'Number'.
+--   and fails using @'typeMismatch' expected@ otherwise.
+withScientific :: String -> (Scientific -> Parser a) -> Value -> Parser a
+withScientific _        f (Number scientific) = f scientific
+withScientific expected _ v                   = typeMismatch expected v
+{-# INLINE withScientific #-}
+
+-- | @withBool expected f value@ applies @f@ to the 'Bool' when @value@ is a @Bool@
 --   and fails using @'typeMismatch' expected@ otherwise.
 withBool :: String -> (Bool -> Parser a) -> Value -> Parser a
 withBool _        f (Bool arr) = f arr
@@ -764,3 +774,12 @@ typeMismatch expected actual =
              Number _ -> "Number"
              Bool _   -> "Boolean"
              Null     -> "Null"
+
+scientificToNumber :: Scientific -> Number
+scientificToNumber s
+    | e < 0     = D $ fromInteger c / 10 ^ negate e
+    | otherwise = I $ c * 10 ^ e
+  where
+    e = base10Exponent s
+    c = coefficient s
+{-# INLINE scientificToNumber #-}

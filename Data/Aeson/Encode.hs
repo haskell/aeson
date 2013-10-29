@@ -24,11 +24,10 @@ module Data.Aeson.Encode
     ) where
 
 import Data.Aeson.Types (ToJSON(..), Value(..))
-import Data.Attoparsec.Number (Number(..))
 import Data.Monoid (mappend)
+import Data.Scientific (Scientific, coefficient, base10Exponent, scientificBuilder)
 import Data.Text.Lazy.Builder
 import Data.Text.Lazy.Builder.Int (decimal)
-import Data.Text.Lazy.Builder.RealFloat (realFloat)
 import Data.Text.Lazy.Encoding (encodeUtf8)
 import Numeric (showHex)
 import qualified Data.ByteString.Lazy as L
@@ -43,7 +42,7 @@ fromValue :: Value -> Builder
 fromValue Null = {-# SCC "fromValue/Null" #-} "null"
 fromValue (Bool b) = {-# SCC "fromValue/Bool" #-}
                      if b then "true" else "false"
-fromValue (Number n) = {-# SCC "fromValue/Number" #-} fromNumber n
+fromValue (Number s) = {-# SCC "fromValue/Number" #-} fromScientific s
 fromValue (String s) = {-# SCC "fromValue/String" #-} string s
 fromValue (Array v)
     | V.null v = {-# SCC "fromValue/Array" #-} "[]"
@@ -87,11 +86,12 @@ string s = {-# SCC "string" #-} singleton '"' <> quote s <> singleton '"'
         | otherwise  = singleton c
         where h = showHex (fromEnum c) ""
 
-fromNumber :: Number -> Builder
-fromNumber (I i) = decimal i
-fromNumber (D d)
-    | isNaN d || isInfinite d = "null"
-    | otherwise               = realFloat d
+fromScientific :: Scientific -> Builder
+fromScientific s
+    | e < 0     = scientificBuilder s
+    | otherwise = decimal (coefficient s * 10 ^ e)
+  where
+    e = base10Exponent s
 
 -- | Efficiently serialize a JSON value as a lazy 'L.ByteString'.
 encode :: ToJSON a => a -> L.ByteString
