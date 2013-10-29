@@ -136,7 +136,7 @@ arrayValues val = do
 -- implementations in other languages conform to that same restriction
 -- to preserve interoperability and security.
 value :: Parser Value
-value = most <|> (Number <$> number)
+value = most <|> (Number <$> rational)
  where
   most = do
     c <- satisfy (`B8.elem` "{[\"ftn")
@@ -166,7 +166,7 @@ value' = most <|> num
       'n' -> string "ull" *> pure Null
       _   -> error "attoparsec panic! the impossible happened!"
   num = do
-    !n <- number
+    !n <- rational
     return (Number n)
 
 doubleQuote, backslash :: Word8
