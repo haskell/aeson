@@ -710,6 +710,10 @@ withBool expected _ v          = typeMismatch expected v
 name .= value = (name, toJSON value)
 {-# INLINE (.=) #-}
 
+-- | Maybe Construct a 'Pair' from key and a 'Maybe' value.
+(.=?) :: ToJSON a => Text -> Maybe a -> Maybe Pair
+name .=? value = fmap (name .=) value
+
 -- | Convert a value from JSON, failing if the types do not match.
 fromJSON :: (FromJSON a) => Value -> Result a
 fromJSON = parse parseJSON
