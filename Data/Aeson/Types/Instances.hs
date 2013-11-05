@@ -170,7 +170,7 @@ instance FromJSON Double where
 
 instance ToJSON Number where
     toJSON (D d) = toJSON d
-    toJSON (I i) = Number $ fromInteger i
+    toJSON (I i) = toJSON i
     {-# INLINE toJSON #-}
 
 instance FromJSON Number where
@@ -222,7 +222,7 @@ parseIntegral = withScientific "Integral" $ pure . floor
 {-# INLINE parseIntegral #-}
 
 instance ToJSON Integer where
-    toJSON = Number . fromIntegral
+    toJSON = Number . fromInteger
     {-# INLINE toJSON #-}
 
 instance FromJSON Integer where
