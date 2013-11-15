@@ -9,6 +9,7 @@ import Test.QuickCheck (Arbitrary(..))
 import qualified Data.Vector as V
 import qualified Data.Attoparsec.Lazy as L
 import qualified Data.ByteString.Lazy.Char8 as L
+import Data.Fixed
 import qualified Data.Text as T
 import qualified Data.HashMap.Strict as H
 import Data.Time.Clock (UTCTime(..))
@@ -124,6 +125,13 @@ tests = [
   testGroup "toFromJSON" [
       testProperty "Integer" (toFromJSON :: Integer -> Bool)
     , testProperty "Double" (toFromJSON :: Double -> Bool)
+    , testProperty "Fixed0" (toFromJSON :: Fixed E0 -> Bool)
+    , testProperty "Fixed1" (toFromJSON :: Fixed E1 -> Bool)
+    , testProperty "Fixed2" (toFromJSON :: Fixed E2 -> Bool)
+    , testProperty "Fixed3" (toFromJSON :: Fixed E3 -> Bool)
+    , testProperty "Fixed6" (toFromJSON :: Fixed E6 -> Bool)
+    , testProperty "Fixed9" (toFromJSON :: Fixed E9 -> Bool)
+    , testProperty "Fixed12" (toFromJSON :: Fixed E12 -> Bool)
     , testProperty "Maybe Integer" (toFromJSON :: Maybe Integer -> Bool)
     , testProperty "Either Integer Double" (toFromJSON :: Either Integer Double -> Bool)
     , testProperty "Either Integer Integer" (toFromJSON :: Either Integer Integer -> Bool)
