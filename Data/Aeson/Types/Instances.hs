@@ -204,8 +204,15 @@ instance HasResolution a => ToJSON (Fixed a) where
     toJSON = Number . realToFrac
     {-# INLINE toJSON #-}
 
+scientificToFixed :: HasResolution a => Scientific -> Fixed a
+scientificToFixed x =
+  let (c, e) = (coefficient x, base10Exponent x)
+   in if e < 0
+    then fromIntegral c / 10^(-e)
+    else fromIntegral (c * 10^e)
+
 instance HasResolution a => FromJSON (Fixed a) where
-    parseJSON = withScientific "Fixed" $ pure . realToFrac
+    parseJSON = withScientific "Fixed" $ pure . scientificToFixed
     {-# INLINE parseJSON #-}
 
 instance ToJSON Int where
