@@ -206,7 +206,7 @@ eitherDecodeStrict' = eitherDecodeStrictWith jsonEOF' fromJSON
 --
 -- > instance ToJSON Person where
 -- >     toJSON (Person name age) = object $ ["name" .= name]
--- >                                       ++ catMaybes ["age" .= age]
+-- >                                       ++ catMaybes ["age" .=? age]
 --
 -- We can now encode a value like so:
 --
