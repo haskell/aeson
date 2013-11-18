@@ -151,6 +151,14 @@ instance FromJSON Char where
                     else fail "Expected a string of length 1"
     {-# INLINE parseJSON #-}
 
+instance ToJSON Scientific where
+    toJSON = Number
+    {-# INLINE toJSON #-}
+
+instance FromJSON Scientific where
+    parseJSON = withScientific "Scientific" pure
+    {-# INLINE parseJSON #-}
+
 instance ToJSON Double where
     toJSON = realFloatToJSON
     {-# INLINE toJSON #-}
