@@ -66,7 +66,7 @@ import Data.Monoid (Dual(..), First(..), Last(..), mappend)
 import Data.Ratio (Ratio, (%), numerator, denominator)
 import Data.Text (Text, pack, unpack)
 import Data.Time (UTCTime, ZonedTime(..), TimeZone(..))
-import Data.Time.Format (formatTime, parseTime)
+import Data.Time.Format (FormatTime, formatTime, parseTime)
 import Data.Traversable (traverse)
 import Data.Vector (Vector)
 import Data.Word (Word, Word8, Word16, Word32, Word64)
@@ -454,9 +454,8 @@ instance FromJSON Value where
 
 instance ToJSON DotNetTime where
     toJSON (DotNetTime t) =
-        String (pack (secs ++ msecs ++ ")/"))
+        String (pack (secs ++ formatMillis t ++ ")/"))
       where secs  = formatTime defaultTimeLocale "/Date(%s" t
-            msecs = take 3 $ formatTime defaultTimeLocale "%q" t
     {-# INLINE toJSON #-}
 
 instance FromJSON DotNetTime where
@@ -471,11 +470,13 @@ instance FromJSON DotNetTime where
 instance ToJSON ZonedTime where
     toJSON t = String $ pack $ formatTime defaultTimeLocale format t
       where
-        format = "%FT%T" ++ milliseconds ++ tzFormat
-        milliseconds = take 4 $ formatTime defaultTimeLocale "%Q" t
+        format = "%FT%T." ++ formatMillis t ++ tzFormat
         tzFormat
           | 0 == timeZoneMinutes (zonedTimeZone t) = "Z"
           | otherwise = "%z"
+
+formatMillis :: (FormatTime t) => t -> String
+formatMillis t = take 3 . formatTime defaultTimeLocale "%q" $ t
 
 instance FromJSON ZonedTime where
     parseJSON (String t) =
