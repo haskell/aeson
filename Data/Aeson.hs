@@ -183,7 +183,7 @@ eitherDecodeStrict' = eitherDecodeStrictWith jsonEOF' fromJSON
 --
 -- > data Person = Person
 -- >     { name :: Text
--- >     , age  :: Int
+-- >     , age  :: Maybe Int
 -- >     } deriving Show
 --
 -- To decode data, we need to define a 'FromJSON' instance:
@@ -192,24 +192,25 @@ eitherDecodeStrict' = eitherDecodeStrictWith jsonEOF' fromJSON
 -- >
 -- > instance FromJSON Person where
 -- >     parseJSON (Object v) = Person <$>
--- >                            v .: "name" <*>
--- >                            v .: "age"
+-- >                            v .:  "name" <*>
+-- >                            v .:? "age"
 -- >     -- A non-Object value is of the wrong type, so fail.
 -- >     parseJSON _          = mzero
 --
 -- We can now parse the JSON data like so:
 --
 -- > >>> decode "{\"name\":\"Joe\",\"age\":12}" :: Maybe Person
--- > Just (Person {name = "Joe", age = 12})
+-- > Just (Person {name = "Joe", age = Just 12})
 --
 -- To encode data, we need to define a 'ToJSON' instance:
 --
 -- > instance ToJSON Person where
--- >     toJSON (Person name age) = object ["name" .= name, "age" .= age]
+-- >     toJSON (Person name age) = object $ ["name" .= name]
+-- >                                       ++ catMaybes ["age" .=? age]
 --
 -- We can now encode a value like so:
 --
--- > >>> encode (Person {name = "Joe", age = 12})
+-- > >>> encode (Person {name = "Joe", age = Just 12})
 -- > "{\"name\":\"Joe\",\"age\":12}"
 --
 -- There are predefined 'FromJSON' and 'ToJSON' instances for many
