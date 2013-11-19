@@ -499,8 +499,11 @@ instance FromJSON ZonedTime where
     parseJSON v = typeMismatch "ZonedTime" v
 
 instance ToJSON UTCTime where
-    toJSON t = String (pack (take 23 str ++ "Z"))
-      where str = formatTime defaultTimeLocale "%FT%T%Q" t
+    toJSON t = String (pack (str ++ z : "Z"))
+      where (str,(x:y:_)) = splitAt 22 $
+                            formatTime defaultTimeLocale "%FT%T.%q" t
+            z | y < '5'   = x
+              | otherwise = succ x
     {-# INLINE toJSON #-}
 
 instance FromJSON UTCTime where
