@@ -40,7 +40,8 @@ instance Arbitrary Day where
     arbitrary = ModifiedJulianDay `liftM` arbitrary
 
 instance Arbitrary DiffTime where
-    arbitrary = picosecondsToDiffTime `liftM` choose (0, 86400000000000000)
+    arbitrary = (picosecondsToDiffTime . (* 1000000000)) <$>
+                choose (0, 86400000)
 
 instance Arbitrary UTCTime where
     arbitrary = liftM2 UTCTime arbitrary arbitrary
