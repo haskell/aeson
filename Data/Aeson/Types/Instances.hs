@@ -55,7 +55,8 @@ import Control.Applicative ((<$>), (<*>), (<|>), pure, empty)
 import Data.Aeson.Functions
 import Data.Aeson.Types.Class
 import Data.Aeson.Types.Internal
-import Data.Scientific (Scientific, coefficient, base10Exponent)
+import Data.Scientific (Scientific)
+import qualified Data.Scientific as Scientific (coefficient, base10Exponent, fromFloatDigits)
 import Data.Attoparsec.Number (Number(..))
 import Data.Fixed
 import Data.Hashable (Hashable(..))
@@ -166,7 +167,7 @@ instance ToJSON Double where
 realFloatToJSON :: RealFloat a => a -> Value
 realFloatToJSON d
     | isNaN d || isInfinite d = Null
-    | otherwise = Number $ realToFrac d
+    | otherwise = Number $ Scientific.fromFloatDigits d
 {-# INLINE realFloatToJSON #-}
 
 instance FromJSON Double where
@@ -177,7 +178,7 @@ instance FromJSON Double where
 
 instance ToJSON Number where
     toJSON (D d) = toJSON d
-    toJSON (I i) = Number $ fromInteger i
+    toJSON (I i) = toJSON i
     {-# INLINE toJSON #-}
 
 instance FromJSON Number where
@@ -229,7 +230,7 @@ parseIntegral = withScientific "Integral" $ pure . floor
 {-# INLINE parseIntegral #-}
 
 instance ToJSON Integer where
-    toJSON = Number . fromIntegral
+    toJSON = Number . fromInteger
     {-# INLINE toJSON #-}
 
 instance FromJSON Integer where
@@ -788,6 +789,6 @@ scientificToNumber s
     | e < 0     = D $ fromInteger c / 10 ^ negate e
     | otherwise = I $ c * 10 ^ e
   where
-    e = base10Exponent s
-    c = coefficient s
+    e = Scientific.base10Exponent s
+    c = Scientific.coefficient s
 {-# INLINE scientificToNumber #-}
