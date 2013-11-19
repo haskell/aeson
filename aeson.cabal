@@ -150,12 +150,13 @@ test-suite tests
   type:           exitcode-stdio-1.0
   hs-source-dirs: tests
   main-is:        Properties.hs
-  other-modules:  Functions
-                  Instances
-                  Types
-                  Options
-                  Encoders
-                  Properties.Deprecated
+  other-modules:
+    Encoders
+    Functions
+    Instances
+    Options
+    Properties.Deprecated
+    Types
 
   ghc-options:
     -Wall -threaded -rtsopts
