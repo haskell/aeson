@@ -1,6 +1,6 @@
-{-# LANGUAGE CPP, FlexibleInstances, NamedFieldPuns, NoImplicitPrelude,
-    OverlappingInstances, TemplateHaskell, UndecidableInstances, IncoherentInstances
-  #-}
+{-# LANGUAGE CPP, FlexibleInstances, IncoherentInstances, NamedFieldPuns,
+    NoImplicitPrelude, OverlappingInstances, TemplateHaskell,
+    UndecidableInstances #-}
 
 {-|
 Module:      Data.Aeson.TH
