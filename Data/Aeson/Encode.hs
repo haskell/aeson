@@ -72,9 +72,11 @@ instance Monoid CommaMonoid where
   mappend (Comma a) (Comma b) = Comma (a <> singleton ',' <> b)
   {-# INLINE mappend #-}
 
-runCommaMonoid :: String -> Char -> Char -> CommaMonoid -> Builder
-runCommaMonoid empty _    _     Empty     = fromString empty
-runCommaMonoid _     open close (Comma b) = singleton open <> b <> singleton close
+runCommaMonoid :: String -> Char -> Char -> (CommaMonoid -> Builder)
+runCommaMonoid empty open close = run
+    where
+      run Empty     = fromString empty
+      run (Comma b) = singleton open <> b <> singleton close
 {-# INLINE runCommaMonoid #-}
 
 instance JSON JsonBuilder where
@@ -103,7 +105,7 @@ instance JSON JsonBuilder where
   jsonNull = JsonBuilder "null"
   {-# INLINE jsonNull #-}
 
-  insert k json o = ObjectBuilder (Comma (string k <> singleton ':' <> toBuilder json)) <> o
+  insert k json = mappend (ObjectBuilder (Comma (string k <> singleton ':' <> toBuilder json)))
   {-# INLINE insert #-}
 
   element = ArrayBuilder . Comma . toBuilder
