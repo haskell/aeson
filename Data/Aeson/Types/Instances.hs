@@ -790,7 +790,7 @@ typeMismatch expected actual =
 
 scientificToNumber :: Scientific -> Number
 scientificToNumber s
-    | e < 0     = D $ fromInteger c / 10 ^ negate e
+    | e < 0     = D $ realToFrac s
     | otherwise = I $ c * 10 ^ e
   where
     e = Scientific.base10Exponent s
