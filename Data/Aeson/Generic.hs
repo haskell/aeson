@@ -51,14 +51,12 @@ import qualified Data.Map as Map
 import qualified Data.Set as Set
 import qualified Data.Text as DT
 import qualified Data.Text.Lazy as LT
-import qualified Data.Text.Lazy.Encoding as LTE (encodeUtf8)
-import qualified Data.Text.Lazy.Builder as LTB (toLazyText)
 import qualified Data.Traversable as T
 import qualified Data.Vector as V
 
 -- | Efficiently serialize a JSON value as a lazy 'L.ByteString'.
 encode :: (Data a) => a -> L.ByteString
-encode = LTE.encodeUtf8 . LTB.toLazyText . E.toBuilder . toJSON
+encode = E.jsonBuilderToLazyByteString . toJSON
 {-# INLINE encode #-}
 
 -- | Efficiently deserialize a JSON value from a lazy 'L.ByteString'.
