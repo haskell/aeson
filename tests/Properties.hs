@@ -109,7 +109,7 @@ tests = [
     , testProperty "String" $ roundTripEq (""::String)
     , testProperty "Text" $ roundTripEq T.empty
     , testProperty "Foo" $ roundTripEq (undefined::Foo)
-    , testProperty "DotNetTime" $ roundTripEq (undefined :: Approx DotNetTime)
+    , testProperty "DotNetTime" $ roundTripEq (undefined :: DotNetTime)
     , testProperty "UTCTime" $ roundTripEq (undefined :: UTCTime)
     , testProperty "ZonedTime" $ roundTripEq (undefined::ZonedTime)
 #ifdef GHC_GENERICS
