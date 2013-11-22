@@ -21,9 +21,6 @@ description:
     To get started, see the documentation for the @Data.Aeson@ module
     below.
     .
-    For release notes, see
-    <https://github.com/bos/aeson/blob/master/release-notes.markdown>
-    .
     Parsing performance on a late 2010 MacBook Pro (2.66GHz Core i7),
     for mostly-English tweets from Twitter's JSON search API:
     .
@@ -84,8 +81,8 @@ extra-source-files:
     benchmarks/*.py
     benchmarks/Makefile
     benchmarks/json-data/*.json
+    changelog
     examples/*.hs
-    release-notes.markdown
 
 flag developer
   description: operate in developer mode
