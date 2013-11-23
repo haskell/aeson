@@ -4,7 +4,8 @@
 ^tests/(?:qc)
 
 syntax: glob
-cabal-dev
+.cabal-sandbox
+cabal.sandbox.config
 *~
 .*.swp
 .\#*
