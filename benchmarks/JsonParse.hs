@@ -6,7 +6,6 @@ import Control.Monad
 import Text.JSON
 import Data.Time.Clock
 import System.Environment (getArgs)
-import System.IO
 
 instance NFData JSValue where
     rnf JSNull = ()
@@ -16,6 +15,7 @@ instance NFData JSValue where
     rnf (JSArray vs) = rnf vs
     rnf (JSObject kvs) = rnf (fromJSObject kvs)
 
+main :: IO ()
 main = do
   (cnt:args) <- getArgs
   let count = read cnt :: Int
@@ -27,7 +27,7 @@ main = do
             | otherwise = do
           s <- readFile arg
           case decodeStrict s of
-            Ok (v::JSValue) -> loop (good+1) 0
+            Ok (_::JSValue) -> loop (good+1) 0
             _ -> loop 0 (bad+1)
     (good, _) <- loop 0 0
     end <- getCurrentTime
