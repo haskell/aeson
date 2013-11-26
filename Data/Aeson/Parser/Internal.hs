@@ -118,17 +118,21 @@ array_' = {-# SCC "array_'" #-} do
   !vals <- arrayValues value'
   return (Array vals)
 
+commaSeparated :: Parser a -> Word8 -> Parser [a]
+commaSeparated item endByte = loop
+  where
+    loop = do
+      v <- item <* skipSpace
+      ch <- A.satisfy $ \w -> w == comma || w == endByte
+      if ch == comma
+        then skipSpace >> (v:) <$> loop
+        else return [v]
+{-# INLINE commaSeparated #-}
+
 arrayValues :: Parser Value -> Parser (Vector Value)
 arrayValues val = do
   skipSpace
-  let loop = do
-        v <- val <* skipSpace
-        -- chr 44 == ',' && chr 93 == ']'
-        ch <- A.satisfy $ \w -> w == 44 || w == 93
-        if ch == 44
-          then skipSpace >> (v:) <$> loop
-          else return [v]
-  Vector.fromList <$> loop
+  Vector.fromList <$> commaSeparated val closeSquare
 {-# INLINE arrayValues #-}
 
 -- | Parse any JSON value.  You should usually 'json' in preference to
@@ -175,10 +179,14 @@ value' = most <|> num
     !n <- rational
     return (Number n)
 
-doubleQuote, backslash :: Word8
-doubleQuote = 34
+backslash, closeSquare, comma, doubleQuote :: Word8
 backslash = 92
+closeSquare = 93
+comma = 44
+doubleQuote = 34
 {-# INLINE backslash #-}
+{-# INLINE closeSquare #-}
+{-# INLINE comma #-}
 {-# INLINE doubleQuote #-}
 
 -- | Parse a quoted JSON string.
