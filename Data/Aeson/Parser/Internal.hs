@@ -121,8 +121,14 @@ array_' = {-# SCC "array_'" #-} do
 arrayValues :: Parser Value -> Parser (Vector Value)
 arrayValues val = do
   skipSpace
-  vals <- ((val <* skipSpace) `sepBy` (char ',' *> skipSpace)) <* char ']'
-  return (Vector.fromList vals)
+  let loop = do
+        v <- val <* skipSpace
+        -- chr 44 == ',' && chr 93 == ']'
+        ch <- A.satisfy $ \w -> w == 44 || w == 93
+        if ch == 44
+          then skipSpace >> (v:) <$> loop
+          else return [v]
+  Vector.fromList <$> loop
 {-# INLINE arrayValues #-}
 
 -- | Parse any JSON value.  You should usually 'json' in preference to
