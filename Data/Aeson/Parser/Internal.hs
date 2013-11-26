@@ -102,10 +102,7 @@ object_' = {-# SCC "object_'" #-} do
 objectValues :: Parser Text -> Parser Value -> Parser (H.HashMap Text Value)
 objectValues str val = do
   skipSpace
-  let pair = do
-        a <- str <* skipSpace
-        b <- char ':' *> skipSpace *> val
-        return (a,b)
+  let pair = liftA2 (,) (str <* skipSpace) (char ':' *> skipSpace *> val)
   H.fromList <$> commaSeparated pair closeCurly
 {-# INLINE objectValues #-}
 
