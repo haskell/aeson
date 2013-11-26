@@ -106,8 +106,7 @@ objectValues str val = do
         a <- str <* skipSpace
         b <- char ':' *> skipSpace *> val
         return (a,b)
-  vals <- ((pair <* skipSpace) `sepBy` (char ',' *> skipSpace)) <* char '}'
-  return (H.fromList vals)
+  H.fromList <$> commaSeparated pair closeCurly
 {-# INLINE objectValues #-}
 
 array_ :: Parser Value
@@ -179,12 +178,14 @@ value' = most <|> num
     !n <- rational
     return (Number n)
 
-backslash, closeSquare, comma, doubleQuote :: Word8
+backslash, closeCurly, closeSquare, comma, doubleQuote :: Word8
 backslash = 92
+closeCurly = 125
 closeSquare = 93
 comma = 44
 doubleQuote = 34
 {-# INLINE backslash #-}
+{-# INLINE closeCurly #-}
 {-# INLINE closeSquare #-}
 {-# INLINE comma #-}
 {-# INLINE doubleQuote #-}
