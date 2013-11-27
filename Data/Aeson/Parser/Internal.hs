@@ -166,9 +166,9 @@ value :: Parser Value
 value = do
   w <- A.peekWord8'
   case w of
-    DOUBLE_QUOTE  -> char '"' *> (String <$> jstring_)
-    OPEN_CURLY    -> char '{' *> object_
-    OPEN_SQUARE   -> char '[' *> array_
+    DOUBLE_QUOTE  -> A.anyWord8 *> (String <$> jstring_)
+    OPEN_CURLY    -> A.anyWord8 *> object_
+    OPEN_SQUARE   -> A.anyWord8 *> array_
     C_f           -> string "false" *> pure (Bool False)
     C_t           -> string "true" *> pure (Bool True)
     C_n           -> string "null" *> pure Null
