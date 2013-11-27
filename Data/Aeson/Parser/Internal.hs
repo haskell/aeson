@@ -117,7 +117,11 @@ array_' = {-# SCC "array_'" #-} do
   return (Array vals)
 
 commaSeparated :: Parser a -> Word8 -> Parser [a]
-commaSeparated item endByte = loop
+commaSeparated item endByte = do
+  w <- A.peekWord8'
+  if w == endByte
+    then A.anyWord8 >> return []
+    else loop
   where
     loop = do
       v <- item <* skipSpace
