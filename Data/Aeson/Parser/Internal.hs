@@ -41,20 +41,22 @@ import Data.ByteString.Lazy.Builder
   (Builder, byteString, toLazyByteString, charUtf8, word8)
 #endif
 
-import Control.Applicative as A
+import Control.Applicative ((*>), (<$>), (<*), (<|>), liftA2, pure)
 import Data.Aeson.Types (Result(..), Value(..))
-import Data.Attoparsec.Char8 hiding (Result)
+import Data.Attoparsec.Char8 (Parser, char, endOfInput, rational, satisfy,
+                              skipSpace, string)
 import Data.Bits ((.|.), shiftL)
-import Data.ByteString as B
+import Data.ByteString (ByteString)
 import Data.Char (chr)
 import Data.Monoid (mappend, mempty)
-import Data.Text as T
+import Data.Text (Text)
 import Data.Text.Encoding (decodeUtf8')
-import Data.Vector as Vector hiding ((++))
+import Data.Vector as Vector (Vector, fromList)
 import Data.Word (Word8)
 import qualified Data.Attoparsec as A
 import qualified Data.Attoparsec.Lazy as L
 import qualified Data.Attoparsec.Zepto as Z
+import qualified Data.ByteString as B
 import qualified Data.ByteString.Char8 as B8
 import qualified Data.ByteString.Lazy as L
 import qualified Data.ByteString.Unsafe as B
