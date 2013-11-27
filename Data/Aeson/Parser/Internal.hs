@@ -62,6 +62,20 @@ import qualified Data.ByteString.Lazy as L
 import qualified Data.ByteString.Unsafe as B
 import qualified Data.HashMap.Strict as H
 
+#define BACKSLASH 92
+#define CLOSE_CURLY 125
+#define CLOSE_SQUARE 93
+#define COMMA 44
+#define DOUBLE_QUOTE 34
+#define OPEN_CURLY 123
+#define OPEN_SQUARE 91
+#define C_0 48
+#define C_9 57
+#define C_A 65
+#define C_F 70
+#define C_a 97
+#define C_f 102
+
 -- | Parse a top-level JSON value.  This must be either an object or
 -- an array, per RFC 4627.
 --
@@ -83,8 +97,8 @@ json' = json_ object_' array_'
 
 json_ :: Parser Value -> Parser Value -> Parser Value
 json_ obj ary = do
-  w <- skipSpace *> A.satisfy (\w -> w == 123 || w == 91)
-  if w == 123
+  w <- skipSpace *> A.satisfy (\w -> w == OPEN_CURLY || w == OPEN_SQUARE)
+  if w == OPEN_CURLY
     then obj
     else ary
 {-# INLINE json_ #-}
@@ -105,7 +119,7 @@ objectValues :: Parser Text -> Parser Value -> Parser (H.HashMap Text Value)
 objectValues str val = do
   skipSpace
   let pair = liftA2 (,) (str <* skipSpace) (char ':' *> skipSpace *> val)
-  H.fromList <$> commaSeparated pair closeCurly
+  H.fromList <$> commaSeparated pair CLOSE_CURLY
 {-# INLINE objectValues #-}
 
 array_ :: Parser Value
@@ -125,8 +139,8 @@ commaSeparated item endByte = do
   where
     loop = do
       v <- item <* skipSpace
-      ch <- A.satisfy $ \w -> w == comma || w == endByte
-      if ch == comma
+      ch <- A.satisfy $ \w -> w == COMMA || w == endByte
+      if ch == COMMA
         then skipSpace >> (v:) <$> loop
         else return [v]
 {-# INLINE commaSeparated #-}
@@ -134,7 +148,7 @@ commaSeparated item endByte = do
 arrayValues :: Parser Value -> Parser (Vector Value)
 arrayValues val = do
   skipSpace
-  Vector.fromList <$> commaSeparated val closeSquare
+  Vector.fromList <$> commaSeparated val CLOSE_SQUARE
 {-# INLINE arrayValues #-}
 
 -- | Parse any JSON value.  You should usually 'json' in preference to
@@ -181,37 +195,25 @@ value' = most <|> num
     !n <- rational
     return (Number n)
 
-backslash, closeCurly, closeSquare, comma, doubleQuote :: Word8
-backslash = 92
-closeCurly = 125
-closeSquare = 93
-comma = 44
-doubleQuote = 34
-{-# INLINE backslash #-}
-{-# INLINE closeCurly #-}
-{-# INLINE closeSquare #-}
-{-# INLINE comma #-}
-{-# INLINE doubleQuote #-}
-
 -- | Parse a quoted JSON string.
 jstring :: Parser Text
-jstring = A.word8 doubleQuote *> jstring_
+jstring = A.word8 DOUBLE_QUOTE *> jstring_
 
 -- | Parse a string without a leading quote.
 jstring_ :: Parser Text
 jstring_ = {-# SCC "jstring_" #-} do
   s <- A.scan False $ \s c -> if s then Just False
-                                   else if c == doubleQuote
+                                   else if c == DOUBLE_QUOTE
                                         then Nothing
-                                        else Just (c == backslash)
-  _ <- A.word8 doubleQuote
-  s' <- if backslash `B.elem` s
+                                        else Just (c == BACKSLASH)
+  _ <- A.word8 DOUBLE_QUOTE
+  s1 <- if BACKSLASH `B.elem` s
         then case Z.parse unescape s of
             Right r  -> return r
             Left err -> fail err
          else return s
 
-  case decodeUtf8' s' of
+  case decodeUtf8' s1 of
       Right r  -> return r
       Left err -> fail $ show err
 
@@ -220,7 +222,7 @@ jstring_ = {-# SCC "jstring_" #-} do
 unescape :: Z.Parser ByteString
 unescape = toByteString <$> go mempty where
   go acc = do
-    h <- Z.takeWhile (/=backslash)
+    h <- Z.takeWhile (/=BACKSLASH)
     let rest = do
           start <- Z.take 2
           let !slash = B.unsafeHead start
@@ -228,7 +230,7 @@ unescape = toByteString <$> go mempty where
               escape = case B.findIndex (==t) "\"\\/ntbrfu" of
                          Just i -> i
                          _      -> 255
-          if slash /= backslash || escape == 255
+          if slash /= BACKSLASH || escape == 255
             then fail "invalid JSON escape sequence"
             else do
             let cont m = go (acc `mappend` byteString h `mappend` m)
@@ -255,10 +257,10 @@ unescape = toByteString <$> go mempty where
 hexQuad :: Z.Parser Int
 hexQuad = do
   s <- Z.take 4
-  let hex n | w >= 48 && w <= 57  = w - 48
-            | w >= 97 && w <= 122 = w - 87
-            | w >= 65 && w <= 90  = w - 55
-            | otherwise           = 255
+  let hex n | w >= C_0 && w <= C_9 = w - C_0
+            | w >= C_a && w <= C_f = w - 87
+            | w >= C_A && w <= C_F = w - 55
+            | otherwise          = 255
         where w = fromIntegral $ B.unsafeIndex s n
       a = hex 0; b = hex 1; c = hex 2; d = hex 3
   if (a .|. b .|. c .|. d) /= 255
