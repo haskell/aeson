@@ -41,9 +41,9 @@ import Data.ByteString.Lazy.Builder
   (Builder, byteString, toLazyByteString, charUtf8, word8)
 #endif
 
-import Control.Applicative ((*>), (<$>), (<*), (<|>), liftA2, pure)
+import Control.Applicative ((*>), (<$>), (<*), liftA2, pure)
 import Data.Aeson.Types (Result(..), Value(..))
-import Data.Attoparsec.Char8 (Parser, char, endOfInput, rational, satisfy,
+import Data.Attoparsec.Char8 (Parser, char, endOfInput, rational,
                               skipSpace, string)
 import Data.Bits ((.|.), shiftL)
 import Data.ByteString (ByteString)
@@ -57,7 +57,6 @@ import qualified Data.Attoparsec as A
 import qualified Data.Attoparsec.Lazy as L
 import qualified Data.Attoparsec.Zepto as Z
 import qualified Data.ByteString as B
-import qualified Data.ByteString.Char8 as B8
 import qualified Data.ByteString.Lazy as L
 import qualified Data.ByteString.Unsafe as B
 import qualified Data.HashMap.Strict as H
@@ -179,23 +178,22 @@ value = do
 
 -- | Strict version of 'value'. See also 'json''.
 value' :: Parser Value
-value' = most <|> num
- where
-  most = do
-    c <- satisfy (`B8.elem` "{[\"ftn")
-    case c of
-      '{' -> object_'
-      '[' -> array_'
-      '"' -> do
-          !s <- jstring_
-          return (String s)
-      'f' -> string "alse" *> pure (Bool False)
-      't' -> string "rue" *> pure (Bool True)
-      'n' -> string "ull" *> pure Null
-      _   -> error "attoparsec panic! the impossible happened!"
-  num = do
-    !n <- rational
-    return (Number n)
+value' = do
+  w <- A.peekWord8'
+  case w of
+    DOUBLE_QUOTE  -> do
+                     !s <- A.anyWord8 *> jstring_
+                     return (String s)
+    OPEN_CURLY    -> A.anyWord8 *> object_'
+    OPEN_SQUARE   -> A.anyWord8 *> array_'
+    C_f           -> string "false" *> pure (Bool False)
+    C_t           -> string "true" *> pure (Bool True)
+    C_n           -> string "null" *> pure Null
+    _              | w >= 48 && w <= 57 || w == 45
+                  -> do
+                     !n <- rational
+                     return (Number n)
+      | otherwise -> fail "not a valid json value"
 
 -- | Parse a quoted JSON string.
 jstring :: Parser Text
