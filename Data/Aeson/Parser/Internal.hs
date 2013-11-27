@@ -75,6 +75,8 @@ import qualified Data.HashMap.Strict as H
 #define C_F 70
 #define C_a 97
 #define C_f 102
+#define C_n 110
+#define C_t 116
 
 -- | Parse a top-level JSON value.  This must be either an object or
 -- an array, per RFC 4627.
@@ -162,18 +164,18 @@ arrayValues val = do
 -- implementations in other languages conform to that same restriction
 -- to preserve interoperability and security.
 value :: Parser Value
-value = most <|> (Number <$> rational)
- where
-  most = do
-    c <- satisfy (`B8.elem` "{[\"ftn")
-    case c of
-      '{' -> object_
-      '[' -> array_
-      '"' -> String <$> jstring_
-      'f' -> string "alse" *> pure (Bool False)
-      't' -> string "rue" *> pure (Bool True)
-      'n' -> string "ull" *> pure Null
-      _   -> error "attoparsec panic! the impossible happened!"
+value = do
+  w <- A.peekWord8'
+  case w of
+    DOUBLE_QUOTE  -> char '"' *> (String <$> jstring_)
+    OPEN_CURLY    -> char '{' *> object_
+    OPEN_SQUARE   -> char '[' *> array_
+    C_f           -> string "false" *> pure (Bool False)
+    C_t           -> string "true" *> pure (Bool True)
+    C_n           -> string "null" *> pure Null
+    _              | w >= 48 && w <= 57 || w == 45
+                  -> Number <$> rational
+      | otherwise -> fail "not a valid json value"
 
 -- | Strict version of 'value'. See also 'json''.
 value' :: Parser Value
