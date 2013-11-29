@@ -1,4 +1,4 @@
-{-# LANGUAGE CPP, DeriveDataTypeable, Rank2Types #-}
+{-# LANGUAGE CPP, DeriveDataTypeable, GeneralizedNewtypeDeriving, Rank2Types #-}
 
 -- |
 -- Module:      Data.Aeson.Types.Internal
@@ -36,22 +36,28 @@ module Data.Aeson.Types.Internal
     , defaultOptions
     , defaultTaggedObject
 
-    -- Used for changing CamelCase names into something else.
+    -- * Used for changing CamelCase names into something else.
     , camelTo
+
+    -- * Other types
+    , DotNetTime(..)
     ) where
+
 
 import Control.Applicative
 import Control.Monad
-import Control.DeepSeq        ( NFData(..) )
-import Data.Attoparsec.Char8  ( Number(..) )
-import Data.Char              ( isUpper, toLower )
-import Data.Hashable          ( Hashable(..) )
-import Data.HashMap.Strict    ( HashMap )
-import Data.Monoid            ( Monoid(..) )
-import Data.String            ( IsString(..) )
-import Data.Text              ( Text, pack )
-import Data.Typeable          ( Typeable )
-import Data.Vector            ( Vector )
+import Control.DeepSeq (NFData(..))
+import Data.Char (toLower, isUpper)
+import Data.Scientific (Scientific)
+import Data.Hashable (Hashable(..))
+import Data.HashMap.Strict (HashMap)
+import Data.Monoid (Monoid(..))
+import Data.String (IsString(..))
+import Data.Text (Text, pack)
+import Data.Time (UTCTime)
+import Data.Time.Format (FormatTime)
+import Data.Typeable (Typeable)
+import Data.Vector (Vector)
 import qualified Data.HashMap.Strict as H
 import qualified Data.Vector as V
 
@@ -170,16 +176,27 @@ type Array = Vector Value
 data Value = Object !Object
            | Array !Array
            | String !Text
-           | Number !Number
+           | Number !Scientific
            | Bool !Bool
            | Null
              deriving (Eq, Show, Typeable)
+
+-- | A newtype wrapper for 'UTCTime' that uses the same non-standard
+-- serialization format as Microsoft .NET, whose @System.DateTime@
+-- type is by default serialized to JSON as in the following example:
+--
+-- > /Date(1302547608878)/
+--
+-- The number represents milliseconds since the Unix epoch.
+newtype DotNetTime = DotNetTime {
+      fromDotNetTime :: UTCTime
+    } deriving (Eq, Ord, Read, Show, Typeable, FormatTime)
 
 instance NFData Value where
     rnf (Object o) = rnf o
     rnf (Array a)  = V.foldl' (\x y -> rnf y `seq` x) () a
     rnf (String s) = rnf s
-    rnf (Number n) = case n of I i -> rnf i; D d -> rnf d
+    rnf (Number n) = rnf n
     rnf (Bool b)   = rnf b
     rnf Null       = ()
 
@@ -193,11 +210,9 @@ instance Hashable Value where
     hashWithSalt s (Array a)    = V.foldl' hashWithSalt
                                   (s `hashWithSalt` (1::Int)) a
     hashWithSalt s (String str) = s `hashWithSalt` (2::Int) `hashWithSalt` str
-    hashWithSalt s (Number n)   = 3 `hashWithSalt`
-                                  case n of I i -> hashWithSalt s i
-                                            D d -> hashWithSalt s d
-    hashWithSalt s (Bool b)   = s `hashWithSalt` (4::Int) `hashWithSalt` b
-    hashWithSalt s Null       = s `hashWithSalt` (5::Int)
+    hashWithSalt s (Number n)   = s `hashWithSalt` (3::Int) `hashWithSalt` n
+    hashWithSalt s (Bool b)     = s `hashWithSalt` (4::Int) `hashWithSalt` b
+    hashWithSalt s Null         = s `hashWithSalt` (5::Int)
 
 -- | The empty array.
 emptyArray :: Value
