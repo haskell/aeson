@@ -41,24 +41,41 @@ import Data.ByteString.Lazy.Builder
   (Builder, byteString, toLazyByteString, charUtf8, word8)
 #endif
 
-import Control.Applicative as A
+import Control.Applicative ((*>), (<$>), (<*), liftA2, pure)
 import Data.Aeson.Types (Result(..), Value(..))
-import Data.Attoparsec.Char8 hiding (Result)
+import Data.Attoparsec.Char8 (Parser, char, endOfInput, rational,
+                              skipSpace, string)
 import Data.Bits ((.|.), shiftL)
-import Data.ByteString as B
+import Data.ByteString (ByteString)
 import Data.Char (chr)
 import Data.Monoid (mappend, mempty)
-import Data.Text as T
+import Data.Text (Text)
 import Data.Text.Encoding (decodeUtf8')
-import Data.Vector as Vector hiding ((++))
+import Data.Vector as Vector (Vector, fromList)
 import Data.Word (Word8)
 import qualified Data.Attoparsec as A
 import qualified Data.Attoparsec.Lazy as L
 import qualified Data.Attoparsec.Zepto as Z
-import qualified Data.ByteString.Char8 as B8
+import qualified Data.ByteString as B
 import qualified Data.ByteString.Lazy as L
 import qualified Data.ByteString.Unsafe as B
 import qualified Data.HashMap.Strict as H
+
+#define BACKSLASH 92
+#define CLOSE_CURLY 125
+#define CLOSE_SQUARE 93
+#define COMMA 44
+#define DOUBLE_QUOTE 34
+#define OPEN_CURLY 123
+#define OPEN_SQUARE 91
+#define C_0 48
+#define C_9 57
+#define C_A 65
+#define C_F 70
+#define C_a 97
+#define C_f 102
+#define C_n 110
+#define C_t 116
 
 -- | Parse a top-level JSON value.  This must be either an object or
 -- an array, per RFC 4627.
@@ -81,8 +98,8 @@ json' = json_ object_' array_'
 
 json_ :: Parser Value -> Parser Value -> Parser Value
 json_ obj ary = do
-  w <- skipSpace *> A.satisfy (\w -> w == 123 || w == 91)
-  if w == 123
+  w <- skipSpace *> A.satisfy (\w -> w == OPEN_CURLY || w == OPEN_SQUARE)
+  if w == OPEN_CURLY
     then obj
     else ary
 {-# INLINE json_ #-}
@@ -102,12 +119,8 @@ object_' = {-# SCC "object_'" #-} do
 objectValues :: Parser Text -> Parser Value -> Parser (H.HashMap Text Value)
 objectValues str val = do
   skipSpace
-  let pair = do
-        a <- str <* skipSpace
-        b <- char ':' *> skipSpace *> val
-        return (a,b)
-  vals <- ((pair <* skipSpace) `sepBy` (char ',' *> skipSpace)) <* char '}'
-  return (H.fromList vals)
+  let pair = liftA2 (,) (str <* skipSpace) (char ':' *> skipSpace *> val)
+  H.fromList <$> commaSeparated pair CLOSE_CURLY
 {-# INLINE objectValues #-}
 
 array_ :: Parser Value
@@ -118,11 +131,25 @@ array_' = {-# SCC "array_'" #-} do
   !vals <- arrayValues value'
   return (Array vals)
 
+commaSeparated :: Parser a -> Word8 -> Parser [a]
+commaSeparated item endByte = do
+  w <- A.peekWord8'
+  if w == endByte
+    then A.anyWord8 >> return []
+    else loop
+  where
+    loop = do
+      v <- item <* skipSpace
+      ch <- A.satisfy $ \w -> w == COMMA || w == endByte
+      if ch == COMMA
+        then skipSpace >> (v:) <$> loop
+        else return [v]
+{-# INLINE commaSeparated #-}
+
 arrayValues :: Parser Value -> Parser (Vector Value)
 arrayValues val = do
   skipSpace
-  vals <- ((val <* skipSpace) `sepBy` (char ',' *> skipSpace)) <* char ']'
-  return (Vector.fromList vals)
+  Vector.fromList <$> commaSeparated val CLOSE_SQUARE
 {-# INLINE arrayValues #-}
 
 -- | Parse any JSON value.  You should usually 'json' in preference to
@@ -136,64 +163,57 @@ arrayValues val = do
 -- implementations in other languages conform to that same restriction
 -- to preserve interoperability and security.
 value :: Parser Value
-value = most <|> (Number <$> number)
- where
-  most = do
-    c <- satisfy (`B8.elem` "{[\"ftn")
-    case c of
-      '{' -> object_
-      '[' -> array_
-      '"' -> String <$> jstring_
-      'f' -> string "alse" *> pure (Bool False)
-      't' -> string "rue" *> pure (Bool True)
-      'n' -> string "ull" *> pure Null
-      _   -> error "attoparsec panic! the impossible happened!"
+value = do
+  w <- A.peekWord8'
+  case w of
+    DOUBLE_QUOTE  -> A.anyWord8 *> (String <$> jstring_)
+    OPEN_CURLY    -> A.anyWord8 *> object_
+    OPEN_SQUARE   -> A.anyWord8 *> array_
+    C_f           -> string "false" *> pure (Bool False)
+    C_t           -> string "true" *> pure (Bool True)
+    C_n           -> string "null" *> pure Null
+    _              | w >= 48 && w <= 57 || w == 45
+                  -> Number <$> rational
+      | otherwise -> fail "not a valid json value"
 
 -- | Strict version of 'value'. See also 'json''.
 value' :: Parser Value
-value' = most <|> num
- where
-  most = do
-    c <- satisfy (`B8.elem` "{[\"ftn")
-    case c of
-      '{' -> object_'
-      '[' -> array_'
-      '"' -> do
-          !s <- jstring_
-          return (String s)
-      'f' -> string "alse" *> pure (Bool False)
-      't' -> string "rue" *> pure (Bool True)
-      'n' -> string "ull" *> pure Null
-      _   -> error "attoparsec panic! the impossible happened!"
-  num = do
-    !n <- number
-    return (Number n)
-
-doubleQuote, backslash :: Word8
-doubleQuote = 34
-backslash = 92
-{-# INLINE backslash #-}
-{-# INLINE doubleQuote #-}
+value' = do
+  w <- A.peekWord8'
+  case w of
+    DOUBLE_QUOTE  -> do
+                     !s <- A.anyWord8 *> jstring_
+                     return (String s)
+    OPEN_CURLY    -> A.anyWord8 *> object_'
+    OPEN_SQUARE   -> A.anyWord8 *> array_'
+    C_f           -> string "false" *> pure (Bool False)
+    C_t           -> string "true" *> pure (Bool True)
+    C_n           -> string "null" *> pure Null
+    _              | w >= 48 && w <= 57 || w == 45
+                  -> do
+                     !n <- rational
+                     return (Number n)
+      | otherwise -> fail "not a valid json value"
 
 -- | Parse a quoted JSON string.
 jstring :: Parser Text
-jstring = A.word8 doubleQuote *> jstring_
+jstring = A.word8 DOUBLE_QUOTE *> jstring_
 
 -- | Parse a string without a leading quote.
 jstring_ :: Parser Text
 jstring_ = {-# SCC "jstring_" #-} do
   s <- A.scan False $ \s c -> if s then Just False
-                                   else if c == doubleQuote
+                                   else if c == DOUBLE_QUOTE
                                         then Nothing
-                                        else Just (c == backslash)
-  _ <- A.word8 doubleQuote
-  s' <- if backslash `B.elem` s
+                                        else Just (c == BACKSLASH)
+  _ <- A.word8 DOUBLE_QUOTE
+  s1 <- if BACKSLASH `B.elem` s
         then case Z.parse unescape s of
             Right r  -> return r
             Left err -> fail err
          else return s
 
-  case decodeUtf8' s' of
+  case decodeUtf8' s1 of
       Right r  -> return r
       Left err -> fail $ show err
 
@@ -202,7 +222,7 @@ jstring_ = {-# SCC "jstring_" #-} do
 unescape :: Z.Parser ByteString
 unescape = toByteString <$> go mempty where
   go acc = do
-    h <- Z.takeWhile (/=backslash)
+    h <- Z.takeWhile (/=BACKSLASH)
     let rest = do
           start <- Z.take 2
           let !slash = B.unsafeHead start
@@ -210,7 +230,7 @@ unescape = toByteString <$> go mempty where
               escape = case B.findIndex (==t) "\"\\/ntbrfu" of
                          Just i -> i
                          _      -> 255
-          if slash /= backslash || escape == 255
+          if slash /= BACKSLASH || escape == 255
             then fail "invalid JSON escape sequence"
             else do
             let cont m = go (acc `mappend` byteString h `mappend` m)
@@ -237,10 +257,10 @@ unescape = toByteString <$> go mempty where
 hexQuad :: Z.Parser Int
 hexQuad = do
   s <- Z.take 4
-  let hex n | w >= 48 && w <= 57  = w - 48
-            | w >= 97 && w <= 122 = w - 87
-            | w >= 65 && w <= 90  = w - 55
-            | otherwise           = 255
+  let hex n | w >= C_0 && w <= C_9 = w - C_0
+            | w >= C_a && w <= C_f = w - 87
+            | w >= C_A && w <= C_F = w - 55
+            | otherwise          = 255
         where w = fromIntegral $ B.unsafeIndex s n
       a = hex 0; b = hex 1; c = hex 2; d = hex 3
   if (a .|. b .|. c .|. d) /= 255
@@ -279,12 +299,9 @@ eitherDecodeWith p to s =
 eitherDecodeStrictWith :: Parser Value -> (Value -> Result a) -> B.ByteString
                        -> Either String a
 eitherDecodeStrictWith p to s =
-    case A.parse p s of
-      A.Done _ v -> case to v of
-                      Success a -> Right a
-                      Error msg -> Left msg
-      A.Fail _ _ msg -> Left msg
-      A.Partial _    -> Left "incomplete input"
+    case either Error to (A.parseOnly p s) of
+      Success a -> Right a
+      Error msg -> Left msg
 {-# INLINE eitherDecodeStrictWith #-}
 
 -- $lazy

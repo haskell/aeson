@@ -22,7 +22,7 @@ module Data.Aeson.Types.Generic ( ) where
 import Control.Applicative ((<*>), (<$>), (<|>), pure)
 import Control.Monad ((<=<))
 import Control.Monad.ST (ST)
-import Data.Aeson.Types.Class
+import Data.Aeson.Types.Instances
 import Data.Aeson.Types.Internal
 import Data.Bits
 import Data.DList (DList, toList, empty)
