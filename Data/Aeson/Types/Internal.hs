@@ -199,15 +199,18 @@ instance IsString Value where
     fromString = String . pack
     {-# INLINE fromString #-}
 
+hashValue :: Int -> Value -> Int
+hashValue s (Object o)   = H.foldl' hashWithSalt
+                              (s `hashWithSalt` (0::Int)) o
+hashValue s (Array a)    = V.foldl' hashWithSalt
+                              (s `hashWithSalt` (1::Int)) a
+hashValue s (String str) = s `hashWithSalt` (2::Int) `hashWithSalt` str
+hashValue s (Number n)   = s `hashWithSalt` (3::Int) `hashWithSalt` n
+hashValue s (Bool b)     = s `hashWithSalt` (4::Int) `hashWithSalt` b
+hashValue s Null         = s `hashWithSalt` (5::Int)
+
 instance Hashable Value where
-    hashWithSalt s (Object o)   = H.foldl' hashWithSalt
-                                  (s `hashWithSalt` (0::Int)) o
-    hashWithSalt s (Array a)    = V.foldl' hashWithSalt
-                                  (s `hashWithSalt` (1::Int)) a
-    hashWithSalt s (String str) = s `hashWithSalt` (2::Int) `hashWithSalt` str
-    hashWithSalt s (Number n)   = s `hashWithSalt` (3::Int) `hashWithSalt` n
-    hashWithSalt s (Bool b)     = s `hashWithSalt` (4::Int) `hashWithSalt` b
-    hashWithSalt s Null         = s `hashWithSalt` (5::Int)
+    hashWithSalt = hashValue
 
 -- | The empty array.
 emptyArray :: Value
