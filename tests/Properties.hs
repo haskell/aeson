@@ -22,6 +22,11 @@ import Data.Int
 import qualified Data.Map as Map
 #endif
 
+roundTripCaml :: String -> Bool
+roundTripCaml s = s == (camlFrom '_' $ camlTo '_' s)
+  where
+    camlFrom :: Char -> String -> String
+    camlFrom c = concatMap capitalize $ split c
 
 encodeDouble :: Double -> Double -> Bool
 encodeDouble num denom
@@ -100,6 +105,10 @@ tests = [
   testGroup "encode" [
       testProperty "encodeDouble" encodeDouble
     , testProperty "encodeInteger" encodeInteger
+    ],
+  testGroup "camlCase" [
+      testProperty "camlTo" $ roundTripCaml "AnApiMethod"
+    , testProperty "camlTo" $ roundTripCaml "anotherMethodType"
     ],
   testGroup "roundTrip" [
       testProperty "Bool" $ roundTripEq True
