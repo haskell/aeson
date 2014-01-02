@@ -45,6 +45,7 @@ import Control.Monad
 import Control.DeepSeq (NFData(..))
 import Data.Scientific (Scientific)
 import Data.Hashable (Hashable(..))
+import Data.Data (Data)
 import Data.HashMap.Strict (HashMap)
 import Data.Monoid (Monoid(..))
 import Data.String (IsString(..))
@@ -174,7 +175,7 @@ data Value = Object !Object
            | Number !Scientific
            | Bool !Bool
            | Null
-             deriving (Eq, Show, Typeable)
+             deriving (Eq, Show, Typeable, Data)
 
 -- | A newtype wrapper for 'UTCTime' that uses the same non-standard
 -- serialization format as Microsoft .NET, whose @System.DateTime@
