@@ -279,11 +279,9 @@ decodeWith p to s =
 decodeStrictWith :: Parser Value -> (Value -> Result a) -> B.ByteString
                  -> Maybe a
 decodeStrictWith p to s =
-    case A.parse p s of
-      A.Done _ v -> case to v of
-                      Success a -> Just a
-                      _         -> Nothing
-      _          -> Nothing
+    case either Error to (A.parseOnly p s) of
+      Success a -> Just a
+      Error _ -> Nothing
 {-# INLINE decodeStrictWith #-}
 
 eitherDecodeWith :: Parser Value -> (Value -> Result a) -> L.ByteString
