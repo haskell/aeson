@@ -13,7 +13,8 @@ executable aeson-benchmark-compare-with-json
     blaze-builder,
     bytestring,
     criterion,
-    json
+    json,
+    text
 
 executable aeson-benchmark-aeson-encode
   main-is: AesonEncode.hs
