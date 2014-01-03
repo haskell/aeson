@@ -5,9 +5,13 @@ import Blaze.ByteString.Builder (toLazyByteString)
 import Blaze.ByteString.Builder.Char.Utf8 (fromString)
 import Control.DeepSeq (NFData(rnf))
 import Criterion.Main
+import qualified Data.Aeson.Encode as A
 import qualified Data.Aeson as A
 import qualified Data.ByteString.Lazy as BL
 import qualified Text.JSON as J
+import qualified Data.Text.Lazy          as TL
+import qualified Data.Text.Lazy.Builder  as TLB
+import qualified Data.Text.Lazy.Encoding as TLE
 
 #if !MIN_VERSION_bytestring(0,10,0)
 import qualified Data.ByteString.Lazy.Internal as BL
@@ -42,6 +46,12 @@ decodeA s = case A.decode s of
 encodeJ :: J.JSValue -> BL.ByteString
 encodeJ = toLazyByteString . fromString . J.encode
 
+encodeToText :: A.Value -> TL.Text
+encodeToText = TLB.toLazyText . A.encodeToTextBuilder . A.toJSON
+
+encodeViaText :: A.Value -> BL.ByteString
+encodeViaText = TLE.encodeUtf8 . encodeToText
+
 main :: IO ()
 main = do
   let enFile = "json-data/twitter100.json"
@@ -63,11 +73,15 @@ main = do
       ]
     , bgroup "encode" [
         bgroup "en" [
-          bench "aeson" $ nf A.encode (decodeA enA)
+          bench "aeson-to-bytestring" $ nf A.encode (decodeA enA)
+        , bench "aeson-via-text-to-bytestring" $ nf encodeViaText (decodeA enA)
+        , bench "aeson-to-text" $ nf encodeToText (decodeA enA)
         , bench "json"  $ nf encodeJ (decodeJ enJ)
         ]
       , bgroup "jp" [
-          bench "aeson" $ nf A.encode (decodeA jpA)
+          bench "aeson-to-bytestring" $ nf A.encode (decodeA jpA)
+        , bench "aeson-via-text-to-bytestring" $ nf encodeViaText (decodeA jpA)
+        , bench "aeson-to-text" $ nf encodeToText (decodeA jpA)
         , bench "json"  $ nf encodeJ (decodeJ jpJ)
         ]
       ]
