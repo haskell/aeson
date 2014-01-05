@@ -1,4 +1,5 @@
-{-# LANGUAGE BangPatterns, OverloadedStrings #-}
+{-# LANGUAGE BangPatterns, OverloadedStrings,
+             CPP, GeneralizedNewtypeDeriving, TypeFamilies #-}
 
 -- |
 -- Module:      Data.Aeson.Encode
@@ -18,13 +19,16 @@
 -- string using e.g. 'toLazyText'.
 
 module Data.Aeson.Encode
-    (
-      fromValue
+    ( JsonBuilder
+    , toBuilder
+    , jsonBuilderToLazyByteString
+
+    , fromValue
     , encode
     ) where
 
-import Data.Aeson.Types (ToJSON(..), Value(..))
-import Data.Monoid (mappend)
+import Data.Aeson.Types (ToJSON(..), JSON(..), Value(..))
+import Data.Monoid (Monoid, mempty, mappend)
 import Data.Scientific (Scientific, coefficient, base10Exponent, scientificBuilder)
 import Data.Text.Lazy.Builder
 import Data.Text.Lazy.Builder.Int (decimal)
@@ -34,6 +38,78 @@ import qualified Data.ByteString.Lazy as L
 import qualified Data.HashMap.Strict as H
 import qualified Data.Text as T
 import qualified Data.Vector as V
+
+#if MIN_VERSION_base(4,5,0)
+import Data.Monoid ((<>))
+#else
+(<>) :: Monoid a => a -> a -> a
+(<>) = mappend
+infixr 6 <>
+#endif
+
+-- | An instance of 'JSON' that supports efficiently building a JSON
+-- string using 'toBuilder'.
+newtype JsonBuilder   = JsonBuilder Builder
+
+-- | Convert a 'JsonBuilder' to a 'Builder'.
+toBuilder :: JsonBuilder -> Builder
+toBuilder (JsonBuilder builder) = builder
+
+-- | Convert a 'JsonBuilder' to a 'Builder' and convert the @Builder@
+-- into a lazy 'L.ByteString'.
+jsonBuilderToLazyByteString :: JsonBuilder -> L.ByteString
+jsonBuilderToLazyByteString = encodeUtf8 . toLazyText . toBuilder
+{-# INLINE jsonBuilderToLazyByteString #-}
+
+data CommaMonoid = Empty | Comma !Builder
+
+instance Monoid CommaMonoid where
+  mempty = Empty
+  {-# INLINE mempty #-}
+
+  mappend Empty     r         = r
+  mappend l         Empty     = l
+  mappend (Comma a) (Comma b) = Comma (a <> singleton ',' <> b)
+  {-# INLINE mappend #-}
+
+runCommaMonoid :: String -> Char -> Char -> (CommaMonoid -> Builder)
+runCommaMonoid empty open close = run
+    where
+      run Empty     = fromString empty
+      run (Comma b) = singleton open <> b <> singleton close
+{-# INLINE runCommaMonoid #-}
+
+instance JSON JsonBuilder where
+  newtype JsonObject JsonBuilder json = ObjectBuilder {unObjectBuilder :: CommaMonoid}
+      deriving (Monoid)
+
+  newtype JsonArray JsonBuilder json = ArrayBuilder {unArrayBuilder :: CommaMonoid}
+      deriving (Monoid)
+
+  jsonObject = JsonBuilder . runCommaMonoid "{}" '{' '}' . unObjectBuilder
+  {-# INLINE jsonObject #-}
+
+  jsonArray = JsonBuilder . runCommaMonoid "[]" '[' ']' . unArrayBuilder
+  {-# INLINE jsonArray #-}
+
+  jsonString = JsonBuilder . string
+  {-# INLINE jsonString #-}
+
+  jsonNumber = JsonBuilder . fromScientific
+  {-# INLINE jsonNumber #-}
+
+  jsonBool True  = JsonBuilder "true"
+  jsonBool False = JsonBuilder "false"
+  {-# INLINE jsonBool #-}
+
+  jsonNull = JsonBuilder "null"
+  {-# INLINE jsonNull #-}
+
+  insert k json = mappend (ObjectBuilder (Comma (string k <> singleton ':' <> toBuilder json)))
+  {-# INLINE insert #-}
+
+  element = ArrayBuilder . Comma . toBuilder
+  {-# INLINE element #-}
 
 -- | Encode a JSON value to a 'Builder'.  You can convert this to a
 -- string using e.g. 'toLazyText', or encode straight to UTF-8 (the
@@ -95,11 +171,6 @@ fromScientific s
 
 -- | Efficiently serialize a JSON value as a lazy 'L.ByteString'.
 encode :: ToJSON a => a -> L.ByteString
-encode = {-# SCC "encode" #-} encodeUtf8 . toLazyText . fromValue .
+encode = {-# SCC "encode" #-} jsonBuilderToLazyByteString .
          {-# SCC "toJSON" #-} toJSON
 {-# INLINE encode #-}
-
-(<>) :: Builder -> Builder -> Builder
-(<>) = mappend
-{-# INLINE (<>) #-}
-infixr 6 <>

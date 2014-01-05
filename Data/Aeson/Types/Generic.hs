@@ -2,7 +2,7 @@
     FunctionalDependencies, KindSignatures, OverlappingInstances,
     ScopedTypeVariables, TypeOperators, UndecidableInstances,
     ViewPatterns, NamedFieldPuns, FlexibleContexts, PatternGuards,
-    RecordWildCards #-}
+    RecordWildCards, MultiParamTypeClasses, TupleSections #-}
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 
 -- |
@@ -27,7 +27,7 @@ import Data.Aeson.Types.Internal
 import Data.Bits
 import Data.DList (DList, toList, empty)
 import Data.Maybe (fromMaybe)
-import Data.Monoid (mappend)
+import Data.Monoid (mempty, mappend)
 import Data.Text (Text, pack, unpack)
 import GHC.Generics
 import qualified Data.HashMap.Strict as H
@@ -64,7 +64,7 @@ instance ( WriteProduct a, WriteProduct b
     -- the same size as the product and write the product's elements to it using
     -- 'writeProduct':
     gToJSON opts p =
-        Array $ V.create $ do
+        jsonArray $ elements $ V.create $ do
           mv <- VM.unsafeNew lenProduct
           writeProduct opts mv 0 lenProduct p
           return mv
@@ -78,21 +78,21 @@ instance ( AllNullary (a :+: b) allNullary
     -- If all constructors of a sum datatype are nullary and the
     -- 'allNullaryToStringTag' option is set they are encoded to
     -- strings.  This distinction is made by 'sumToJSON':
-    gToJSON opts = (unTagged :: Tagged allNullary Value -> Value)
+    gToJSON opts = (unTagged :: Tagged allNullary json -> json)
                  . sumToJSON opts
     {-# INLINE gToJSON #-}
 
 --------------------------------------------------------------------------------
 
 class SumToJSON f allNullary where
-    sumToJSON :: Options -> f a -> Tagged allNullary Value
+    sumToJSON :: (JSON json) => Options -> f a -> Tagged allNullary json
 
 instance ( GetConName            f
          , TaggedObject          f
          , ObjectWithSingleField f
          , TwoElemArray          f ) => SumToJSON f True where
     sumToJSON opts
-        | allNullaryToStringTag opts = Tagged . String . pack
+        | allNullaryToStringTag opts = Tagged . jsonString . pack
                                      . constructorTagModifier opts . getConName
         | otherwise = Tagged . nonAllNullarySumToJSON opts
     {-# INLINE sumToJSON #-}
@@ -106,19 +106,20 @@ instance ( TwoElemArray          f
 nonAllNullarySumToJSON :: ( TwoElemArray          f
                           , TaggedObject          f
                           , ObjectWithSingleField f
-                          ) => Options -> f a -> Value
+                          , JSON json
+                          ) => Options -> f a -> json
 nonAllNullarySumToJSON opts =
     case sumEncoding opts of
       TaggedObject{..}      -> object . taggedObject opts tagFieldName
                                                           contentsFieldName
-      ObjectWithSingleField -> Object . objectWithSingleField opts
-      TwoElemArray          -> Array  . twoElemArray opts
+      ObjectWithSingleField -> jsonObject . objectWithSingleField opts
+      TwoElemArray          -> jsonArray  . elements . twoElemArray opts
 {-# INLINE nonAllNullarySumToJSON #-}
 
 --------------------------------------------------------------------------------
 
 class TaggedObject f where
-    taggedObject :: Options -> String -> String -> f a -> [Pair]
+    taggedObject :: (JSON json) => Options -> String -> String -> f a -> [Pair json]
 
 instance ( TaggedObject a
          , TaggedObject b ) => TaggedObject (a :+: b) where
@@ -134,12 +135,12 @@ instance ( IsRecord      a isRecord
     taggedObject opts tagFieldName contentsFieldName =
         (pack tagFieldName .= constructorTagModifier opts
                                  (conName (undefined :: t c a p)) :) .
-        (unTagged :: Tagged isRecord [Pair] -> [Pair]) .
+        (unTagged :: Tagged isRecord [Pair json] -> [Pair json]) .
           taggedObject' opts contentsFieldName . unM1
     {-# INLINE taggedObject #-}
 
 class TaggedObject' f isRecord where
-    taggedObject' :: Options -> String -> f a -> Tagged isRecord [Pair]
+    taggedObject' :: (JSON json) => Options -> String -> f a -> Tagged isRecord [Pair json]
 
 instance (RecordToPairs f) => TaggedObject' f True where
     taggedObject' opts _ = Tagged . toList . recordToPairs opts
@@ -147,7 +148,7 @@ instance (RecordToPairs f) => TaggedObject' f True where
 
 instance (GToJSON f) => TaggedObject' f False where
     taggedObject' opts contentsFieldName =
-        Tagged . (:[]) . (pack contentsFieldName .=) . gToJSON opts
+        Tagged . (:[]) . (pack contentsFieldName,) . gToJSON opts
     {-# INLINE taggedObject' #-}
 
 --------------------------------------------------------------------------------
@@ -168,7 +169,7 @@ instance (Constructor c, GToJSON a, ConsToJSON a) => GetConName (C1 c a) where
 --------------------------------------------------------------------------------
 
 class TwoElemArray f where
-    twoElemArray :: Options -> f a -> V.Vector Value
+    twoElemArray :: (JSON json) => Options -> f a -> V.Vector json
 
 instance (TwoElemArray a, TwoElemArray b) => TwoElemArray (a :+: b) where
     twoElemArray opts (L1 x) = twoElemArray opts x
@@ -179,8 +180,8 @@ instance ( GToJSON a, ConsToJSON a
          , Constructor c ) => TwoElemArray (C1 c a) where
     twoElemArray opts x = V.create $ do
       mv <- VM.unsafeNew 2
-      VM.unsafeWrite mv 0 $ String $ pack $ constructorTagModifier opts
-                                   $ conName (undefined :: t c a p)
+      VM.unsafeWrite mv 0 $ jsonString $ pack $ constructorTagModifier opts
+                                       $ conName (undefined :: t c a p)
       VM.unsafeWrite mv 1 $ gToJSON opts x
       return mv
     {-# INLINE twoElemArray #-}
@@ -188,14 +189,14 @@ instance ( GToJSON a, ConsToJSON a
 --------------------------------------------------------------------------------
 
 class ConsToJSON f where
-    consToJSON  :: Options -> f a -> Value
+    consToJSON  :: (JSON json) => Options -> f a -> json
 
 class ConsToJSON' f isRecord where
-    consToJSON' :: Options -> f a -> Tagged isRecord Value
+    consToJSON' :: (JSON json) => Options -> f a -> Tagged isRecord json
 
 instance ( IsRecord    f isRecord
          , ConsToJSON' f isRecord ) => ConsToJSON f where
-    consToJSON opts = (unTagged :: Tagged isRecord Value -> Value)
+    consToJSON opts = (unTagged :: Tagged isRecord json -> json)
                     . consToJSON' opts
     {-# INLINE consToJSON #-}
 
@@ -210,7 +211,7 @@ instance GToJSON f => ConsToJSON' f False where
 --------------------------------------------------------------------------------
 
 class RecordToPairs f where
-    recordToPairs :: Options -> f a -> DList Pair
+    recordToPairs :: (JSON json) => Options -> f a -> DList (Pair json)
 
 instance (RecordToPairs a, RecordToPairs b) => RecordToPairs (a :*: b) where
     recordToPairs opts (a :*: b) = recordToPairs opts a `mappend`
@@ -227,7 +228,8 @@ instance (Selector s, ToJSON a) => RecordToPairs (S1 s (K1 i (Maybe a))) where
     recordToPairs opts m1 = fieldToPair opts m1
     {-# INLINE recordToPairs #-}
 
-fieldToPair :: (Selector s, GToJSON a) => Options -> S1 s a p -> DList Pair
+fieldToPair :: (Selector s, GToJSON a, JSON json)
+            => Options -> S1 s a p -> DList (Pair json)
 fieldToPair opts m1 = pure ( pack $ fieldLabelModifier opts $ selName m1
                            , gToJSON opts (unM1 m1)
                            )
@@ -236,8 +238,9 @@ fieldToPair opts m1 = pure ( pack $ fieldLabelModifier opts $ selName m1
 --------------------------------------------------------------------------------
 
 class WriteProduct f where
-    writeProduct :: Options
-                 -> VM.MVector s Value
+    writeProduct :: (JSON json)
+                 => Options
+                 -> VM.MVector s json
                  -> Int -- ^ index
                  -> Int -- ^ length
                  -> f a
@@ -265,7 +268,7 @@ instance (GToJSON a) => WriteProduct a where
 --------------------------------------------------------------------------------
 
 class ObjectWithSingleField f where
-    objectWithSingleField :: Options -> f a -> Object
+    objectWithSingleField :: (JSON json) => Options -> f a -> (JsonObject json) json
 
 instance ( ObjectWithSingleField a
          , ObjectWithSingleField b ) => ObjectWithSingleField (a :+: b) where
@@ -275,7 +278,7 @@ instance ( ObjectWithSingleField a
 
 instance ( GToJSON a, ConsToJSON a
          , Constructor c ) => ObjectWithSingleField (C1 c a) where
-    objectWithSingleField opts = H.singleton typ . gToJSON opts
+    objectWithSingleField opts x = insert typ (gToJSON opts x) mempty
         where
           typ = pack $ constructorTagModifier opts $
                          conName (undefined :: t c a p)
@@ -543,7 +546,7 @@ instance (GFromJSON a) => FromProduct (S1 s a) where
 --------------------------------------------------------------------------------
 
 class FromPair f where
-    parsePair :: Options -> Pair -> Maybe (Parser (f a))
+    parsePair :: Options -> Pair Value -> Maybe (Parser (f a))
 
 instance (FromPair a, FromPair b) => FromPair (a :+: b) where
     parsePair opts pair = (fmap L1 <$> parsePair opts pair) <|>
