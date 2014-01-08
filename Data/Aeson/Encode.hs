@@ -1,4 +1,4 @@
-{-# LANGUAGE BangPatterns, OverloadedStrings #-}
+{-# LANGUAGE CPP, BangPatterns, OverloadedStrings #-}
 
 -- |
 -- Module:      Data.Aeson.Encode
@@ -14,49 +14,74 @@
 -- Most frequently, you'll probably want to encode straight to UTF-8
 -- (the standard JSON encoding) using 'encode'.
 --
--- You can convert a 'Builder' (as returned by 'fromValue') to a
--- string using e.g. 'toLazyText'.
-
+-- You can use the conversions to 'Builder's when embedding JSON messages as
+-- parts of a protocol.
 module Data.Aeson.Encode
-    (
-      fromValue
-    , encode
+    ( encode
+
+#if MIN_VERSION_bytestring(0,10,4)
+    -- * Encoding to Builders
+    , encodeToByteStringBuilder
+    , encodeToTextBuilder
+#else
+    -- * Encoding to Text Builders
+    , encodeToTextBuilder
+#endif
+
+    -- * Deprecated
+    , fromValue
     ) where
 
-import Data.Aeson.Types (ToJSON(..), Value(..))
+import Data.Aeson.Types (Value(..))
 import Data.Monoid (mappend)
 import Data.Scientific (Scientific, coefficient, base10Exponent, scientificBuilder)
 import Data.Text.Lazy.Builder
 import Data.Text.Lazy.Builder.Int (decimal)
-import Data.Text.Lazy.Encoding (encodeUtf8)
 import Numeric (showHex)
-import qualified Data.ByteString.Lazy as L
 import qualified Data.HashMap.Strict as H
 import qualified Data.Text as T
 import qualified Data.Vector as V
 
--- | Encode a JSON value to a 'Builder'.  You can convert this to a
--- string using e.g. 'toLazyText', or encode straight to UTF-8 (the
--- standard JSON encoding) using 'encode'.
+#if MIN_VERSION_bytestring(0,10,4)
+import Data.Aeson.Encode.ByteString (encode, encodeToByteStringBuilder)
+#else
+import Data.Aeson.Types (ToJSON(toJSON))
+import qualified Data.ByteString.Lazy    as BL
+import qualified Data.Text.Lazy.Builder  as TLB
+import qualified Data.Text.Lazy.Encoding as TLE
+
+-- | Encode a JSON 'Value' as a UTF-8 encoded 'BL.ByteString'.
+encode :: ToJSON a => a -> BL.ByteString
+encode = TLE.encodeUtf8 . TLB.toLazyText . encodeToTextBuilder . toJSON
+#endif
+
+-- | Encode a JSON 'Value' to a 'Builder', which can be embedded efficiently
+-- in a text-based protocol.
+encodeToTextBuilder :: Value -> Builder
+encodeToTextBuilder =
+    go
+  where
+    go Null       = {-# SCC "go/Null" #-} "null"
+    go (Bool b)   = {-# SCC "go/Bool" #-} if b then "true" else "false"
+    go (Number s) = {-# SCC "go/Number" #-} fromScientific s
+    go (String s) = {-# SCC "go/String" #-} string s
+    go (Array v)
+        | V.null v = {-# SCC "go/Array" #-} "[]"
+        | otherwise = {-# SCC "go/Array" #-}
+                      singleton '[' <>
+                      go (V.unsafeHead v) <>
+                      V.foldr f (singleton ']') (V.unsafeTail v)
+      where f a z = singleton ',' <> go a <> z
+    go (Object m) = {-# SCC "go/Object" #-}
+        case H.toList m of
+          (x:xs) -> singleton '{' <> one x <> foldr f (singleton '}') xs
+          _      -> "{}"
+      where f a z     = singleton ',' <> one a <> z
+            one (k,v) = string k <> singleton ':' <> go v
+
+{-# DEPRECATED fromValue "Use 'encodeToTextBuilder' instead" #-}
 fromValue :: Value -> Builder
-fromValue Null = {-# SCC "fromValue/Null" #-} "null"
-fromValue (Bool b) = {-# SCC "fromValue/Bool" #-}
-                     if b then "true" else "false"
-fromValue (Number s) = {-# SCC "fromValue/Number" #-} fromScientific s
-fromValue (String s) = {-# SCC "fromValue/String" #-} string s
-fromValue (Array v)
-    | V.null v = {-# SCC "fromValue/Array" #-} "[]"
-    | otherwise = {-# SCC "fromValue/Array" #-}
-                  singleton '[' <>
-                  fromValue (V.unsafeHead v) <>
-                  V.foldr f (singleton ']') (V.unsafeTail v)
-  where f a z = singleton ',' <> fromValue a <> z
-fromValue (Object m) = {-# SCC "fromValue/Object" #-}
-    case H.toList m of
-      (x:xs) -> singleton '{' <> one x <> foldr f (singleton '}') xs
-      _      -> "{}"
-  where f a z     = singleton ',' <> one a <> z
-        one (k,v) = string k <> singleton ':' <> fromValue v
+fromValue = encodeToTextBuilder
 
 string :: T.Text -> Builder
 string s = {-# SCC "string" #-} singleton '"' <> quote s <> singleton '"'
@@ -92,12 +117,6 @@ fromScientific s
     | otherwise = decimal (coefficient s * 10 ^ e)
   where
     e = base10Exponent s
-
--- | Efficiently serialize a JSON value as a lazy 'L.ByteString'.
-encode :: ToJSON a => a -> L.ByteString
-encode = {-# SCC "encode" #-} encodeUtf8 . toLazyText . fromValue .
-         {-# SCC "toJSON" #-} toJSON
-{-# INLINE encode #-}
 
 (<>) :: Builder -> Builder -> Builder
 (<>) = mappend
