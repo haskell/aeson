@@ -7,11 +7,12 @@ result_re = re.compile(r'^\s*(\d+) good, (\d+\.\d+)s$', re.M)
 if len(sys.argv) > 1:
     parser_exe = sys.argv[1]
 else:
-    parser_exe = './AesonParse'
+    parser_exe = ('dist/build/aeson-benchmark-aeson-parse/' +
+                  'aeson-benchmark-aeson-parse')
 
 def run(count, filename):
     print '    %s :: %s times' % (filename, count)
-    p = subprocess.Popen([parser_exe, str(count), filename],
+    p = subprocess.Popen([parser_exe, '65536', str(count), filename],
                          stdout=subprocess.PIPE)
     output = p.stdout.read()
     p.wait()
