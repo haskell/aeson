@@ -1,113 +1,119 @@
-# 0.6 series
+0.7.0.0
 
-Much improved documentation.
+	* The performance of encoding to and decoding of bytestrings
+	  have both improved by up to 2x, while also using less
+	  memory.
 
-Angle brackets are now escaped in JSON strings, to help avoid XSS
-attacks.
+	* New dependency: the scientific package lets us parse
+	  floating point numbers more quickly and accurately.
 
-Fixed up handling of nullary constructors when using generic encoding.
+	* eitherDecode, decodeStrictWith: fixed bugs.
 
-Added ToJSON/FromJSON instances for:
+	* Added FromJSON and ToJSON instances for Tree and Scientific.
 
-* The `Fixed` class
+	* Fixed the ToJSON instances for UTCTime and ZonedTime.
 
-* ISO-8601 dates: `UTCTime`, `ZonedTime`, and `TimeZone`
+0.6 series
 
-Added accessor functions for inspecting `Value`s.
+	* Much improved documentation.
 
-Added `eitherDecode` function that returns an error message if
-decoding fails.
+	* Angle brackets are now escaped in JSON strings, to help avoid XSS
+	  attacks.
 
-# 0.5 to 0.6
+	* Fixed up handling of nullary constructors when using generic
+	  encoding.
 
-This release introduces a slightly obscure, but
-backwards-incompatible, change.
+	* Added ToJSON/FromJSON instances for:
 
-In the generic APIs of versions 0.4 and 0.5, fields whose names began
-with a "`_`" character would have this character removed.  This no
-longer occurs, as [it was both buggy and
-surprising](https://github.com/bos/aeson/issues/53).
+	  * The Fixed class
+	  * ISO-8601 dates: UTCTime, ZonedTime, and TimeZone
 
-Also:
+	* Added accessor functions for inspecting Values.
 
-* Fixed [a bug in generic decoding of nullary constructors](https://github.com/bos/aeson/issues/62)
+	* Added eitherDecode function that returns an error message if
+	  decoding fails.
 
-# 0.4 to 0.5
+0.5 to 0.6
 
-When used with the UTF-8 encoding performance improvements introduced
-in version 0.11.1.12 of the text package, this release improves
-aeson's JSON encoding performance by 33% relative to aeson 0.4.
+	* This release introduces a slightly obscure, but
+	  backwards-incompatible, change.
 
-As part of achieving this improvement, an API change was necessary.
-The `fromValue` function in the `Data.Aeson.Encode` module now uses
-the text package's `Builder` type instead of the blaze-builder
-package's `Builder` type.
+	  In the generic APIs of versions 0.4 and 0.5, fields whose
+	  names began with a "_" character would have this character
+	  removed.  This no longer occurs, as it was both buggy and
+	  surprising (https://github.com/bos/aeson/issues/53).
 
-# 0.3 to 0.4
+	* Fixed a bug in generic decoding of nullary constructors
+	  (https://github.com/bos/aeson/issues/62).
 
-## Ease of use
+0.4 to 0.5
 
-The new [`decode`
-function](http://hackage.haskell.org/packages/archive/aeson/latest/doc/html/Data-Aeson.html#v:decode)
-complements the longstanding `encode` function, and makes the API
-simpler.
+	* When used with the UTF-8 encoding performance improvements
+	  introduced in version 0.11.1.12 of the text package, this
+	  release improves aeson's JSON encoding performance by 33%
+	  relative to aeson 0.4.
 
-[New examples](https://github.com/bos/aeson/tree/master/examples) make
-it easier to learn to use the package.
+	  As part of achieving this improvement, an API change was
+	  necessary.  The fromValue function in the
+	  Data.Aeson.Encode module now uses the text package's
+	  Builder type instead of the blaze-builder package's
+	  Builder type.
 
+0.3 to 0.4
 
-## Generics support
+	* The new decode function complements the longstanding
+	  encode function, and makes the API simpler.
 
-aeson's support for data-type generic programming makes it possible to
-use JSON encodings of most data types without writing any boilerplate
-instances.
+	* New examples make it easier to learn to use the package
+	  (https://github.com/bos/aeson/tree/master/examples).
 
-Thanks to Bas Van Dijk, aeson now supports the two major schemes for
-doing datatype-generic programming:
+	* Generics support
 
-* the modern mechanism, [built into GHC
-  itself](http://www.haskell.org/ghc/docs/latest/html/users_guide/generic-programming.html)
+	  aeson's support for data-type generic programming makes it
+	  possible to use JSON encodings of most data types without
+	  writing any boilerplate instances.
 
-* the older mechanism, based on SYB (aka "scrap your boilerplate")
+	  Thanks to Bas Van Dijk, aeson now supports the two major
+	  schemes for doing datatype-generic programming:
 
-The modern GHC-based generic mechanism is fast and terse: in fact, its
-performance is generally comparable in performance to hand-written and
-TH-derived `ToJSON` and `FromJSON` instances.  To see how to use GHC
-generics, refer to
-[`examples/Generic.hs`](https://github.com/bos/aeson/blob/master/examples/Generic.hs).
+	  * the modern mechanism, built into GHC itself
+	    (http://www.haskell.org/ghc/docs/latest/html/users_guide/generic-programming.html)
 
-The SYB-based generics support lives in
-[Data.Aeson.Generic](http://hackage.haskell.org/packages/archive/aeson/latest/doc/html/Data-Aeson-Generic.html),
-and is provided mainly for users of GHC older than 7.2.  SYB is far
-slower (by about 10x) than the more modern generic mechanism.  To see
-how to use SYB generics, refer to
-[`examples/GenericSYB.hs`](https://github.com/bos/aeson/blob/master/examples/GenericSYB.hs).
+	  * the older mechanism, based on SYB (aka "scrap your
+	    boilerplate")
 
+	  The modern GHC-based generic mechanism is fast and terse: in
+	  fact, its performance is generally comparable in performance
+	  to hand-written and TH-derived ToJSON and FromJSON
+	  instances.  To see how to use GHC generics, refer to
+	  examples/Generic.hs.
 
-## Improved performance
+	  The SYB-based generics support lives in Data.Aeson.Generic
+	  and is provided mainly for users of GHC older than 7.2.  SYB
+	  is far slower (by about 10x) than the more modern generic
+	  mechanism.  To see how to use SYB generics, refer to
+	  examples/GenericSYB.hs.
 
-* We switched the intermediate representation of JSON objects from
-  `Data.Map` to
-  [`Data.HashMap`](http://hackage.haskell.org/package/unordered-containers),
-  which has improved type conversion performance.
+	* We switched the intermediate representation of JSON objects
+	  from Data.Map to Data.HashMap which has improved type
+	  conversion performance.
 
-* Instances of `ToJSON` and `FromJSON` for tuples are between 45% and
-  70% faster than in 0.3.
+	* Instances of ToJSON and FromJSON for tuples are between 45%
+	  and 70% faster than in 0.3.
 
+	* Evaluation control
 
-## Evaluation control
+	  This version of aeson makes explicit the decoupling between
+	  *identifying* an element of a JSON document and *converting*
+	  it to Haskell.  See the Data.Aeson.Parser documentation for
+	  details.
 
-This version of aeson makes explicit the decoupling between
-*identifying* an element of a JSON document and *converting* it to
-Haskell.  See the
-[`Data.Aeson.Parser`](http://hackage.haskell.org/packages/archive/aeson/latest/doc/html/Data-Aeson-Parser.html)
-documentation for details.
+	  The normal aeson decode function performs identification
+	  strictly, but defers conversion until needed.  This can
+	  result in improved performance (e.g. if the results of some
+	  conversions are never needed), but at a cost in increased
+	  memory consumption.
 
-The normal aeson `decode` function performs identification strictly,
-but defers conversion until needed.  This can result in improved
-performance (e.g. if the results of some conversions are never
-needed), but at a cost in increased memory consumption.
-
-The new `decode'` function performs identification and conversion
-immediately.  This incurs an up-front cost in CPU cycles, but reduces
-reduce memory consumption.
+	  The new decode' function performs identification and
+	  conversion immediately.  This incurs an up-front cost in CPU
+	  cycles, but reduces reduce memory consumption.
