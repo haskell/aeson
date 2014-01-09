@@ -4,6 +4,7 @@ import Control.Exception
 import Control.Monad
 import Data.Aeson
 import Data.Attoparsec (IResult(..), parseWith)
+import Data.Char (isDigit)
 import Data.Time.Clock
 import System.Environment (getArgs)
 import System.IO
@@ -22,7 +23,10 @@ instance NFData L.ByteString where
 
 main :: IO ()
 main = do
-  (cnt:args) <- getArgs
+  args0 <- getArgs
+  let (cnt,args) = case args0 of
+        (i:c:a) | all isDigit i && all isDigit c -> (c,a)
+        (c:a) -> (c,a)
   let count = read cnt :: Int
   forM_ args $ \arg -> bracket (openFile arg ReadMode) hClose $ \h -> do
     putStrLn $ arg ++ ":"
@@ -39,5 +43,5 @@ main = do
     loop 0 r0
     delta <- flip diffUTCTime start `fmap` getCurrentTime
     let rate = fromIntegral count / realToFrac delta :: Double
-    putStrLn $ "  " ++ show delta
+    putStrLn $ "  " ++ cnt ++ " good, " ++ show delta
     putStrLn $ "  " ++ show (round rate :: Int) ++ " per second"
