@@ -133,7 +133,7 @@ array_' = {-# SCC "array_'" #-} do
 
 commaSeparated :: Parser a -> Word8 -> Parser [a]
 commaSeparated item endByte = do
-  w <- A.peekWord8'
+  w <- peekWord8'
   if w == endByte
     then A.anyWord8 >> return []
     else loop
@@ -164,7 +164,7 @@ arrayValues val = do
 -- to preserve interoperability and security.
 value :: Parser Value
 value = do
-  w <- A.peekWord8'
+  w <- peekWord8'
   case w of
     DOUBLE_QUOTE  -> A.anyWord8 *> (String <$> jstring_)
     OPEN_CURLY    -> A.anyWord8 *> object_
@@ -179,7 +179,7 @@ value = do
 -- | Strict version of 'value'. See also 'json''.
 value' :: Parser Value
 value' = do
-  w <- A.peekWord8'
+  w <- peekWord8'
   case w of
     DOUBLE_QUOTE  -> do
                      !s <- A.anyWord8 *> jstring_
@@ -348,4 +348,11 @@ word8 = fromWord8
 toByteString :: Builder -> ByteString
 toByteString = L.toStrict . toLazyByteString
 {-# INLINE toByteString #-}
+#endif
+
+peekWord8' :: A.Parser Word8
+#if MIN_VERSION_attoparsec(0,11,1)
+peekWord8' = A.peekWord8'
+#else
+peekWord8' = maybe (fail "not enough bytes") return =<< A.peekWord8
 #endif
