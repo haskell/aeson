@@ -66,7 +66,7 @@ genericParseJSON opts = fmap to . gParseJSON opts
 --
 -- @{-\# LANGUAGE OverloadedStrings #-}
 --
--- data Coord { x :: Double, y :: Double }
+-- data Coord = Coord { x :: Double, y :: Double }
 --
 -- instance ToJSON Coord where
 --   toJSON (Coord x y) = 'object' [\"x\" '.=' x, \"y\" '.=' y]
@@ -99,7 +99,7 @@ genericParseJSON opts = fmap to . gParseJSON opts
 --
 -- import GHC.Generics
 --
--- data Coord { x :: Double, y :: Double } deriving Generic
+-- data Coord = Coord { x :: Double, y :: Double } deriving Generic
 --
 -- instance ToJSON Coord
 -- @
@@ -131,7 +131,7 @@ class ToJSON a where
 --
 -- @{-\# LANGUAGE OverloadedStrings #-}
 --
--- data Coord { x :: Double, y :: Double }
+-- data Coord = Coord { x :: Double, y :: Double }
 --
 -- instance FromJSON Coord where
 --   parseJSON ('Object' v) = Coord    '<$>'
@@ -169,7 +169,7 @@ class ToJSON a where
 --
 -- import GHC.Generics
 --
--- data Coord { x :: Double, y :: Double } deriving Generic
+-- data Coord = Coord { x :: Double, y :: Double } deriving Generic
 --
 -- instance FromJSON Coord
 -- @
