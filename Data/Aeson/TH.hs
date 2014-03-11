@@ -165,11 +165,7 @@ deriveToJSON opts name =
   where
     fromCons :: [TyVarBndr] -> [Con] -> Q Dec
     fromCons tvbs cons =
-#if __GLASGOW_HASKELL__ >= 709
-        instanceD (return $ map (\t -> AppT (ConT ''ToJSON) (VarT t)) typeNames)
-#else
-        instanceD (return $ map (\t -> ClassP ''ToJSON [VarT t]) typeNames)
-#endif
+        instanceD (applyCon ''ToJSON typeNames)
                   (classType `appT` instanceType)
                   [ funD 'toJSON
                          [ clause []
@@ -376,11 +372,7 @@ deriveFromJSON opts name =
   where
     fromCons :: [TyVarBndr] -> [Con] -> Q Dec
     fromCons tvbs cons =
-#if __GLASGOW_HASKELL__ >= 709
-        instanceD (return $ map (\t -> AppT (ConT ''FromJSON) (VarT t)) typeNames)
-#else
-        instanceD (return $ map (\t -> ClassP ''FromJSON [VarT t]) typeNames)
-#endif
+        instanceD (applyCon ''FromJSON typeNames)
                   (classType `appT` instanceType)
                   [ funD 'parseJSON
                          [ clause []
@@ -880,3 +872,12 @@ valueConName (String _) = "String"
 valueConName (Number _) = "Number"
 valueConName (Bool   _) = "Boolean"
 valueConName Null       = "Null"
+
+applyCon :: Name -> [Name] -> Q [Pred]
+applyCon con typeNames = return (map apply typeNames)
+  where apply t =
+#if __GLASGOW_HASKELL__ >= 709
+          AppT (ConT con) (VarT t)
+#else
+          ClassP con [VarT t]
+#endif
