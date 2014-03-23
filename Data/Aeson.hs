@@ -68,6 +68,7 @@ module Data.Aeson
     , withText
     , withArray
     , withNumber
+    , withScientific
     , withBool
     -- * Constructors and accessors
     , (.=)
