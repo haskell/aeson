@@ -107,7 +107,10 @@ instance (FromJSON a, FromJSON b) => FromJSON (Either a b) where
     parseJSON (Object (H.toList -> [(key, value)]))
         | key == left  = Left  <$> parseJSON value
         | key == right = Right <$> parseJSON value
-    parseJSON _        = fail ""
+    parseJSON _        = fail $
+        "expected an object with a single property " ++
+        "where the property key should be either " ++
+        "\"Left\" or \"Right\""
     {-# INLINE parseJSON #-}
 
 left, right :: Text
