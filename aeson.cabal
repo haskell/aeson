@@ -72,6 +72,7 @@ extra-source-files:
 flag developer
   description: operate in developer mode
   default: False
+  manual: True
 
 flag blaze-builder
   description: Use blaze-builder instead of bytestring >= 0.10
