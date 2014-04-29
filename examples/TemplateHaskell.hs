@@ -7,7 +7,7 @@
 {-# LANGUAGE OverloadedStrings #-}
 
 import Data.Aeson (decode, encode)
-import Data.Aeson.TH (deriveJSON)
+import Data.Aeson.TH (deriveJSON, defaultOptions)
 import qualified Data.ByteString.Lazy.Char8 as BL
 
 data Coord = Coord { x :: Double, y :: Double }
@@ -19,7 +19,7 @@ data Coord = Coord { x :: Double, y :: Double }
 -- names of the type's fields.  We don't want to transform them, so we
 -- use the identity function.
 
-$(deriveJSON id ''Coord)
+$(deriveJSON defaultOptions ''Coord)
 
 main :: IO ()
 main = do
