@@ -43,7 +43,7 @@ import Data.ByteString.Lazy.Builder
 
 import Control.Applicative ((*>), (<$>), (<*), liftA2, pure)
 import Data.Aeson.Types (Result(..), Value(..))
-import Data.Attoparsec.Char8 (Parser, char, endOfInput, rational,
+import Data.Attoparsec.Char8 (Parser, char, endOfInput, scientific,
                               skipSpace, string)
 import Data.Bits ((.|.), shiftL)
 import Data.ByteString (ByteString)
@@ -173,7 +173,7 @@ value = do
     C_t           -> string "true" *> pure (Bool True)
     C_n           -> string "null" *> pure Null
     _              | w >= 48 && w <= 57 || w == 45
-                  -> Number <$> rational
+                  -> Number <$> scientific
       | otherwise -> fail "not a valid json value"
 
 -- | Strict version of 'value'. See also 'json''.
@@ -191,7 +191,7 @@ value' = do
     C_n           -> string "null" *> pure Null
     _              | w >= 48 && w <= 57 || w == 45
                   -> do
-                     !n <- rational
+                     !n <- scientific
                      return (Number n)
       | otherwise -> fail "not a valid json value"
 
