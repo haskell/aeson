@@ -1,5 +1,5 @@
 name:            aeson
-version:         0.7.0.3
+version:         0.7.0.4
 license:         BSD3
 license-file:    LICENSE
 category:        Text, Web, JSON
@@ -8,7 +8,7 @@ copyright:       (c) 2011-2014 Bryan O'Sullivan
 author:          Bryan O'Sullivan <bos@serpentine.com>
 maintainer:      Bryan O'Sullivan <bos@serpentine.com>
 stability:       experimental
-tested-with:     GHC == 7.0, GHC == 7.2, GHC == 7.4, GHC == 7.6
+tested-with:     GHC == 7.0, GHC == 7.2, GHC == 7.4, GHC == 7.6, GHC == 7.8
 synopsis:        Fast JSON parsing and encoding
 cabal-version:   >= 1.8
 homepage:        https://github.com/bos/aeson
