@@ -1,3 +1,11 @@
+0.7.1.0
+
+* Major compiler and library compatibility changes: we have dropped
+  support for GHC older than 7.4, text older than 1.1, and bytestring
+  older than 0.10.4.0.  Supporting the older versions had become
+  increasingly difficult, to the point where it was no longer worth
+  it.
+
 0.7.0.0
 
 * The performance of encoding to and decoding of bytestrings have both
