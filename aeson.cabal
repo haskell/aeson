@@ -1,5 +1,5 @@
 name:            aeson
-version:         0.7.0.4
+version:         0.7.1.0
 license:         BSD3
 license-file:    LICENSE
 category:        Text, Web, JSON
@@ -73,14 +73,6 @@ flag developer
   description: operate in developer mode
   default: False
   manual: True
-
-flag blaze-builder
-  description: Use blaze-builder instead of bytestring >= 0.10
-  default: False
-
-flag new-bytestring-builder
-  description: Use the new bytestring builder available in bytestring >= 0.10.4.0
-  default: False
 
 library
   exposed-modules:
