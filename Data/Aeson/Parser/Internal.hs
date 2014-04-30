@@ -28,18 +28,8 @@ module Data.Aeson.Parser.Internal
     , eitherDecodeStrictWith
     ) where
 
-#if defined(USE_BLAZE_BUILDER)
-import Blaze.ByteString.Builder (Builder, fromByteString, toByteString)
-import Blaze.ByteString.Builder.Char.Utf8 (fromChar)
-import Blaze.ByteString.Builder.Word (fromWord8)
-#else
-#if MIN_VERSION_bytestring(0,10,2)
 import Data.ByteString.Builder
-#else
-import Data.ByteString.Lazy.Builder
-#endif
   (Builder, byteString, toLazyByteString, charUtf8, word8)
-#endif
 
 import Control.Applicative ((*>), (<$>), (<*), liftA2, pure)
 import Data.Aeson.Types (Result(..), Value(..))
@@ -331,24 +321,9 @@ jsonEOF = json <* skipSpace <* endOfInput
 jsonEOF' :: Parser Value
 jsonEOF' = json' <* skipSpace <* endOfInput
 
-#if defined(USE_BLAZE_BUILDER)
-byteString :: ByteString -> Builder
-byteString = fromByteString
-{-# INLINE byteString #-}
-
-charUtf8 :: Char -> Builder
-charUtf8 = fromChar
-{-# INLINE charUtf8 #-}
-
-word8 :: Word8 -> Builder
-word8 = fromWord8
-{-# INLINE word8 #-}
-
-#else
 toByteString :: Builder -> ByteString
 toByteString = L.toStrict . toLazyByteString
 {-# INLINE toByteString #-}
-#endif
 
 peekWord8' :: A.Parser Word8
 #if MIN_VERSION_attoparsec(0,11,1)

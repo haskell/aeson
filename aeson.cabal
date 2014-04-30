@@ -97,14 +97,7 @@ library
     Data.Aeson.Types.Class
     Data.Aeson.Types.Instances
     Data.Aeson.Types.Internal
-
-  if flag(new-bytestring-builder)
-    other-modules: Data.Aeson.Encode.ByteString
-    build-depends: bytestring >= 0.10.4.0,
-                   text >= 1.1.0.0
-  else
-    build-depends: bytestring < 0.10.4.0,
-                   text >= 0.11.1.0
+    Data.Aeson.Encode.ByteString
 
   if impl(ghc >= 7.2.1)
     cpp-options: -DGENERICS
@@ -112,9 +105,13 @@ library
     other-modules:
       Data.Aeson.Types.Generic
 
+  if impl(ghc < 7.8)
+    build-depends: bytestring-builder
+
   build-depends:
     attoparsec >= 0.11.3.0,
     base == 4.*,
+    bytestring >= 0.10.4.0,
     containers,
     deepseq,
     hashable >= 1.1.2.0,
@@ -125,13 +122,8 @@ library
     time,
     unordered-containers >= 0.2.3.0,
     vector >= 0.7.1,
-    scientific >= 0.2
-
-  if flag(blaze-builder)
-    build-depends: blaze-builder >= 0.2.1.4
-    cpp-options: -DUSE_BLAZE_BUILDER
-  else
-    build-depends: bytestring >= 0.10
+    scientific >= 0.2,
+    text >= 1.1.1.0
 
   if flag(developer)
     ghc-options: -Werror

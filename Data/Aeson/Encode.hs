@@ -19,14 +19,9 @@
 module Data.Aeson.Encode
     ( encode
 
-#if MIN_VERSION_bytestring(0,10,4)
     -- * Encoding to Builders
     , encodeToByteStringBuilder
     , encodeToTextBuilder
-#else
-    -- * Encoding to Text Builders
-    , encodeToTextBuilder
-#endif
 
     -- * Deprecated
     , fromValue
@@ -42,18 +37,7 @@ import qualified Data.HashMap.Strict as H
 import qualified Data.Text as T
 import qualified Data.Vector as V
 
-#if MIN_VERSION_bytestring(0,10,4)
 import Data.Aeson.Encode.ByteString (encode, encodeToByteStringBuilder)
-#else
-import Data.Aeson.Types (ToJSON(toJSON))
-import qualified Data.ByteString.Lazy    as BL
-import qualified Data.Text.Lazy.Builder  as TLB
-import qualified Data.Text.Lazy.Encoding as TLE
-
--- | Encode a JSON 'Value' as a UTF-8 encoded 'BL.ByteString'.
-encode :: ToJSON a => a -> BL.ByteString
-encode = TLE.encodeUtf8 . TLB.toLazyText . encodeToTextBuilder . toJSON
-#endif
 
 -- | Encode a JSON 'Value' to a 'Builder', which can be embedded efficiently
 -- in a text-based protocol.
