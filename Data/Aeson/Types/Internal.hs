@@ -1,4 +1,4 @@
-{-# LANGUAGE CPP, DeriveDataTypeable, GeneralizedNewtypeDeriving, Rank2Types #-}
+{-# LANGUAGE DeriveDataTypeable, GeneralizedNewtypeDeriving, Rank2Types #-}
 
 -- |
 -- Module:      Data.Aeson.Types.Internal

@@ -1,4 +1,4 @@
-{-# LANGUAGE BangPatterns, CPP, OverloadedStrings #-}
+{-# LANGUAGE BangPatterns, OverloadedStrings #-}
 
 import Control.Exception
 import Control.Monad
@@ -10,16 +10,6 @@ import System.Environment (getArgs)
 import System.IO
 import qualified Data.ByteString as B
 import Control.DeepSeq
-
-#if !MIN_VERSION_bytestring(0,10,0)
-import qualified Data.ByteString.Lazy.Internal as L
-
-instance NFData L.ByteString where
-    rnf = go
-      where go (L.Chunk _ cs) = go cs
-            go L.Empty        = ()
-    {-# INLINE rnf #-}
-#endif
 
 main :: IO ()
 main = do

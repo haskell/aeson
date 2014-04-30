@@ -1,4 +1,3 @@
-{-# LANGUAGE CPP #-}
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 
 import Blaze.ByteString.Builder (toLazyByteString)
@@ -12,14 +11,6 @@ import qualified Text.JSON as J
 import qualified Data.Text.Lazy          as TL
 import qualified Data.Text.Lazy.Builder  as TLB
 import qualified Data.Text.Lazy.Encoding as TLE
-
-#if !MIN_VERSION_bytestring(0,10,0)
-import qualified Data.ByteString.Lazy.Internal as BL
-
-instance NFData BL.ByteString where
-  rnf (BL.Chunk _ bs) = rnf bs
-  rnf BL.Empty        = ()
-#endif
 
 instance (NFData v) => NFData (J.JSObject v) where
   rnf o = rnf (J.fromJSObject o)
@@ -46,13 +37,11 @@ decodeA s = case A.decode s of
 encodeJ :: J.JSValue -> BL.ByteString
 encodeJ = toLazyByteString . fromString . J.encode
 
-#if MIN_VERSION_bytestring(0,10,4)
 encodeToText :: A.Value -> TL.Text
 encodeToText = TLB.toLazyText . A.encodeToTextBuilder . A.toJSON
 
 encodeViaText :: A.Value -> BL.ByteString
 encodeViaText = TLE.encodeUtf8 . encodeToText
-#endif
 
 main :: IO ()
 main = do
@@ -76,18 +65,14 @@ main = do
     , bgroup "encode" [
         bgroup "en" [
           bench "aeson-to-bytestring" $ nf A.encode (decodeA enA)
-#if MIN_VERSION_bytestring(0,10,4)
         , bench "aeson-via-text-to-bytestring" $ nf encodeViaText (decodeA enA)
         , bench "aeson-to-text" $ nf encodeToText (decodeA enA)
-#endif
         , bench "json"  $ nf encodeJ (decodeJ enJ)
         ]
       , bgroup "jp" [
           bench "aeson-to-bytestring" $ nf A.encode (decodeA jpA)
-#if MIN_VERSION_bytestring(0,10,4)
         , bench "aeson-via-text-to-bytestring" $ nf encodeViaText (decodeA jpA)
         , bench "aeson-to-text" $ nf encodeToText (decodeA jpA)
-#endif
         , bench "json"  $ nf encodeJ (decodeJ jpJ)
         ]
       ]

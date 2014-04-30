@@ -1,4 +1,4 @@
-{-# LANGUAGE CPP, BangPatterns, OverloadedStrings #-}
+{-# LANGUAGE BangPatterns, OverloadedStrings #-}
 
 -- |
 -- Module:      Data.Aeson.Encode
