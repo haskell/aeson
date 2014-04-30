@@ -8,7 +8,7 @@ copyright:       (c) 2011-2014 Bryan O'Sullivan
 author:          Bryan O'Sullivan <bos@serpentine.com>
 maintainer:      Bryan O'Sullivan <bos@serpentine.com>
 stability:       experimental
-tested-with:     GHC == 7.0, GHC == 7.2, GHC == 7.4, GHC == 7.6, GHC == 7.8
+tested-with:     GHC == 7.4, GHC == 7.6, GHC == 7.8
 synopsis:        Fast JSON parsing and encoding
 cabal-version:   >= 1.8
 homepage:        https://github.com/bos/aeson
@@ -84,21 +84,13 @@ library
     Data.Aeson.TH
 
   other-modules:
+    Data.Aeson.Encode.ByteString
     Data.Aeson.Functions
     Data.Aeson.Parser.Internal
     Data.Aeson.Types.Class
+    Data.Aeson.Types.Generic
     Data.Aeson.Types.Instances
     Data.Aeson.Types.Internal
-    Data.Aeson.Encode.ByteString
-
-  if impl(ghc >= 7.2.1)
-    cpp-options: -DGENERICS
-    build-depends: ghc-prim >= 0.2, dlist >= 0.2
-    other-modules:
-      Data.Aeson.Types.Generic
-
-  if impl(ghc < 7.8)
-    build-depends: bytestring-builder
 
   build-depends:
     attoparsec >= 0.11.3.0,
@@ -106,22 +98,25 @@ library
     bytestring >= 0.10.4.0,
     containers,
     deepseq,
+    dlist >= 0.2,
+    ghc-prim >= 0.2,
     hashable >= 1.1.2.0,
     mtl,
     old-locale,
+    scientific >= 0.2,
     syb,
     template-haskell >= 2.4,
+    text >= 1.1.1.0,
     time,
     unordered-containers >= 0.2.3.0,
-    vector >= 0.7.1,
-    scientific >= 0.2,
-    text >= 1.1.1.0
+    vector >= 0.7.1
 
   if flag(developer)
     ghc-options: -Werror
     ghc-prof-options: -auto-all
 
   ghc-options: -O2 -Wall
+  cpp-options: -DGENERICS
 
 test-suite tests
   type:           exitcode-stdio-1.0
@@ -135,30 +130,26 @@ test-suite tests
     Properties.Deprecated
     Types
 
-  ghc-options:
-    -Wall -threaded -rtsopts
-  if impl(ghc < 7.4)
-    ghc-options: -fcontext-stack=40
-  if impl(ghc >= 7.2)
-    cpp-options: -DGHC_GENERICS
+  ghc-options: -Wall -threaded -rtsopts
+  cpp-options: -DGHC_GENERICS
 
   build-depends:
+    HUnit,
     QuickCheck,
     aeson,
     attoparsec,
     base,
-    containers,
     bytestring,
+    containers,
+    ghc-prim >= 0.2,
     template-haskell,
     test-framework,
-    test-framework-quickcheck2,
     test-framework-hunit,
-    HUnit,
+    test-framework-quickcheck2,
     text,
     time,
     unordered-containers,
-    vector,
-    ghc-prim >= 0.2
+    vector
 
 source-repository head
   type:     git
