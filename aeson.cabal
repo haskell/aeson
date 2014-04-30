@@ -66,7 +66,7 @@ extra-source-files:
     benchmarks/*.py
     benchmarks/Makefile
     benchmarks/json-data/*.json
-    changelog
+    changelog.md
     examples/*.hs
 
 flag developer
