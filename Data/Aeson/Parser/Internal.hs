@@ -1,4 +1,4 @@
-{-# LANGUAGE BangPatterns, OverloadedStrings #-}
+{-# LANGUAGE BangPatterns, CPP, OverloadedStrings #-}
 
 -- |
 -- Module:      Data.Aeson.Parser.Internal
