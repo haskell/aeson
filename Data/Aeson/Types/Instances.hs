@@ -498,10 +498,16 @@ instance ToJSON UTCTime where
     {-# INLINE toJSON #-}
 
 instance FromJSON UTCTime where
-    parseJSON = withText "UTCTime" $ \t ->
-        case parseTime defaultTimeLocale "%FT%T%QZ" (unpack t) of
-          Just d -> pure d
-          _      -> fail "could not parse ISO-8601 date"
+    parseJSON =
+      withText "UTCTime"
+      (\t -> parseUTCTime "%FT%T%QZ" t <|>
+             parseUTCTime "%F %T" t <|>
+             parseUTCTime "%F %T%Q" t)
+      where
+        parseUTCTime fmt t =
+          case parseTime defaultTimeLocale fmt (unpack t) of
+            Just d -> pure d
+            _      -> fail "could not parse ISO-8601 date"
     {-# INLINE parseJSON #-}
 
 instance (ToJSON a, ToJSON b) => ToJSON (a,b) where
