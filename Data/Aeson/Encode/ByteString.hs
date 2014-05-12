@@ -19,11 +19,12 @@ module Data.Aeson.Encode.ByteString
 import Prelude hiding (null)
 import Data.Aeson.Types (ToJSON(..), Value(..))
 import Data.Char (ord)
-import Data.Scientific (Scientific, coefficient, base10Exponent, formatScientific, FPFormat(Generic))
+import Data.Scientific (Scientific, coefficient, base10Exponent)
 import Data.Word (Word8)
 import Data.Monoid (mappend)
 import           Data.ByteString.Builder      as B
 import           Data.ByteString.Builder.Prim as BP
+import           Data.ByteString.Builder.Scientific (scientificBuilder)
 import qualified Data.ByteString.Lazy as L
 import qualified Data.HashMap.Strict as HMS
 import qualified Data.Text as T
@@ -95,7 +96,7 @@ string t =
 
 number :: Scientific -> Builder
 number s
-    | e < 0     = B.string8 $ formatScientific Generic Nothing s
+    | e < 0     = scientificBuilder s
     | otherwise = B.integerDec (coefficient s * 10 ^ e)
   where
     e = base10Exponent s
