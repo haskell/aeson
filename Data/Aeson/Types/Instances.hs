@@ -167,16 +167,8 @@ instance ToJSON Double where
     toJSON = realFloatToJSON
     {-# INLINE toJSON #-}
 
-realFloatToJSON :: RealFloat a => a -> Value
-realFloatToJSON d
-    | isNaN d || isInfinite d = Null
-    | otherwise = Number $ Scientific.fromFloatDigits d
-{-# INLINE realFloatToJSON #-}
-
 instance FromJSON Double where
-    parseJSON (Number s) = pure $ realToFrac s
-    parseJSON Null       = pure (0/0)
-    parseJSON v          = typeMismatch "Double" v
+    parseJSON = parseFractional "Double"
     {-# INLINE parseJSON #-}
 
 instance ToJSON Number where
@@ -195,9 +187,7 @@ instance ToJSON Float where
     {-# INLINE toJSON #-}
 
 instance FromJSON Float where
-    parseJSON (Number s) = pure $ realToFrac s
-    parseJSON Null       = pure (0/0)
-    parseJSON v          = typeMismatch "Float" v
+    parseJSON = parseFractional "Float"
     {-# INLINE parseJSON #-}
 
 instance ToJSON (Ratio Integer) where
@@ -225,19 +215,19 @@ instance ToJSON Int where
     {-# INLINE toJSON #-}
 
 instance FromJSON Int where
-    parseJSON = parseIntegral
+    parseJSON = parseIntegral "Int"
     {-# INLINE parseJSON #-}
-
-parseIntegral :: Integral a => Value -> Parser a
-parseIntegral = withScientific "Integral" $ pure . floor
-{-# INLINE parseIntegral #-}
 
 instance ToJSON Integer where
     toJSON = Number . fromInteger
     {-# INLINE toJSON #-}
 
+-- | /WARNING:/ Only parse Integers from trusted input since an
+-- attacker could easily fill up the memory of the target system by
+-- specifying a scientific number with a big exponent like
+-- @1e1000000000@.
 instance FromJSON Integer where
-    parseJSON = parseIntegral
+    parseJSON = withScientific "Integral" $ pure . floor
     {-# INLINE parseJSON #-}
 
 instance ToJSON Int8 where
@@ -245,7 +235,7 @@ instance ToJSON Int8 where
     {-# INLINE toJSON #-}
 
 instance FromJSON Int8 where
-    parseJSON = parseIntegral
+    parseJSON = parseIntegral "Int8"
     {-# INLINE parseJSON #-}
 
 instance ToJSON Int16 where
@@ -253,7 +243,7 @@ instance ToJSON Int16 where
     {-# INLINE toJSON #-}
 
 instance FromJSON Int16 where
-    parseJSON = parseIntegral
+    parseJSON = parseIntegral "Int16"
     {-# INLINE parseJSON #-}
 
 instance ToJSON Int32 where
@@ -261,7 +251,7 @@ instance ToJSON Int32 where
     {-# INLINE toJSON #-}
 
 instance FromJSON Int32 where
-    parseJSON = parseIntegral
+    parseJSON = parseIntegral "Int32"
     {-# INLINE parseJSON #-}
 
 instance ToJSON Int64 where
@@ -269,7 +259,7 @@ instance ToJSON Int64 where
     {-# INLINE toJSON #-}
 
 instance FromJSON Int64 where
-    parseJSON = parseIntegral
+    parseJSON = parseIntegral "Int64"
     {-# INLINE parseJSON #-}
 
 instance ToJSON Word where
@@ -277,7 +267,7 @@ instance ToJSON Word where
     {-# INLINE toJSON #-}
 
 instance FromJSON Word where
-    parseJSON = parseIntegral
+    parseJSON = parseIntegral "Word"
     {-# INLINE parseJSON #-}
 
 instance ToJSON Word8 where
@@ -285,7 +275,7 @@ instance ToJSON Word8 where
     {-# INLINE toJSON #-}
 
 instance FromJSON Word8 where
-    parseJSON = parseIntegral
+    parseJSON = parseIntegral "Word8"
     {-# INLINE parseJSON #-}
 
 instance ToJSON Word16 where
@@ -293,7 +283,7 @@ instance ToJSON Word16 where
     {-# INLINE toJSON #-}
 
 instance FromJSON Word16 where
-    parseJSON = parseIntegral
+    parseJSON = parseIntegral "Word16"
     {-# INLINE parseJSON #-}
 
 instance ToJSON Word32 where
@@ -301,7 +291,7 @@ instance ToJSON Word32 where
     {-# INLINE toJSON #-}
 
 instance FromJSON Word32 where
-    parseJSON = parseIntegral
+    parseJSON = parseIntegral "Word32"
     {-# INLINE parseJSON #-}
 
 instance ToJSON Word64 where
@@ -309,7 +299,7 @@ instance ToJSON Word64 where
     {-# INLINE toJSON #-}
 
 instance FromJSON Word64 where
-    parseJSON = parseIntegral
+    parseJSON = parseIntegral "Word64"
     {-# INLINE parseJSON #-}
 
 instance ToJSON Text where
@@ -788,6 +778,12 @@ typeMismatch expected actual =
              Bool _   -> "Boolean"
              Null     -> "Null"
 
+realFloatToJSON :: RealFloat a => a -> Value
+realFloatToJSON d
+    | isNaN d || isInfinite d = Null
+    | otherwise = Number $ Scientific.fromFloatDigits d
+{-# INLINE realFloatToJSON #-}
+
 scientificToNumber :: Scientific -> Number
 scientificToNumber s
     | e < 0     = D $ realToFrac s
@@ -796,3 +792,25 @@ scientificToNumber s
     e = Scientific.base10Exponent s
     c = Scientific.coefficient s
 {-# INLINE scientificToNumber #-}
+
+parseFractional :: Fractional a => String -> Value -> Parser a
+parseFractional _        (Number s) = pure $ scientificToFractional s
+parseFractional _        Null       = pure (0/0)
+parseFractional expected v          = typeMismatch expected v
+{-# INLINE parseFractional #-}
+
+-- | Convert an /untrusted/ scientific value to a fractional.
+scientificToFractional :: Fractional a => Scientific -> a
+scientificToFractional s = realToFrac s
+  -- TODO: Using realToFrac is unsafe here. Do something similar as
+  -- scientificToIntegral. The following might work but I'm not sure
+  -- this doesn't introduce rounding errors:
+  --
+  --   fromInteger c * 10 ^ e
+  -- where
+  --   e = Scientific.base10Exponent s
+  --   c = Scientific.coefficient s
+
+parseIntegral :: Integral a => String -> Value -> Parser a
+parseIntegral expected = withScientific expected $ pure . floor
+{-# INLINE parseIntegral #-}
