@@ -125,7 +125,7 @@ library
     time,
     unordered-containers >= 0.2.3.0,
     vector >= 0.7.1,
-    scientific >= 0.2
+    scientific >= 0.3
 
   if flag(blaze-builder)
     build-depends: blaze-builder >= 0.2.1.4
