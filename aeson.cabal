@@ -103,7 +103,7 @@ library
     hashable >= 1.1.2.0,
     mtl,
     old-locale,
-    scientific >= 0.2,
+    scientific >= 0.3,
     syb,
     template-haskell >= 2.4,
     text >= 1.1.1.0,
