@@ -206,6 +206,10 @@ instance HasResolution a => ToJSON (Fixed a) where
     toJSON = Number . realToFrac
     {-# INLINE toJSON #-}
 
+-- | /WARNING:/ Only parse fixed-precision numbers from trusted input
+-- since an attacker could easily fill up the memory of the target
+-- system by specifying a scientific number with a big exponent like
+-- @1e1000000000@.
 instance HasResolution a => FromJSON (Fixed a) where
     parseJSON = withScientific "Fixed" $ pure . realToFrac
     {-# INLINE parseJSON #-}
