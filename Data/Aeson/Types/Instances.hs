@@ -786,7 +786,7 @@ realFloatToJSON d
 
 scientificToNumber :: Scientific -> Number
 scientificToNumber s
-    | e < 0     = D $ realToFrac s
+    | e < 0     = D $ Scientific.toRealFloat s
     | otherwise = I $ c * 10 ^ e
   where
     e = Scientific.base10Exponent s
