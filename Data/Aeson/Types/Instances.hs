@@ -56,7 +56,7 @@ import Data.Aeson.Functions
 import Data.Aeson.Types.Class
 import Data.Aeson.Types.Internal
 import Data.Scientific (Scientific)
-import qualified Data.Scientific as Scientific (coefficient, base10Exponent, fromRealFloat, toRealFloat)
+import qualified Data.Scientific as Scientific (coefficient, base10Exponent, fromFloatDigits, toRealFloat)
 import Data.Attoparsec.Number (Number(..))
 import Data.Fixed
 import Data.Hashable (Hashable(..))
@@ -781,7 +781,7 @@ typeMismatch expected actual =
 realFloatToJSON :: RealFloat a => a -> Value
 realFloatToJSON d
     | isNaN d || isInfinite d = Null
-    | otherwise = Number $ Scientific.fromRealFloat d
+    | otherwise = Number $ Scientific.fromFloatDigits d
 {-# INLINE realFloatToJSON #-}
 
 scientificToNumber :: Scientific -> Number
