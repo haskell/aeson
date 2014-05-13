@@ -56,7 +56,7 @@ import Data.Aeson.Functions
 import Data.Aeson.Types.Class
 import Data.Aeson.Types.Internal
 import Data.Scientific (Scientific)
-import qualified Data.Scientific as Scientific (coefficient, base10Exponent, fromFloatDigits)
+import qualified Data.Scientific as Scientific (coefficient, base10Exponent, fromRealFloat, toRealFloat)
 import Data.Attoparsec.Number (Number(..))
 import Data.Fixed
 import Data.Hashable (Hashable(..))
@@ -168,7 +168,7 @@ instance ToJSON Double where
     {-# INLINE toJSON #-}
 
 instance FromJSON Double where
-    parseJSON = parseFractional "Double"
+    parseJSON = parseRealFloat "Double"
     {-# INLINE parseJSON #-}
 
 instance ToJSON Number where
@@ -187,7 +187,7 @@ instance ToJSON Float where
     {-# INLINE toJSON #-}
 
 instance FromJSON Float where
-    parseJSON = parseFractional "Float"
+    parseJSON = parseRealFloat "Float"
     {-# INLINE parseJSON #-}
 
 instance ToJSON (Ratio Integer) where
@@ -781,7 +781,7 @@ typeMismatch expected actual =
 realFloatToJSON :: RealFloat a => a -> Value
 realFloatToJSON d
     | isNaN d || isInfinite d = Null
-    | otherwise = Number $ Scientific.fromFloatDigits d
+    | otherwise = Number $ Scientific.fromRealFloat d
 {-# INLINE realFloatToJSON #-}
 
 scientificToNumber :: Scientific -> Number
@@ -793,23 +793,11 @@ scientificToNumber s
     c = Scientific.coefficient s
 {-# INLINE scientificToNumber #-}
 
-parseFractional :: Fractional a => String -> Value -> Parser a
-parseFractional _        (Number s) = pure $ scientificToFractional s
-parseFractional _        Null       = pure (0/0)
-parseFractional expected v          = typeMismatch expected v
-{-# INLINE parseFractional #-}
-
--- | Convert an /untrusted/ scientific value to a fractional.
-scientificToFractional :: Fractional a => Scientific -> a
-scientificToFractional s = realToFrac s
-  -- TODO: Using realToFrac is unsafe here. Do something similar as
-  -- scientificToIntegral. The following might work but I'm not sure
-  -- this doesn't introduce rounding errors:
-  --
-  --   fromInteger c * 10 ^ e
-  -- where
-  --   e = Scientific.base10Exponent s
-  --   c = Scientific.coefficient s
+parseRealFloat :: RealFloat a => String -> Value -> Parser a
+parseRealFloat _        (Number s) = pure $ Scientific.toRealFloat s
+parseRealFloat _        Null       = pure (0/0)
+parseRealFloat expected v          = typeMismatch expected v
+{-# INLINE parseRealFloat #-}
 
 parseIntegral :: Integral a => String -> Value -> Parser a
 parseIntegral expected = withScientific expected $ pure . floor
