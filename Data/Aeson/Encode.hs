@@ -29,9 +29,10 @@ module Data.Aeson.Encode
 
 import Data.Aeson.Types (Value(..))
 import Data.Monoid (mappend)
-import Data.Scientific (Scientific, coefficient, base10Exponent, scientificBuilder)
+import Data.Scientific (Scientific, coefficient, base10Exponent)
 import Data.Text.Lazy.Builder
 import Data.Text.Lazy.Builder.Int (decimal)
+import Data.Text.Lazy.Builder.Scientific (scientificBuilder)
 import Numeric (showHex)
 import qualified Data.HashMap.Strict as H
 import qualified Data.Text as T
