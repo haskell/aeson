@@ -56,7 +56,7 @@ import Data.Aeson.Functions
 import Data.Aeson.Types.Class
 import Data.Aeson.Types.Internal
 import Data.Scientific (Scientific)
-import qualified Data.Scientific as Scientific (coefficient, base10Exponent, fromFloatDigits)
+import qualified Data.Scientific as Scientific (coefficient, base10Exponent, fromFloatDigits, toRealFloat)
 import Data.Attoparsec.Number (Number(..))
 import Data.Fixed
 import Data.Hashable (Hashable(..))
@@ -168,7 +168,7 @@ instance ToJSON Double where
     {-# INLINE toJSON #-}
 
 instance FromJSON Double where
-    parseJSON = parseFractional "Double"
+    parseJSON = parseRealFloat "Double"
     {-# INLINE parseJSON #-}
 
 instance ToJSON Number where
@@ -187,7 +187,7 @@ instance ToJSON Float where
     {-# INLINE toJSON #-}
 
 instance FromJSON Float where
-    parseJSON = parseFractional "Float"
+    parseJSON = parseRealFloat "Float"
     {-# INLINE parseJSON #-}
 
 instance ToJSON (Ratio Integer) where
@@ -206,6 +206,10 @@ instance HasResolution a => ToJSON (Fixed a) where
     toJSON = Number . realToFrac
     {-# INLINE toJSON #-}
 
+-- | /WARNING:/ Only parse fixed-precision numbers from trusted input
+-- since an attacker could easily fill up the memory of the target
+-- system by specifying a scientific number with a big exponent like
+-- @1e1000000000@.
 instance HasResolution a => FromJSON (Fixed a) where
     parseJSON = withScientific "Fixed" $ pure . realToFrac
     {-# INLINE parseJSON #-}
@@ -786,102 +790,19 @@ realFloatToJSON d
 
 scientificToNumber :: Scientific -> Number
 scientificToNumber s
-    | e < 0     = D $ realToFrac s
+    | e < 0     = D $ Scientific.toRealFloat s
     | otherwise = I $ c * 10 ^ e
   where
     e = Scientific.base10Exponent s
     c = Scientific.coefficient s
 {-# INLINE scientificToNumber #-}
 
-parseFractional :: Fractional a => String -> Value -> Parser a
-parseFractional _        (Number s) = pure $ scientificToFractional s
-parseFractional _        Null       = pure (0/0)
-parseFractional expected v          = typeMismatch expected v
-{-# INLINE parseFractional #-}
-
--- | Convert an /untrusted/ scientific value to a fractional.
-scientificToFractional :: Fractional a => Scientific -> a
-scientificToFractional s = realToFrac s
-  -- TODO: Using realToFrac is unsafe here. Do something similar as
-  -- scientificToIntegral. The following might work but I'm not sure
-  -- this doesn't introduce rounding errors:
-  --
-  --   fromInteger c * 10 ^ e
-  -- where
-  --   e = Scientific.base10Exponent s
-  --   c = Scientific.coefficient s
+parseRealFloat :: RealFloat a => String -> Value -> Parser a
+parseRealFloat _        (Number s) = pure $ Scientific.toRealFloat s
+parseRealFloat _        Null       = pure (0/0)
+parseRealFloat expected v          = typeMismatch expected v
+{-# INLINE parseRealFloat #-}
 
 parseIntegral :: Integral a => String -> Value -> Parser a
-parseIntegral expected = withScientific expected $ pure . scientificToIntegral
+parseIntegral expected = withScientific expected $ pure . floor
 {-# INLINE parseIntegral #-}
-
--- | Safely convert an /untrusted/ scientific value to an integral.
---
--- This function is safe in the sense that the amount of space used is
--- bounded by the size of the target type.
-scientificToIntegral :: Integral a => Scientific -> a
-scientificToIntegral s
-    -- When the exponent is positive (we're dealing with an integer)
-    -- we convert the coefficient to the desired integral type and
-    -- multiply it by the magnitude (10^e). Note that the magnitude is
-    -- also represented in the target type which means that the space
-    -- usage is bounded by the size of that type (8/16/32/64
-    -- bits). Computing the magnitude could take a long time but it's
-    -- easy to protect against that by using a timeout.
-    | e >= 0 = fromInteger c * 10 ^ e
-
-    -- When the exponent is negative we divide the Integer coefficient
-    -- by the magnitude (10^(-e)) and convert the resulting Integer to
-    -- the target integral type.
-    --
-    -- Do note that the magnitude (which is an Integer) will consume
-    -- lots of space if the exponent is a big negative number. If left
-    -- unguarded this allows an attacker to supply a scientific number
-    -- with a big negative exponent like 1e-1000000000 and crash the
-    -- target system by filling up all memory.
-    --
-    -- We guard against this by only computing the magnitude when the
-    -- exponent is between -limit and 0 (in which case the magnitude
-    -- doesn't consume much space). If the exponent is smaller than
-    -- -limit we return 0 but only when it's smaller than
-    -- -nrOfCoefficientDigits (the number of decimal digits in the
-    -- coefficient).
-    --
-    -- Note that this still allows an attacker to trigger the unsafe
-    -- magnitude computation. However, he can only trigger it by
-    -- supplying a coefficient consisting of more decimal digits than
-    -- 10^(-e). It's easy to protect against this by limiting the
-    -- amount of bytes read from an untrusted source.
-    --
-    -- Also note that nrOfCoefficientDigits is only computed when the
-    -- exponent is smaller than -limit.
-    | e < (-limit) && e < (-nrOfCoefficientDigits) = 0
-
-    | otherwise = fromInteger (c `div` (10^(-e)))
-  where
-    e = Scientific.base10Exponent s
-    c = Scientific.coefficient s
-
-    limit = 20
-
-    -- The number of decimal digits of the coefficient.
-    nrOfCoefficientDigits = integerLogBase 10 (abs c)
-
--- | Calculate the integer logarithm for an arbitrary base.
---   The base must be greater than 1, the second argument, the number
---   whose logarithm is sought, should be positive, otherwise the
---   result is meaningless.
---
--- > base ^ integerLogBase base m <= m < base ^ (integerLogBase base m + 1)
---
--- for @base > 1@ and @m > 0@.
---
--- TODO: Use integerLogBase# from integer-gmp which is probably more efficient!
-integerLogBase :: Integer -> Integer -> Int
-integerLogBase b m = case step b of (_, e) -> e
-  where
-    step pw | m < pw    = (m, 0)
-            | q < pw    = (q, 2 * e)
-            | otherwise = (q `quot` pw, 2 * e + 1)
-      where
-        (q, e) = step (pw * pw)
