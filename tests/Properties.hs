@@ -5,10 +5,11 @@ import Data.Aeson (eitherDecode)
 import Data.Aeson.Encode
 import Data.Aeson.Parser (value)
 import Data.Aeson.Types
+import Data.Char (toUpper)
 import Test.Framework (Test, defaultMain, testGroup)
 import Test.Framework.Providers.QuickCheck2 (testProperty)
 import Test.Framework.Providers.HUnit (testCase)
-import Test.HUnit                     (assertFailure, assertEqual)
+import Test.HUnit                     (Assertion, assertFailure, assertEqual)
 import Test.QuickCheck (Arbitrary(..))
 import qualified Data.Vector as V
 import qualified Data.Attoparsec.Lazy as L
@@ -28,13 +29,14 @@ import Data.Int
 import qualified Data.Map as Map
 #endif
 
-{-
-roundTripCaml :: String -> Bool
-roundTripCaml s = s == (camlFrom '_' $ camlTo '_' s)
+
+roundTripCamel :: String -> Assertion
+roundTripCamel name = assertEqual "" name (camelFrom '_' $ camelTo '_' name)
   where
-    camlFrom :: Char -> String -> String
-    camlFrom c = concatMap capitalize $ split c
--}
+    camelFrom c s = let (p:ps) = split c s
+                    in concat $ p : map capitalize ps
+    split c s = map L.unpack $ L.split c $ L.pack s
+    capitalize t = toUpper (head t) : tail t
 
 encodeDouble :: Double -> Double -> Bool
 encodeDouble num denom
@@ -116,10 +118,11 @@ tests = [
       testProperty "encodeDouble" encodeDouble
     , testProperty "encodeInteger" encodeInteger
     ],
-  -- testGroup "camlCase" [
-  --     testProperty "camlTo" $ roundTripCaml "AnApiMethod"
-  --   , testProperty "camlTo" $ roundTripCaml "anotherMethodType"
-  --   ],
+   testGroup "camelCase" [
+      testCase "camelTo" $ roundTripCamel "aName"
+    , testCase "camelTo" $ roundTripCamel "another"
+    , testCase "camelTo" $ roundTripCamel "someOtherName"
+    ],
   testGroup "roundTrip" [
       testProperty "Bool" $ roundTripEq True
     , testProperty "Double" $ roundTripEq (1 :: Approx Double)
