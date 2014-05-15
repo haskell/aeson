@@ -112,7 +112,7 @@ library
       Data.Aeson.Types.Generic
 
   build-depends:
-    attoparsec >= 0.11.3.3,
+    attoparsec >= 0.11.3.4,
     base == 4.*,
     containers,
     deepseq,
