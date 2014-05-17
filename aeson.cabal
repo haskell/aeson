@@ -93,7 +93,7 @@ library
     Data.Aeson.Types.Internal
 
   build-depends:
-    attoparsec >= 0.11.3.0,
+    attoparsec >= 0.11.3.4,
     base == 4.*,
     bytestring >= 0.10.4.0,
     containers,
@@ -103,7 +103,7 @@ library
     hashable >= 1.1.2.0,
     mtl,
     old-locale,
-    scientific >= 0.3,
+    scientific >= 0.3.1 && < 0.4,
     syb,
     template-haskell >= 2.4,
     text >= 1.1.1.0,
