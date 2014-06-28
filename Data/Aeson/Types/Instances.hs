@@ -486,16 +486,24 @@ instance FromJSON ZonedTime where
             Just d -> pure d
             Nothing -> empty
         tryFormats = foldr1 (<|>) . map tryFormat
-        alternateFormats = nub $
-          "%FT%T%QZ" :
-          "%FT%T%Q%z" :
-          distributeList ["%F", "%Y", "%Y-%m"]
-                         ["T%T%Q", "T%R", "T%T", "T%T%QZ", "T%T%Q%z"] ++
-          [dateTimeFmt defaultTimeLocale]
-
-        distributeList xs ys =
-          foldr (\x -> (++ distribute x ys)) [] xs
-        distribute x = map (mappend x)
+        alternateFormats =
+            "%FT%T%QZ" :
+            "%FT%T%Q%z" :
+            "%Y-%mT%T%Q" :
+            "%Y-%mT%R" :
+            "%Y-%mT%T" :
+            "%Y-%mT%T%QZ" :
+            "%Y-%mT%T%Q%z" :
+            "%YT%T%Q" :
+            "%YT%R" :
+            "%YT%T" :
+            "%YT%T%QZ" :
+            "%YT%T%Q%z" :
+            "%FT%T%Q" :
+            "%FT%R" :
+            "%FT%T" :
+            dateTimeFmt defaultTimeLocale :
+            []
 
     parseJSON v = typeMismatch "ZonedTime" v
 
