@@ -491,7 +491,7 @@ instance FromJSON ZonedTime where
                          ["T%R", "T%T", "T%T%Q", "T%T%QZ", "T%T%Q%z"]
 
         distributeList xs ys =
-          foldr (\x acc -> acc ++ distribute x ys) [] xs
+          foldr (\x -> (++ distribute x ys)) [] xs
         distribute x = map (mappend x)
 
     parseJSON v = typeMismatch "ZonedTime" v
