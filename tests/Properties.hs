@@ -123,14 +123,14 @@ tests = [
   testGroup "roundTrip" [
       testProperty "Bool" $ roundTripEq True
     , testProperty "Double" $ roundTripEq (1 :: Approx Double)
-    , testProperty "Int" $ roundTripEq (1::Int)
-    , testProperty "Integer" $ roundTripEq (1::Integer)
-    , testProperty "String" $ roundTripEq (""::String)
+    , testProperty "Int" $ roundTripEq (1 :: Int)
+    , testProperty "Integer" $ roundTripEq (1 :: Integer)
+    , testProperty "String" $ roundTripEq ("" :: String)
     , testProperty "Text" $ roundTripEq T.empty
-    , testProperty "Foo" $ roundTripEq (undefined::Foo)
+    , testProperty "Foo" $ roundTripEq (undefined :: Foo)
     , testProperty "DotNetTime" $ roundTripEq (undefined :: DotNetTime)
     , testProperty "UTCTime" $ roundTripEq (undefined :: UTCTime)
-    , testProperty "ZonedTime" $ roundTripEq (undefined::ZonedTime)
+    , testProperty "ZonedTime" $ roundTripEq (undefined :: ZonedTime)
 #ifdef GHC_GENERICS
     , testGroup "ghcGenerics" [
         testProperty "OneConstructor" $ roundTripEq OneConstructor
