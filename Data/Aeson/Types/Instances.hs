@@ -61,6 +61,7 @@ import Data.Attoparsec.Number (Number(..))
 import Data.Fixed
 import Data.Hashable (Hashable(..))
 import Data.Int (Int8, Int16, Int32, Int64)
+import Data.List (nub)
 import Data.Maybe (fromMaybe)
 import Data.Monoid (Dual(..), First(..), Last(..), mappend)
 import Data.Ratio (Ratio, (%), numerator, denominator)
@@ -485,10 +486,12 @@ instance FromJSON ZonedTime where
             Just d -> pure d
             Nothing -> empty
         tryFormats = foldr1 (<|>) . map tryFormat
-        alternateFormats =
-          dateTimeFmt defaultTimeLocale :
-          distributeList ["%Y", "%Y-%m", "%F"]
-                         ["T%R", "T%T", "T%T%Q", "T%T%QZ", "T%T%Q%z"]
+        alternateFormats = nub $
+          "%FT%T%QZ" :
+          "%FT%T%Q%z" :
+          distributeList ["%F", "%Y", "%Y-%m"]
+                         ["T%T%Q", "T%R", "T%T", "T%T%QZ", "T%T%Q%z"] ++
+          [dateTimeFmt defaultTimeLocale]
 
         distributeList xs ys =
           foldr (\x -> (++ distribute x ys)) [] xs
