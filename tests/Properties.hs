@@ -17,8 +17,7 @@ import qualified Data.Text as T
 import qualified Data.Text.Lazy.Builder as TLB
 import qualified Data.Text.Lazy.Encoding as TLE
 import qualified Data.HashMap.Strict as H
-import Data.Time.Clock (UTCTime(..))
-import Data.Time (ZonedTime(..))
+import Data.Time
 import Instances ()
 import Types
 import Encoders
@@ -27,6 +26,11 @@ import Properties.Deprecated (deprecatedTests)
 import Data.Int
 import qualified Data.Map as Map
 #endif
+
+import System.IO
+import System.IO.Unsafe (unsafePerformIO)
+import System.Locale
+
 
 {-
 roundTripCaml :: String -> Bool
@@ -64,6 +68,71 @@ toFromJSON :: (Arbitrary a, Eq a, FromJSON a, ToJSON a) => a -> Bool
 toFromJSON x = case fromJSON . toJSON $ x of
                 Error _ -> False
                 Success x' -> x == x'
+
+zonedTimeToJSON :: ZonedTime -> Bool
+zonedTimeToJSON t = and $
+    toFromJSON' "%FT%T%QZ" t (clearTimeZone t) :  -- (javascript new Date().toISOString())
+    toFromJSON' "%F %T%Q%z" t t :   -- (postgres)
+    toFromJSON' "%F %T%Q %Z" t t :   -- (time's Show format)
+    toFromJSON' "%FT%T%Q%z" t t :
+    toFromJSON' "%Y-%mT%T%Q" t (clearTimeZone . clearDay $ t) :
+    toFromJSON' "%Y-%mT%R" t (clearTimeZone . clearDay . clearSeconds $ t) :
+    toFromJSON' "%Y-%mT%T" t (clearTimeZone . clearDay $ t) :
+    toFromJSON' "%Y-%mT%T%QZ" t (clearTimeZone . clearDay $ t) :
+    toFromJSON' "%Y-%mT%T%Q%z" t (clearDay t) :
+    toFromJSON' "%YT%T%Q" t (clearTimeZone . clearMonth . clearDay $ t) :
+    toFromJSON' "%YT%R" t (clearTimeZone . clearMonth . clearDay . clearSeconds $ t) :
+    toFromJSON' "%YT%T" t (clearTimeZone . clearMonth . clearDay $ t) :
+    toFromJSON' "%YT%T%QZ" t (clearTimeZone . clearMonth . clearDay $ t) :
+    toFromJSON' "%YT%T%Q%z" t (clearMonth . clearDay $ t) :
+    toFromJSON' "%FT%T%Q" t (clearTimeZone t) :
+    toFromJSON' "%FT%R" t (clearTimeZone . clearSeconds $ t) :
+    toFromJSON' "%FT%T" t (clearTimeZone t) :
+    toFromJSON' (dateTimeFmt defaultTimeLocale) t t :
+    []
+  where
+    toJSON' :: String -> ZonedTime -> Value
+    toJSON' format = toJSON . formatTime defaultTimeLocale format
+
+    toFromJSON' :: String -> ZonedTime -> ZonedTime -> Bool
+    toFromJSON' format t_ t_' = case fromJSON . toJSON' format $ t_ of
+                                  Error msg -> error' msg
+                                  Success t_'' -> if t_'' == t_' then True else error' (show t_'')
+      where
+        error' :: String -> Bool
+        error' msg = unsafePerformIO (hPutStrLn stderr . ("zonedTimeToJSON: " ++) $ show
+                                       (format, t_, toJSON' format t_, t_', msg))
+            `seq` False
+
+clearTimeZone :: ZonedTime -> ZonedTime
+clearTimeZone t = t { zonedTimeZone = TimeZone 0 False "" }
+
+clearMonth :: ZonedTime -> ZonedTime
+clearMonth = f
+  where
+    f zt = zt { zonedTimeToLocalTime = g $ zonedTimeToLocalTime zt }
+    g lt = lt { localDay = h $ localDay lt }
+
+    h :: Day -> Day
+    h = maybe (error "clearMonth") id . parseTime defaultTimeLocale "%Y-%m-%d" . formatTime defaultTimeLocale "%Y-01-%d"
+
+clearDay :: ZonedTime -> ZonedTime
+clearDay = f
+  where
+    f zt = zt { zonedTimeToLocalTime = g $ zonedTimeToLocalTime zt }
+    g lt = lt { localDay = h $ localDay lt }
+
+    h :: Day -> Day
+    h = maybe (error "clearDay") id . parseTime defaultTimeLocale "%Y-%m-%d" . formatTime defaultTimeLocale "%Y-%m-01"
+
+clearSeconds :: ZonedTime -> ZonedTime
+clearSeconds = f
+  where
+    f zt = zt { zonedTimeToLocalTime = g $ zonedTimeToLocalTime zt }
+    g lt = lt { localTimeOfDay = h $ localTimeOfDay lt }
+
+    h :: TimeOfDay -> TimeOfDay
+    h = maybe (error "clearSeconds") id . parseTime defaultTimeLocale "%H:%M:%S" . formatTime defaultTimeLocale "%H:%M:00"
 
 modifyFailureProp :: String -> String -> Bool
 modifyFailureProp orig added =
@@ -123,14 +192,14 @@ tests = [
   testGroup "roundTrip" [
       testProperty "Bool" $ roundTripEq True
     , testProperty "Double" $ roundTripEq (1 :: Approx Double)
-    , testProperty "Int" $ roundTripEq (1::Int)
-    , testProperty "Integer" $ roundTripEq (1::Integer)
-    , testProperty "String" $ roundTripEq (""::String)
+    , testProperty "Int" $ roundTripEq (1 :: Int)
+    , testProperty "Integer" $ roundTripEq (1 :: Integer)
+    , testProperty "String" $ roundTripEq ("" :: String)
     , testProperty "Text" $ roundTripEq T.empty
-    , testProperty "Foo" $ roundTripEq (undefined::Foo)
+    , testProperty "Foo" $ roundTripEq (undefined :: Foo)
     , testProperty "DotNetTime" $ roundTripEq (undefined :: DotNetTime)
     , testProperty "UTCTime" $ roundTripEq (undefined :: UTCTime)
-    , testProperty "ZonedTime" $ roundTripEq (undefined::ZonedTime)
+    , testProperty "ZonedTime" $ roundTripEq (undefined :: ZonedTime)
 #ifdef GHC_GENERICS
     , testGroup "ghcGenerics" [
         testProperty "OneConstructor" $ roundTripEq OneConstructor
@@ -146,6 +215,7 @@ tests = [
     , testProperty "Maybe Integer" (toFromJSON :: Maybe Integer -> Bool)
     , testProperty "Either Integer Double" (toFromJSON :: Either Integer Double -> Bool)
     , testProperty "Either Integer Integer" (toFromJSON :: Either Integer Integer -> Bool)
+    , testProperty "ZonedTime" $ zonedTimeToJSON
     ],
   testGroup "deprecated" deprecatedTests,
   testGroup "failure messages" [

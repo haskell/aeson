@@ -61,6 +61,7 @@ import Data.Attoparsec.Number (Number(..))
 import Data.Fixed
 import Data.Hashable (Hashable(..))
 import Data.Int (Int8, Int16, Int32, Int64)
+import Data.List (nub)
 import Data.Maybe (fromMaybe)
 import Data.Monoid (Dual(..), First(..), Last(..), mappend)
 import Data.Ratio (Ratio, (%), numerator, denominator)
@@ -486,13 +487,25 @@ instance FromJSON ZonedTime where
             Nothing -> empty
         tryFormats = foldr1 (<|>) . map tryFormat
         alternateFormats =
-          dateTimeFmt defaultTimeLocale :
-          distributeList ["%Y", "%Y-%m", "%F"]
-                         ["T%R", "T%T", "T%T%Q", "T%T%QZ", "T%T%Q%z"]
-
-        distributeList xs ys =
-          foldr (\x acc -> acc ++ distribute x ys) [] xs
-        distribute x = map (mappend x)
+            "%FT%T%QZ" :  -- (javascript new Date().toISOString())
+            "%F %T%Q%z" :   -- (postgres)
+            "%F %T%Q %Z" :   -- (time's Show format)
+            "%FT%T%Q%z" :
+            "%Y-%mT%T%Q" :
+            "%Y-%mT%R" :
+            "%Y-%mT%T" :
+            "%Y-%mT%T%QZ" :
+            "%Y-%mT%T%Q%z" :
+            "%YT%T%Q" :
+            "%YT%R" :
+            "%YT%T" :
+            "%YT%T%QZ" :
+            "%YT%T%Q%z" :
+            "%FT%T%Q" :
+            "%FT%R" :
+            "%FT%T" :
+            dateTimeFmt defaultTimeLocale :
+            []
 
     parseJSON v = typeMismatch "ZonedTime" v
 
