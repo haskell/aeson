@@ -73,7 +73,9 @@ toFromJSON x = case fromJSON . toJSON $ x of
 
 zonedTimeToJSON :: ZonedTime -> Bool
 zonedTimeToJSON t = and $
-    toFromJSON' "%FT%T%QZ" t (clearTimeZone t) :
+    toFromJSON' "%FT%T%QZ" t (clearTimeZone t) :  -- (javascript new Date().toISOString())
+    toFromJSON' "%F %T%Q%z" t t :   -- (postgres)
+    toFromJSON' "%F %T%Q %Z" t t :   -- (time's Show format)
     toFromJSON' "%FT%T%Q%z" t t :
     toFromJSON' "%Y-%mT%T%Q" t (clearTimeZone . clearDay $ t) :
     toFromJSON' "%Y-%mT%R" t (clearTimeZone . clearDay . clearSeconds $ t) :
