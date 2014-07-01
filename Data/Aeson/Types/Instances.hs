@@ -487,7 +487,9 @@ instance FromJSON ZonedTime where
             Nothing -> empty
         tryFormats = foldr1 (<|>) . map tryFormat
         alternateFormats =
-            "%FT%T%QZ" :
+            "%FT%T%QZ" :  -- (javascript new Date().toISOString())
+            "%F %T%Q%z" :   -- (postgres)
+            "%F %T%Q %Z" :   -- (time's Show format)
             "%FT%T%Q%z" :
             "%Y-%mT%T%Q" :
             "%Y-%mT%R" :
