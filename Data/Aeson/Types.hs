@@ -60,6 +60,7 @@ module Data.Aeson.Types
     -- * Generic and TH encoding configuration
     , Options(..)
     , SumEncoding(..)
+    , camelTo
     , defaultOptions
     , defaultTaggedObject
     ) where
