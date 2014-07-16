@@ -763,6 +763,239 @@ instance (FromJSON a, FromJSON b, FromJSON c, FromJSON d, FromJSON e,
                 <*> parseJSON (V.unsafeIndex ary 9)
     {-# INLINE parseJSON #-}
 
+instance (ToJSON a, ToJSON b, ToJSON c, ToJSON d, ToJSON e, ToJSON f,
+          ToJSON g, ToJSON h, ToJSON i, ToJSON j, ToJSON k) =>
+         ToJSON (a,b,c,d,e,f,g,h,i,j,k) where
+    toJSON (a,b,c,d,e,f,g,h,i,j,k) = Array $ V.create $ do
+      mv <- VM.unsafeNew 11
+      VM.unsafeWrite mv 0 (toJSON a)
+      VM.unsafeWrite mv 1 (toJSON b)
+      VM.unsafeWrite mv 2 (toJSON c)
+      VM.unsafeWrite mv 3 (toJSON d)
+      VM.unsafeWrite mv 4 (toJSON e)
+      VM.unsafeWrite mv 5 (toJSON f)
+      VM.unsafeWrite mv 6 (toJSON g)
+      VM.unsafeWrite mv 7 (toJSON h)
+      VM.unsafeWrite mv 8 (toJSON i)
+      VM.unsafeWrite mv 9 (toJSON j)
+      VM.unsafeWrite mv 10 (toJSON k)
+      return mv
+    {-# INLINE toJSON #-}
+
+instance (FromJSON a, FromJSON b, FromJSON c, FromJSON d, FromJSON e,
+          FromJSON f, FromJSON g, FromJSON h, FromJSON i, FromJSON j,
+          FromJSON k) =>
+         FromJSON (a,b,c,d,e,f,g,h,i,j,k) where
+    parseJSON = withArray "(a,b,c,d,e,f,g,h,i,j,k)" $ \ary ->
+        let n = V.length ary
+        in if n /= 11
+           then fail $ "cannot unpack array of length " ++
+                       show n ++ " into an 11-tuple"
+           else (,,,,,,,,,,)
+                <$> parseJSON (V.unsafeIndex ary 0)
+                <*> parseJSON (V.unsafeIndex ary 1)
+                <*> parseJSON (V.unsafeIndex ary 2)
+                <*> parseJSON (V.unsafeIndex ary 3)
+                <*> parseJSON (V.unsafeIndex ary 4)
+                <*> parseJSON (V.unsafeIndex ary 5)
+                <*> parseJSON (V.unsafeIndex ary 6)
+                <*> parseJSON (V.unsafeIndex ary 7)
+                <*> parseJSON (V.unsafeIndex ary 8)
+                <*> parseJSON (V.unsafeIndex ary 9)
+                <*> parseJSON (V.unsafeIndex ary 10)
+    {-# INLINE parseJSON #-}
+
+instance (ToJSON a, ToJSON b, ToJSON c, ToJSON d, ToJSON e, ToJSON f,
+          ToJSON g, ToJSON h, ToJSON i, ToJSON j, ToJSON k, ToJSON l) =>
+         ToJSON (a,b,c,d,e,f,g,h,i,j,k,l) where
+    toJSON (a,b,c,d,e,f,g,h,i,j,k,l) = Array $ V.create $ do
+      mv <- VM.unsafeNew 12
+      VM.unsafeWrite mv 0 (toJSON a)
+      VM.unsafeWrite mv 1 (toJSON b)
+      VM.unsafeWrite mv 2 (toJSON c)
+      VM.unsafeWrite mv 3 (toJSON d)
+      VM.unsafeWrite mv 4 (toJSON e)
+      VM.unsafeWrite mv 5 (toJSON f)
+      VM.unsafeWrite mv 6 (toJSON g)
+      VM.unsafeWrite mv 7 (toJSON h)
+      VM.unsafeWrite mv 8 (toJSON i)
+      VM.unsafeWrite mv 9 (toJSON j)
+      VM.unsafeWrite mv 10 (toJSON k)
+      VM.unsafeWrite mv 11 (toJSON l)
+      return mv
+    {-# INLINE toJSON #-}
+
+instance (FromJSON a, FromJSON b, FromJSON c, FromJSON d, FromJSON e,
+          FromJSON f, FromJSON g, FromJSON h, FromJSON i, FromJSON j,
+          FromJSON k, FromJSON l) =>
+         FromJSON (a,b,c,d,e,f,g,h,i,j,k,l) where
+    parseJSON = withArray "(a,b,c,d,e,f,g,h,i,j,k,l)" $ \ary ->
+        let n = V.length ary
+        in if n /= 12
+           then fail $ "cannot unpack array of length " ++
+                       show n ++ " into a 12-tuple"
+           else (,,,,,,,,,,,)
+                <$> parseJSON (V.unsafeIndex ary 0)
+                <*> parseJSON (V.unsafeIndex ary 1)
+                <*> parseJSON (V.unsafeIndex ary 2)
+                <*> parseJSON (V.unsafeIndex ary 3)
+                <*> parseJSON (V.unsafeIndex ary 4)
+                <*> parseJSON (V.unsafeIndex ary 5)
+                <*> parseJSON (V.unsafeIndex ary 6)
+                <*> parseJSON (V.unsafeIndex ary 7)
+                <*> parseJSON (V.unsafeIndex ary 8)
+                <*> parseJSON (V.unsafeIndex ary 9)
+                <*> parseJSON (V.unsafeIndex ary 10)
+                <*> parseJSON (V.unsafeIndex ary 11)
+    {-# INLINE parseJSON #-}
+
+instance (ToJSON a, ToJSON b, ToJSON c, ToJSON d, ToJSON e, ToJSON f,
+          ToJSON g, ToJSON h, ToJSON i, ToJSON j, ToJSON k, ToJSON l,
+          ToJSON m) =>
+         ToJSON (a,b,c,d,e,f,g,h,i,j,k,l,m) where
+    toJSON (a,b,c,d,e,f,g,h,i,j,k,l,m) = Array $ V.create $ do
+      mv <- VM.unsafeNew 13
+      VM.unsafeWrite mv 0 (toJSON a)
+      VM.unsafeWrite mv 1 (toJSON b)
+      VM.unsafeWrite mv 2 (toJSON c)
+      VM.unsafeWrite mv 3 (toJSON d)
+      VM.unsafeWrite mv 4 (toJSON e)
+      VM.unsafeWrite mv 5 (toJSON f)
+      VM.unsafeWrite mv 6 (toJSON g)
+      VM.unsafeWrite mv 7 (toJSON h)
+      VM.unsafeWrite mv 8 (toJSON i)
+      VM.unsafeWrite mv 9 (toJSON j)
+      VM.unsafeWrite mv 10 (toJSON k)
+      VM.unsafeWrite mv 11 (toJSON l)
+      VM.unsafeWrite mv 12 (toJSON m)
+      return mv
+    {-# INLINE toJSON #-}
+
+instance (FromJSON a, FromJSON b, FromJSON c, FromJSON d, FromJSON e,
+          FromJSON f, FromJSON g, FromJSON h, FromJSON i, FromJSON j,
+          FromJSON k, FromJSON l, FromJSON m) =>
+         FromJSON (a,b,c,d,e,f,g,h,i,j,k,l,m) where
+    parseJSON = withArray "(a,b,c,d,e,f,g,h,i,j,k,l,m)" $ \ary ->
+        let n = V.length ary
+        in if n /= 13
+           then fail $ "cannot unpack array of length " ++
+                       show n ++ " into a 13-tuple"
+           else (,,,,,,,,,,,,)
+                <$> parseJSON (V.unsafeIndex ary 0)
+                <*> parseJSON (V.unsafeIndex ary 1)
+                <*> parseJSON (V.unsafeIndex ary 2)
+                <*> parseJSON (V.unsafeIndex ary 3)
+                <*> parseJSON (V.unsafeIndex ary 4)
+                <*> parseJSON (V.unsafeIndex ary 5)
+                <*> parseJSON (V.unsafeIndex ary 6)
+                <*> parseJSON (V.unsafeIndex ary 7)
+                <*> parseJSON (V.unsafeIndex ary 8)
+                <*> parseJSON (V.unsafeIndex ary 9)
+                <*> parseJSON (V.unsafeIndex ary 10)
+                <*> parseJSON (V.unsafeIndex ary 11)
+                <*> parseJSON (V.unsafeIndex ary 12)
+    {-# INLINE parseJSON #-}
+
+instance (ToJSON a, ToJSON b, ToJSON c, ToJSON d, ToJSON e, ToJSON f,
+          ToJSON g, ToJSON h, ToJSON i, ToJSON j, ToJSON k, ToJSON l,
+          ToJSON m, ToJSON n) =>
+         ToJSON (a,b,c,d,e,f,g,h,i,j,k,l,m,n) where
+    toJSON (a,b,c,d,e,f,g,h,i,j,k,l,m,n) = Array $ V.create $ do
+      mv <- VM.unsafeNew 14
+      VM.unsafeWrite mv 0 (toJSON a)
+      VM.unsafeWrite mv 1 (toJSON b)
+      VM.unsafeWrite mv 2 (toJSON c)
+      VM.unsafeWrite mv 3 (toJSON d)
+      VM.unsafeWrite mv 4 (toJSON e)
+      VM.unsafeWrite mv 5 (toJSON f)
+      VM.unsafeWrite mv 6 (toJSON g)
+      VM.unsafeWrite mv 7 (toJSON h)
+      VM.unsafeWrite mv 8 (toJSON i)
+      VM.unsafeWrite mv 9 (toJSON j)
+      VM.unsafeWrite mv 10 (toJSON k)
+      VM.unsafeWrite mv 11 (toJSON l)
+      VM.unsafeWrite mv 12 (toJSON m)
+      VM.unsafeWrite mv 13 (toJSON n)
+      return mv
+    {-# INLINE toJSON #-}
+
+instance (FromJSON a, FromJSON b, FromJSON c, FromJSON d, FromJSON e,
+          FromJSON f, FromJSON g, FromJSON h, FromJSON i, FromJSON j,
+          FromJSON k, FromJSON l, FromJSON m, FromJSON n) =>
+         FromJSON (a,b,c,d,e,f,g,h,i,j,k,l,m,n) where
+    parseJSON = withArray "(a,b,c,d,e,f,g,h,i,j,k,l,m,n)" $ \ary ->
+        let n = V.length ary
+        in if n /= 14
+           then fail $ "cannot unpack array of length " ++
+                       show n ++ " into a 14-tuple"
+           else (,,,,,,,,,,,,,)
+                <$> parseJSON (V.unsafeIndex ary 0)
+                <*> parseJSON (V.unsafeIndex ary 1)
+                <*> parseJSON (V.unsafeIndex ary 2)
+                <*> parseJSON (V.unsafeIndex ary 3)
+                <*> parseJSON (V.unsafeIndex ary 4)
+                <*> parseJSON (V.unsafeIndex ary 5)
+                <*> parseJSON (V.unsafeIndex ary 6)
+                <*> parseJSON (V.unsafeIndex ary 7)
+                <*> parseJSON (V.unsafeIndex ary 8)
+                <*> parseJSON (V.unsafeIndex ary 9)
+                <*> parseJSON (V.unsafeIndex ary 10)
+                <*> parseJSON (V.unsafeIndex ary 11)
+                <*> parseJSON (V.unsafeIndex ary 12)
+                <*> parseJSON (V.unsafeIndex ary 13)
+    {-# INLINE parseJSON #-}
+
+instance (ToJSON a, ToJSON b, ToJSON c, ToJSON d, ToJSON e, ToJSON f,
+          ToJSON g, ToJSON h, ToJSON i, ToJSON j, ToJSON k, ToJSON l,
+          ToJSON m, ToJSON n, ToJSON o) =>
+         ToJSON (a,b,c,d,e,f,g,h,i,j,k,l,m,n,o) where
+    toJSON (a,b,c,d,e,f,g,h,i,j,k,l,m,n,o) = Array $ V.create $ do
+      mv <- VM.unsafeNew 14
+      VM.unsafeWrite mv 0 (toJSON a)
+      VM.unsafeWrite mv 1 (toJSON b)
+      VM.unsafeWrite mv 2 (toJSON c)
+      VM.unsafeWrite mv 3 (toJSON d)
+      VM.unsafeWrite mv 4 (toJSON e)
+      VM.unsafeWrite mv 5 (toJSON f)
+      VM.unsafeWrite mv 6 (toJSON g)
+      VM.unsafeWrite mv 7 (toJSON h)
+      VM.unsafeWrite mv 8 (toJSON i)
+      VM.unsafeWrite mv 9 (toJSON j)
+      VM.unsafeWrite mv 10 (toJSON k)
+      VM.unsafeWrite mv 11 (toJSON l)
+      VM.unsafeWrite mv 12 (toJSON m)
+      VM.unsafeWrite mv 13 (toJSON n)
+      VM.unsafeWrite mv 14 (toJSON o)
+      return mv
+    {-# INLINE toJSON #-}
+
+instance (FromJSON a, FromJSON b, FromJSON c, FromJSON d, FromJSON e,
+          FromJSON f, FromJSON g, FromJSON h, FromJSON i, FromJSON j,
+          FromJSON k, FromJSON l, FromJSON m, FromJSON n, FromJSON o) =>
+         FromJSON (a,b,c,d,e,f,g,h,i,j,k,l,m,n,o) where
+    parseJSON = withArray "(a,b,c,d,e,f,g,h,i,j,k,l,m,n,o)" $ \ary ->
+        let n = V.length ary
+        in if n /= 15
+           then fail $ "cannot unpack array of length " ++
+                       show n ++ " into a 14-tuple"
+           else (,,,,,,,,,,,,,,)
+                <$> parseJSON (V.unsafeIndex ary 0)
+                <*> parseJSON (V.unsafeIndex ary 1)
+                <*> parseJSON (V.unsafeIndex ary 2)
+                <*> parseJSON (V.unsafeIndex ary 3)
+                <*> parseJSON (V.unsafeIndex ary 4)
+                <*> parseJSON (V.unsafeIndex ary 5)
+                <*> parseJSON (V.unsafeIndex ary 6)
+                <*> parseJSON (V.unsafeIndex ary 7)
+                <*> parseJSON (V.unsafeIndex ary 8)
+                <*> parseJSON (V.unsafeIndex ary 9)
+                <*> parseJSON (V.unsafeIndex ary 10)
+                <*> parseJSON (V.unsafeIndex ary 11)
+                <*> parseJSON (V.unsafeIndex ary 12)
+                <*> parseJSON (V.unsafeIndex ary 13)
+                <*> parseJSON (V.unsafeIndex ary 14)
+    {-# INLINE parseJSON #-}
+
 instance ToJSON a => ToJSON (Dual a) where
     toJSON = toJSON . getDual
     {-# INLINE toJSON #-}
