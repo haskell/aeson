@@ -1,3 +1,7 @@
+0.8.0.0
+
+* Add ToJSON and FromJSON instances for tuples of up to 15 elements.
+
 0.7.1.0
 
 * Major compiler and library compatibility changes: we have dropped
