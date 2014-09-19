@@ -74,6 +74,12 @@ flag developer
   default: False
   manual: True
 
+flag old-locale
+  description: If false then depend on time >= 1.5.
+               .
+               If true then depend on time < 1.5 together with old-locale.
+  default: False
+
 library
   exposed-modules:
     Data.Aeson
@@ -102,14 +108,17 @@ library
     ghc-prim >= 0.2,
     hashable >= 1.1.2.0,
     mtl,
-    old-locale,
     scientific >= 0.3.1 && < 0.4,
     syb,
     template-haskell >= 2.4,
     text >= 1.1.1.0,
-    time,
     unordered-containers >= 0.2.3.0,
     vector >= 0.7.1
+
+  if flag(old-locale)
+    build-depends: time < 1.5, old-locale
+  else
+    build-depends: time >= 1.5
 
   if flag(developer)
     ghc-options: -Werror
