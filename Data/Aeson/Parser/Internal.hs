@@ -35,6 +35,7 @@ import Control.Applicative ((*>), (<$>), (<*), liftA2, pure)
 import Data.Aeson.Types (Result(..), Value(..))
 import Data.Attoparsec.Char8 (Parser, char, endOfInput, scientific,
                               skipSpace, string)
+import Data.Attoparsec.Combinator ((<?>))
 import Data.Bits ((.|.), shiftL)
 import Data.ByteString (ByteString)
 import Data.Char (chr)
@@ -87,11 +88,11 @@ json' :: Parser Value
 json' = json_ object_' array_'
 
 json_ :: Parser Value -> Parser Value -> Parser Value
-json_ obj ary = do
+json_ obj ary = (do
   w <- skipSpace *> A.satisfy (\w -> w == OPEN_CURLY || w == OPEN_SQUARE)
   if w == OPEN_CURLY
     then obj
-    else ary
+    else ary) <?> "not a top-level value (object, array)"
 {-# INLINE json_ #-}
 
 object_ :: Parser Value
@@ -107,10 +108,10 @@ object_' = {-# SCC "object_'" #-} do
     return s
 
 objectValues :: Parser Text -> Parser Value -> Parser (H.HashMap Text Value)
-objectValues str val = do
+objectValues str val = (do
   skipSpace
   let pair = liftA2 (,) (str <* skipSpace) (char ':' *> skipSpace *> val)
-  H.fromList <$> commaSeparated pair CLOSE_CURLY
+  H.fromList <$> commaSeparated pair CLOSE_CURLY) <?> "bad oject syntax"
 {-# INLINE objectValues #-}
 
 array_ :: Parser Value
@@ -137,9 +138,9 @@ commaSeparated item endByte = do
 {-# INLINE commaSeparated #-}
 
 arrayValues :: Parser Value -> Parser (Vector Value)
-arrayValues val = do
+arrayValues val = (do
   skipSpace
-  Vector.fromList <$> commaSeparated val CLOSE_SQUARE
+  Vector.fromList <$> commaSeparated val CLOSE_SQUARE) <?> "bad array syntax"
 {-# INLINE arrayValues #-}
 
 -- | Parse any JSON value.  You should usually 'json' in preference to
@@ -277,11 +278,11 @@ decodeStrictWith p to s =
 eitherDecodeWith :: Parser Value -> (Value -> Result a) -> L.ByteString
                  -> Either String a
 eitherDecodeWith p to s =
-    case L.parse p s of
-      L.Done _ v -> case to v of
-                      Success a -> Right a
-                      Error msg -> Left msg
-      L.Fail _ _ msg -> Left msg
+    case L.eitherResult $ L.parse p s of
+      Right v -> case to v of
+                   Success a -> Right a
+                   Error msg -> Left msg
+      Left msg -> Left msg
 {-# INLINE eitherDecodeWith #-}
 
 eitherDecodeStrictWith :: Parser Value -> (Value -> Result a) -> B.ByteString
