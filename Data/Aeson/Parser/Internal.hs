@@ -278,11 +278,9 @@ decodeStrictWith p to s =
 eitherDecodeWith :: Parser Value -> (Value -> Result a) -> L.ByteString
                  -> Either String a
 eitherDecodeWith p to s =
-    case L.parse p s of
-      L.Done _ v -> case to v of
-                      Success a -> Right a
-                      Error msg -> Left msg
-      L.Fail _ _ msg -> Left msg
+    case either Error to (L.eitherResult $ L.parse p s) of
+      Success a -> Right a
+      Error msg -> Left msg
 {-# INLINE eitherDecodeWith #-}
 
 eitherDecodeStrictWith :: Parser Value -> (Value -> Result a) -> B.ByteString
