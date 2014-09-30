@@ -1,5 +1,10 @@
 {-# LANGUAGE PatternGuards, Rank2Types, ScopedTypeVariables, CPP #-}
 
+-- TODO: Drop this when we remove support for Data.Attoparsec.Number
+#if MIN_VERSION_attoparsec(0,12,0)
+{-# OPTIONS_GHC -fno-warn-deprecations #-}
+#endif
+
 -- |
 -- Module:      Data.Aeson.Generic
 -- Copyright:   (c) 2011, 2012, 2013 Bryan O'Sullivan
