@@ -7,6 +7,11 @@
 {-# LANGUAGE DefaultSignatures #-}
 #endif
 
+-- TODO: Drop this when we remove support for Data.Attoparsec.Number
+#if MIN_VERSION_attoparsec(0,12,0)
+{-# OPTIONS_GHC -fno-warn-deprecations #-}
+#endif
+
 -- |
 -- Module:      Data.Aeson.Types.Instances
 -- Copyright:   (c) 2011-2013 Bryan O'Sullivan

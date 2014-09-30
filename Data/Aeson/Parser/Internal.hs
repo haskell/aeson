@@ -33,8 +33,8 @@ import Data.ByteString.Builder
 
 import Control.Applicative ((*>), (<$>), (<*), liftA2, pure)
 import Data.Aeson.Types (Result(..), Value(..))
-import Data.Attoparsec.Char8 (Parser, char, endOfInput, scientific,
-                              skipSpace, string)
+import Data.Attoparsec.ByteString.Char8 (Parser, char, endOfInput, scientific,
+                                         skipSpace, string)
 import Data.Bits ((.|.), shiftL)
 import Data.ByteString (ByteString)
 import Data.Char (chr)
@@ -43,7 +43,7 @@ import Data.Text (Text)
 import Data.Text.Encoding (decodeUtf8')
 import Data.Vector as Vector (Vector, fromList)
 import Data.Word (Word8)
-import qualified Data.Attoparsec as A
+import qualified Data.Attoparsec.ByteString as A
 import qualified Data.Attoparsec.Lazy as L
 import qualified Data.Attoparsec.Zepto as Z
 import qualified Data.ByteString as B
