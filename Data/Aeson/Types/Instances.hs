@@ -959,7 +959,7 @@ instance (ToJSON a, ToJSON b, ToJSON c, ToJSON d, ToJSON e, ToJSON f,
           ToJSON m, ToJSON n, ToJSON o) =>
          ToJSON (a,b,c,d,e,f,g,h,i,j,k,l,m,n,o) where
     toJSON (a,b,c,d,e,f,g,h,i,j,k,l,m,n,o) = Array $ V.create $ do
-      mv <- VM.unsafeNew 14
+      mv <- VM.unsafeNew 15
       VM.unsafeWrite mv 0 (toJSON a)
       VM.unsafeWrite mv 1 (toJSON b)
       VM.unsafeWrite mv 2 (toJSON c)
@@ -986,7 +986,7 @@ instance (FromJSON a, FromJSON b, FromJSON c, FromJSON d, FromJSON e,
         let n = V.length ary
         in if n /= 15
            then fail $ "cannot unpack array of length " ++
-                       show n ++ " into a 14-tuple"
+                       show n ++ " into a 15-tuple"
            else (,,,,,,,,,,,,,,)
                 <$> parseJSON (V.unsafeIndex ary 0)
                 <*> parseJSON (V.unsafeIndex ary 1)
