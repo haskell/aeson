@@ -1,3 +1,7 @@
+0.8.0.2
+
+* Fix ToJSON instance for 15-tuples (see #223).
+
 0.8.0.1
 
 * Support time-1.5.
