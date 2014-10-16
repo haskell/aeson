@@ -64,6 +64,7 @@ import Data.Scientific (Scientific)
 import qualified Data.Scientific as Scientific (coefficient, base10Exponent, fromFloatDigits, toRealFloat)
 import Data.Attoparsec.Number (Number(..))
 import Data.Fixed
+import Data.Foldable (toList)
 import Data.Hashable (Hashable(..))
 import Data.Int (Int8, Int16, Int32, Int64)
 import Data.Maybe (fromMaybe)
@@ -87,6 +88,7 @@ import qualified Data.IntMap as IntMap
 import qualified Data.IntSet as IntSet
 import qualified Data.Map as M
 import qualified Data.Set as Set
+import qualified Data.Sequence as Seq
 import qualified Data.Tree as Tree
 import qualified Data.Text as T
 import qualified Data.Text.Lazy as LT
@@ -337,6 +339,14 @@ instance (ToJSON a) => ToJSON [a] where
 
 instance (FromJSON a) => FromJSON [a] where
     parseJSON = withArray "[a]" $ mapM parseJSON . V.toList
+    {-# INLINE parseJSON #-}
+
+instance (ToJSON a) => ToJSON (Seq.Seq a) where
+    toJSON = toJSON . toList
+    {-# INLINE toJSON #-}
+
+instance (FromJSON a) => FromJSON (Seq.Seq a) where
+    parseJSON = withArray "Seq a" $ traverse parseJSON . Seq.fromList . V.toList
     {-# INLINE parseJSON #-}
 
 instance (ToJSON a) => ToJSON (Vector a) where
