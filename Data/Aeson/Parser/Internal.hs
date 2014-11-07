@@ -30,7 +30,7 @@ module Data.Aeson.Parser.Internal
 
 import Control.Applicative ((*>), (<$>), (<*), liftA2, pure)
 import Control.Monad.IO.Class (liftIO)
-import Data.Aeson.Types (Result(..), Value(..))
+import Data.Aeson.Types (JSONPath, Result(..), Value(..))
 import Data.Attoparsec.ByteString.Char8 (Parser, char, endOfInput, scientific,
                                          skipSpace, string)
 import Data.Bits ((.|.), shiftL)
@@ -287,27 +287,27 @@ decodeWith p to s =
 decodeStrictWith :: Parser Value -> (Value -> Result a) -> B.ByteString
                  -> Maybe a
 decodeStrictWith p to s =
-    case either Error to (A.parseOnly p s) of
+    case either (Error []) to (A.parseOnly p s) of
       Success a -> Just a
-      Error _ -> Nothing
+      _         -> Nothing
 {-# INLINE decodeStrictWith #-}
 
 eitherDecodeWith :: Parser Value -> (Value -> Result a) -> L.ByteString
-                 -> Either String a
+                 -> Either (JSONPath, String) a
 eitherDecodeWith p to s =
     case L.parse p s of
-      L.Done _ v -> case to v of
-                      Success a -> Right a
-                      Error msg -> Left msg
-      L.Fail _ _ msg -> Left msg
+      L.Done _ v     -> case to v of
+                          Success a -> Right a
+                          Error path msg -> Left (path, msg)
+      L.Fail _ _ msg -> Left ([], msg)
 {-# INLINE eitherDecodeWith #-}
 
 eitherDecodeStrictWith :: Parser Value -> (Value -> Result a) -> B.ByteString
-                       -> Either String a
+                       -> Either (JSONPath, String) a
 eitherDecodeStrictWith p to s =
-    case either Error to (A.parseOnly p s) of
-      Success a -> Right a
-      Error msg -> Left msg
+    case either (Error []) to (A.parseOnly p s) of
+      Success a      -> Right a
+      Error path msg -> Left (path, msg)
 {-# INLINE eitherDecodeStrictWith #-}
 
 -- $lazy

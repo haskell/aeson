@@ -32,6 +32,8 @@ module Data.Aeson.Types
     , parseMaybe
     , ToJSON(..)
     , modifyFailure
+    , JSONPath
+    , formatError
 
     -- ** Generic JSON classes
     , GFromJSON(..)
