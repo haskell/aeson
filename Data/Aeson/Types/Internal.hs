@@ -62,6 +62,8 @@ import Data.Vector (Vector)
 import qualified Data.HashMap.Strict as H
 import qualified Data.Vector as V
 
+import Language.Haskell.TH (ExpQ)
+
 -- | The result of running a 'Parser'.
 data Result a = Error String
               | Success a
@@ -291,6 +293,11 @@ data Options = Options
       -- object will include those fields mapping to @null@.
     , sumEncoding :: SumEncoding
       -- ^ Specifies how to encode constructors of a sum datatype.
+    , fieldsWithDefaults :: [(String, ExpQ)]
+      -- ^ Be able to specify default values for specific fields
+      -- It is a list of default values
+      -- First is the exact field as in the JSON string
+      -- The second is `[| strings |]` which will put as a default.
     }
 
 -- | Specifies how to encode constructors of a sum datatype.
@@ -327,6 +334,7 @@ data SumEncoding =
 -- , 'allNullaryToStringTag'   = True
 -- , 'omitNothingFields'       = False
 -- , 'sumEncoding'             = 'defaultTaggedObject'
+-- , fieldsWithDefaults        = []
 -- }
 -- @
 defaultOptions :: Options
@@ -336,6 +344,7 @@ defaultOptions = Options
                  , allNullaryToStringTag   = True
                  , omitNothingFields       = False
                  , sumEncoding             = defaultTaggedObject
+                 , fieldsWithDefaults      = []
                  }
 
 -- | Default 'TaggedObject' 'SumEncoding' options:

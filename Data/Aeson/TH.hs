@@ -99,8 +99,8 @@ import Data.Either         ( Either(Left, Right) )
 import Data.List           ( (++), foldl, foldl', intercalate
                            , length, map, zip, genericLength, all, partition
                            )
-import Data.Maybe          ( Maybe(Nothing, Just), catMaybes )
-import Prelude             ( String, (-), Integer, fromIntegral, error )
+import Data.Maybe          ( Maybe(Nothing, Just), catMaybes, maybe )
+import Prelude             ( String, (-), Integer, fromIntegral, error, lookup)
 import Text.Printf         ( printf )
 import Text.Show           ( show )
 -- from unordered-containers:
@@ -312,6 +312,7 @@ encodeArgs opts multiCons (RecC conName ts) = do
             infixApp (toFieldName field)
                      [|(.=)|]
                      (varE arg)
+
 
         toFieldName field = [|T.pack|] `appE` fieldLabelExp opts field
 
@@ -620,6 +621,7 @@ parseRecord opts tName conName ts obj =
       x:xs = [ [|lookupField|]
                `appE` (litE $ stringL $ show tName)
                `appE` (litE $ stringL $ constructorTagModifier opts $ nameBase conName)
+               `appE` (maybe (return $ ConE 'Nothing ) (fmap (AppE (ConE 'Just))) (lookup (fieldLabelModifier opts . nameBase $ field ) ( fieldsWithDefaults opts )))
                `appE` (varE obj)
                `appE` ( [|T.pack|] `appE` fieldLabelExp opts field
                       )
@@ -635,6 +637,7 @@ getValField obj valFieldName matches = do
                                        (litE $ stringL valFieldName))
       , noBindS $ caseE (varE val) matches
       ]
+
 
 -- | Generates code to parse the JSON encoding of a single constructor.
 parseArgs :: Name -- ^ Name of the type to which the constructor belongs.
@@ -746,16 +749,16 @@ parseTypeMismatch tName conName expected actual =
           ]
 
 class (FromJSON a) => LookupField a where
-    lookupField :: String -> String -> Object -> T.Text -> Parser a
+    lookupField :: String -> String -> (Maybe a) -> Object -> T.Text -> Parser a
 
 instance (FromJSON a) => LookupField a where
-    lookupField tName rec obj key =
+    lookupField tName rec defVal obj key =
         case H.lookup key obj of
-          Nothing -> unknownFieldFail tName rec (T.unpack key)
+          Nothing -> maybe (unknownFieldFail tName rec (T.unpack key)) return defVal
           Just v  -> parseJSON v
 
 instance (FromJSON a) => LookupField (Maybe a) where
-    lookupField _ _ = (.:?)
+    lookupField _ _ _ = (.:?)
 
 unknownFieldFail :: String -> String -> String -> Parser fail
 unknownFieldFail tName rec key =
