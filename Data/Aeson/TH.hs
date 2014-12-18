@@ -94,8 +94,8 @@ import qualified Data.Aeson.Encode.Functions as E
 import qualified Data.Aeson as A
 -- from base:
 import Control.Applicative ( pure, (<$>), (<*>) )
-import Control.Monad       ( return, mapM, liftM2, fail )
-import Data.Bool           ( Bool(False, True), otherwise, (&&) , not)
+import Control.Monad       ( return, mapM, liftM2, fail, join )
+import Data.Bool           ( Bool(False, True), otherwise, (&&), not )
 import Data.Eq             ( (==) )
 import Data.Function       ( ($), (.) )
 import Data.Functor        ( fmap )
@@ -940,7 +940,7 @@ instance (FromJSON a) => LookupField a where
           Just v  -> parseJSON v
 
 instance (FromJSON a) => LookupField (Maybe a) where
-    lookupField _ _ = (.:?)
+    lookupField _ _ obj key = join <$> obj .:? key
 
 unknownFieldFail :: String -> String -> String -> Parser fail
 unknownFieldFail tName rec key =

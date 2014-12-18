@@ -1525,7 +1525,7 @@ obj .: key = case H.lookup key obj of
 (.:?) :: (FromJSON a) => Object -> Text -> Parser (Maybe a)
 obj .:? key = case H.lookup key obj of
                Nothing -> pure Nothing
-               Just v  -> parseJSON v <?> Key key
+               Just v  -> Just <$> parseJSON v <?> Key key
 {-# INLINE (.:?) #-}
 
 -- | Helper for use in combination with '.:?' to provide default
