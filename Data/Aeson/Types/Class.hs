@@ -129,7 +129,8 @@ class ToJSON a where
 --
 -- An example type and instance:
 --
--- @{-\# LANGUAGE OverloadedStrings #-}
+-- @
+-- {-\# LANGUAGE OverloadedStrings #-}
 --
 -- data Coord = Coord { x :: Double, y :: Double }
 --
@@ -165,7 +166,8 @@ class ToJSON a where
 --
 -- For example the previous example can be simplified to just:
 --
--- @{-\# LANGUAGE DeriveGeneric \#-}
+-- @
+-- {-\# LANGUAGE DeriveGeneric \#-}
 --
 -- import GHC.Generics
 --
