@@ -109,6 +109,18 @@ isObjectWithSingleField :: Value -> Bool
 isObjectWithSingleField (Object obj) = H.size obj == 1
 isObjectWithSingleField _            = False
 
+isEmptyArray :: Value -> Bool
+isEmptyArray (Array arr) = V.null arr
+isEmptyArray _ = False
+
+isOmitEmptyContents :: Value -> Bool
+isOmitEmptyContents val = case val of
+    Object obj -> 
+        "tag" `H.member` obj && case H.lookup "contents" obj of
+            Just con -> not $ isEmptyArray con
+            Nothing  -> True
+    _ -> False
+
 --------------------------------------------------------------------------------
 
 tests :: [Test]
@@ -157,12 +169,14 @@ tests = [
         , testProperty "2ElemArray" (is2ElemArray . thNullaryToJSON2ElemArray)
         , testProperty "TaggedObject" (isTaggedObjectValue . thNullaryToJSONTaggedObject)
         , testProperty "ObjectWithSingleField" (isObjectWithSingleField . thNullaryToJSONObjectWithSingleField)
+        , testProperty "OmitEmptyContents"     (isOmitEmptyContents     . thNullaryToJSONOmitEmptyContents)
 
         , testGroup "roundTrip" [
             testProperty "string" (toParseJSON thNullaryParseJSONString thNullaryToJSONString)
           , testProperty "2ElemArray" (toParseJSON thNullaryParseJSON2ElemArray thNullaryToJSON2ElemArray)
           , testProperty "TaggedObject" (toParseJSON thNullaryParseJSONTaggedObject thNullaryToJSONTaggedObject)
           , testProperty "ObjectWithSingleField" (toParseJSON thNullaryParseJSONObjectWithSingleField thNullaryToJSONObjectWithSingleField)
+          , testProperty "OmitEmptyContents" (toParseJSON thNullaryParseJSONOmitEmptyContents thNullaryToJSONOmitEmptyContents)
           ]
       ]
     , testGroup "SomeType" [
@@ -181,6 +195,12 @@ tests = [
               testProperty "string"                (toParseJSON thApproxParseJSONUnwrap  (thApproxToJSONUnwrap  ::ApproxToJSON))
             , testProperty "ObjectWithSingleField" (toParseJSON thApproxParseJSONDefault (thApproxToJSONDefault ::ApproxToJSON))
           ]
+        ]
+      ]
+    , testGroup "OneConstructor" [
+        testProperty "OmitEmptyContents" (isEmptyArray . thOneConstructorToJSONOmitEmptyContents)
+      , testGroup "roundTrip" [
+            testProperty "OmitEmptyContents" (toParseJSON thOneConstructorParseJSONOmitEmptyContents thOneConstructorToJSONOmitEmptyContents)
         ]
       ]
     ]

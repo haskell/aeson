@@ -371,6 +371,7 @@ data Options = Options
 data SumEncoding =
     TaggedObject { tagFieldName      :: String
                  , contentsFieldName :: String
+                 , omitEmptyContents :: Bool
                  }
     -- ^ A constructor will be encoded to an object with a field
     -- 'tagFieldName' which specifies the constructor tag (modified by
@@ -380,7 +381,9 @@ data SumEncoding =
     -- label as the 'tagFieldName'. Otherwise the tag gets overwritten
     -- by the encoded value of that field! If the constructor is not a
     -- record the encoded constructor contents will be stored under
-    -- the 'contentsFieldName' field.
+    -- the 'contentsFieldName' field. If the 'omitEmptyContents' field
+    -- is set, no contents field will be generated for nullary 
+    -- constructors when more than one constructors are present.
   | ObjectWithSingleField
     -- ^ A constructor will be encoded to an object with a single
     -- field named after the constructor tag (modified by the
@@ -419,12 +422,14 @@ defaultOptions = Options
 -- defaultTaggedObject = 'TaggedObject'
 --                       { 'tagFieldName'      = \"tag\"
 --                       , 'contentsFieldName' = \"contents\"
+--                       , 'omitEmptyContents' = False
 --                       }
 -- @
 defaultTaggedObject :: SumEncoding
 defaultTaggedObject = TaggedObject
                       { tagFieldName      = "tag"
                       , contentsFieldName = "contents"
+                      , omitEmptyContents = False
                       }
 
 -- | Converts from CamelCase to another lower case, interspersing
