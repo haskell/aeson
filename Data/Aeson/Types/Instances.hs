@@ -482,7 +482,10 @@ instance ToJSON ZonedTime where
           | otherwise = "%z"
 
 formatMillis :: (FormatTime t) => t -> String
-formatMillis t = take 3 . formatTime defaultTimeLocale "%q" $ t
+formatMillis = take 3 . formatSubseconds
+
+formatSubseconds :: (FormatTime t) => t -> String
+formatSubseconds = formatTime defaultTimeLocale "%q"
 
 instance FromJSON ZonedTime where
     parseJSON (String t) =
@@ -508,7 +511,7 @@ instance FromJSON ZonedTime where
 instance ToJSON UTCTime where
     toJSON t = String $ pack $ formatTime defaultTimeLocale format t
       where
-        format = "%FT%T." ++ formatMillis t ++ "Z"
+        format = "%FT%T." ++ formatSubseconds t ++ "Z"
     {-# INLINE toJSON #-}
 
 instance FromJSON UTCTime where
