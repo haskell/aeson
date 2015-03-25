@@ -64,6 +64,7 @@ import Data.Scientific (Scientific)
 import qualified Data.Scientific as Scientific (coefficient, base10Exponent, fromFloatDigits, toRealFloat)
 import Data.Attoparsec.Number (Number(..))
 import Data.Fixed
+import Data.Functor.Identity (Identity(..))
 import Data.Hashable (Hashable(..))
 import Data.Int (Int8, Int16, Int32, Int64)
 import Data.Maybe (fromMaybe)
@@ -96,6 +97,14 @@ import qualified Data.Vector.Primitive as VP
 import qualified Data.Vector.Storable as VS
 import qualified Data.Vector.Unboxed as VU
 import qualified Data.Vector.Mutable as VM ( unsafeNew, unsafeWrite )
+
+instance (ToJSON a) => ToJSON (Identity a) where
+    toJSON (Identity a) = toJSON a
+    {-# INLINE toJSON #-}
+
+instance (FromJSON a) => FromJSON (Identity a) where
+    parseJSON a      = Identity <$> parseJSON a
+    {-# INLINE parseJSON #-}
 
 instance (ToJSON a) => ToJSON (Maybe a) where
     toJSON (Just a) = toJSON a
