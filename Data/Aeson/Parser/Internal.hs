@@ -109,7 +109,7 @@ object_' = {-# SCC "object_'" #-} do
 objectValues :: Parser Text -> Parser Value -> Parser (H.HashMap Text Value)
 objectValues str val = do
   skipSpace
-  let pair = liftA2 (,) (str <* skipSpace) (char ':' *> skipSpace *> val)
+  let pair = liftA2 (,) (str <* skipSpace) (char ':' *> val)
   H.fromList <$> commaSeparated pair CLOSE_CURLY
 {-# INLINE objectValues #-}
 
@@ -154,6 +154,7 @@ arrayValues val = do
 -- to preserve interoperability and security.
 value :: Parser Value
 value = do
+  skipSpace
   w <- A.peekWord8'
   case w of
     DOUBLE_QUOTE  -> A.anyWord8 *> (String <$> jstring_)
@@ -169,6 +170,7 @@ value = do
 -- | Strict version of 'value'. See also 'json''.
 value' :: Parser Value
 value' = do
+  skipSpace
   w <- A.peekWord8'
   case w of
     DOUBLE_QUOTE  -> do
