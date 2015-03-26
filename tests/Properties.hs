@@ -174,40 +174,13 @@ tests = [
         , testProperty "TaggedObject" (toParseJSON thSomeTypeParseJSONTaggedObject (thSomeTypeToJSONTaggedObject :: SomeTypeToJSON))
         , testProperty "ObjectWithSingleField" (toParseJSON thSomeTypeParseJSONObjectWithSingleField (thSomeTypeToJSONObjectWithSingleField :: SomeTypeToJSON))
         ]
-      ]
-    ]
-  , testGroup "generics" [
-      testGroup "Nullary" [
-        testProperty "string" (isString . gNullaryToJSONString)
-      , testProperty "2ElemArray" (is2ElemArray . gNullaryToJSON2ElemArray)
-      , testProperty "TaggedObject" (isTaggedObjectValue . gNullaryToJSONTaggedObject)
-      , testProperty "ObjectWithSingleField" (isObjectWithSingleField . gNullaryToJSONObjectWithSingleField)
-      , testGroup "eq" [
-          testProperty "string" (\n -> gNullaryToJSONString n == thNullaryToJSONString n)
-        , testProperty "2ElemArray" (\n -> gNullaryToJSON2ElemArray n == thNullaryToJSON2ElemArray n)
-        , testProperty "TaggedObject" (\n -> gNullaryToJSONTaggedObject n == thNullaryToJSONTaggedObject n)
-        , testProperty "ObjectWithSingleField" (\n -> gNullaryToJSONObjectWithSingleField n == thNullaryToJSONObjectWithSingleField n)
-        ]
-      , testGroup "roundTrip" [
-          testProperty "string" (toParseJSON gNullaryParseJSONString gNullaryToJSONString)
-        , testProperty "2ElemArray" (toParseJSON gNullaryParseJSON2ElemArray gNullaryToJSON2ElemArray)
-        , testProperty "TaggedObject" (toParseJSON gNullaryParseJSONTaggedObject gNullaryToJSONTaggedObject)
-        , testProperty "ObjectWithSingleField" (toParseJSON gNullaryParseJSONObjectWithSingleField gNullaryToJSONObjectWithSingleField)
-        ]
-      ]
-    , testGroup "SomeType" [
-        testProperty "2ElemArray" (is2ElemArray . (gSomeTypeToJSON2ElemArray :: SomeTypeToJSON))
-      , testProperty "TaggedObject" (isTaggedObject . (gSomeTypeToJSONTaggedObject :: SomeTypeToJSON))
-      , testProperty "ObjectWithSingleField" (isObjectWithSingleField . (gSomeTypeToJSONObjectWithSingleField :: SomeTypeToJSON))
-      , testGroup "eq" [
-          testProperty "2ElemArray" (\n -> (gSomeTypeToJSON2ElemArray :: SomeTypeToJSON) n == thSomeTypeToJSON2ElemArray n)
-        , testProperty "TaggedObject" (\n -> (gSomeTypeToJSONTaggedObject :: SomeTypeToJSON) n == thSomeTypeToJSONTaggedObject n)
-        , testProperty "ObjectWithSingleField" (\n -> (gSomeTypeToJSONObjectWithSingleField :: SomeTypeToJSON) n == thSomeTypeToJSONObjectWithSingleField n)
-        ]
-      , testGroup "roundTrip" [
-          testProperty "2ElemArray" (toParseJSON gSomeTypeParseJSON2ElemArray (gSomeTypeToJSON2ElemArray :: SomeTypeToJSON))
-        , testProperty "TaggedObject" (toParseJSON gSomeTypeParseJSONTaggedObject (gSomeTypeToJSONTaggedObject :: SomeTypeToJSON))
-        , testProperty "ObjectWithSingleField" (toParseJSON gSomeTypeParseJSONObjectWithSingleField (gSomeTypeToJSONObjectWithSingleField :: SomeTypeToJSON))
+     , testGroup "Approx" [
+          testProperty "string"                (isString                . (thApproxToJSONUnwrap  ::ApproxToJSON))
+        , testProperty "ObjectWithSingleField" (isObjectWithSingleField . (thApproxToJSONDefault ::ApproxToJSON))
+        , testGroup "roundTrip" [
+              testProperty "string"                (toParseJSON thApproxParseJSONUnwrap  (thApproxToJSONUnwrap  ::ApproxToJSON))
+            , testProperty "ObjectWithSingleField" (toParseJSON thApproxParseJSONDefault (thApproxToJSONDefault ::ApproxToJSON))
+          ]
         ]
       ]
     ]

@@ -272,33 +272,41 @@ class ConsToJSON f where
     consToEncoding :: Options -> f a -> B.Builder
 
 class ConsToJSON' f isRecord where
-    consToJSON'     :: Options -> f a -> Tagged isRecord Value
-    consToEncoding' :: Options -> f a -> Tagged isRecord B.Builder
-
+    consToJSON'     :: Options -> Bool -- ^ Are we a record with one field
+                -> f a -> Tagged isRecord Value
+    consToEncoding' :: Options -> Bool -- ^ Are we a record with one field
+                -> f a -> Tagged isRecord B.Builder
+              
 instance ( IsRecord    f isRecord
          , ConsToJSON' f isRecord ) => ConsToJSON f where
     consToJSON opts = (unTagged :: Tagged isRecord Value -> Value)
-                    . consToJSON' opts
+                    . consToJSON' opts (isUnary (undefined :: f a))
     {-# INLINE consToJSON #-}
 
     consToEncoding opts = (unTagged :: Tagged isRecord B.Builder -> B.Builder)
-                          . consToEncoding' opts
+                          . consToEncoding' opts (isUnary (undefined :: f a))
     {-# INLINE consToEncoding #-}
 
 instance (RecordTo f) => ConsToJSON' f True where
-    consToJSON' opts = Tagged . object . toList . recordToPairs opts
+    consToJSON' opts isUn f = let
+      vals = toList $ recordToPairs opts f
+      in case (unwrapUnaryRecords opts,isUn,vals) of
+        (True,True,[(_,val)]) -> Tagged val
+        _ -> Tagged $ object vals
     {-# INLINE consToJSON' #-}
 
-    consToEncoding' opts x = Tagged $
-        B.char7 '{' <>
-        recordToEncoding opts x <>
-        B.char7 '}'
+    consToEncoding' opts isUn x
+      | (True,True) <- (unwrapUnaryRecords opts,isUn) = Tagged $   recordToEncoding opts x
+      | otherwise = Tagged $
+          B.char7 '{' <>
+          recordToEncoding opts x <>
+          B.char7 '}'
     {-# INLINE consToEncoding' #-}
 
 instance GToJSON f => ConsToJSON' f False where
-    consToJSON' opts = Tagged . gToJSON opts
+    consToJSON' opts _ = Tagged . gToJSON opts
     {-# INLINE consToJSON' #-}
-    consToEncoding' opts = Tagged . gbuilder opts
+    consToEncoding' opts _ = Tagged . gbuilder opts
     {-# INLINE consToEncoding' #-}
 
 --------------------------------------------------------------------------------
@@ -585,7 +593,7 @@ instance ( IsRecord             f isRecord
     {-# INLINE parseFromTaggedObject' #-}
 
 instance (FromRecord f) => FromTaggedObject'' f True where
-    parseFromTaggedObject'' opts _ = Tagged . parseRecord opts
+    parseFromTaggedObject'' opts _ = Tagged . parseRecord opts Nothing
     {-# INLINE parseFromTaggedObject'' #-}
 
 instance (GFromJSON f) => FromTaggedObject'' f False where
@@ -599,42 +607,56 @@ class ConsFromJSON f where
     consParseJSON  :: Options -> Value -> Parser (f a)
 
 class ConsFromJSON' f isRecord where
-    consParseJSON' :: Options -> Value -> Tagged isRecord (Parser (f a))
+    consParseJSON' :: Options -> (Maybe Text) -- ^ A dummy label
+                                           --   (Nothing to use proper label)
+                   -> Value -> Tagged isRecord (Parser (f a))
 
 instance ( IsRecord        f isRecord
          , ConsFromJSON'   f isRecord
          ) => ConsFromJSON f where
-    consParseJSON opts = (unTagged :: Tagged isRecord (Parser (f a)) -> Parser (f a))
-                       . consParseJSON' opts
+    consParseJSON opts v = let
+      (v2,lab) = case (unwrapUnaryRecords opts,isUnary (undefined :: f a)) of
+                       -- use a dummy object with a dummy label
+        (True,True) -> ((object [(pack "dummy",v)]),Just $ pack "dummy")
+        _ ->(v,Nothing)
+      in (unTagged :: Tagged isRecord (Parser (f a)) -> Parser (f a))
+                       $ consParseJSON' opts lab v2
     {-# INLINE consParseJSON #-}
 
+
 instance (FromRecord f) => ConsFromJSON' f True where
-    consParseJSON' opts = Tagged . (withObject "record (:*:)" $ parseRecord opts)
+    consParseJSON' opts mlab = Tagged . (withObject "record (:*:)"
+                                $ parseRecord opts mlab)
     {-# INLINE consParseJSON' #-}
 
 instance (GFromJSON f) => ConsFromJSON' f False where
-    consParseJSON' opts = Tagged . gParseJSON opts
+    consParseJSON' opts _ = Tagged . gParseJSON opts
     {-# INLINE consParseJSON' #-}
 
 --------------------------------------------------------------------------------
 
 class FromRecord f where
-    parseRecord :: Options -> Object -> Parser (f a)
+    parseRecord :: Options -> (Maybe Text) -- ^ A dummy label
+                                           --   (Nothing to use proper label)
+                 -> Object -> Parser (f a)
 
 instance (FromRecord a, FromRecord b) => FromRecord (a :*: b) where
-    parseRecord opts obj = (:*:) <$> parseRecord opts obj
-                                 <*> parseRecord opts obj
+    parseRecord opts _ obj = (:*:) <$> parseRecord opts Nothing obj
+                                   <*> parseRecord opts Nothing obj
     {-# INLINE parseRecord #-}
 
 instance (Selector s, GFromJSON a) => FromRecord (S1 s a) where
-    parseRecord opts = maybe (notFound label) (gParseJSON opts)
-                      . H.lookup (pack label)
+    parseRecord opts (Just lab) = maybe (notFound $ unpack lab)
+                      (gParseJSON opts) . H.lookup lab
+    parseRecord opts Nothing    = maybe (notFound label)
+                      (gParseJSON opts) . H.lookup (pack label)
         where
           label = fieldLabelModifier opts $ selName (undefined :: t s a p)
     {-# INLINE parseRecord #-}
 
 instance (Selector s, FromJSON a) => FromRecord (S1 s (K1 i (Maybe a))) where
-    parseRecord opts obj = (M1 . K1) <$> obj .:? pack label
+    parseRecord _ (Just lab) obj = (M1 . K1) <$> obj .:? lab
+    parseRecord opts Nothing obj = (M1 . K1) <$> obj .:? pack label
         where
           label = fieldLabelModifier opts $
                     selName (undefined :: t s (K1 i (Maybe a)) p)
@@ -695,12 +717,17 @@ instance (Constructor c, GFromJSON a, ConsFromJSON a) => FromPair (C1 c a) where
 --------------------------------------------------------------------------------
 
 class IsRecord (f :: * -> *) isRecord | f -> isRecord
+  where
+    isUnary :: f a -> Bool
+    isUnary = const True
 
 instance (IsRecord f isRecord) => IsRecord (f :*: g) isRecord
+  where isUnary = const False
 instance IsRecord (M1 S NoSelector f) False
 instance (IsRecord f isRecord) => IsRecord (M1 S c f) isRecord
 instance IsRecord (K1 i c) True
 instance IsRecord U1 False
+  where isUnary = const False
 
 --------------------------------------------------------------------------------
 
