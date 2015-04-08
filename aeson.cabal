@@ -120,6 +120,9 @@ library
   else
     build-depends: time >= 1.5
 
+  if impl(ghc<7.9)
+    build-depends: nats >= 0.2
+
   if flag(developer)
     ghc-options: -Werror
     ghc-prof-options: -auto-all

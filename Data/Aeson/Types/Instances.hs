@@ -81,6 +81,7 @@ import Data.Time.Format(defaultTimeLocale, dateTimeFmt)
 #else
 import System.Locale (defaultTimeLocale, dateTimeFmt)
 #endif
+import Numeric.Natural
 import qualified Data.HashMap.Strict as H
 import qualified Data.HashSet as HashSet
 import qualified Data.IntMap as IntMap
@@ -241,6 +242,17 @@ instance ToJSON Integer where
 -- @1e1000000000@.
 instance FromJSON Integer where
     parseJSON = withScientific "Integral" $ pure . floor
+    {-# INLINE parseJSON #-}
+
+instance ToJSON Natural where
+    toJSON = Number . fromIntegral
+    {-# INLINE toJSON #-}
+
+instance FromJSON Natural where
+    parseJSON = withScientific "Natural" $ \n ->
+        if n < 0
+            then fail $ "expected a natural number but got " ++ show n
+            else pure $ floor n
     {-# INLINE parseJSON #-}
 
 instance ToJSON Int8 where
