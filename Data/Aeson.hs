@@ -99,6 +99,11 @@ import qualified Data.ByteString.Lazy as L
 -- handle will be closed in a timely fashion once the document has
 -- been parsed.
 --
+-- Only accepts top-level values (objects or arrays).  Base typed
+-- values (numbers, strings, booleans, null) cause a parse error.  See
+-- RFC7159 for discussion; see @decodeV@ in package @aeson-utils@ if
+-- you need to parse base typed values.
+--
 -- This function parses immediately, but defers conversion.  See
 -- 'json' for details.
 decode :: (FromJSON a) => L.ByteString -> Maybe a
@@ -112,6 +117,8 @@ decode = decodeWith jsonEOF fromJSON
 -- The input must consist solely of a JSON document, with no trailing
 -- data except for whitespace.
 --
+-- See 'decode' for more details.
+--
 -- This function parses immediately, but defers conversion.  See
 -- 'json' for details.
 decodeStrict :: (FromJSON a) => B.ByteString -> Maybe a
@@ -123,10 +130,9 @@ decodeStrict = decodeStrictWith jsonEOF fromJSON
 -- returned.
 --
 -- The input must consist solely of a JSON document, with no trailing
--- data except for whitespace. This restriction is necessary to ensure
--- that if data is being lazily read from a file handle, the file
--- handle will be closed in a timely fashion once the document has
--- been parsed.
+-- data except for whitespace.
+--
+-- See 'decode' for more details.
 --
 -- This function parses and performs conversion immediately.  See
 -- 'json'' for details.
@@ -140,6 +146,8 @@ decode' = decodeWith jsonEOF' fromJSON
 --
 -- The input must consist solely of a JSON document, with no trailing
 -- data except for whitespace.
+--
+-- See 'decode' for more details.
 --
 -- This function parses and performs conversion immediately.  See
 -- 'json'' for details.
