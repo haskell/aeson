@@ -89,6 +89,9 @@ library
     Data.Aeson.Types
     Data.Aeson.TH
 
+  if impl(ghc >= 7.8)
+    exposed-modules: Data.Aeson.TypeLits
+
   other-modules:
     Data.Aeson.Encode.ByteString
     Data.Aeson.Functions
