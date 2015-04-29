@@ -29,10 +29,9 @@ module Data.Aeson.Encode
 
 import Data.Aeson.Types (Value(..))
 import Data.Monoid (mappend)
-import Data.Scientific (Scientific, coefficient, base10Exponent)
+import Data.Scientific (FPFormat(..), Scientific, base10Exponent)
 import Data.Text.Lazy.Builder
-import Data.Text.Lazy.Builder.Int (decimal)
-import Data.Text.Lazy.Builder.Scientific (scientificBuilder)
+import Data.Text.Lazy.Builder.Scientific (formatScientificBuilder)
 import Numeric (showHex)
 import qualified Data.HashMap.Strict as H
 import qualified Data.Text as T
@@ -97,11 +96,11 @@ string s = {-# SCC "string" #-} singleton '"' <> quote s <> singleton '"'
         where h = showHex (fromEnum c) ""
 
 fromScientific :: Scientific -> Builder
-fromScientific s
-    | e < 0     = scientificBuilder s
-    | otherwise = decimal (coefficient s * 10 ^ e)
+fromScientific s = formatScientificBuilder format prec s
   where
-    e = base10Exponent s
+    (format, prec)
+      | base10Exponent s < 0 = (Generic, Nothing)
+      | otherwise            = (Fixed,   Just 0)
 
 (<>) :: Builder -> Builder -> Builder
 (<>) = mappend
