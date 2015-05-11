@@ -237,7 +237,7 @@ unescape s = unsafePerformIO $ do
           start <- Z.take 2
           let !slash = B.unsafeHead start
               !t = B.unsafeIndex start 1
-              escape = case B.findIndex (==t) "\"\\/ntbrfu" of
+              escape = case B.elemIndex t "\"\\/ntbrfu" of
                          Just i -> i
                          _      -> 255
           if slash /= BACKSLASH || escape == 255
