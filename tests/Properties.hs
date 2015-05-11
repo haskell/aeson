@@ -23,14 +23,18 @@ import Instances ()
 import Types
 import Encoders
 import Properties.Deprecated (deprecatedTests)
+import System.IO
+import System.IO.Unsafe (unsafePerformIO)
+
 #ifdef GHC_GENERICS
 import Data.Int
 import qualified Data.Map as Map
 #endif
 
-import System.IO
-import System.IO.Unsafe (unsafePerformIO)
-import System.Locale
+#if !MIN_VERSION_time(1,5,0)
+import System.Locale (defaultTimeLocale, dateTimeFmt)
+#endif
+
 
 roundTripCamel :: String -> Assertion
 roundTripCamel name = assertEqual "" name (camelFrom '_' $ camelTo '_' name)

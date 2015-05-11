@@ -78,11 +78,6 @@ import Data.Traversable (traverse)
 import Data.Vector (Vector)
 import Data.Word (Word, Word8, Word16, Word32, Word64)
 import Foreign.Storable (Storable)
-#if MIN_VERSION_time(1,5,0)
-import Data.Time.Format(defaultTimeLocale, dateTimeFmt)
-#else
-import System.Locale (defaultTimeLocale, dateTimeFmt)
-#endif
 import qualified Data.HashMap.Strict as H
 import qualified Data.HashSet as HashSet
 import qualified Data.IntMap as IntMap
@@ -99,6 +94,12 @@ import qualified Data.Vector.Primitive as VP
 import qualified Data.Vector.Storable as VS
 import qualified Data.Vector.Unboxed as VU
 import qualified Data.Vector.Mutable as VM ( unsafeNew, unsafeWrite )
+
+#if MIN_VERSION_time(1,5,0)
+import Data.Time.Format (defaultTimeLocale, dateTimeFmt)
+#else
+import System.Locale (defaultTimeLocale, dateTimeFmt)
+#endif
 
 instance (ToJSON a) => ToJSON (Identity a) where
     toJSON (Identity a) = toJSON a

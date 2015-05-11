@@ -152,7 +152,6 @@ test-suite tests
     bytestring,
     containers,
     ghc-prim >= 0.2,
-    old-locale,
     template-haskell,
     test-framework,
     test-framework-hunit,
@@ -161,6 +160,11 @@ test-suite tests
     time,
     unordered-containers,
     vector
+
+  if flag(old-locale)
+    build-depends: time < 1.5, old-locale
+  else
+    build-depends: time >= 1.5
 
 source-repository head
   type:     git
