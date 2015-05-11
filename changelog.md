@@ -1,3 +1,29 @@
+0.8.1.0
+
+* Encoding a Scientific value with a huge exponent is now handled
+  efficiently.  (This would previously allocate a huge
+  arbitrary-precision integer, potentially leading to a denial of
+  service.)
+
+* Handling of strings that contain backslash escape sequences is
+  greatly improved.  For a pathological string containing almost a
+  megabyte of consecutive backslashes, the new implementation is 27x
+  faster and uses 42x less memory.
+
+* The ToJSON instance for UTCTime is rendered with higher (picosecond)
+  resolution.
+
+* The value parser now correctly handles leading whitespace.
+
+* New instances of ToJSON and FromJSON for Data.Sequence and
+  Data.Functor.Identity.  The Value type now has a Read instance.
+
+* ZonedTime parser ordering now favours the standard JSON format,
+  increasing efficiency in the common case.
+
+* Encoding to a Text.Builder now escapes '<' and '>' characters, to
+  reduce XSS risk.
+
 0.8.0.2
 
 * Fix ToJSON instance for 15-tuples (see #223).
