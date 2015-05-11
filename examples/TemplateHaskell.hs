@@ -14,10 +14,6 @@ data Coord = Coord { x :: Double, y :: Double }
              deriving (Show)
 
 -- This splice will derive instances of ToJSON and FromJSON for us.
---
--- The use of "id" below is a placeholder function to transform the
--- names of the type's fields.  We don't want to transform them, so we
--- use the identity function.
 
 $(deriveJSON defaultOptions ''Coord)
 
