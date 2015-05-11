@@ -2,17 +2,70 @@ name:                aeson-benchmarks
 version:             0
 build-type:          Simple
 
-cabal-version:       >=1.2
+cabal-version:       >=1.8
+
+flag old-locale
+  description: If false then depend on time >= 1.5.
+               .
+               If true then depend on time < 1.5 together with old-locale.
+  default: False
+
+library
+  hs-source-dirs: ..
+
+  exposed-modules:
+    Data.Aeson
+    Data.Aeson.Encode
+    Data.Aeson.Generic
+    Data.Aeson.Parser
+    Data.Aeson.Types
+    Data.Aeson.TH
+
+  other-modules:
+    Data.Aeson.Encode.ByteString
+    Data.Aeson.Functions
+    Data.Aeson.Parser.Internal
+    Data.Aeson.Types.Class
+    Data.Aeson.Types.Generic
+    Data.Aeson.Types.Instances
+    Data.Aeson.Types.Internal
+
+  build-depends:
+    attoparsec >= 0.13.0.0,
+    base == 4.*,
+    bytestring >= 0.10.4.0,
+    containers,
+    deepseq,
+    dlist >= 0.2,
+    ghc-prim >= 0.2,
+    hashable >= 1.1.2.0,
+    mtl,
+    scientific >= 0.3.1 && < 0.4,
+    syb,
+    template-haskell >= 2.4,
+    text >= 1.1.1.0,
+    transformers,
+    unordered-containers >= 0.2.3.0,
+    vector >= 0.7.1
+
+  if flag(old-locale)
+    build-depends: time < 1.5, old-locale
+  else
+    build-depends: time >= 1.5
+
+  ghc-options: -O2 -Wall
+  cpp-options: -DGENERICS
 
 executable aeson-benchmark-compare-with-json
   main-is: CompareWithJSON.hs
   ghc-options: -Wall -O2 -rtsopts
   build-depends:
-    aeson,
+    aeson-benchmarks,
     base,
     blaze-builder,
     bytestring,
     criterion,
+    deepseq,
     json,
     text
 
@@ -20,16 +73,22 @@ executable aeson-benchmark-aeson-encode
   main-is: AesonEncode.hs
   ghc-options: -Wall -O2 -rtsopts
   build-depends:
-    aeson,
-    base
+    aeson-benchmarks,
+    attoparsec,
+    base,
+    bytestring,
+    deepseq,
+    time
 
 executable aeson-benchmark-aeson-parse
   main-is: AesonParse.hs
   ghc-options: -Wall -O2 -rtsopts
   build-depends:
-    aeson,
+    aeson-benchmarks,
     attoparsec,
-    base
+    base,
+    bytestring,
+    time
 
 executable aeson-benchmark-json-parse
   main-is: JsonParse.hs
