@@ -1,9 +1,9 @@
 name:            aeson
-version:         0.8.0.2
+version:         0.8.1.0
 license:         BSD3
 license-file:    LICENSE
 category:        Text, Web, JSON
-copyright:       (c) 2011-2014 Bryan O'Sullivan
+copyright:       (c) 2011-2015 Bryan O'Sullivan
                  (c) 2011 MailRank, Inc.
 author:          Bryan O'Sullivan <bos@serpentine.com>
 maintainer:      Bryan O'Sullivan <bos@serpentine.com>
