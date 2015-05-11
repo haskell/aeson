@@ -99,7 +99,7 @@ library
     Data.Aeson.Types.Internal
 
   build-depends:
-    attoparsec >= 0.11.3.4,
+    attoparsec >= 0.13.0.0,
     base == 4.*,
     bytestring >= 0.10.4.0,
     containers,
@@ -112,6 +112,7 @@ library
     syb,
     template-haskell >= 2.4,
     text >= 1.1.1.0,
+    transformers,
     unordered-containers >= 0.2.3.0,
     vector >= 0.7.1
 
