@@ -56,7 +56,7 @@ import Control.Applicative
 import Control.Monad
 import Control.DeepSeq (NFData(..))
 import Data.ByteString.Builder (Builder, char7, toLazyByteString)
-import Data.Char (toLower, isUpper)
+import Data.Char (toLower, isUpper, isLower)
 import Data.Scientific (Scientific)
 import Data.Hashable (Hashable(..))
 import Data.Data (Data)
@@ -519,15 +519,12 @@ defaultTaggedObject = TaggedObject
 --   For use by Aeson template haskell calls.
 --
 --   > camelTo '_' 'CamelCaseAPI' == "camel_case_api"
+--   > camelTo '_' 'CamelAPICase' == "camel_api_case"
 camelTo :: Char -> String -> String
-camelTo c = lastWasCap True
-  where
-    lastWasCap :: Bool    -- ^ Previous was a capital letter
-              -> String  -- ^ The remaining string
-              -> String
-    lastWasCap _    []           = []
-    lastWasCap prev (x : xs)     = if isUpper x
-                                      then if prev
-                                             then toLower x : lastWasCap True xs
-                                             else c : toLower x : lastWasCap True xs
-                                      else x : lastWasCap False xs
+camelTo c = map toLower . go2 . go1
+    where go1 "" = ""
+          go1 (x:u:l:xs) | isUpper u && isLower l = x : c : u : l : go1 xs
+          go1 (x:xs) = x : go1 xs
+          go2 "" = ""
+          go2 (l:u:xs) | isLower l && isUpper u = l : c : u : go2 xs
+          go2 (x:xs) = x : go2 xs
