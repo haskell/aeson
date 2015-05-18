@@ -27,6 +27,7 @@ import Data.Aeson.Types.Internal
 import Data.Bits
 import Data.DList (DList, toList, empty)
 import Data.Maybe (fromMaybe)
+import Data.Possible (Possible)
 import Data.Monoid (mappend)
 import Data.Text (Text, pack, unpack)
 import GHC.Generics
@@ -501,6 +502,13 @@ instance (Selector s, FromJSON a) => FromRecord (S1 s (K1 i (Maybe a))) where
         where
           label = fieldLabelModifier opts $
                     selName (undefined :: t s (K1 i (Maybe a)) p)
+    {-# INLINE parseRecord #-}
+
+instance (Selector s, FromJSON a) => FromRecord (S1 s (K1 i (Possible a))) where
+    parseRecord opts obj = (M1 . K1) <$> obj .:?? pack label
+        where
+          label = fieldLabelModifier opts $
+                    selName (undefined :: t s (K1 i (Possible a)) p)
     {-# INLINE parseRecord #-}
 
 --------------------------------------------------------------------------------

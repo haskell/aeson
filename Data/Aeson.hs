@@ -75,6 +75,7 @@ module Data.Aeson
     , (.:)
     , (.:?)
     , (.!=)
+    , (.:??)
     , object
     -- * Parsing
     , json
