@@ -62,6 +62,8 @@ import Data.Vector (Vector)
 import qualified Data.HashMap.Strict as H
 import qualified Data.Vector as V
 
+import Language.Haskell.TH (ExpQ)
+
 -- | The result of running a 'Parser'.
 data Result a = Error String
               | Success a
@@ -180,6 +182,7 @@ data Value = Object !Object
            | Number !Scientific
            | Bool !Bool
            | Null
+           | Missing
              deriving (Eq, Read, Show, Typeable, Data)
 
 -- | A newtype wrapper for 'UTCTime' that uses the same non-standard
@@ -200,6 +203,7 @@ instance NFData Value where
     rnf (Number n) = rnf n
     rnf (Bool b)   = rnf b
     rnf Null       = ()
+    rnf Missing    = ()
 
 instance IsString Value where
     fromString = String . pack
@@ -214,6 +218,7 @@ hashValue s (String str) = s `hashWithSalt` (2::Int) `hashWithSalt` str
 hashValue s (Number n)   = s `hashWithSalt` (3::Int) `hashWithSalt` n
 hashValue s (Bool b)     = s `hashWithSalt` (4::Int) `hashWithSalt` b
 hashValue s Null         = s `hashWithSalt` (5::Int)
+hashValue s Missing      = s `hashWithSalt` (6::Int)
 
 instance Hashable Value where
     hashWithSalt = hashValue
@@ -291,6 +296,11 @@ data Options = Options
       -- object will include those fields mapping to @null@.
     , sumEncoding :: SumEncoding
       -- ^ Specifies how to encode constructors of a sum datatype.
+    , fieldsWithDefaults :: [(String, ExpQ)]
+      -- ^ Be able to specify default values for specific fields
+      -- It is a list of default values
+      -- First is the exact field as in the JSON string
+      -- The second is `[| strings |]` which will put as a default.
     }
 
 -- | Specifies how to encode constructors of a sum datatype.
@@ -327,6 +337,7 @@ data SumEncoding =
 -- , 'allNullaryToStringTag'   = True
 -- , 'omitNothingFields'       = False
 -- , 'sumEncoding'             = 'defaultTaggedObject'
+-- , fieldsWithDefaults        = []
 -- }
 -- @
 defaultOptions :: Options
@@ -336,6 +347,7 @@ defaultOptions = Options
                  , allNullaryToStringTag   = True
                  , omitNothingFields       = False
                  , sumEncoding             = defaultTaggedObject
+                 , fieldsWithDefaults      = []
                  }
 
 -- | Default 'TaggedObject' 'SumEncoding' options:

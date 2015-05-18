@@ -32,7 +32,7 @@ module Data.Aeson.Generic
     , toJSON
     ) where
 
-import Control.Applicative ((<$>))
+import Control.Applicative ((<$>), pure)
 import Control.Arrow (first)
 import Control.Monad.State.Strict
 import Data.Aeson.Functions
@@ -43,6 +43,7 @@ import Data.Hashable (Hashable)
 import Data.Int (Int8, Int16, Int32, Int64)
 import Data.IntSet (IntSet)
 import Data.Maybe (fromJust)
+import Data.Possible (possible, Possible(..))
 import Data.Text (Text, pack, unpack)
 import Data.Time.Clock (UTCTime)
 import Data.Word (Word, Word8, Word16, Word32, Word64)
@@ -88,6 +89,7 @@ type T a = a -> Value
 toJSON :: (Data a) => a -> Value
 toJSON = toJSON_generic
          `ext1Q` maybe Null toJSON
+         `ext1Q` possible Null Missing toJSON
          `ext1Q` list
          `ext1Q` vector
          `ext1Q` set
@@ -186,6 +188,7 @@ type F a = Parser a
 parseJSON :: (Data a) => Value -> Parser a
 parseJSON j = parseJSON_generic j
              `ext1R` maybeP
+             `ext1R` possibleP
              `ext1R` list
              `ext1R` vector
              `ext2R'` mapAny
@@ -220,7 +223,14 @@ parseJSON j = parseJSON_generic j
     value :: (T.FromJSON a) => Parser a
     value = T.parseJSON j
     maybeP :: (Data a) => Parser (Maybe a)
-    maybeP = if j == Null then return Nothing else Just <$> parseJSON j
+    maybeP = if j == Null || j == Missing then return Nothing else Just <$> parseJSON j
+
+    possibleP :: (Data a) => Parser (Possible a)
+    possibleP = case j of
+         Null    -> pure HaveNull
+         Missing -> pure MissingData
+         _       -> HaveData <$> parseJSON j
+    
     list :: (Data a) => Parser [a]
     list = V.toList <$> parseJSON j
     vector :: (Data a) => Parser (V.Vector a)
