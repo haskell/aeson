@@ -113,7 +113,7 @@ library
     template-haskell >= 2.4,
     text >= 1.1.1.0,
     transformers,
-    unordered-containers >= 0.2.3.0,
+    unordered-containers >= 0.2.5.0,
     vector >= 0.7.1
 
   if flag(old-locale)
