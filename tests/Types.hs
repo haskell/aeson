@@ -1,16 +1,12 @@
-{-# LANGUAGE CPP, DeriveDataTypeable, GeneralizedNewtypeDeriving #-}
-#ifdef GHC_GENERICS
+{-# LANGUAGE DeriveDataTypeable, GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE DeriveGeneric, StandaloneDeriving #-}
-#endif
 
 module Types where
 
 import qualified Data.Map as Map
 import Data.Data
 import Data.Text
-#ifdef GHC_GENERICS
 import GHC.Generics
-#endif
 
 data Foo = Foo {
       fooInt :: Int
@@ -57,7 +53,6 @@ data SomeType a = Nullary
                          , testThree :: Maybe a
                          } deriving (Eq, Show)
 
-#ifdef GHC_GENERICS
 deriving instance Generic Foo
 deriving instance Generic UFoo
 deriving instance Generic OneConstructor
@@ -67,4 +62,3 @@ deriving instance Generic (Sum4 a b c d)
 deriving instance Generic (Approx a)
 deriving instance Generic Nullary
 deriving instance Generic (SomeType a)
-#endif

@@ -25,11 +25,8 @@ import Encoders
 import Properties.Deprecated (deprecatedTests)
 import System.IO
 import System.IO.Unsafe (unsafePerformIO)
-
-#ifdef GHC_GENERICS
 import Data.Int
 import qualified Data.Map as Map
-#endif
 
 #if !MIN_VERSION_time(1,5,0)
 import System.Locale (defaultTimeLocale, dateTimeFmt)
@@ -153,10 +150,8 @@ main = do
     comparisonTest <- encoderComparisonTests
     defaultMain (comparisonTest : tests)
 
-#ifdef GHC_GENERICS
 type P6 = Product6 Int Bool String (Approx Double) (Int, Approx Double) ()
 type S4 = Sum4 Int8 ZonedTime T.Text (Map.Map String Int)
-#endif
 
 --------------------------------------------------------------------------------
 -- Value properties
@@ -207,14 +202,12 @@ tests = [
     , testProperty "DotNetTime" $ roundTripEq (undefined :: DotNetTime)
     , testProperty "UTCTime" $ roundTripEq (undefined :: UTCTime)
     , testProperty "ZonedTime" $ roundTripEq (undefined :: ZonedTime)
-#ifdef GHC_GENERICS
     , testGroup "ghcGenerics" [
         testProperty "OneConstructor" $ roundTripEq OneConstructor
       , testProperty "Product2" $ roundTripEq (undefined :: Product2 Int Bool)
       , testProperty "Product6" $ roundTripEq (undefined :: P6)
       , testProperty "Sum4" $ roundTripEq (undefined :: S4)
       ]
-#endif
     ],
   testGroup "toFromJSON" [
       testProperty "Integer" (toFromJSON :: Integer -> Bool)
@@ -254,7 +247,6 @@ tests = [
           ]
       ]
     ]
-#ifdef GHC_GENERICS
   , testGroup "GHC-generics" [
         testGroup "Nullary" [
             testProperty "string"                (isString                . gNullaryToJSONString)
@@ -291,7 +283,6 @@ tests = [
           ]
       ]
     ]
-#endif
   ]
 
 

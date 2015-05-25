@@ -141,7 +141,6 @@ test-suite tests
     Types
 
   ghc-options: -Wall -threaded -rtsopts
-  cpp-options: -DGHC_GENERICS
 
   build-depends:
     HUnit,

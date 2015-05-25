@@ -1,8 +1,5 @@
-{-# Language CPP, OverloadedStrings, RecordWildCards, StandaloneDeriving #-}
+{-# Language OverloadedStrings, RecordWildCards, StandaloneDeriving #-}
 {-# OPTIONS_GHC -fno-warn-orphans #-}
-#if __GLASGOW_HASKELL__ < 702
-{-# OPTIONS_GHC -fno-warn-missing-methods #-}
-#endif
 
 module Instances where
 

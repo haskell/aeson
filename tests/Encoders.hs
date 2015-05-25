@@ -1,4 +1,4 @@
-{-# Language CPP, TemplateHaskell #-}
+{-# Language TemplateHaskell #-}
 
 module Encoders where
 
@@ -38,7 +38,6 @@ thNullaryToJSONObjectWithSingleField = $(mkToJSON optsObjectWithSingleField ''Nu
 thNullaryParseJSONObjectWithSingleField :: Value -> Parser Nullary
 thNullaryParseJSONObjectWithSingleField = $(mkParseJSON optsObjectWithSingleField ''Nullary)
 
-#ifdef GHC_GENERICS
 gNullaryToJSONString :: Nullary -> Value
 gNullaryToJSONString = genericToJSON defaultOptions
 
@@ -65,7 +64,6 @@ gNullaryToJSONObjectWithSingleField = genericToJSON optsObjectWithSingleField
 
 gNullaryParseJSONObjectWithSingleField :: Value -> Parser Nullary
 gNullaryParseJSONObjectWithSingleField = genericParseJSON optsObjectWithSingleField
-#endif
 
 
 --------------------------------------------------------------------------------
@@ -95,7 +93,6 @@ thSomeTypeParseJSONObjectWithSingleField :: FromJSON a => Value -> Parser (SomeT
 thSomeTypeParseJSONObjectWithSingleField = $(mkParseJSON optsObjectWithSingleField ''SomeType)
 
 
-#ifdef GHC_GENERICS
 gSomeTypeToJSON2ElemArray :: ToJSON a => SomeType a -> Value
 gSomeTypeToJSON2ElemArray = genericToJSON opts2ElemArray
 
@@ -115,4 +112,3 @@ gSomeTypeToJSONObjectWithSingleField = genericToJSON optsObjectWithSingleField
 
 gSomeTypeParseJSONObjectWithSingleField :: FromJSON a => Value -> Parser (SomeType a)
 gSomeTypeParseJSONObjectWithSingleField = genericParseJSON optsObjectWithSingleField
-#endif
