@@ -1,3 +1,7 @@
+0.9.0.1
+
+* A stray export of encodeToBuilder got away!
+
 0.9.0.0
 
 * The json and json' parsers are now synonyms for value and value', in
