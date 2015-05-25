@@ -22,7 +22,6 @@ import Data.Time
 import Instances ()
 import Types
 import Encoders
-import Properties.Deprecated (deprecatedTests)
 import System.IO
 import System.IO.Unsafe (unsafePerformIO)
 import Data.Int
@@ -217,7 +216,6 @@ tests = [
     , testProperty "Either Integer Integer" (toFromJSON :: Either Integer Integer -> Bool)
     , testProperty "ZonedTime" $ zonedTimeToJSON
     ],
-  testGroup "deprecated" deprecatedTests,
   testGroup "failure messages" [
       testProperty "modify failure" modifyFailureProp
     ],

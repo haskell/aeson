@@ -84,7 +84,6 @@ library
   exposed-modules:
     Data.Aeson
     Data.Aeson.Encode
-    Data.Aeson.Generic
     Data.Aeson.Parser
     Data.Aeson.Types
     Data.Aeson.TH
@@ -136,7 +135,6 @@ test-suite tests
     Functions
     Instances
     Options
-    Properties.Deprecated
     Types
 
   ghc-options: -Wall -threaded -rtsopts
