@@ -3,6 +3,9 @@
 * The json and json' parsers are now synonyms for value and value', in
   conformance with the looser semantics of RFC 7159.
 
+* Renamed encodeToByteStringBuilder to the more compact
+  encodeToBuilder.
+
 0.8.1.1
 
 * The dependency on the unordered-containers package was too lax, and
