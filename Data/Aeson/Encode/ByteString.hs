@@ -17,15 +17,14 @@ module Data.Aeson.Encode.ByteString
     , encodeToByteStringBuilder
     ) where
 
-import Prelude hiding (null)
 import Data.Aeson.Types (ToJSON(..), Value(..))
+import Data.ByteString.Builder as B
+import Data.ByteString.Builder.Prim as BP
+import Data.ByteString.Builder.Scientific (scientificBuilder)
 import Data.Char (ord)
-import Data.Scientific (Scientific, coefficient, base10Exponent)
-import Data.Word (Word8)
 import Data.Monoid ((<>))
-import           Data.ByteString.Builder      as B
-import           Data.ByteString.Builder.Prim as BP
-import           Data.ByteString.Builder.Scientific (scientificBuilder)
+import Data.Scientific (Scientific, base10Exponent, coefficient)
+import Data.Word (Word8)
 import qualified Data.ByteString.Lazy as L
 import qualified Data.HashMap.Strict as HMS
 import qualified Data.Text as T
@@ -39,7 +38,7 @@ encode = B.toLazyByteString . encodeToBuilder . toJSON
 -- | Encode a JSON value to a ByteString 'B.Builder'. Use this function if you
 -- must prepend or append further bytes to the encoded JSON value.
 encodeToBuilder :: Value -> Builder
-encodeToBuilder Null       = null
+encodeToBuilder Null       = null_
 encodeToBuilder (Bool b)   = bool b
 encodeToBuilder (Number n) = number n
 encodeToBuilder (String s) = string s
@@ -51,8 +50,8 @@ encodeToByteStringBuilder :: Value -> Builder
 encodeToByteStringBuilder = encodeToBuilder
 {-# DEPRECATED encodeToByteStringBuilder "Use encodeToBuilder instead." #-}
 
-null :: Builder
-null = BP.primBounded (ascii4 ('n',('u',('l','l')))) ()
+null_ :: Builder
+null_ = BP.primBounded (ascii4 ('n',('u',('l','l')))) ()
 
 bool :: Bool -> Builder
 bool = BP.primBounded (BP.condB id (ascii4 ('t',('r',('u','e'))))
