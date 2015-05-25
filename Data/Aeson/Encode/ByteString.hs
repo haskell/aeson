@@ -13,6 +13,7 @@
 
 module Data.Aeson.Encode.ByteString
     ( encode
+    , encodeToBuilder
     , encodeToByteStringBuilder
     ) where
 
@@ -38,17 +39,22 @@ infixr 6 <>
 
 -- | Efficiently serialize a JSON value as a lazy 'L.ByteString'.
 encode :: ToJSON a => a -> L.ByteString
-encode = B.toLazyByteString . encodeToByteStringBuilder . toJSON
+encode = B.toLazyByteString . encodeToBuilder . toJSON
 
 -- | Encode a JSON value to a ByteString 'B.Builder'. Use this function if you
 -- must prepend or append further bytes to the encoded JSON value.
+encodeToBuilder :: Value -> Builder
+encodeToBuilder Null       = null
+encodeToBuilder (Bool b)   = bool b
+encodeToBuilder (Number n) = number n
+encodeToBuilder (String s) = string s
+encodeToBuilder (Array v)  = array v
+encodeToBuilder (Object m) = object m
+
+-- | This function is an alias for 'encodeToBuilder'.
 encodeToByteStringBuilder :: Value -> Builder
-encodeToByteStringBuilder Null       = null
-encodeToByteStringBuilder (Bool b)   = bool b
-encodeToByteStringBuilder (Number n) = number n
-encodeToByteStringBuilder (String s) = string s
-encodeToByteStringBuilder (Array v)  = array v
-encodeToByteStringBuilder (Object m) = object m
+encodeToByteStringBuilder = encodeToBuilder
+{-# DEPRECATED encodeToByteStringBuilder "Use encodeToBuilder instead." #-}
 
 null :: Builder
 null = BP.primBounded (ascii4 ('n',('u',('l','l')))) ()
