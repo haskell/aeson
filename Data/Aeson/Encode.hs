@@ -29,7 +29,7 @@ module Data.Aeson.Encode
     ) where
 
 import Data.Aeson.Types (Value(..))
-import Data.Monoid (mappend)
+import Data.Monoid ((<>))
 import Data.Scientific (FPFormat(..), Scientific, base10Exponent)
 import Data.Text.Lazy.Builder
 import Data.Text.Lazy.Builder.Scientific (formatScientificBuilder)
@@ -96,8 +96,3 @@ fromScientific s = formatScientificBuilder format prec s
     (format, prec)
       | base10Exponent s < 0 = (Generic, Nothing)
       | otherwise            = (Fixed,   Just 0)
-
-(<>) :: Builder -> Builder -> Builder
-(<>) = mappend
-{-# INLINE (<>) #-}
-infixr 6 <>
