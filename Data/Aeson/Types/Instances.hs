@@ -1,11 +1,8 @@
 {-# LANGUAGE CPP, DeriveDataTypeable, FlexibleContexts, FlexibleInstances,
     GeneralizedNewtypeDeriving, IncoherentInstances, OverlappingInstances,
     OverloadedStrings, UndecidableInstances, ViewPatterns #-}
-{-# OPTIONS_GHC -fno-warn-orphans #-}
-
-#ifdef GENERICS
 {-# LANGUAGE DefaultSignatures #-}
-#endif
+{-# OPTIONS_GHC -fno-warn-orphans #-}
 
 -- TODO: Drop this when we remove support for Data.Attoparsec.Number
 #if MIN_VERSION_attoparsec(0,12,0)
@@ -29,13 +26,12 @@ module Data.Aeson.Types.Instances
     -- ** Core JSON classes
       FromJSON(..)
     , ToJSON(..)
-#ifdef GENERICS
     -- ** Generic JSON classes
     , GFromJSON(..)
     , GToJSON(..)
     , genericToJSON
     , genericParseJSON
-#endif
+
     -- * Types
     , DotNetTime(..)
 

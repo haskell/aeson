@@ -56,13 +56,12 @@ module Data.Aeson
     , Result(..)
     , fromJSON
     , ToJSON(..)
-#ifdef GENERICS
     -- ** Generic JSON classes
     , GFromJSON(..)
     , GToJSON(..)
     , genericToJSON
     , genericParseJSON
-#endif
+
     -- * Inspecting @'Value's@
     , withObject
     , withText

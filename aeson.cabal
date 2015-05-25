@@ -126,7 +126,6 @@ library
     ghc-prof-options: -auto-all
 
   ghc-options: -O2 -Wall
-  cpp-options: -DGENERICS
 
 test-suite tests
   type:           exitcode-stdio-1.0

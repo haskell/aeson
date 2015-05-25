@@ -1,5 +1,3 @@
-{-# LANGUAGE CPP #-}
-
 -- |
 -- Module:      Data.Aeson.Types
 -- Copyright:   (c) 2011, 2012 Bryan O'Sullivan
@@ -34,13 +32,11 @@ module Data.Aeson.Types
     , ToJSON(..)
     , modifyFailure
 
-#ifdef GENERICS
     -- ** Generic JSON classes
     , GFromJSON(..)
     , GToJSON(..)
     , genericToJSON
     , genericParseJSON
-#endif
 
     -- * Inspecting @'Value's@
     , withObject
@@ -65,9 +61,6 @@ module Data.Aeson.Types
     , defaultTaggedObject
     ) where
 
+import Data.Aeson.Types.Generic ()
 import Data.Aeson.Types.Instances
 import Data.Aeson.Types.Internal
-
-#ifdef GENERICS
-import Data.Aeson.Types.Generic ()
-#endif

@@ -1,8 +1,4 @@
-{-# LANGUAGE CPP, FlexibleContexts #-}
-
-#ifdef GENERICS
-{-# LANGUAGE DefaultSignatures #-}
-#endif
+{-# LANGUAGE DefaultSignatures, FlexibleContexts #-}
 
 -- |
 -- Module:      Data.Aeson.Types.Class
@@ -21,18 +17,14 @@ module Data.Aeson.Types.Class
     -- ** Core JSON classes
       FromJSON(..)
     , ToJSON(..)
-#ifdef GENERICS
     -- ** Generic JSON classes
     , GFromJSON(..)
     , GToJSON(..)
     , genericToJSON
     , genericParseJSON
-#endif
     ) where
 
 import Data.Aeson.Types.Internal
-
-#ifdef GENERICS
 import GHC.Generics
 
 -- | Class of generic representation types ('Rep') that can be converted to JSON.
@@ -58,7 +50,6 @@ genericToJSON opts = gToJSON opts . from
 -- type is an instance of 'Generic'.
 genericParseJSON :: (Generic a, GFromJSON (Rep a)) => Options -> Value -> Parser a
 genericParseJSON opts = fmap to . gParseJSON opts
-#endif
 
 -- | A type that can be converted to JSON.
 --
@@ -115,10 +106,8 @@ genericParseJSON opts = fmap to . gParseJSON opts
 class ToJSON a where
     toJSON   :: a -> Value
 
-#ifdef GENERICS
     default toJSON :: (Generic a, GToJSON (Rep a)) => a -> Value
     toJSON = genericToJSON defaultOptions
-#endif
 
 -- | A type that can be converted from JSON, with the possibility of
 -- failure.
@@ -188,7 +177,5 @@ class ToJSON a where
 class FromJSON a where
     parseJSON :: Value -> Parser a
 
-#ifdef GENERICS
     default parseJSON :: (Generic a, GFromJSON (Rep a)) => Value -> Parser a
     parseJSON = genericParseJSON defaultOptions
-#endif
