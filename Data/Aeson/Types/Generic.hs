@@ -249,11 +249,7 @@ instance ( WriteProduct a
       writeProduct opts mv ix  lenL a
       writeProduct opts mv ixR lenR b
         where
-#if MIN_VERSION_base(4,5,0)
           lenL = len `unsafeShiftR` 1
-#else
-          lenL = len `shiftR` 1
-#endif
           lenR = len - lenL
           ixR  = ix  + lenL
     {-# INLINE writeProduct #-}
@@ -527,11 +523,7 @@ instance (FromProduct a, FromProduct b) => FromProduct (a :*: b) where
         (:*:) <$> parseProduct opts arr ix  lenL
               <*> parseProduct opts arr ixR lenR
         where
-#if MIN_VERSION_base(4,5,0)
           lenL = len `unsafeShiftR` 1
-#else
-          lenL = len `shiftR` 1
-#endif
           ixR  = ix + lenL
           lenR = len - lenL
     {-# INLINE parseProduct #-}
