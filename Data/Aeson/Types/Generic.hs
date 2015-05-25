@@ -1,4 +1,4 @@
-{-# LANGUAGE CPP, DefaultSignatures, EmptyDataDecls, FlexibleInstances,
+{-# LANGUAGE DefaultSignatures, EmptyDataDecls, FlexibleInstances,
     FunctionalDependencies, KindSignatures, OverlappingInstances,
     ScopedTypeVariables, TypeOperators, UndecidableInstances,
     ViewPatterns, NamedFieldPuns, FlexibleContexts, PatternGuards,

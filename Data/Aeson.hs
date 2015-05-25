@@ -1,5 +1,3 @@
-{-# LANGUAGE CPP #-}
-
 -- |
 -- Module:      Data.Aeson
 -- Copyright:   (c) 2011, 2012 Bryan O'Sullivan
