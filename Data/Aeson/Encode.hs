@@ -20,6 +20,7 @@ module Data.Aeson.Encode
     ( encode
 
     -- * Encoding to Builders
+    , encodeToBuilder
     , encodeToByteStringBuilder
     , encodeToTextBuilder
 
@@ -37,10 +38,11 @@ import qualified Data.HashMap.Strict as H
 import qualified Data.Text as T
 import qualified Data.Vector as V
 
-import Data.Aeson.Encode.ByteString (encode, encodeToByteStringBuilder)
+import Data.Aeson.Encode.ByteString (encode, encodeToBuilder,
+                                     encodeToByteStringBuilder)
 
--- | Encode a JSON 'Value' to a 'Builder', which can be embedded efficiently
--- in a text-based protocol.
+-- | Encode a JSON 'Value' to a "Data.Text" 'Builder', which can be
+-- embedded efficiently in a text-based protocol.
 encodeToTextBuilder :: Value -> Builder
 encodeToTextBuilder =
     go
