@@ -61,10 +61,10 @@ array :: V.Vector Value -> Builder
 array v
   | V.null v  = B.char8 '[' <> B.char8 ']'
   | otherwise = B.char8 '[' <>
-                encodeToByteStringBuilder (V.unsafeHead v) <>
+                encodeToBuilder (V.unsafeHead v) <>
                 V.foldr withComma (B.char8 ']') (V.unsafeTail v)
   where
-    withComma a z = B.char8 ',' <> encodeToByteStringBuilder a <> z
+    withComma a z = B.char8 ',' <> encodeToBuilder a <> z
 
 object :: HMS.HashMap T.Text Value -> Builder
 object m = case HMS.toList m of
@@ -72,7 +72,7 @@ object m = case HMS.toList m of
     _      -> B.char8 '{' <> B.char8 '}'
   where
     withComma a z = B.char8 ',' <> one a <> z
-    one (k,v)     = string k <> B.char8 ':' <> encodeToByteStringBuilder v
+    one (k,v)     = string k <> B.char8 ':' <> encodeToBuilder v
 
 string :: T.Text -> B.Builder
 string t =
