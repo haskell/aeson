@@ -21,7 +21,7 @@ import Data.Aeson.Types (ToJSON(..), Value(..))
 import Data.Char (ord)
 import Data.Scientific (Scientific, coefficient, base10Exponent)
 import Data.Word (Word8)
-import Data.Monoid (mappend)
+import Data.Monoid (mappend, mempty)
 import           Data.ByteString.Builder      as B
 import           Data.ByteString.Builder.Prim as BP
 import           Data.ByteString.Builder.Scientific (scientificBuilder)
@@ -43,6 +43,7 @@ encode = B.toLazyByteString . encodeToByteStringBuilder . toJSON
 -- | Encode a JSON value to a ByteString 'B.Builder'. Use this function if you
 -- must prepend or append further bytes to the encoded JSON value.
 encodeToByteStringBuilder :: Value -> Builder
+encodeToByteStringBuilder Missing    = mempty
 encodeToByteStringBuilder Null       = null
 encodeToByteStringBuilder (Bool b)   = bool b
 encodeToByteStringBuilder (Number n) = number n
@@ -66,8 +67,11 @@ array v
   where
     withComma a z = B.char8 ',' <> encodeToByteStringBuilder a <> z
 
+removeMissing :: [(a,Value)] -> [(a,Value)]
+removeMissing = filter (\(_,v) -> v /= Missing)
+
 object :: HMS.HashMap T.Text Value -> Builder
-object m = case HMS.toList m of
+object m = case removeMissing (HMS.toList m) of
     (x:xs) -> B.char8 '{' <> one x <> foldr withComma (B.char8 '}') xs
     _      -> B.char8 '{' <> B.char8 '}'
   where
