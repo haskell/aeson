@@ -72,32 +72,30 @@ import qualified Data.HashMap.Strict as H
 #define C_n 110
 #define C_t 116
 
--- | Parse a top-level JSON value.  This must be either an object or
--- an array, per RFC 4627.
+-- | Parse a top-level JSON value.
 --
 -- The conversion of a parsed value to a Haskell value is deferred
 -- until the Haskell value is needed.  This may improve performance if
 -- only a subset of the results of conversions are needed, but at a
 -- cost in thunk allocation.
+--
+-- This function is an alias for 'value'. In aeson 0.8 and earlier, it
+-- parsed only object or array types, in conformance with the
+-- now-obsolete RFC 4627.
 json :: Parser Value
-json = json_ object_ array_
+json = value
 
--- | Parse a top-level JSON value.  This must be either an object or
--- an array, per RFC 4627.
+-- | Parse a top-level JSON value.
 --
 -- This is a strict version of 'json' which avoids building up thunks
 -- during parsing; it performs all conversions immediately.  Prefer
 -- this version if most of the JSON data needs to be accessed.
+--
+-- This function is an alias for 'value''. In aeson 0.8 and earlier, it
+-- parsed only object or array types, in conformance with the
+-- now-obsolete RFC 4627.
 json' :: Parser Value
-json' = json_ object_' array_'
-
-json_ :: Parser Value -> Parser Value -> Parser Value
-json_ obj ary = do
-  w <- skipSpace *> A.satisfy (\w -> w == OPEN_CURLY || w == OPEN_SQUARE)
-  if w == OPEN_CURLY
-    then obj
-    else ary
-{-# INLINE json_ #-}
+json' = value'
 
 object_ :: Parser Value
 object_ = {-# SCC "object_" #-} Object <$> objectValues jstring value
