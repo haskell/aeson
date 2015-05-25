@@ -15,6 +15,12 @@ module Data.Aeson.Encode.ByteString
     ( encode
     , encodeToBuilder
     , encodeToByteStringBuilder
+    , null_
+    , bool
+    , array
+    , object
+    , text
+    , number
     ) where
 
 import Data.Aeson.Types (ToJSON(..), Value(..))
@@ -41,7 +47,7 @@ encodeToBuilder :: Value -> Builder
 encodeToBuilder Null       = null_
 encodeToBuilder (Bool b)   = bool b
 encodeToBuilder (Number n) = number n
-encodeToBuilder (String s) = string s
+encodeToBuilder (String s) = text s
 encodeToBuilder (Array v)  = array v
 encodeToBuilder (Object m) = object m
 
@@ -50,13 +56,16 @@ encodeToByteStringBuilder :: Value -> Builder
 encodeToByteStringBuilder = encodeToBuilder
 {-# DEPRECATED encodeToByteStringBuilder "Use encodeToBuilder instead." #-}
 
+-- | Encode a JSON null.
 null_ :: Builder
 null_ = BP.primBounded (ascii4 ('n',('u',('l','l')))) ()
 
+-- | Encode a JSON boolean.
 bool :: Bool -> Builder
 bool = BP.primBounded (BP.condB id (ascii4 ('t',('r',('u','e'))))
                                    (ascii5 ('f',('a',('l',('s','e'))))))
 
+-- | Encode a JSON array.
 array :: V.Vector Value -> Builder
 array v
   | V.null v  = B.char8 '[' <> B.char8 ']'
@@ -66,16 +75,18 @@ array v
   where
     withComma a z = B.char8 ',' <> encodeToBuilder a <> z
 
+-- Encode a JSON object.
 object :: HMS.HashMap T.Text Value -> Builder
 object m = case HMS.toList m of
     (x:xs) -> B.char8 '{' <> one x <> foldr withComma (B.char8 '}') xs
     _      -> B.char8 '{' <> B.char8 '}'
   where
     withComma a z = B.char8 ',' <> one a <> z
-    one (k,v)     = string k <> B.char8 ':' <> encodeToBuilder v
+    one (k,v)     = text k <> B.char8 ':' <> encodeToBuilder v
 
-string :: T.Text -> B.Builder
-string t =
+-- | Encode a JSON string.
+text :: T.Text -> Builder
+text t =
     B.char8 '"' <> TE.encodeUtf8BuilderEscaped escapeAscii t <> B.char8 '"'
   where
     escapeAscii :: BP.BoundedPrim Word8
@@ -94,6 +105,7 @@ string t =
     hexEscape = (\c -> ('\\', ('u', fromIntegral c))) BP.>$<
         BP.char8 BP.>*< BP.char8 BP.>*< BP.word16HexFixed
 
+-- | Encode a JSON number.
 number :: Scientific -> Builder
 number s
     | e < 0     = scientificBuilder s
