@@ -94,10 +94,7 @@ import qualified Data.ByteString.Lazy as L
 -- returned.
 --
 -- The input must consist solely of a JSON document, with no trailing
--- data except for whitespace. This restriction is necessary to ensure
--- that if data is being lazily read from a file handle, the file
--- handle will be closed in a timely fashion once the document has
--- been parsed.
+-- data except for whitespace.
 --
 -- This function parses immediately, but defers conversion.  See
 -- 'json' for details.
