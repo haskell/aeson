@@ -100,7 +100,7 @@ library
 
   build-depends:
     attoparsec >= 0.13.0.0,
-    base == 4.*,
+    base >= 4.5 && < 5,
     bytestring >= 0.10.4.0,
     containers,
     deepseq,
