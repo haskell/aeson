@@ -25,10 +25,14 @@ module Data.Aeson.Types.Internal
     -- * Type conversion
     , Parser
     , Result(..)
+    , JSONPathElement(..)
+    , JSONPath
     , parse
     , parseEither
     , parseMaybe
     , modifyFailure
+    , formatError
+    , (<?>)
     -- * Constructors and accessors
     , object
 
@@ -56,7 +60,7 @@ import Data.Data (Data)
 import Data.HashMap.Strict (HashMap)
 import Data.Monoid (Monoid(..), (<>))
 import Data.String (IsString(..))
-import Data.Text (Text, pack)
+import Data.Text (Text, pack, unpack)
 import Data.Time (UTCTime)
 import Data.Time.Format (FormatTime)
 import Data.Typeable (Typeable)
@@ -64,25 +68,37 @@ import Data.Vector (Vector)
 import qualified Data.HashMap.Strict as H
 import qualified Data.Vector as V
 
+-- | Elements of JSON path used to describe error location
+data JSONPathElement = -- ^ "object.key" JSON path element
+                       Key Text
+                       -- ^ "array[index]" JSON path element
+                     | Index {-# UNPACK #-} !Int 
+                       deriving (Eq, Show, Typeable)
+type JSONPath = [JSONPathElement]
+
 -- | The result of running a 'Parser'.
-data Result a = Error String
+data Result a = Error JSONPath String
               | Success a
                 deriving (Eq, Show, Typeable)
 
+instance NFData JSONPathElement where
+  rnf (Key t)   = rnf t
+  rnf (Index i) = rnf i
+
 instance (NFData a) => NFData (Result a) where
     rnf (Success a) = rnf a
-    rnf (Error err) = rnf err
+    rnf (Error path err) = rnf path `seq` rnf err
 
 instance Functor Result where
     fmap f (Success a) = Success (f a)
-    fmap _ (Error err) = Error err
+    fmap _ (Error path err) = Error path err
     {-# INLINE fmap #-}
 
 instance Monad Result where
     return = Success
     {-# INLINE return #-}
-    Success a >>= k = k a
-    Error err >>= _ = Error err
+    Success a      >>= k = k a
+    Error path err >>= _ = Error path err
     {-# INLINE (>>=) #-}
 
 instance Applicative Result where
@@ -111,30 +127,31 @@ instance Monoid (Result a) where
     {-# INLINE mappend #-}
 
 -- | Failure continuation.
-type Failure f r   = String -> f r
+type Failure f r   = JSONPath -> String -> f r
 -- | Success continuation.
 type Success a f r = a -> f r
 
 -- | A continuation-based parser type.
 newtype Parser a = Parser {
       runParser :: forall f r.
-                   Failure f r
+                   JSONPath
+                -> Failure f r
                 -> Success a f r
                 -> f r
     }
 
 instance Monad Parser where
-    m >>= g = Parser $ \kf ks -> let ks' a = runParser (g a) kf ks
-                                 in runParser m kf ks'
+    m >>= g = Parser $ \path kf ks -> let ks' a = runParser (g a) path kf ks
+                                       in runParser m path kf ks'
     {-# INLINE (>>=) #-}
-    return a = Parser $ \_kf ks -> ks a
+    return a = Parser $ \_path _kf ks -> ks a
     {-# INLINE return #-}
-    fail msg = Parser $ \kf _ks -> kf msg
+    fail msg = Parser $ \path kf _ks -> kf (reverse path) msg
     {-# INLINE fail #-}
 
 instance Functor Parser where
-    fmap f m = Parser $ \kf ks -> let ks' a = ks (f a)
-                                  in runParser m kf ks'
+    fmap f m = Parser $ \path kf ks -> let ks' a = ks (f a)
+                                        in runParser m path kf ks'
     {-# INLINE fmap #-}
 
 instance Applicative Parser where
@@ -152,8 +169,8 @@ instance Alternative Parser where
 instance MonadPlus Parser where
     mzero = fail "mzero"
     {-# INLINE mzero #-}
-    mplus a b = Parser $ \kf ks -> let kf' _ = runParser b kf ks
-                                   in runParser a kf' ks
+    mplus a b = Parser $ \path kf ks -> let kf' _ _ = runParser b path kf ks
+                                         in runParser a path kf' ks
     {-# INLINE mplus #-}
 
 instance Monoid (Parser a) where
@@ -252,18 +269,28 @@ emptyObject = Object H.empty
 
 -- | Run a 'Parser'.
 parse :: (a -> Parser b) -> a -> Result b
-parse m v = runParser (m v) Error Success
+parse m v = runParser (m v) [] Error Success
 {-# INLINE parse #-}
 
 -- | Run a 'Parser' with a 'Maybe' result type.
 parseMaybe :: (a -> Parser b) -> a -> Maybe b
-parseMaybe m v = runParser (m v) (const Nothing) Just
+parseMaybe m v = runParser (m v) [] (\_ _ -> Nothing) Just
 {-# INLINE parseMaybe #-}
 
 -- | Run a 'Parser' with an 'Either' result type.
 parseEither :: (a -> Parser b) -> a -> Either String b
-parseEither m v = runParser (m v) Left Right
+parseEither m v = runParser (m v) [] (\path msg -> Left $ formatError path msg) Right
 {-# INLINE parseEither #-}
+
+-- | Annotate error message with JSON Path error location
+formatError :: JSONPath -> String -> String
+formatError path msg = "Error in " ++ (formatJSONPath path) ++ ": " ++ msg
+  where formatJSONPath :: JSONPath -> String
+        formatJSONPath p = format "$" p
+          where format :: String -> JSONPath -> String
+                format prefix [] = prefix
+                format prefix (Index idx:parts) = format (prefix ++ "[" ++ show idx ++ "]") parts
+                format prefix (Key key:parts) = format (prefix ++ "." ++ unpack key) parts
 
 -- | A key\/value pair for an 'Object'.
 type Pair = (Text, Value)
@@ -273,6 +300,24 @@ type Pair = (Text, Value)
 object :: [Pair] -> Value
 object = Object . H.fromList
 {-# INLINE object #-}
+
+-- | Add JSON Path context to a parser
+--
+-- When parsing complex structure it helps to annotate (sub)parsers
+-- with context so that if error occurs you can find it's location.
+--
+-- > withObject "Person" $ \o ->
+-- >   Person
+-- >     <$> o .: "name" <?> Key "name"
+-- >     <*> o .: "age"  <?> Key "age"
+--
+-- (except for standard methods like '(.:)' already do that)
+--
+-- After that in case of error you will get a JSON Path location of that error.
+--
+-- Since 0.9
+(<?>) :: Parser a -> JSONPathElement -> Parser a
+p <?> pathElem = Parser $ \path kf ks -> runParser p (pathElem:path) kf ks
 
 -- | If the inner @Parser@ failed, modify the failure message using the
 -- provided function. This allows you to create more descriptive error messages.
@@ -284,7 +329,7 @@ object = Object . H.fromList
 --
 -- Since 0.6.2.0
 modifyFailure :: (String -> String) -> Parser a -> Parser a
-modifyFailure f (Parser p) = Parser $ \kf -> p (kf . f)
+modifyFailure f (Parser p) = Parser $ \path kf ks -> p path (\p' m -> kf p' (f m)) ks
 
 --------------------------------------------------------------------------------
 -- Generic and TH encoding configuration

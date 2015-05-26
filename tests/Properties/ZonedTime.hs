@@ -43,8 +43,8 @@ zonedTimeToJSON = testGroup "ZonedTime" [
     test format f = testProperty format go
       where
         go t = case fromJSON (toJSON' format t) of
-                 Error msg  -> failure "fromJSON"  msg t
-                 Success t' -> t' === f t
+                 Error path msg -> failure "fromJSON" (formatError path msg) t
+                 Success t'     -> t' === f t
 
 clearTimeZone :: ZonedTime -> ZonedTime
 clearTimeZone t = t { zonedTimeZone = TimeZone 0 False "" }
