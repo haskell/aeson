@@ -8,6 +8,7 @@ import Control.Applicative ((<$>))
 import System.Exit
 import System.IO
 
+deeecode :: FromJSON a => FilePath -> IO a
 deeecode fileName = do
   mv <- eitherDecode' <$> L.readFile fileName
   case mv of
@@ -16,6 +17,7 @@ deeecode fileName = do
       hPutStrLn stderr $ fileName ++ ": JSON decode failed - " ++ err
       exitWith (ExitFailure 1)
 
+main :: IO ()
 main = do
   twitter100 <- deeecode "json-data/twitter100.json"
   jp100 <- deeecode "json-data/jp100.json"
