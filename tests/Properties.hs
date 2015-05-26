@@ -10,7 +10,7 @@ import Test.Framework (Test, defaultMain, testGroup)
 import Test.Framework.Providers.QuickCheck2 (testProperty)
 import Test.Framework.Providers.HUnit (testCase)
 import Test.HUnit                     (Assertion, assertFailure, assertEqual)
-import Test.QuickCheck (Arbitrary(..))
+import Test.QuickCheck (Arbitrary(..), Property, (===), property)
 import qualified Data.Vector as V
 import qualified Data.Attoparsec.Lazy as L
 import qualified Data.ByteString.Lazy.Char8 as L
@@ -42,34 +42,35 @@ roundTripCamel name = assertEqual "" name (camelFrom '_' $ camelTo '_' name)
     split c s = map L.unpack $ L.split c $ L.pack s
     capitalize t = toUpper (head t) : tail t
 
-encodeDouble :: Double -> Double -> Bool
+encodeDouble :: Double -> Double -> Property
 encodeDouble num denom
-    | isInfinite d || isNaN d = encode d == "null"
-    | otherwise               = (read . L.unpack . encode) d == d
+    | isInfinite d || isNaN d = encode d === "null"
+    | otherwise               = (read . L.unpack . encode) d === d
   where d = num / denom
 
-encodeInteger :: Integer -> Bool
-encodeInteger i = encode i == L.pack (show i)
+encodeInteger :: Integer -> Property
+encodeInteger i = encode i === L.pack (show i)
 
-toParseJSON :: (Arbitrary a, Eq a) => (Value -> Parser a) -> (a -> Value) -> a -> Bool
+toParseJSON :: (Arbitrary a, Eq a, Show a) =>
+               (Value -> Parser a) -> (a -> Value) -> a -> Property
 toParseJSON parsejson tojson x =
     case parse parsejson . tojson $ x of
-      Error _ -> False
-      Success x' -> x == x'
+      Error _    -> property False
+      Success x' -> x === x'
 
-roundTrip :: (FromJSON a, ToJSON a) => (a -> a -> Bool) -> a -> a -> Bool
+roundTrip :: (FromJSON a, ToJSON a) => (a -> a -> Property) -> a -> a -> Property
 roundTrip eq _ i =
     case fmap fromJSON . L.parse value . encode . toJSON $ i of
       L.Done _ (Success v) -> v `eq` i
-      _                    -> False
+      _                    -> property False
 
-roundTripEq :: (Eq a, FromJSON a, ToJSON a) => a -> a -> Bool
-roundTripEq x y = roundTrip (==) x y
+roundTripEq :: (Eq a, FromJSON a, ToJSON a, Show a) => a -> a -> Property
+roundTripEq x y = roundTrip (===) x y
 
-toFromJSON :: (Arbitrary a, Eq a, FromJSON a, ToJSON a) => a -> Bool
+toFromJSON :: (Arbitrary a, Eq a, FromJSON a, ToJSON a, Show a) => a -> Property
 toFromJSON x = case fromJSON . toJSON $ x of
-                Error _ -> False
-                Success x' -> x == x'
+                Error _ -> property False
+                Success x' -> x === x'
 
 zonedTimeToJSON :: ZonedTime -> Bool
 zonedTimeToJSON t = and $
@@ -209,11 +210,11 @@ tests = [
       ]
     ]
   , testGroup "toFromJSON" [
-      testProperty "Integer" (toFromJSON :: Integer -> Bool)
-    , testProperty "Double" (toFromJSON :: Double -> Bool)
-    , testProperty "Maybe Integer" (toFromJSON :: Maybe Integer -> Bool)
-    , testProperty "Either Integer Double" (toFromJSON :: Either Integer Double -> Bool)
-    , testProperty "Either Integer Integer" (toFromJSON :: Either Integer Integer -> Bool)
+      testProperty "Integer" (toFromJSON :: Integer -> Property)
+    , testProperty "Double" (toFromJSON :: Double -> Property)
+    , testProperty "Maybe Integer" (toFromJSON :: Maybe Integer -> Property)
+    , testProperty "Either Integer Double" (toFromJSON :: Either Integer Double -> Property)
+    , testProperty "Either Integer Integer" (toFromJSON :: Either Integer Integer -> Property)
     , testProperty "ZonedTime" $ zonedTimeToJSON
     ]
   , testGroup "failure messages" [
