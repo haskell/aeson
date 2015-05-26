@@ -10,7 +10,7 @@ import Test.Framework (Test, defaultMain, testGroup)
 import Test.Framework.Providers.QuickCheck2 (testProperty)
 import Test.Framework.Providers.HUnit (testCase)
 import Test.HUnit                     (Assertion, assertFailure, assertEqual)
-import Test.QuickCheck (Arbitrary(..), Property, (===), property)
+import Test.QuickCheck (Arbitrary(..), Property, (===))
 import qualified Data.Vector as V
 import qualified Data.Attoparsec.Lazy as L
 import qualified Data.ByteString.Lazy.Char8 as L
@@ -49,21 +49,23 @@ toParseJSON :: (Arbitrary a, Eq a, Show a) =>
                (Value -> Parser a) -> (a -> Value) -> a -> Property
 toParseJSON parsejson tojson x =
     case parse parsejson . tojson $ x of
-      Error _    -> property False
+      Error msg  -> failure "parse" msg x
       Success x' -> x === x'
 
-roundTrip :: (FromJSON a, ToJSON a) => (a -> a -> Property) -> a -> a -> Property
+roundTrip :: (FromJSON a, ToJSON a, Show a) =>
+             (a -> a -> Property) -> a -> a -> Property
 roundTrip eq _ i =
     case fmap fromJSON . L.parse value . encode . toJSON $ i of
       L.Done _ (Success v) -> v `eq` i
-      _                    -> property False
+      L.Done _ (Error err) -> failure "fromJSON" err i
+      L.Fail _ _ err       -> failure "parse" err i
 
 roundTripEq :: (Eq a, FromJSON a, ToJSON a, Show a) => a -> a -> Property
 roundTripEq x y = roundTrip (===) x y
 
 toFromJSON :: (Arbitrary a, Eq a, FromJSON a, ToJSON a, Show a) => a -> Property
-toFromJSON x = case fromJSON . toJSON $ x of
-                Error _ -> property False
+toFromJSON x = case fromJSON (toJSON x) of
+                Error err  -> failure "fromJSON" err x
                 Success x' -> x === x'
 
 modifyFailureProp :: String -> String -> Bool
@@ -144,7 +146,7 @@ tests = [
     , testProperty "Maybe Integer" (toFromJSON :: Maybe Integer -> Property)
     , testProperty "Either Integer Double" (toFromJSON :: Either Integer Double -> Property)
     , testProperty "Either Integer Integer" (toFromJSON :: Either Integer Integer -> Property)
-    , testProperty "ZonedTime" $ zonedTimeToJSON
+    , zonedTimeToJSON
     ]
   , testGroup "failure messages" [
       testProperty "modify failure" modifyFailureProp
@@ -210,7 +212,6 @@ tests = [
       ]
     ]
   ]
-
 
 ------------------------------------------------------------------------------
 -- Comparison between bytestring and text encoders

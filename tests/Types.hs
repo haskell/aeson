@@ -7,6 +7,7 @@ import qualified Data.Map as Map
 import Data.Data
 import Data.Text
 import GHC.Generics
+import Test.QuickCheck (Property, counterexample)
 
 data Foo = Foo {
       fooInt :: Int
@@ -62,3 +63,7 @@ deriving instance Generic (Sum4 a b c d)
 deriving instance Generic (Approx a)
 deriving instance Generic Nullary
 deriving instance Generic (SomeType a)
+
+failure :: Show a => String -> String -> a -> Property
+failure func msg v = counterexample
+                     (func ++ " failed: " ++ msg ++ ", " ++ show v) False
