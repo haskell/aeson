@@ -48,7 +48,8 @@ module Data.Aeson.Types
     , withBool
 
     -- * Constructors and accessors
-    , (.=)
+    , Pairable(..)
+    , series
     , (.:)
     , (.:?)
     , (.!=)

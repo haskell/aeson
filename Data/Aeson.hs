@@ -68,7 +68,8 @@ module Data.Aeson
     , withScientific
     , withBool
     -- * Constructors and accessors
-    , (.=)
+    , Pairable(..)
+    , series
     , (.:)
     , (.:?)
     , (.!=)

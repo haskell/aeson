@@ -46,7 +46,8 @@ module Data.Aeson.Types.Instances
     , (.:)
     , (.:?)
     , (.!=)
-    , (.=)
+    , Pairable(..)
+    , series
     , typeMismatch
     ) where
 
@@ -1417,10 +1418,17 @@ withBool _        f (Bool arr) = f arr
 withBool expected _ v          = typeMismatch expected v
 {-# INLINE withBool #-}
 
--- | Construct a 'Pair' from a key and a value.
-(.=) :: ToJSON a => Text -> a -> Pair
-name .= value = (name, toJSON value)
-{-# INLINE (.=) #-}
+instance Pairable Pair where
+    name .= value = (name, toJSON value)
+    {-# INLINE (.=) #-}
+
+instance Pairable Series where
+    name .= value = Value (E.text name <> B.char7 ':' <> toEncoding value)
+    {-# INLINE (.=) #-}
+
+series :: Series -> B.Builder
+series Empty     = mempty
+series (Value v) = v
 
 -- | Convert a value from JSON, failing if the types do not match.
 fromJSON :: (FromJSON a) => Value -> Result a

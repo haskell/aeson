@@ -13,18 +13,20 @@
 
 module Data.Aeson.Types.Class
     (
-    -- * Type classes
-    -- ** Core JSON classes
+    -- * Core JSON classes
       FromJSON(..)
     , ToJSON(..)
-    -- ** Generic JSON classes
+    -- * Generic JSON classes
     , GFromJSON(..)
     , GToJSON(..)
     , genericToJSON
     , genericToEncoding
     , genericParseJSON
+    -- * Object key-value pairs
+    , Pairable(..)
     ) where
 
+import Data.Text (Text)
 import Data.Aeson.Types.Internal
 import GHC.Generics
 
@@ -196,3 +198,6 @@ class FromJSON a where
 
     default parseJSON :: (Generic a, GFromJSON (Rep a)) => Value -> Parser a
     parseJSON = genericParseJSON defaultOptions
+
+class Pairable t where
+    (.=) :: ToJSON a => Text -> a -> t

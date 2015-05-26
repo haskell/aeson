@@ -11,7 +11,7 @@ flag old-locale
   default: False
 
 library
-  hs-source-dirs: ..
+  hs-source-dirs: .. .
 
   exposed-modules:
     Data.Aeson
@@ -19,6 +19,9 @@ library
     Data.Aeson.Parser
     Data.Aeson.Types
     Data.Aeson.TH
+    Twitter.Generic
+    Twitter.Manual
+    Twitter.TH
 
   other-modules:
     Data.Aeson.Encode.ByteString
@@ -28,6 +31,7 @@ library
     Data.Aeson.Types.Generic
     Data.Aeson.Types.Instances
     Data.Aeson.Types.Internal
+    Twitter
 
   build-depends:
     attoparsec >= 0.13.0.0,
@@ -43,6 +47,7 @@ library
     syb,
     template-haskell >= 2.4,
     text >= 1.1.1.0,
+    time,
     transformers,
     unordered-containers >= 0.2.3.0,
     vector >= 0.7.1
@@ -54,6 +59,18 @@ library
 
   ghc-options: -O2 -Wall
   cpp-options: -DGENERICS
+
+executable aeson-benchmark-typed
+  main-is: Typed.hs
+  ghc-options: -Wall -O2 -rtsopts
+  build-depends:
+    aeson-benchmarks,
+    base,
+    bytestring,
+    criterion,
+    deepseq,
+    text,
+    time
 
 executable aeson-benchmark-compare-with-json
   main-is: CompareWithJSON.hs
