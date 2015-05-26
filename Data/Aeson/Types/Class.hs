@@ -82,22 +82,18 @@ genericParseJSON opts = fmap to . gParseJSON opts
 -- Instead of manually writing your 'ToJSON' instance, there are three options
 -- to do it automatically:
 --
--- * "Data.Aeson.TH" provides template-haskell functions which will derive an
--- instance at compile-time. The generated instance is optimized for your type
+-- * "Data.Aeson.TH" provides Template Haskell functions which will derive an
+-- instance at compile time. The generated instance is optimized for your type
 -- so will probably be more efficient than the following two options:
 --
--- * "Data.Aeson.Generic" provides a generic @toJSON@ function that accepts any
--- type which is an instance of 'Data'.
+-- * The compiler can provide default generic implementations for 'toJSON' and
+-- 'toEncoding'.
 --
--- * If your compiler has support for the @DeriveGeneric@ and
--- @DefaultSignatures@ language extensions (GHC 7.2 and newer),
--- @toJSON@ will have a default generic implementation.
+-- To use the second, simply add a @deriving 'Generic'@ clause to your
+-- datatype and declare a 'ToJSON' instance for your datatype without giving
+-- definitions for 'toJSON' or 'toEncoding'.
 --
--- To use the latter option, simply add a @deriving 'Generic'@ clause to your
--- datatype and declare a @ToJSON@ instance for your datatype without giving a
--- definition for @toJSON@.
---
--- For example the previous example can be simplified to just:
+-- For example, the previous example can be simplified to just:
 --
 -- @{-\# LANGUAGE DeriveGeneric \#-}
 --
@@ -154,25 +150,21 @@ class ToJSON a where
 -- Note the use of the @OverloadedStrings@ language extension which enables
 -- 'Text' values to be written as string literals.
 --
--- Instead of manually writing your 'FromJSON' instance, there are three options
+-- Instead of manually writing your 'FromJSON' instance, there are two options
 -- to do it automatically:
 --
--- * "Data.Aeson.TH" provides template-haskell functions which will derive an
--- instance at compile-time. The generated instance is optimized for your type
+-- * "Data.Aeson.TH" provides Template Haskell functions which will derive an
+-- instance at compile time. The generated instance is optimized for your type
 -- so will probably be more efficient than the following two options:
 --
--- * "Data.Aeson.Generic" provides a generic @fromJSON@ function that parses to
--- any type which is an instance of 'Data'.
+-- * The compiler can provide a default generic implementation for
+-- 'parseJSON'.
 --
--- * If your compiler has support for the @DeriveGeneric@ and
--- @DefaultSignatures@ language extensions, @parseJSON@ will have a default
--- generic implementation.
+-- To use the second, simply add a @deriving 'Generic'@ clause to your
+-- datatype and declare a 'FromJSON' instance for your datatype without giving
+-- a definition for 'parseJSON'.
 --
--- To use this, simply add a @deriving 'Generic'@ clause to your datatype and
--- declare a @FromJSON@ instance for your datatype without giving a definition
--- for @parseJSON@.
---
--- For example the previous example can be simplified to just:
+-- For example, the previous example can be simplified to just:
 --
 -- @
 -- {-\# LANGUAGE DeriveGeneric \#-}

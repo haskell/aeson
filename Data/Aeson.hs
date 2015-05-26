@@ -25,9 +25,6 @@ module Data.Aeson
     -- ** Decoding a mixed-type object
     -- $mixed
 
-    -- ** Automatically decoding data types
-    -- $typeable
-
     -- ** Pitfalls
     -- $pitfalls
 
@@ -301,38 +298,6 @@ eitherDecodeStrict' = eitherFormatError . eitherDecodeStrictWith jsonEOF' fromJS
 -- The downside is that you have to write the parser yourself; the
 -- upside is that you have complete control over the way the JSON is
 -- parsed.
-
--- $typeable
---
--- If you don't want fine control and would prefer the JSON be parsed
--- to your own data types automatically according to some reasonably
--- sensible isomorphic implementation, you can use the generic parser
--- based on 'Data.Typeable.Typeable' and 'Data.Data.Data'. Switch to
--- the 'Data.Aeson.Generic' module, and you can do the following:
---
--- > λ> decode "[1]" :: Maybe [Int]
--- > Just [1]
--- > λ> :m + Data.Typeable Data.Data
--- > λ> :set -XDeriveDataTypeable
--- > λ> data Person = Person { personName :: String, personAge :: Int } deriving (Data,Typeable,Show)
--- > λ> encode Person { personName = "Chris", personAge = 123 }
--- > "{\"personAge\":123,\"personName\":\"Chris\"}"
--- > λ> decode "{\"personAge\":123,\"personName\":\"Chris\"}" :: Maybe Person
--- > Just (Person {
--- > personName = "Chris", personAge = 123
--- > })
---
--- Be aware that the encoding may not always be what you'd naively
--- expect:
---
--- > λ> data Foo = Foo Int Int deriving (Data,Typeable,Show)
--- > λ> encode (Foo 1 2)
--- > "[1,2]"
---
--- With this approach, it's best to treat the
--- 'Data.Aeson.Generic.decode' and 'Data.Aeson.Generic.encode'
--- functions as an isomorphism, and not to rely upon (or care about)
--- the specific intermediate representation.
 
 -- $pitfalls
 -- #pitfalls#
