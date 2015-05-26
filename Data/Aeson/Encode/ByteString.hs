@@ -18,16 +18,28 @@ module Data.Aeson.Encode.ByteString
     , null_
     , bool
     , array
+    , emptyArray_
+    , emptyObject_
     , object
     , text
+    , unquoted
     , number
+    , foldable
+    , series
+    , ascii2
+    , ascii4
+    , ascii5
+    , ascii6
+    , ascii7
     ) where
 
-import Data.Aeson.Types (ToJSON(..), Value(..))
+import Data.Aeson.Types.Class (ToJSON(..))
+import Data.Aeson.Types.Internal (Value(..), Series(..))
 import Data.ByteString.Builder as B
 import Data.ByteString.Builder.Prim as BP
 import Data.ByteString.Builder.Scientific (scientificBuilder)
 import Data.Char (ord)
+import Data.Foldable (Foldable, foldMap)
 import Data.Monoid ((<>))
 import Data.Scientific (Scientific, base10Exponent, coefficient)
 import Data.Word (Word8)
@@ -86,8 +98,11 @@ object m = case HMS.toList m of
 
 -- | Encode a JSON string.
 text :: T.Text -> Builder
-text t =
-    B.char8 '"' <> TE.encodeUtf8BuilderEscaped escapeAscii t <> B.char8 '"'
+text t = B.char8 '"' <> unquoted t <> B.char8 '"'
+
+-- | Encode a JSON string, without enclosing quotes.
+unquoted :: T.Text -> Builder
+unquoted t = TE.encodeUtf8BuilderEscaped escapeAscii t
   where
     escapeAscii :: BP.BoundedPrim Word8
     escapeAscii =
@@ -103,7 +118,7 @@ text t =
 
     hexEscape :: BP.FixedPrim Word8
     hexEscape = (\c -> ('\\', ('u', fromIntegral c))) BP.>$<
-        BP.char8 BP.>*< BP.char8 BP.>*< BP.word16HexFixed
+        BP.char8 >*< BP.char8 >*< BP.word16HexFixed
 
 -- | Encode a JSON number.
 number :: Scientific -> Builder
@@ -113,17 +128,40 @@ number s
   where
     e = base10Exponent s
 
+foldable :: (Foldable t, ToJSON a) => t a -> Builder
+foldable = series '[' ']' . foldMap (Value . toEncoding)
 
-{-# INLINE ascii2 #-}
+series :: Char -> Char -> Series -> Builder
+series begin end (Value v) = B.char7 begin <> v <> B.char7 end
+series begin end Empty     = BP.primBounded (ascii2 (begin,end)) ()
+
+emptyArray_ :: Builder
+emptyArray_ = BP.primBounded (ascii2 ('[',']')) ()
+
+emptyObject_ :: Builder
+emptyObject_ = BP.primBounded (ascii2 ('{','}')) ()
+
 ascii2 :: (Char, Char) -> BP.BoundedPrim a
-ascii2 cs = BP.liftFixedToBounded $ (const cs) BP.>$< BP.char7 BP.>*< BP.char7
+ascii2 cs = BP.liftFixedToBounded $ (const cs) BP.>$< BP.char7 >*< BP.char7
+{-# INLINE ascii2 #-}
 
-{-# INLINE ascii4 #-}
 ascii4 :: (Char, (Char, (Char, Char))) -> BP.BoundedPrim a
 ascii4 cs = BP.liftFixedToBounded $ (const cs) >$<
-    BP.char7 BP.>*< BP.char7 BP.>*< BP.char7 BP.>*< BP.char7
+    BP.char7 >*< BP.char7 >*< BP.char7 >*< BP.char7
+{-# INLINE ascii4 #-}
 
-{-# INLINE ascii5 #-}
 ascii5 :: (Char, (Char, (Char, (Char, Char)))) -> BP.BoundedPrim a
 ascii5 cs = BP.liftFixedToBounded $ (const cs) >$<
-    BP.char7 BP.>*< BP.char7 BP.>*< BP.char7 BP.>*< BP.char7 BP.>*< BP.char7
+    BP.char7 >*< BP.char7 >*< BP.char7 >*< BP.char7 >*< BP.char7
+{-# INLINE ascii5 #-}
+
+ascii6 :: (Char, (Char, (Char, (Char, (Char, Char))))) -> BP.BoundedPrim a
+ascii6 cs = BP.liftFixedToBounded $ (const cs) >$<
+    BP.char7 >*< BP.char7 >*< BP.char7 >*< BP.char7 >*< BP.char7 >*< BP.char7
+{-# INLINE ascii6 #-}
+
+ascii7 :: (Char, (Char, (Char, (Char, (Char, (Char, Char)))))) -> BP.BoundedPrim a
+ascii7 cs = BP.liftFixedToBounded $ (const cs) >$<
+    BP.char7 >*< BP.char7 >*< BP.char7 >*< BP.char7 >*< BP.char7 >*<
+    BP.char7 >*< BP.char7
+{-# INLINE ascii7 #-}

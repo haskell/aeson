@@ -25,9 +25,11 @@ import Control.Monad.ST (ST)
 import Data.Aeson.Types.Instances
 import Data.Aeson.Types.Internal
 import Data.Bits
+import Data.Aeson.Encode.ByteString (emptyArray_)
+import Data.ByteString.Builder as B
+import Data.Monoid ((<>), mempty)
 import Data.DList (DList, toList, empty)
 import Data.Maybe (fromMaybe)
-import Data.Monoid (mappend)
 import Data.Text (Text, pack, unpack)
 import GHC.Generics
 import qualified Data.HashMap.Strict as H
@@ -42,21 +44,33 @@ instance (GToJSON a) => GToJSON (M1 i c a) where
     gToJSON opts = gToJSON opts . unM1
     {-# INLINE gToJSON #-}
 
+    gToEncoding opts = gToEncoding opts . unM1
+    {-# INLINE gToEncoding #-}
+
 instance (ToJSON a) => GToJSON (K1 i a) where
     -- Constant values are encoded using their ToJSON instance:
     gToJSON _opts = toJSON . unK1
     {-# INLINE gToJSON #-}
+
+    gToEncoding _opts = toEncoding . unK1
+    {-# INLINE gToEncoding #-}
 
 instance GToJSON U1 where
     -- Empty constructors are encoded to an empty array:
     gToJSON _opts _ = emptyArray
     {-# INLINE gToJSON #-}
 
+    gToEncoding _opts _ = emptyArray_
+    {-# INLINE gToEncoding #-}
+
 instance (ConsToJSON a) => GToJSON (C1 c a) where
     -- Constructors need to be encoded differently depending on whether they're
-    -- a record or not. This distinction is made by 'constToJSON':
+    -- a record or not. This distinction is made by 'consToJSON':
     gToJSON opts = consToJSON opts . unM1
     {-# INLINE gToJSON #-}
+
+    gToEncoding opts = consToEncoding opts . unM1
+    {-# INLINE gToEncoding #-}
 
 instance ( WriteProduct a, WriteProduct b
          , ProductSize  a, ProductSize  b ) => GToJSON (a :*: b) where
@@ -73,6 +87,8 @@ instance ( WriteProduct a, WriteProduct b
                        productSize
     {-# INLINE gToJSON #-}
 
+    gToEncoding opts p = B.char7 '[' <> encodeProduct opts p <> B.char7 ']'
+
 instance ( AllNullary (a :+: b) allNullary
          , SumToJSON  (a :+: b) allNullary ) => GToJSON (a :+: b) where
     -- If all constructors of a sum datatype are nullary and the
@@ -82,13 +98,18 @@ instance ( AllNullary (a :+: b) allNullary
                  . sumToJSON opts
     {-# INLINE gToJSON #-}
 
+    gToEncoding opts = (unTagged :: Tagged allNullary B.Builder -> B.Builder)
+                       . sumToEncoding opts
+    {-# INLINE gToEncoding #-}
+
 --------------------------------------------------------------------------------
 
 class SumToJSON f allNullary where
     sumToJSON :: Options -> f a -> Tagged allNullary Value
+    sumToEncoding :: Options -> f a -> Tagged allNullary B.Builder
 
 instance ( GetConName            f
-         , TaggedObject          f
+         , TaggedObject     f
          , ObjectWithSingleField f
          , TwoElemArray          f ) => SumToJSON f True where
     sumToJSON opts
@@ -97,11 +118,19 @@ instance ( GetConName            f
         | otherwise = Tagged . nonAllNullarySumToJSON opts
     {-# INLINE sumToJSON #-}
 
+    sumToEncoding opts
+        | allNullaryToStringTag opts = Tagged . toEncoding .
+                                       constructorTagModifier opts . getConName
+        | otherwise = Tagged . nonAllNullarySumToEncoding opts
+    {-# INLINE sumToEncoding #-}
+
 instance ( TwoElemArray          f
          , TaggedObject          f
          , ObjectWithSingleField f ) => SumToJSON f False where
     sumToJSON opts = Tagged . nonAllNullarySumToJSON opts
     {-# INLINE sumToJSON #-}
+    sumToEncoding opts = Tagged . nonAllNullarySumToEncoding opts
+    {-# INLINE sumToEncoding #-}
 
 nonAllNullarySumToJSON :: ( TwoElemArray          f
                           , TaggedObject          f
@@ -109,46 +138,85 @@ nonAllNullarySumToJSON :: ( TwoElemArray          f
                           ) => Options -> f a -> Value
 nonAllNullarySumToJSON opts =
     case sumEncoding opts of
-      TaggedObject{..}      -> object . taggedObject opts tagFieldName
-                                                          contentsFieldName
-      ObjectWithSingleField -> Object . objectWithSingleField opts
-      TwoElemArray          -> Array  . twoElemArray opts
+      TaggedObject{..}      ->
+        object . taggedObjectPairs opts tagFieldName contentsFieldName
+      ObjectWithSingleField -> Object . objectWithSingleFieldObj opts
+      TwoElemArray          -> Array  . twoElemArrayObj opts
 {-# INLINE nonAllNullarySumToJSON #-}
+
+nonAllNullarySumToEncoding :: ( TwoElemArray          f
+                          , TaggedObject          f
+                          , ObjectWithSingleField f
+                          ) => Options -> f a -> B.Builder
+nonAllNullarySumToEncoding opts =
+    case sumEncoding opts of
+      TaggedObject{..}      ->
+        taggedObjectEnc opts tagFieldName contentsFieldName
+      ObjectWithSingleField -> objectWithSingleFieldEnc opts
+      TwoElemArray          -> twoElemArrayEnc opts
+{-# INLINE nonAllNullarySumToEncoding #-}
 
 --------------------------------------------------------------------------------
 
 class TaggedObject f where
-    taggedObject :: Options -> String -> String -> f a -> [Pair]
+    taggedObjectPairs :: Options -> String -> String -> f a -> [Pair]
+    taggedObjectEnc :: Options -> String -> String -> f a -> B.Builder
 
 instance ( TaggedObject a
          , TaggedObject b ) => TaggedObject (a :+: b) where
-    taggedObject     opts tagFieldName contentsFieldName (L1 x) =
-        taggedObject opts tagFieldName contentsFieldName     x
-    taggedObject     opts tagFieldName contentsFieldName (R1 x) =
-        taggedObject opts tagFieldName contentsFieldName     x
-    {-# INLINE taggedObject #-}
+    taggedObjectPairs opts tagFieldName contentsFieldName (L1 x) =
+        taggedObjectPairs opts tagFieldName contentsFieldName     x
+    taggedObjectPairs opts tagFieldName contentsFieldName (R1 x) =
+        taggedObjectPairs opts tagFieldName contentsFieldName     x
+    {-# INLINE taggedObjectPairs #-}
+
+    taggedObjectEnc opts tagFieldName contentsFieldName (L1 x) =
+        taggedObjectEnc opts tagFieldName contentsFieldName     x
+    taggedObjectEnc opts tagFieldName contentsFieldName (R1 x) =
+        taggedObjectEnc opts tagFieldName contentsFieldName     x
+    {-# INLINE taggedObjectEnc #-}
 
 instance ( IsRecord      a isRecord
          , TaggedObject' a isRecord
          , Constructor c ) => TaggedObject (C1 c a) where
-    taggedObject opts tagFieldName contentsFieldName =
+    taggedObjectPairs opts tagFieldName contentsFieldName =
         (pack tagFieldName .= constructorTagModifier opts
                                  (conName (undefined :: t c a p)) :) .
         (unTagged :: Tagged isRecord [Pair] -> [Pair]) .
-          taggedObject' opts contentsFieldName . unM1
-    {-# INLINE taggedObject #-}
+          taggedObjectPairs' opts contentsFieldName . unM1
+    {-# INLINE taggedObjectPairs #-}
+
+    taggedObjectEnc opts tagFieldName contentsFieldName v =
+        B.char7 '{' <>
+        (toEncoding tagFieldName <>
+         B.char7 ':' <>
+         toEncoding (constructorTagModifier opts (conName (undefined :: t c a p)))) <>
+        B.char7 ',' <>
+        ((unTagged :: Tagged isRecord B.Builder -> B.Builder) .
+         taggedObjectEnc' opts contentsFieldName . unM1 $ v) <>
+        B.char7 '}'
+    {-# INLINE taggedObjectEnc #-}
 
 class TaggedObject' f isRecord where
-    taggedObject' :: Options -> String -> f a -> Tagged isRecord [Pair]
+    taggedObjectPairs' :: Options -> String -> f a -> Tagged isRecord [Pair]
+    taggedObjectEnc' :: Options -> String -> f a -> Tagged isRecord B.Builder
 
-instance (RecordToPairs f) => TaggedObject' f True where
-    taggedObject' opts _ = Tagged . toList . recordToPairs opts
-    {-# INLINE taggedObject' #-}
+instance (RecordTo f) => TaggedObject' f True where
+    taggedObjectPairs' opts _ = Tagged . toList . recordToPairs opts
+    {-# INLINE taggedObjectPairs' #-}
+
+    taggedObjectEnc' opts _ = Tagged . recordToEncoding opts
+    {-# INLINE taggedObjectEnc' #-}
 
 instance (GToJSON f) => TaggedObject' f False where
-    taggedObject' opts contentsFieldName =
+    taggedObjectPairs' opts contentsFieldName =
         Tagged . (:[]) . (pack contentsFieldName .=) . gToJSON opts
-    {-# INLINE taggedObject' #-}
+    {-# INLINE taggedObjectPairs' #-}
+
+    taggedObjectEnc' opts contentsFieldName =
+        Tagged . (\z -> toEncoding contentsFieldName <> B.char7 ':' <> z) .
+        gToEncoding opts
+    {-# INLINE taggedObjectEnc' #-}
 
 --------------------------------------------------------------------------------
 
@@ -168,30 +236,45 @@ instance (Constructor c, GToJSON a, ConsToJSON a) => GetConName (C1 c a) where
 --------------------------------------------------------------------------------
 
 class TwoElemArray f where
-    twoElemArray :: Options -> f a -> V.Vector Value
+    twoElemArrayObj :: Options -> f a -> V.Vector Value
+    twoElemArrayEnc :: Options -> f a -> B.Builder
 
 instance (TwoElemArray a, TwoElemArray b) => TwoElemArray (a :+: b) where
-    twoElemArray opts (L1 x) = twoElemArray opts x
-    twoElemArray opts (R1 x) = twoElemArray opts x
-    {-# INLINE twoElemArray #-}
+    twoElemArrayObj opts (L1 x) = twoElemArrayObj opts x
+    twoElemArrayObj opts (R1 x) = twoElemArrayObj opts x
+    {-# INLINE twoElemArrayObj #-}
+
+    twoElemArrayEnc opts (L1 x) = twoElemArrayEnc opts x
+    twoElemArrayEnc opts (R1 x) = twoElemArrayEnc opts x
+    {-# INLINE twoElemArrayEnc #-}
 
 instance ( GToJSON a, ConsToJSON a
          , Constructor c ) => TwoElemArray (C1 c a) where
-    twoElemArray opts x = V.create $ do
+    twoElemArrayObj opts x = V.create $ do
       mv <- VM.unsafeNew 2
       VM.unsafeWrite mv 0 $ String $ pack $ constructorTagModifier opts
                                    $ conName (undefined :: t c a p)
       VM.unsafeWrite mv 1 $ gToJSON opts x
       return mv
-    {-# INLINE twoElemArray #-}
+    {-# INLINE twoElemArrayObj #-}
+
+    twoElemArrayEnc opts x =
+      B.char7 '[' <>
+      toEncoding (constructorTagModifier opts (conName (undefined :: t c a p))) <>
+      B.char7 ',' <>
+      gToEncoding opts x <>
+      B.char7 ']'
+    {-# INLINE twoElemArrayEnc #-}
 
 --------------------------------------------------------------------------------
 
 class ConsToJSON f where
-    consToJSON  :: Options -> f a -> Value
+    consToJSON     :: Options -> f a -> Value
+    consToEncoding :: Options -> f a -> B.Builder
 
 class ConsToJSON' f isRecord where
-    consToJSON' :: Options -> f a -> Tagged isRecord Value
+    consToJSON'     :: Options -> f a -> Tagged isRecord Value
+    consToEncoding' :: Options -> f a -> Tagged isRecord B.Builder
 
 instance ( IsRecord    f isRecord
          , ConsToJSON' f isRecord ) => ConsToJSON f where
@@ -199,39 +282,72 @@ instance ( IsRecord    f isRecord
                     . consToJSON' opts
     {-# INLINE consToJSON #-}
 
-instance (RecordToPairs f) => ConsToJSON' f True where
+    consToEncoding opts = (unTagged :: Tagged isRecord B.Builder -> B.Builder)
+                          . consToEncoding' opts
+    {-# INLINE consToEncoding #-}
+
+instance (RecordTo f) => ConsToJSON' f True where
     consToJSON' opts = Tagged . object . toList . recordToPairs opts
     {-# INLINE consToJSON' #-}
+
+    consToEncoding' opts x = Tagged $
+        B.char7 '{' <>
+        recordToEncoding opts x <>
+        B.char7 '}'
+    {-# INLINE consToEncoding' #-}
 
 instance GToJSON f => ConsToJSON' f False where
     consToJSON' opts = Tagged . gToJSON opts
     {-# INLINE consToJSON' #-}
+    consToEncoding' opts = Tagged . gToEncoding opts
+    {-# INLINE consToEncoding' #-}
 
 --------------------------------------------------------------------------------
 
-class RecordToPairs f where
-    recordToPairs :: Options -> f a -> DList Pair
+class RecordTo f where
+    recordToPairs    :: Options -> f a -> DList Pair
+    recordToEncoding :: Options -> f a -> B.Builder
 
-instance (RecordToPairs a, RecordToPairs b) => RecordToPairs (a :*: b) where
-    recordToPairs opts (a :*: b) = recordToPairs opts a `mappend`
+instance (RecordTo a, RecordTo b) => RecordTo (a :*: b) where
+    recordToPairs opts (a :*: b) = recordToPairs opts a <>
                                    recordToPairs opts b
     {-# INLINE recordToPairs #-}
 
-instance (Selector s, GToJSON a) => RecordToPairs (S1 s a) where
+    recordToEncoding opts (a :*: b) = recordToEncoding opts a <>
+                                      B.char7 ',' <>
+                                      recordToEncoding opts b
+    {-# INLINE recordToEncoding #-}
+
+instance (Selector s, GToJSON a) => RecordTo (S1 s a) where
     recordToPairs = fieldToPair
     {-# INLINE recordToPairs #-}
 
-instance (Selector s, ToJSON a) => RecordToPairs (S1 s (K1 i (Maybe a))) where
+    recordToEncoding = fieldToEncoding
+    {-# INLINE recordToEncoding #-}
+
+instance (Selector s, ToJSON a) => RecordTo (S1 s (K1 i (Maybe a))) where
     recordToPairs opts (M1 k1) | omitNothingFields opts
                                , K1 Nothing <- k1 = empty
     recordToPairs opts m1 = fieldToPair opts m1
     {-# INLINE recordToPairs #-}
+
+    recordToEncoding opts (M1 k1) | omitNothingFields opts
+                                  , K1 Nothing <- k1 = mempty
+    recordToEncoding opts m1 = fieldToEncoding opts m1
+    {-# INLINE recordToEncoding #-}
 
 fieldToPair :: (Selector s, GToJSON a) => Options -> S1 s a p -> DList Pair
 fieldToPair opts m1 = pure ( pack $ fieldLabelModifier opts $ selName m1
                            , gToJSON opts (unM1 m1)
                            )
 {-# INLINE fieldToPair #-}
+
+fieldToEncoding :: (Selector s, GToJSON a) => Options -> S1 s a p -> B.Builder
+fieldToEncoding opts m1 =
+    toEncoding (fieldLabelModifier opts $ selName m1) <>
+    B.char7 ':' <>
+    gToEncoding opts (unM1 m1)
+{-# INLINE fieldToEncoding #-}
 
 --------------------------------------------------------------------------------
 
@@ -242,6 +358,7 @@ class WriteProduct f where
                  -> Int -- ^ length
                  -> f a
                  -> ST s ()
+    encodeProduct :: Options -> f a -> B.Builder
 
 instance ( WriteProduct a
          , WriteProduct b ) => WriteProduct (a :*: b) where
@@ -254,28 +371,50 @@ instance ( WriteProduct a
           ixR  = ix  + lenL
     {-# INLINE writeProduct #-}
 
+    encodeProduct opts (a :*: b) = encodeProduct opts a <>
+                                   B.char7 ',' <>
+                                   encodeProduct opts b
+    {-# INLINE encodeProduct #-}
+
 instance (GToJSON a) => WriteProduct a where
     writeProduct opts mv ix _ = VM.unsafeWrite mv ix . gToJSON opts
     {-# INLINE writeProduct #-}
 
+    encodeProduct opts = gToEncoding opts
+    {-# INLINE encodeProduct #-}
+
 --------------------------------------------------------------------------------
 
 class ObjectWithSingleField f where
-    objectWithSingleField :: Options -> f a -> Object
+    objectWithSingleFieldObj :: Options -> f a -> Object
+    objectWithSingleFieldEnc :: Options -> f a -> B.Builder
 
 instance ( ObjectWithSingleField a
          , ObjectWithSingleField b ) => ObjectWithSingleField (a :+: b) where
-    objectWithSingleField opts (L1 x) = objectWithSingleField opts x
-    objectWithSingleField opts (R1 x) = objectWithSingleField opts x
-    {-# INLINE objectWithSingleField #-}
+    objectWithSingleFieldObj opts (L1 x) = objectWithSingleFieldObj opts x
+    objectWithSingleFieldObj opts (R1 x) = objectWithSingleFieldObj opts x
+    {-# INLINE objectWithSingleFieldObj #-}
+
+    objectWithSingleFieldEnc opts (L1 x) = objectWithSingleFieldEnc opts x
+    objectWithSingleFieldEnc opts (R1 x) = objectWithSingleFieldEnc opts x
+    {-# INLINE objectWithSingleFieldEnc #-}
 
 instance ( GToJSON a, ConsToJSON a
          , Constructor c ) => ObjectWithSingleField (C1 c a) where
-    objectWithSingleField opts = H.singleton typ . gToJSON opts
+    objectWithSingleFieldObj opts = H.singleton typ . gToJSON opts
         where
           typ = pack $ constructorTagModifier opts $
                          conName (undefined :: t c a p)
-    {-# INLINE objectWithSingleField #-}
+    {-# INLINE objectWithSingleFieldObj #-}
+
+    objectWithSingleFieldEnc opts v =
+      B.char7 '{' <>
+      toEncoding (constructorTagModifier opts
+                  (conName (undefined :: t c a p))) <>
+      B.char7 ':' <>
+      gToEncoding opts v <>
+      B.char7 '}'
+    {-# INLINE objectWithSingleFieldEnc #-}
 
 --------------------------------------------------------------------------------
 -- Generic parseJSON

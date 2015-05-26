@@ -2,7 +2,7 @@
 
 -- |
 -- Module:      Data.Aeson.Types.Class
--- Copyright:   (c) 2011-2013 Bryan O'Sullivan
+-- Copyright:   (c) 2011-2015 Bryan O'Sullivan
 --              (c) 2011 MailRank, Inc.
 -- License:     Apache
 -- Maintainer:  Bryan O'Sullivan <bos@serpentine.com>
@@ -21,6 +21,7 @@ module Data.Aeson.Types.Class
     , GFromJSON(..)
     , GToJSON(..)
     , genericToJSON
+    , genericToEncoding
     , genericParseJSON
     ) where
 
@@ -33,17 +34,27 @@ class GToJSON f where
     -- default generic implementation of 'toJSON'.
     gToJSON :: Options -> f a -> Value
 
+    -- | This method (applied to 'defaultOptions') is used as the
+    -- default generic implementation of 'toEncoding'.
+    gToEncoding :: Options -> f a -> Encoding
+
 -- | Class of generic representation types ('Rep') that can be converted from JSON.
 class GFromJSON f where
     -- | This method (applied to 'defaultOptions') is used as the
     -- default generic implementation of 'parseJSON'.
     gParseJSON :: Options -> Value -> Parser (f a)
 
--- | A configurable generic JSON encoder. This function applied to
+-- | A configurable generic JSON creator. This function applied to
 -- 'defaultOptions' is used as the default for 'toJSON' when the type
 -- is an instance of 'Generic'.
 genericToJSON :: (Generic a, GToJSON (Rep a)) => Options -> a -> Value
 genericToJSON opts = gToJSON opts . from
+
+-- | A configurable generic JSON encoder. This function applied to
+-- 'defaultOptions' is used as the default for 'toEncoding' when the type
+-- is an instance of 'Generic'.
+genericToEncoding :: (Generic a, GToJSON (Rep a)) => Options -> a -> Encoding
+genericToEncoding opts = gToEncoding opts . from
 
 -- | A configurable generic JSON decoder. This function applied to
 -- 'defaultOptions' is used as the default for 'parseJSON' when the
@@ -101,13 +112,19 @@ genericParseJSON opts = fmap to . gParseJSON opts
 --
 -- @
 -- instance ToJSON Coord where
---     toJSON = 'genericToJSON' 'defaultOptions'
+--     toJSON     = 'genericToJSON' 'defaultOptions'
+--     toEncoding = 'genericToEncoding' 'defaultOptions'
 -- @
 class ToJSON a where
-    toJSON   :: a -> Value
+    toJSON     :: a -> Value
 
     default toJSON :: (Generic a, GToJSON (Rep a)) => a -> Value
     toJSON = genericToJSON defaultOptions
+
+    toEncoding :: a -> Encoding
+
+    default toEncoding :: (Generic a, GToJSON (Rep a)) => a -> Encoding
+    toEncoding = genericToEncoding defaultOptions
 
 -- | A type that can be converted from JSON, with the possibility of
 -- failure.

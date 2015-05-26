@@ -15,6 +15,8 @@ module Data.Aeson.Types.Internal
     (
     -- * Core JSON types
       Value(..)
+    , Encoding
+    , Series(..)
     , Array
     , emptyArray, isEmptyArray
     , Pair
@@ -43,16 +45,16 @@ module Data.Aeson.Types.Internal
     , DotNetTime(..)
     ) where
 
-
 import Control.Applicative
 import Control.Monad
 import Control.DeepSeq (NFData(..))
+import Data.ByteString.Builder (Builder, char7)
 import Data.Char (toLower, isUpper)
 import Data.Scientific (Scientific)
 import Data.Hashable (Hashable(..))
 import Data.Data (Data)
 import Data.HashMap.Strict (HashMap)
-import Data.Monoid (Monoid(..))
+import Data.Monoid (Monoid(..), (<>))
 import Data.String (IsString(..))
 import Data.Text (Text, pack)
 import Data.Time (UTCTime)
@@ -181,6 +183,22 @@ data Value = Object !Object
            | Bool !Bool
            | Null
              deriving (Eq, Read, Show, Typeable, Data)
+
+-- | An encoding of a JSON value.
+type Encoding = Builder
+
+data Series = Empty
+            | Value Builder
+            deriving (Typeable)
+
+instance Monoid Series where
+    mempty              = Empty
+    mappend Empty a     = a
+    mappend (Value a) b =
+        Value $
+        a <> case b of
+               Empty   -> mempty
+               Value c -> char7 ',' <> c
 
 -- | A newtype wrapper for 'UTCTime' that uses the same non-standard
 -- serialization format as Microsoft .NET, whose @System.DateTime@
