@@ -3,7 +3,7 @@
 import Control.Exception
 import Control.Monad
 import Data.Aeson
-import Data.Attoparsec (IResult(..), parseWith)
+import Data.Attoparsec.ByteString (IResult(..), parseWith)
 import Data.Time.Clock
 import System.Environment (getArgs)
 import System.IO
