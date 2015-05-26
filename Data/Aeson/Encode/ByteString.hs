@@ -34,7 +34,7 @@ module Data.Aeson.Encode.ByteString
     ) where
 
 import Data.Aeson.Types.Class (ToJSON(..))
-import Data.Aeson.Types.Internal (Value(..), Series(..))
+import Data.Aeson.Types.Internal (Encoding(..), Series(..), Value(..))
 import Data.ByteString.Builder as B
 import Data.ByteString.Builder.Prim as BP
 import Data.ByteString.Builder.Scientific (scientificBuilder)
@@ -128,18 +128,19 @@ number s
   where
     e = base10Exponent s
 
-foldable :: (Foldable t, ToJSON a) => t a -> Builder
+foldable :: (Foldable t, ToJSON a) => t a -> Encoding
 foldable = series '[' ']' . foldMap (Value . toEncoding)
 
-series :: Char -> Char -> Series -> Builder
-series begin end (Value v) = B.char7 begin <> v <> B.char7 end
-series begin end Empty     = BP.primBounded (ascii2 (begin,end)) ()
+series :: Char -> Char -> Series -> Encoding
+series begin end (Value v) = Encoding $
+                             B.char7 begin <> fromEncoding v <> B.char7 end
+series begin end Empty     = Encoding (BP.primBounded (ascii2 (begin,end)) ())
 
-emptyArray_ :: Builder
-emptyArray_ = BP.primBounded (ascii2 ('[',']')) ()
+emptyArray_ :: Encoding
+emptyArray_ = Encoding (BP.primBounded (ascii2 ('[',']')) ())
 
-emptyObject_ :: Builder
-emptyObject_ = BP.primBounded (ascii2 ('{','}')) ()
+emptyObject_ :: Encoding
+emptyObject_ = Encoding (BP.primBounded (ascii2 ('{','}')) ())
 
 ascii2 :: (Char, Char) -> BP.BoundedPrim a
 ascii2 cs = BP.liftFixedToBounded $ (const cs) BP.>$< BP.char7 >*< BP.char7

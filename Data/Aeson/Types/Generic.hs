@@ -69,7 +69,7 @@ instance (ConsToJSON a) => GToJSON (C1 c a) where
     gToJSON opts = consToJSON opts . unM1
     {-# INLINE gToJSON #-}
 
-    gToEncoding opts = consToEncoding opts . unM1
+    gToEncoding opts = Encoding . consToEncoding opts . unM1
     {-# INLINE gToEncoding #-}
 
 instance ( WriteProduct a, WriteProduct b
@@ -87,7 +87,8 @@ instance ( WriteProduct a, WriteProduct b
                        productSize
     {-# INLINE gToJSON #-}
 
-    gToEncoding opts p = B.char7 '[' <> encodeProduct opts p <> B.char7 ']'
+    gToEncoding opts p = Encoding $
+                         B.char7 '[' <> encodeProduct opts p <> B.char7 ']'
 
 instance ( AllNullary (a :+: b) allNullary
          , SumToJSON  (a :+: b) allNullary ) => GToJSON (a :+: b) where
@@ -98,8 +99,9 @@ instance ( AllNullary (a :+: b) allNullary
                  . sumToJSON opts
     {-# INLINE gToJSON #-}
 
-    gToEncoding opts = (unTagged :: Tagged allNullary B.Builder -> B.Builder)
-                       . sumToEncoding opts
+    gToEncoding opts = Encoding .
+                       (unTagged :: Tagged allNullary B.Builder -> B.Builder) .
+                       sumToEncoding opts
     {-# INLINE gToEncoding #-}
 
 --------------------------------------------------------------------------------
@@ -119,7 +121,7 @@ instance ( GetConName            f
     {-# INLINE sumToJSON #-}
 
     sumToEncoding opts
-        | allNullaryToStringTag opts = Tagged . toEncoding .
+        | allNullaryToStringTag opts = Tagged . builder .
                                        constructorTagModifier opts . getConName
         | otherwise = Tagged . nonAllNullarySumToEncoding opts
     {-# INLINE sumToEncoding #-}
@@ -188,9 +190,9 @@ instance ( IsRecord      a isRecord
 
     taggedObjectEnc opts tagFieldName contentsFieldName v =
         B.char7 '{' <>
-        (toEncoding tagFieldName <>
+        (builder tagFieldName <>
          B.char7 ':' <>
-         toEncoding (constructorTagModifier opts (conName (undefined :: t c a p)))) <>
+         builder (constructorTagModifier opts (conName (undefined :: t c a p)))) <>
         B.char7 ',' <>
         ((unTagged :: Tagged isRecord B.Builder -> B.Builder) .
          taggedObjectEnc' opts contentsFieldName . unM1 $ v) <>
@@ -214,8 +216,8 @@ instance (GToJSON f) => TaggedObject' f False where
     {-# INLINE taggedObjectPairs' #-}
 
     taggedObjectEnc' opts contentsFieldName =
-        Tagged . (\z -> toEncoding contentsFieldName <> B.char7 ':' <> z) .
-        gToEncoding opts
+        Tagged . (\z -> builder contentsFieldName <> B.char7 ':' <> z) .
+        gbuilder opts
     {-# INLINE taggedObjectEnc' #-}
 
 --------------------------------------------------------------------------------
@@ -258,12 +260,9 @@ instance ( GToJSON a, ConsToJSON a
       return mv
     {-# INLINE twoElemArrayObj #-}
 
-    twoElemArrayEnc opts x =
-      B.char7 '[' <>
-      toEncoding (constructorTagModifier opts (conName (undefined :: t c a p))) <>
-      B.char7 ',' <>
-      gToEncoding opts x <>
-      B.char7 ']'
+    twoElemArrayEnc opts x = fromEncoding . tuple $
+      builder (constructorTagModifier opts (conName (undefined :: t c a p))) >*<
+      gbuilder opts x
     {-# INLINE twoElemArrayEnc #-}
 
 --------------------------------------------------------------------------------
@@ -299,7 +298,7 @@ instance (RecordTo f) => ConsToJSON' f True where
 instance GToJSON f => ConsToJSON' f False where
     consToJSON' opts = Tagged . gToJSON opts
     {-# INLINE consToJSON' #-}
-    consToEncoding' opts = Tagged . gToEncoding opts
+    consToEncoding' opts = Tagged . gbuilder opts
     {-# INLINE consToEncoding' #-}
 
 --------------------------------------------------------------------------------
@@ -344,9 +343,9 @@ fieldToPair opts m1 = pure ( pack $ fieldLabelModifier opts $ selName m1
 
 fieldToEncoding :: (Selector s, GToJSON a) => Options -> S1 s a p -> B.Builder
 fieldToEncoding opts m1 =
-    toEncoding (fieldLabelModifier opts $ selName m1) <>
+    builder (fieldLabelModifier opts $ selName m1) <>
     B.char7 ':' <>
-    gToEncoding opts (unM1 m1)
+    gbuilder opts (unM1 m1)
 {-# INLINE fieldToEncoding #-}
 
 --------------------------------------------------------------------------------
@@ -380,7 +379,7 @@ instance (GToJSON a) => WriteProduct a where
     writeProduct opts mv ix _ = VM.unsafeWrite mv ix . gToJSON opts
     {-# INLINE writeProduct #-}
 
-    encodeProduct opts = gToEncoding opts
+    encodeProduct opts = gbuilder opts
     {-# INLINE encodeProduct #-}
 
 --------------------------------------------------------------------------------
@@ -409,12 +408,15 @@ instance ( GToJSON a, ConsToJSON a
 
     objectWithSingleFieldEnc opts v =
       B.char7 '{' <>
-      toEncoding (constructorTagModifier opts
-                  (conName (undefined :: t c a p))) <>
+      builder (constructorTagModifier opts
+               (conName (undefined :: t c a p))) <>
       B.char7 ':' <>
-      gToEncoding opts v <>
+      gbuilder opts v <>
       B.char7 '}'
     {-# INLINE objectWithSingleFieldEnc #-}
+
+gbuilder :: GToJSON f => Options -> f a -> Builder
+gbuilder opts = fromEncoding . gToEncoding opts
 
 --------------------------------------------------------------------------------
 -- Generic parseJSON

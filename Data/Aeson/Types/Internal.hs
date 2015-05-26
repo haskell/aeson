@@ -15,7 +15,7 @@ module Data.Aeson.Types.Internal
     (
     -- * Core JSON types
       Value(..)
-    , Encoding
+    , Encoding(..)
     , Series(..)
     , Array
     , emptyArray, isEmptyArray
@@ -205,10 +205,12 @@ data Value = Object !Object
              deriving (Eq, Read, Show, Typeable, Data)
 
 -- | An encoding of a JSON value.
-type Encoding = Builder
+newtype Encoding = Encoding {
+      fromEncoding :: Builder
+    } deriving (Monoid)
 
 data Series = Empty
-            | Value Builder
+            | Value Encoding
             deriving (Typeable)
 
 instance Monoid Series where
@@ -218,7 +220,7 @@ instance Monoid Series where
         Value $
         a <> case b of
                Empty   -> mempty
-               Value c -> char7 ',' <> c
+               Value c -> Encoding (char7 ',') <> c
 
 -- | A newtype wrapper for 'UTCTime' that uses the same non-standard
 -- serialization format as Microsoft .NET, whose @System.DateTime@

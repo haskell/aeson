@@ -14,6 +14,7 @@ module Data.Aeson.Types
     -- * Core JSON types
       Value(..)
     , Encoding
+    , fromEncoding
     , Array
     , emptyArray
     , Pair

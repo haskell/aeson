@@ -45,6 +45,8 @@ module Data.Aeson
     , eitherDecodeStrict'
     -- * Core JSON types
     , Value(..)
+    , Encoding
+    , fromEncoding
     , Array
     , Object
     -- * Convenience types
