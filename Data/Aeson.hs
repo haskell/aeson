@@ -142,24 +142,28 @@ decodeStrict' :: (FromJSON a) => B.ByteString -> Maybe a
 decodeStrict' = decodeStrictWith jsonEOF' fromJSON
 {-# INLINE decodeStrict' #-}
 
+eitherFormatError :: Either (JSONPath, String) a -> Either String a
+eitherFormatError = either (Left . uncurry formatError) Right
+{-# INLINE eitherFormatError #-}
+
 -- | Like 'decode' but returns an error message when decoding fails.
 eitherDecode :: (FromJSON a) => L.ByteString -> Either String a
-eitherDecode = eitherDecodeWith jsonEOF fromJSON
+eitherDecode = eitherFormatError . eitherDecodeWith jsonEOF fromJSON
 {-# INLINE eitherDecode #-}
 
 -- | Like 'decodeStrict' but returns an error message when decoding fails.
 eitherDecodeStrict :: (FromJSON a) => B.ByteString -> Either String a
-eitherDecodeStrict = eitherDecodeStrictWith jsonEOF fromJSON
+eitherDecodeStrict = eitherFormatError . eitherDecodeStrictWith jsonEOF fromJSON
 {-# INLINE eitherDecodeStrict #-}
 
 -- | Like 'decode'' but returns an error message when decoding fails.
 eitherDecode' :: (FromJSON a) => L.ByteString -> Either String a
-eitherDecode' = eitherDecodeWith jsonEOF' fromJSON
+eitherDecode' = eitherFormatError . eitherDecodeWith jsonEOF' fromJSON
 {-# INLINE eitherDecode' #-}
 
 -- | Like 'decodeStrict'' but returns an error message when decoding fails.
 eitherDecodeStrict' :: (FromJSON a) => B.ByteString -> Either String a
-eitherDecodeStrict' = eitherDecodeStrictWith jsonEOF' fromJSON
+eitherDecodeStrict' = eitherFormatError . eitherDecodeStrictWith jsonEOF' fromJSON
 {-# INLINE eitherDecodeStrict' #-}
 
 -- $use

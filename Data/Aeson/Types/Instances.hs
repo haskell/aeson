@@ -73,7 +73,7 @@ import Data.Ratio (Ratio, (%), numerator, denominator)
 import Data.Text (Text, pack, unpack)
 import Data.Time (UTCTime, ZonedTime(..), TimeZone(..))
 import Data.Time.Format (FormatTime, formatTime, parseTime)
-import Data.Traversable (traverse)
+import Data.Traversable as Tr (sequence, traverse)
 import Data.Vector (Vector)
 import Data.Word (Word, Word8, Word16, Word32, Word64)
 import Foreign.Storable (Storable)
@@ -101,6 +101,9 @@ import Data.Time.Format (defaultTimeLocale, dateTimeFmt)
 #else
 import System.Locale (defaultTimeLocale, dateTimeFmt)
 #endif
+
+parseIndexedJSON :: FromJSON a => Int -> Value -> Parser a
+parseIndexedJSON idx value = parseJSON value <?> Index idx
 
 instance (ToJSON a) => ToJSON (Identity a) where
     toJSON (Identity a) = toJSON a
@@ -421,7 +424,7 @@ instance (ToJSON a) => ToJSON [a] where
       where commas = P.foldr (\v vs -> B.char7 ',' <> toEncoding v <> vs) mempty
 
 instance (FromJSON a) => FromJSON [a] where
-    parseJSON = withArray "[a]" $ mapM parseJSON . V.toList
+    parseJSON = withArray "[a]" $ Tr.sequence . zipWith parseIndexedJSON [0..] . V.toList
     {-# INLINE parseJSON #-}
 
 instance (Foldable t, ToJSON a) => ToJSON (t a) where
@@ -449,7 +452,7 @@ encodeVector xs
     where go v b = B.char7 ',' <> toEncoding v <> b
 
 instance (FromJSON a) => FromJSON (Vector a) where
-    parseJSON = withArray "Vector a" $ V.mapM parseJSON
+    parseJSON = withArray "Vector a" $ V.mapM (uncurry parseIndexedJSON) . V.indexed
     {-# INLINE parseJSON #-}
 
 vectorToJSON :: (VG.Vector v a, ToJSON a) => v a -> Value
@@ -457,7 +460,7 @@ vectorToJSON = Array . V.map toJSON . V.convert
 {-# INLINE vectorToJSON #-}
 
 vectorParseJSON :: (FromJSON a, VG.Vector w a) => String -> Value -> Parser (w a)
-vectorParseJSON s = withArray s $ fmap V.convert . V.mapM parseJSON
+vectorParseJSON s = withArray s $ fmap V.convert . V.mapM (uncurry parseIndexedJSON) . V.indexed
 {-# INLINE vectorParseJSON #-}
 
 instance (Storable a, ToJSON a) => ToJSON (VS.Vector a) where
@@ -564,7 +567,7 @@ encodePair k v = toEncoding k <> B.char7 ':' <> toEncoding v
 
 instance (FromJSON v) => FromJSON (M.Map Text v) where
     parseJSON = withObject "Map Text a" $
-                  fmap (H.foldrWithKey M.insert M.empty) . traverse parseJSON
+                  fmap (H.foldrWithKey M.insert M.empty) . H.traverseWithKey (\k v -> parseJSON v <?> Key k)
 
 instance (ToJSON v) => ToJSON (M.Map LT.Text v) where
     toJSON = Object . mapHashKeyVal LT.toStrict toJSON
@@ -589,7 +592,7 @@ instance (ToJSON v) => ToJSON (H.HashMap Text v) where
     toEncoding = encodeWithKey H.foldrWithKey
 
 instance (FromJSON v) => FromJSON (H.HashMap Text v) where
-    parseJSON = withObject "HashMap Text a" $ traverse parseJSON
+    parseJSON = withObject "HashMap Text a" $ H.traverseWithKey (\k v -> parseJSON v <?> Key k)
 
 instance (ToJSON v) => ToJSON (H.HashMap LT.Text v) where
     toJSON = Object . mapKeyVal LT.toStrict toJSON
@@ -712,6 +715,9 @@ instance FromJSON UTCTime where
           _      -> fail "could not parse ISO-8601 date"
     {-# INLINE parseJSON #-}
 
+parseJSONElemAtIndex :: FromJSON a => Int -> Vector Value -> Parser a
+parseJSONElemAtIndex idx ary = parseJSON (V.unsafeIndex ary idx) <?> Index idx
+
 instance (ToJSON a, ToJSON b) => ToJSON (a,b) where
     toJSON (a,b) = Array $ V.create $ do
                      mv <- VM.unsafeNew 2
@@ -728,8 +734,8 @@ instance (FromJSON a, FromJSON b) => FromJSON (a,b) where
     parseJSON = withArray "(a,b)" $ \ab ->
         let n = V.length ab
         in if n == 2
-             then (,) <$> parseJSON (V.unsafeIndex ab 0)
-                      <*> parseJSON (V.unsafeIndex ab 1)
+             then (,) <$> parseJSONElemAtIndex 0 ab
+                      <*> parseJSONElemAtIndex 1 ab
              else fail $ "cannot unpack array of length " ++
                          show n ++ " into a pair"
     {-# INLINE parseJSON #-}
@@ -752,9 +758,9 @@ instance (FromJSON a, FromJSON b, FromJSON c) => FromJSON (a,b,c) where
     parseJSON = withArray "(a,b,c)" $ \abc ->
         let n = V.length abc
         in if n == 3
-             then (,,) <$> parseJSON (V.unsafeIndex abc 0)
-                       <*> parseJSON (V.unsafeIndex abc 1)
-                       <*> parseJSON (V.unsafeIndex abc 2)
+             then (,,) <$> parseJSONElemAtIndex 0 abc
+                       <*> parseJSONElemAtIndex 1 abc
+                       <*> parseJSONElemAtIndex 2 abc
              else fail $ "cannot unpack array of length " ++
                           show n ++ " into a 3-tuple"
     {-# INLINE parseJSON #-}
@@ -780,10 +786,10 @@ instance (FromJSON a, FromJSON b, FromJSON c, FromJSON d) =>
     parseJSON = withArray "(a,b,c,d)" $ \abcd ->
         let n = V.length abcd
         in if n == 4
-             then (,,,) <$> parseJSON (V.unsafeIndex abcd 0)
-                        <*> parseJSON (V.unsafeIndex abcd 1)
-                        <*> parseJSON (V.unsafeIndex abcd 2)
-                        <*> parseJSON (V.unsafeIndex abcd 3)
+             then (,,,) <$> parseJSONElemAtIndex 0 abcd
+                        <*> parseJSONElemAtIndex 1 abcd
+                        <*> parseJSONElemAtIndex 2 abcd
+                        <*> parseJSONElemAtIndex 3 abcd
              else fail $ "cannot unpack array of length " ++
                          show n ++ " into a 4-tuple"
     {-# INLINE parseJSON #-}
@@ -812,11 +818,11 @@ instance (FromJSON a, FromJSON b, FromJSON c, FromJSON d, FromJSON e) =>
     parseJSON = withArray "(a,b,c,d,e)" $ \abcde ->
         let n = V.length abcde
         in if n == 5
-             then (,,,,) <$> parseJSON (V.unsafeIndex abcde 0)
-                         <*> parseJSON (V.unsafeIndex abcde 1)
-                         <*> parseJSON (V.unsafeIndex abcde 2)
-                         <*> parseJSON (V.unsafeIndex abcde 3)
-                         <*> parseJSON (V.unsafeIndex abcde 4)
+             then (,,,,) <$> parseJSONElemAtIndex 0 abcde
+                         <*> parseJSONElemAtIndex 1 abcde
+                         <*> parseJSONElemAtIndex 2 abcde
+                         <*> parseJSONElemAtIndex 3 abcde
+                         <*> parseJSONElemAtIndex 4 abcde
              else fail $ "cannot unpack array of length " ++
                          show n ++ " into a 5-tuple"
     {-# INLINE parseJSON #-}
@@ -847,12 +853,12 @@ instance (FromJSON a, FromJSON b, FromJSON c, FromJSON d, FromJSON e,
     parseJSON = withArray "(a,b,c,d,e,f)" $ \abcdef ->
         let n = V.length abcdef
         in if n == 6
-             then (,,,,,) <$> parseJSON (V.unsafeIndex abcdef 0)
-                          <*> parseJSON (V.unsafeIndex abcdef 1)
-                          <*> parseJSON (V.unsafeIndex abcdef 2)
-                          <*> parseJSON (V.unsafeIndex abcdef 3)
-                          <*> parseJSON (V.unsafeIndex abcdef 4)
-                          <*> parseJSON (V.unsafeIndex abcdef 5)
+             then (,,,,,) <$> parseJSONElemAtIndex 0 abcdef
+                          <*> parseJSONElemAtIndex 1 abcdef
+                          <*> parseJSONElemAtIndex 2 abcdef
+                          <*> parseJSONElemAtIndex 3 abcdef
+                          <*> parseJSONElemAtIndex 4 abcdef
+                          <*> parseJSONElemAtIndex 5 abcdef
              else fail $ "cannot unpack array of length " ++
                          show n ++ " into a 6-tuple"
     {-# INLINE parseJSON #-}
@@ -885,13 +891,13 @@ instance (FromJSON a, FromJSON b, FromJSON c, FromJSON d, FromJSON e,
     parseJSON = withArray "(a,b,c,d,e,f,g)" $ \abcdefg ->
         let n = V.length abcdefg
         in if n == 7
-             then (,,,,,,) <$> parseJSON (V.unsafeIndex abcdefg 0)
-                           <*> parseJSON (V.unsafeIndex abcdefg 1)
-                           <*> parseJSON (V.unsafeIndex abcdefg 2)
-                           <*> parseJSON (V.unsafeIndex abcdefg 3)
-                           <*> parseJSON (V.unsafeIndex abcdefg 4)
-                           <*> parseJSON (V.unsafeIndex abcdefg 5)
-                           <*> parseJSON (V.unsafeIndex abcdefg 6)
+             then (,,,,,,) <$> parseJSONElemAtIndex 0 abcdefg
+                           <*> parseJSONElemAtIndex 1 abcdefg
+                           <*> parseJSONElemAtIndex 2 abcdefg
+                           <*> parseJSONElemAtIndex 3 abcdefg
+                           <*> parseJSONElemAtIndex 4 abcdefg
+                           <*> parseJSONElemAtIndex 5 abcdefg
+                           <*> parseJSONElemAtIndex 6 abcdefg
              else fail $ "cannot unpack array of length " ++
                          show n ++ " into a 7-tuple"
     {-# INLINE parseJSON #-}
@@ -930,14 +936,14 @@ instance (FromJSON a, FromJSON b, FromJSON c, FromJSON d, FromJSON e,
            then fail $ "cannot unpack array of length " ++
                        show n ++ " into an 8-tuple"
            else (,,,,,,,)
-                <$> parseJSON (V.unsafeIndex ary 0)
-                <*> parseJSON (V.unsafeIndex ary 1)
-                <*> parseJSON (V.unsafeIndex ary 2)
-                <*> parseJSON (V.unsafeIndex ary 3)
-                <*> parseJSON (V.unsafeIndex ary 4)
-                <*> parseJSON (V.unsafeIndex ary 5)
-                <*> parseJSON (V.unsafeIndex ary 6)
-                <*> parseJSON (V.unsafeIndex ary 7)
+                <$> parseJSONElemAtIndex 0 ary
+                <*> parseJSONElemAtIndex 1 ary
+                <*> parseJSONElemAtIndex 2 ary
+                <*> parseJSONElemAtIndex 3 ary
+                <*> parseJSONElemAtIndex 4 ary
+                <*> parseJSONElemAtIndex 5 ary
+                <*> parseJSONElemAtIndex 6 ary
+                <*> parseJSONElemAtIndex 7 ary
     {-# INLINE parseJSON #-}
 
 instance (ToJSON a, ToJSON b, ToJSON c, ToJSON d, ToJSON e, ToJSON f,
@@ -976,15 +982,15 @@ instance (FromJSON a, FromJSON b, FromJSON c, FromJSON d, FromJSON e,
            then fail $ "cannot unpack array of length " ++
                        show n ++ " into a 9-tuple"
            else (,,,,,,,,)
-                <$> parseJSON (V.unsafeIndex ary 0)
-                <*> parseJSON (V.unsafeIndex ary 1)
-                <*> parseJSON (V.unsafeIndex ary 2)
-                <*> parseJSON (V.unsafeIndex ary 3)
-                <*> parseJSON (V.unsafeIndex ary 4)
-                <*> parseJSON (V.unsafeIndex ary 5)
-                <*> parseJSON (V.unsafeIndex ary 6)
-                <*> parseJSON (V.unsafeIndex ary 7)
-                <*> parseJSON (V.unsafeIndex ary 8)
+                <$> parseJSONElemAtIndex 0 ary
+                <*> parseJSONElemAtIndex 1 ary
+                <*> parseJSONElemAtIndex 2 ary
+                <*> parseJSONElemAtIndex 3 ary
+                <*> parseJSONElemAtIndex 4 ary
+                <*> parseJSONElemAtIndex 5 ary
+                <*> parseJSONElemAtIndex 6 ary
+                <*> parseJSONElemAtIndex 7 ary
+                <*> parseJSONElemAtIndex 8 ary
     {-# INLINE parseJSON #-}
 
 instance (ToJSON a, ToJSON b, ToJSON c, ToJSON d, ToJSON e, ToJSON f,
@@ -1026,16 +1032,16 @@ instance (FromJSON a, FromJSON b, FromJSON c, FromJSON d, FromJSON e,
            then fail $ "cannot unpack array of length " ++
                        show n ++ " into a 10-tuple"
            else (,,,,,,,,,)
-                <$> parseJSON (V.unsafeIndex ary 0)
-                <*> parseJSON (V.unsafeIndex ary 1)
-                <*> parseJSON (V.unsafeIndex ary 2)
-                <*> parseJSON (V.unsafeIndex ary 3)
-                <*> parseJSON (V.unsafeIndex ary 4)
-                <*> parseJSON (V.unsafeIndex ary 5)
-                <*> parseJSON (V.unsafeIndex ary 6)
-                <*> parseJSON (V.unsafeIndex ary 7)
-                <*> parseJSON (V.unsafeIndex ary 8)
-                <*> parseJSON (V.unsafeIndex ary 9)
+                <$> parseJSONElemAtIndex 0 ary
+                <*> parseJSONElemAtIndex 1 ary
+                <*> parseJSONElemAtIndex 2 ary
+                <*> parseJSONElemAtIndex 3 ary
+                <*> parseJSONElemAtIndex 4 ary
+                <*> parseJSONElemAtIndex 5 ary
+                <*> parseJSONElemAtIndex 6 ary
+                <*> parseJSONElemAtIndex 7 ary
+                <*> parseJSONElemAtIndex 8 ary
+                <*> parseJSONElemAtIndex 9 ary
     {-# INLINE parseJSON #-}
 
 instance (ToJSON a, ToJSON b, ToJSON c, ToJSON d, ToJSON e, ToJSON f,
@@ -1080,17 +1086,17 @@ instance (FromJSON a, FromJSON b, FromJSON c, FromJSON d, FromJSON e,
            then fail $ "cannot unpack array of length " ++
                        show n ++ " into an 11-tuple"
            else (,,,,,,,,,,)
-                <$> parseJSON (V.unsafeIndex ary 0)
-                <*> parseJSON (V.unsafeIndex ary 1)
-                <*> parseJSON (V.unsafeIndex ary 2)
-                <*> parseJSON (V.unsafeIndex ary 3)
-                <*> parseJSON (V.unsafeIndex ary 4)
-                <*> parseJSON (V.unsafeIndex ary 5)
-                <*> parseJSON (V.unsafeIndex ary 6)
-                <*> parseJSON (V.unsafeIndex ary 7)
-                <*> parseJSON (V.unsafeIndex ary 8)
-                <*> parseJSON (V.unsafeIndex ary 9)
-                <*> parseJSON (V.unsafeIndex ary 10)
+                <$> parseJSONElemAtIndex 0 ary
+                <*> parseJSONElemAtIndex 1 ary
+                <*> parseJSONElemAtIndex 2 ary
+                <*> parseJSONElemAtIndex 3 ary
+                <*> parseJSONElemAtIndex 4 ary
+                <*> parseJSONElemAtIndex 5 ary
+                <*> parseJSONElemAtIndex 6 ary
+                <*> parseJSONElemAtIndex 7 ary
+                <*> parseJSONElemAtIndex 8 ary
+                <*> parseJSONElemAtIndex 9 ary
+                <*> parseJSONElemAtIndex 10 ary
     {-# INLINE parseJSON #-}
 
 instance (ToJSON a, ToJSON b, ToJSON c, ToJSON d, ToJSON e, ToJSON f,
@@ -1137,18 +1143,18 @@ instance (FromJSON a, FromJSON b, FromJSON c, FromJSON d, FromJSON e,
            then fail $ "cannot unpack array of length " ++
                        show n ++ " into a 12-tuple"
            else (,,,,,,,,,,,)
-                <$> parseJSON (V.unsafeIndex ary 0)
-                <*> parseJSON (V.unsafeIndex ary 1)
-                <*> parseJSON (V.unsafeIndex ary 2)
-                <*> parseJSON (V.unsafeIndex ary 3)
-                <*> parseJSON (V.unsafeIndex ary 4)
-                <*> parseJSON (V.unsafeIndex ary 5)
-                <*> parseJSON (V.unsafeIndex ary 6)
-                <*> parseJSON (V.unsafeIndex ary 7)
-                <*> parseJSON (V.unsafeIndex ary 8)
-                <*> parseJSON (V.unsafeIndex ary 9)
-                <*> parseJSON (V.unsafeIndex ary 10)
-                <*> parseJSON (V.unsafeIndex ary 11)
+                <$> parseJSONElemAtIndex 0 ary
+                <*> parseJSONElemAtIndex 1 ary
+                <*> parseJSONElemAtIndex 2 ary
+                <*> parseJSONElemAtIndex 3 ary
+                <*> parseJSONElemAtIndex 4 ary
+                <*> parseJSONElemAtIndex 5 ary
+                <*> parseJSONElemAtIndex 6 ary
+                <*> parseJSONElemAtIndex 7 ary
+                <*> parseJSONElemAtIndex 8 ary
+                <*> parseJSONElemAtIndex 9 ary
+                <*> parseJSONElemAtIndex 10 ary
+                <*> parseJSONElemAtIndex 11 ary
     {-# INLINE parseJSON #-}
 
 instance (ToJSON a, ToJSON b, ToJSON c, ToJSON d, ToJSON e, ToJSON f,
@@ -1198,19 +1204,19 @@ instance (FromJSON a, FromJSON b, FromJSON c, FromJSON d, FromJSON e,
            then fail $ "cannot unpack array of length " ++
                        show n ++ " into a 13-tuple"
            else (,,,,,,,,,,,,)
-                <$> parseJSON (V.unsafeIndex ary 0)
-                <*> parseJSON (V.unsafeIndex ary 1)
-                <*> parseJSON (V.unsafeIndex ary 2)
-                <*> parseJSON (V.unsafeIndex ary 3)
-                <*> parseJSON (V.unsafeIndex ary 4)
-                <*> parseJSON (V.unsafeIndex ary 5)
-                <*> parseJSON (V.unsafeIndex ary 6)
-                <*> parseJSON (V.unsafeIndex ary 7)
-                <*> parseJSON (V.unsafeIndex ary 8)
-                <*> parseJSON (V.unsafeIndex ary 9)
-                <*> parseJSON (V.unsafeIndex ary 10)
-                <*> parseJSON (V.unsafeIndex ary 11)
-                <*> parseJSON (V.unsafeIndex ary 12)
+                <$> parseJSONElemAtIndex 0 ary
+                <*> parseJSONElemAtIndex 1 ary
+                <*> parseJSONElemAtIndex 2 ary
+                <*> parseJSONElemAtIndex 3 ary
+                <*> parseJSONElemAtIndex 4 ary
+                <*> parseJSONElemAtIndex 5 ary
+                <*> parseJSONElemAtIndex 6 ary
+                <*> parseJSONElemAtIndex 7 ary
+                <*> parseJSONElemAtIndex 8 ary
+                <*> parseJSONElemAtIndex 9 ary
+                <*> parseJSONElemAtIndex 10 ary
+                <*> parseJSONElemAtIndex 11 ary
+                <*> parseJSONElemAtIndex 12 ary
     {-# INLINE parseJSON #-}
 
 instance (ToJSON a, ToJSON b, ToJSON c, ToJSON d, ToJSON e, ToJSON f,
@@ -1262,20 +1268,20 @@ instance (FromJSON a, FromJSON b, FromJSON c, FromJSON d, FromJSON e,
            then fail $ "cannot unpack array of length " ++
                        show n ++ " into a 14-tuple"
            else (,,,,,,,,,,,,,)
-                <$> parseJSON (V.unsafeIndex ary 0)
-                <*> parseJSON (V.unsafeIndex ary 1)
-                <*> parseJSON (V.unsafeIndex ary 2)
-                <*> parseJSON (V.unsafeIndex ary 3)
-                <*> parseJSON (V.unsafeIndex ary 4)
-                <*> parseJSON (V.unsafeIndex ary 5)
-                <*> parseJSON (V.unsafeIndex ary 6)
-                <*> parseJSON (V.unsafeIndex ary 7)
-                <*> parseJSON (V.unsafeIndex ary 8)
-                <*> parseJSON (V.unsafeIndex ary 9)
-                <*> parseJSON (V.unsafeIndex ary 10)
-                <*> parseJSON (V.unsafeIndex ary 11)
-                <*> parseJSON (V.unsafeIndex ary 12)
-                <*> parseJSON (V.unsafeIndex ary 13)
+                <$> parseJSONElemAtIndex 0 ary
+                <*> parseJSONElemAtIndex 1 ary
+                <*> parseJSONElemAtIndex 2 ary
+                <*> parseJSONElemAtIndex 3 ary
+                <*> parseJSONElemAtIndex 4 ary
+                <*> parseJSONElemAtIndex 5 ary
+                <*> parseJSONElemAtIndex 6 ary
+                <*> parseJSONElemAtIndex 7 ary
+                <*> parseJSONElemAtIndex 8 ary
+                <*> parseJSONElemAtIndex 9 ary
+                <*> parseJSONElemAtIndex 10 ary
+                <*> parseJSONElemAtIndex 11 ary
+                <*> parseJSONElemAtIndex 12 ary
+                <*> parseJSONElemAtIndex 13 ary
     {-# INLINE parseJSON #-}
 
 instance (ToJSON a, ToJSON b, ToJSON c, ToJSON d, ToJSON e, ToJSON f,
@@ -1329,21 +1335,21 @@ instance (FromJSON a, FromJSON b, FromJSON c, FromJSON d, FromJSON e,
            then fail $ "cannot unpack array of length " ++
                        show n ++ " into a 15-tuple"
            else (,,,,,,,,,,,,,,)
-                <$> parseJSON (V.unsafeIndex ary 0)
-                <*> parseJSON (V.unsafeIndex ary 1)
-                <*> parseJSON (V.unsafeIndex ary 2)
-                <*> parseJSON (V.unsafeIndex ary 3)
-                <*> parseJSON (V.unsafeIndex ary 4)
-                <*> parseJSON (V.unsafeIndex ary 5)
-                <*> parseJSON (V.unsafeIndex ary 6)
-                <*> parseJSON (V.unsafeIndex ary 7)
-                <*> parseJSON (V.unsafeIndex ary 8)
-                <*> parseJSON (V.unsafeIndex ary 9)
-                <*> parseJSON (V.unsafeIndex ary 10)
-                <*> parseJSON (V.unsafeIndex ary 11)
-                <*> parseJSON (V.unsafeIndex ary 12)
-                <*> parseJSON (V.unsafeIndex ary 13)
-                <*> parseJSON (V.unsafeIndex ary 14)
+                <$> parseJSONElemAtIndex 0 ary
+                <*> parseJSONElemAtIndex 1 ary
+                <*> parseJSONElemAtIndex 2 ary
+                <*> parseJSONElemAtIndex 3 ary
+                <*> parseJSONElemAtIndex 4 ary
+                <*> parseJSONElemAtIndex 5 ary
+                <*> parseJSONElemAtIndex 6 ary
+                <*> parseJSONElemAtIndex 7 ary
+                <*> parseJSONElemAtIndex 8 ary
+                <*> parseJSONElemAtIndex 9 ary
+                <*> parseJSONElemAtIndex 10 ary
+                <*> parseJSONElemAtIndex 11 ary
+                <*> parseJSONElemAtIndex 12 ary
+                <*> parseJSONElemAtIndex 13 ary
+                <*> parseJSONElemAtIndex 14 ary
     {-# INLINE parseJSON #-}
 
 instance ToJSON a => ToJSON (Dual a) where
@@ -1445,7 +1451,7 @@ fromJSON = parse parseJSON
 (.:) :: (FromJSON a) => Object -> Text -> Parser a
 obj .: key = case H.lookup key obj of
                Nothing -> fail $ "key " ++ show key ++ " not present"
-               Just v  -> parseJSON v
+               Just v  -> parseJSON v <?> Key key
 {-# INLINE (.:) #-}
 
 -- | Retrieve the value associated with the given key of an 'Object'.
@@ -1458,7 +1464,7 @@ obj .: key = case H.lookup key obj of
 (.:?) :: (FromJSON a) => Object -> Text -> Parser (Maybe a)
 obj .:? key = case H.lookup key obj of
                Nothing -> pure Nothing
-               Just v  -> parseJSON v
+               Just v  -> parseJSON v <?> Key key
 {-# INLINE (.:?) #-}
 
 -- | Helper for use in combination with '.:?' to provide default
