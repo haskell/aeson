@@ -71,6 +71,7 @@ module Data.Aeson
     , withScientific
     , withBool
     -- * Constructors and accessors
+    , Series
     , series
     , (.:)
     , (.:?)

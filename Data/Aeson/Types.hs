@@ -15,6 +15,7 @@ module Data.Aeson.Types
       Value(..)
     , Encoding
     , fromEncoding
+    , Series
     , Array
     , emptyArray
     , Pair
@@ -51,7 +52,7 @@ module Data.Aeson.Types
     , withScientific
     , withBool
 
-    -- * Constructors and accessors
+
     , series
     , (.:)
     , (.:?)

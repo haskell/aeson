@@ -209,6 +209,7 @@ newtype Encoding = Encoding {
       fromEncoding :: Builder
     } deriving (Monoid)
 
+-- | A series of values that, when encoded, should be separated by commas.
 data Series = Empty
             | Value Encoding
             deriving (Typeable)
