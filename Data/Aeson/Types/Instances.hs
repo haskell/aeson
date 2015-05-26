@@ -24,6 +24,7 @@ module Data.Aeson.Types.Instances
     -- ** Core JSON classes
       FromJSON(..)
     , ToJSON(..)
+    , KeyValue(..)
     -- ** Generic JSON classes
     , GFromJSON(..)
     , GToJSON(..)
@@ -46,7 +47,6 @@ module Data.Aeson.Types.Instances
     , (.:)
     , (.:?)
     , (.!=)
-    , Pairable(..)
     , series
     , typeMismatch
     ) where
@@ -1424,11 +1424,11 @@ withBool _        f (Bool arr) = f arr
 withBool expected _ v          = typeMismatch expected v
 {-# INLINE withBool #-}
 
-instance Pairable Pair where
+instance KeyValue Pair where
     name .= value = (name, toJSON value)
     {-# INLINE (.=) #-}
 
-instance Pairable Series where
+instance KeyValue Series where
     name .= value = Value (E.text name <> B.char7 ':' <> toEncoding value)
     {-# INLINE (.=) #-}
 

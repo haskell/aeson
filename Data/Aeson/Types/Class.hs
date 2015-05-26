@@ -23,7 +23,7 @@ module Data.Aeson.Types.Class
     , genericToEncoding
     , genericParseJSON
     -- * Object key-value pairs
-    , Pairable(..)
+    , KeyValue(..)
     ) where
 
 import Data.Text (Text)
@@ -199,5 +199,6 @@ class FromJSON a where
     default parseJSON :: (Generic a, GFromJSON (Rep a)) => Value -> Parser a
     parseJSON = genericParseJSON defaultOptions
 
-class Pairable t where
-    (.=) :: ToJSON a => Text -> a -> t
+-- | A key-value pair for a JSON object.
+class KeyValue t where
+    (.=) :: ToJSON v => Text -> v -> t

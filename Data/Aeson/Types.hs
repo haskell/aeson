@@ -31,6 +31,7 @@ module Data.Aeson.Types
     , parseEither
     , parseMaybe
     , ToJSON(..)
+    , KeyValue(..)
     , modifyFailure
     , JSONPath
     , formatError
@@ -50,7 +51,6 @@ module Data.Aeson.Types
     , withBool
 
     -- * Constructors and accessors
-    , Pairable(..)
     , series
     , (.:)
     , (.:?)

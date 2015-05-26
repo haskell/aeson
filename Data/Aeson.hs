@@ -54,6 +54,7 @@ module Data.Aeson
     , Result(..)
     , fromJSON
     , ToJSON(..)
+    , KeyValue(..)
     -- ** Generic JSON classes
     , GFromJSON(..)
     , GToJSON(..)
@@ -68,7 +69,6 @@ module Data.Aeson
     , withScientific
     , withBool
     -- * Constructors and accessors
-    , Pairable(..)
     , series
     , (.:)
     , (.:?)
