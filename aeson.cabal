@@ -135,6 +135,7 @@ test-suite tests
     Functions
     Instances
     Options
+    Properties.ZonedTime
     Types
 
   ghc-options: -Wall -threaded -rtsopts
