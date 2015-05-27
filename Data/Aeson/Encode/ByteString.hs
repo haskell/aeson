@@ -24,22 +24,17 @@ module Data.Aeson.Encode.ByteString
     , text
     , unquoted
     , number
-    , foldable
-    , series
     , ascii2
     , ascii4
     , ascii5
-    , ascii6
-    , ascii7
     ) where
 
 import Data.Aeson.Types.Class (ToJSON(..))
-import Data.Aeson.Types.Internal (Encoding(..), Series(..), Value(..))
+import Data.Aeson.Types.Internal (Encoding(..), Value(..))
 import Data.ByteString.Builder as B
 import Data.ByteString.Builder.Prim as BP
 import Data.ByteString.Builder.Scientific (scientificBuilder)
 import Data.Char (ord)
-import Data.Foldable (Foldable, foldMap)
 import Data.Monoid ((<>))
 import Data.Scientific (Scientific, base10Exponent, coefficient)
 import Data.Word (Word8)
@@ -128,14 +123,6 @@ number s
   where
     e = base10Exponent s
 
-foldable :: (Foldable t, ToJSON a) => t a -> Encoding
-foldable = series '[' ']' . foldMap (Value . toEncoding)
-
-series :: Char -> Char -> Series -> Encoding
-series begin end (Value v) = Encoding $
-                             B.char7 begin <> fromEncoding v <> B.char7 end
-series begin end Empty     = Encoding (BP.primBounded (ascii2 (begin,end)) ())
-
 emptyArray_ :: Encoding
 emptyArray_ = Encoding (BP.primBounded (ascii2 ('[',']')) ())
 
@@ -155,14 +142,3 @@ ascii5 :: (Char, (Char, (Char, (Char, Char)))) -> BP.BoundedPrim a
 ascii5 cs = BP.liftFixedToBounded $ (const cs) >$<
     BP.char7 >*< BP.char7 >*< BP.char7 >*< BP.char7 >*< BP.char7
 {-# INLINE ascii5 #-}
-
-ascii6 :: (Char, (Char, (Char, (Char, (Char, Char))))) -> BP.BoundedPrim a
-ascii6 cs = BP.liftFixedToBounded $ (const cs) >$<
-    BP.char7 >*< BP.char7 >*< BP.char7 >*< BP.char7 >*< BP.char7 >*< BP.char7
-{-# INLINE ascii6 #-}
-
-ascii7 :: (Char, (Char, (Char, (Char, (Char, (Char, Char)))))) -> BP.BoundedPrim a
-ascii7 cs = BP.liftFixedToBounded $ (const cs) >$<
-    BP.char7 >*< BP.char7 >*< BP.char7 >*< BP.char7 >*< BP.char7 >*<
-    BP.char7 >*< BP.char7
-{-# INLINE ascii7 #-}

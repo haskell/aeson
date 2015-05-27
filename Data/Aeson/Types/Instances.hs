@@ -49,6 +49,7 @@ module Data.Aeson.Types.Instances
     , (.!=)
     , builder
     , series
+    , foldable
     , tuple
     , (>*<)
     , typeMismatch
@@ -65,7 +66,8 @@ import Data.Scientific (Scientific)
 import qualified Data.Scientific as Scientific (coefficient, base10Exponent, fromFloatDigits, toRealFloat)
 import Data.Attoparsec.Number (Number(..))
 import Data.Fixed
-import Data.Foldable (Foldable, toList)
+import Data.Foldable (Foldable, foldMap, toList)
+import Data.ByteString.Builder.Prim (primBounded)
 import Data.Functor.Identity (Identity(..))
 import Data.Hashable (Hashable(..))
 import Data.Int (Int8, Int16, Int32, Int64)
@@ -439,7 +441,7 @@ instance (Foldable t, ToJSON a) => ToJSON (t a) where
     toJSON = toJSON . toList
     {-# INLINE toJSON #-}
 
-    toEncoding = E.foldable
+    toEncoding = foldable
 
 instance (FromJSON a) => FromJSON (Seq.Seq a) where
     parseJSON = withArray "Seq a" $ traverse parseJSON . Seq.fromList . V.toList
@@ -450,6 +452,15 @@ instance (ToJSON a) => ToJSON (Vector a) where
     {-# INLINE toJSON #-}
 
     toEncoding = encodeVector
+
+-- | Encode a 'Foldable' as a JSON array.
+foldable :: (Foldable t, ToJSON a) => t a -> Encoding
+foldable = brackets '[' ']' . foldMap (Value . toEncoding)
+
+brackets :: Char -> Char -> Series -> Encoding
+brackets begin end (Value v) = Encoding $
+                               B.char7 begin <> fromEncoding v <> B.char7 end
+brackets begin end Empty     = Encoding (primBounded (E.ascii2 (begin,end)) ())
 
 encodeVector :: (ToJSON a, VG.Vector v a) => v a -> Encoding
 encodeVector xs
@@ -511,7 +522,7 @@ instance (ToJSON a) => ToJSON (HashSet.HashSet a) where
     toJSON = toJSON . HashSet.toList
     {-# INLINE toJSON #-}
 
-    toEncoding = E.foldable
+    toEncoding = foldable
 
 instance (Eq a, Hashable a, FromJSON a) => FromJSON (HashSet.HashSet a) where
     parseJSON = fmap HashSet.fromList . parseJSON
@@ -571,7 +582,7 @@ encodeMap minViewWithKey foldrWithKey xs =
 encodeWithKey :: (ToJSON k, ToJSON v) =>
                  ((k -> v -> Series -> Series) -> Series -> m -> Series)
               -> m -> Encoding
-encodeWithKey foldrWithKey = E.series '{' '}' . foldrWithKey go mempty
+encodeWithKey foldrWithKey = brackets '{' '}' . foldrWithKey go mempty
   where go k v c = Value (Encoding $ encodePair k v) <> c
 
 encodePair :: (ToJSON k, ToJSON v) => k -> v -> B.Builder

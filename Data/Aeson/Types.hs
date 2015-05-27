@@ -52,8 +52,8 @@ module Data.Aeson.Types
     , withScientific
     , withBool
 
-
     , series
+    , foldable
     , (.:)
     , (.:?)
     , (.!=)

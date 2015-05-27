@@ -70,6 +70,7 @@ module Data.Aeson
     -- * Constructors and accessors
     , Series
     , series
+    , foldable
     , (.:)
     , (.:?)
     , (.!=)
