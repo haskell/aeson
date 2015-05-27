@@ -66,6 +66,7 @@ executable aeson-benchmark-typed
     bytestring,
     criterion >= 1.0,
     deepseq,
+    ghc-prim,
     text,
     time
 
