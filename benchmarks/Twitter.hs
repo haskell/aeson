@@ -13,15 +13,20 @@ import Data.Text (Text)
 -- import Data.Time (ZonedTime)
 import GHC.Generics (Generic)
 import Prelude hiding (id)
+import Control.DeepSeq
 
 data Metadata = Metadata {
     result_type :: Text
   } deriving (Eq, Show, Typeable, Data, Generic)
 
+instance NFData Metadata
+
 data Geo = Geo {
     type_       :: Text
   , coordinates :: (Double, Double)
   } deriving (Eq, Show, Typeable, Data, Generic)
+
+instance NFData Geo
 
 data Story = Story {
     from_user_id_str  :: Text
@@ -40,6 +45,8 @@ data Story = Story {
   , source            :: Text
   } deriving (Show, Typeable, Data, Generic)
 
+instance NFData Story
+
 data Result = Result {
     results          :: [Story]
   , max_id           :: Int64
@@ -53,3 +60,5 @@ data Result = Result {
   , max_id_str       :: Text
   , query            :: Text
   } deriving (Show, Typeable, Data, Generic)
+
+instance NFData Result

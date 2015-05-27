@@ -67,7 +67,7 @@ executable aeson-benchmark-typed
     aeson-benchmarks,
     base,
     bytestring,
-    criterion,
+    criterion >= 1.0,
     deepseq,
     text,
     time

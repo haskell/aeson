@@ -1,7 +1,7 @@
-module Typed.Manual (benchmarks) where
+module Typed.Generic (benchmarks) where
 
-import Twitter.Manual
 import Typed.Common
+import Twitter.Generic
 import Data.Aeson hiding (Result)
 import Data.ByteString.Lazy as L
 import Data.ByteString.Builder as B
@@ -17,7 +17,7 @@ encodeViaValue = encode
 benchmarks :: Benchmark
 benchmarks =
   env ((,) <$> load "json-data/twitter100.json" <*> load "json-data/jp100.json") $ \ ~(twitter100, jp100) ->
-  bgroup "manual" [
+  bgroup "generic" [
       bgroup "direct" [
         bench "twitter100" $ nf encodeDirect twitter100
       , bench "jp100" $ nf encodeDirect jp100
