@@ -216,12 +216,14 @@ data Series = Empty
 
 instance Monoid Series where
     mempty              = Empty
+
     mappend Empty a     = a
     mappend (Value a) b =
         Value $
         a <> case b of
                Empty   -> mempty
                Value c -> Encoding (char7 ',') <> c
+    {-# INLINE mappend #-}
 
 -- | A newtype wrapper for 'UTCTime' that uses the same non-standard
 -- serialization format as Microsoft .NET, whose @System.DateTime@
