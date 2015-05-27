@@ -1,7 +1,7 @@
 {-# LANGUAGE BangPatterns, OverloadedStrings #-}
 
 -- |
--- Module:      Data.Aeson.EncodeUtf8
+-- Module:      Data.Aeson.Encode.ByteString
 -- Copyright:   (c) 2011 MailRank, Inc.
 --              (c) 2013 Simon Meier <iridcode@gmail.com>
 -- License:     Apache
