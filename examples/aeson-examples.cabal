@@ -9,7 +9,8 @@ executable aeson-example-generic
   build-depends:
     aeson >= 0.10,
     base,
-    bytestring
+    bytestring,
+    ghc-prim
 
 executable aeson-example-simplest
   main-is: Simplest.hs
