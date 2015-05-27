@@ -21,7 +21,6 @@ module Data.Aeson.Encode
 
     -- * Encoding to Builders
     , encodeToBuilder
-    , encodeToByteStringBuilder
     , encodeToTextBuilder
 
     -- * Deprecated
@@ -38,8 +37,7 @@ import qualified Data.HashMap.Strict as H
 import qualified Data.Text as T
 import qualified Data.Vector as V
 
-import Data.Aeson.Encode.ByteString (encode, encodeToBuilder,
-                                     encodeToByteStringBuilder)
+import Data.Aeson.Encode.ByteString (encode, encodeToBuilder)
 
 -- | Encode a JSON 'Value' to a "Data.Text" 'Builder', which can be
 -- embedded efficiently in a text-based protocol.

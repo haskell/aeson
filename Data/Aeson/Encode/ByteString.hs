@@ -14,7 +14,6 @@
 module Data.Aeson.Encode.ByteString
     ( encode
     , encodeToBuilder
-    , encodeToByteStringBuilder
     , null_
     , bool
     , array
@@ -57,11 +56,6 @@ encodeToBuilder (Number n) = number n
 encodeToBuilder (String s) = text s
 encodeToBuilder (Array v)  = array v
 encodeToBuilder (Object m) = object m
-
--- | This function is an alias for 'encodeToBuilder'.
-encodeToByteStringBuilder :: Value -> Builder
-encodeToByteStringBuilder = encodeToBuilder
-{-# DEPRECATED encodeToByteStringBuilder "Use encodeToBuilder instead." #-}
 
 -- | Encode a JSON null.
 null_ :: Builder
