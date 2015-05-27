@@ -194,3 +194,4 @@ class FromJSON a where
 -- | A key-value pair for a JSON object.
 class KeyValue t where
     (.=) :: ToJSON v => Text -> v -> t
+    infixr 8 .=
