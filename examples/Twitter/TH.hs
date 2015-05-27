@@ -1,3 +1,5 @@
+-- Use Template Haskell to generate good instances.
+
 {-# LANGUAGE TemplateHaskell #-}
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 

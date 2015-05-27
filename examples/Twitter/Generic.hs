@@ -1,3 +1,5 @@
+-- Use GHC generics to automatically generate good instances.
+
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 
 module Twitter.Generic

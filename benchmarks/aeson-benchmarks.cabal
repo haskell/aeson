@@ -19,9 +19,6 @@ library
     Data.Aeson.Parser
     Data.Aeson.Types
     Data.Aeson.TH
-    Twitter.Generic
-    Twitter.Manual
-    Twitter.TH
 
   other-modules:
     Data.Aeson.Encode.ByteString
@@ -31,7 +28,6 @@ library
     Data.Aeson.Types.Generic
     Data.Aeson.Types.Instances
     Data.Aeson.Types.Internal
-    Twitter
 
   build-depends:
     attoparsec >= 0.13.0.0,
@@ -62,6 +58,7 @@ library
 
 executable aeson-benchmark-typed
   main-is: Typed.hs
+  hs-source-dirs: ../examples .
   ghc-options: -Wall -O2 -rtsopts
   build-depends:
     aeson-benchmarks,

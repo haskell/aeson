@@ -1,3 +1,5 @@
+-- Manually write instances.
+
 {-# LANGUAGE OverloadedStrings, RecordWildCards #-}
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 

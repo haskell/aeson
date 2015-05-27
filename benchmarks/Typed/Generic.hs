@@ -1,12 +1,12 @@
 module Typed.Generic (benchmarks) where
 
-import Typed.Common
-import Twitter.Generic
-import Data.Aeson hiding (Result)
-import Data.ByteString.Lazy as L
-import Data.ByteString.Builder as B
-import Criterion
 import Control.Applicative
+import Criterion
+import Data.Aeson hiding (Result)
+import Data.ByteString.Builder as B
+import Data.ByteString.Lazy as L
+import Twitter.TH
+import Typed.Common
 
 encodeDirect :: Result -> L.ByteString
 encodeDirect = B.toLazyByteString . fromEncoding . toEncoding

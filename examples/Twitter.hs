@@ -1,3 +1,13 @@
+-- These types follow the format of Twitter search results, as can be
+-- found in the benchmarks/json-data directory.
+--
+-- For uses of these types, see the Twitter subdirectory.
+--
+-- There is one deviation for the sake of convenience: the Geo field
+-- named "type_" is really named "type" in Twitter's real feed.  I
+-- renamed "type" to "type_" in the *.json files, to avoid overlap
+-- with a Haskell reserved keyword.
+
 {-# LANGUAGE DeriveDataTypeable, DeriveGeneric #-}
 
 module Twitter (

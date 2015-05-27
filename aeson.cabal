@@ -64,10 +64,12 @@ extra-source-files:
     benchmarks/*.cabal
     benchmarks/*.hs
     benchmarks/*.py
+    benchmarks/*/*.hs
     benchmarks/Makefile
     benchmarks/json-data/*.json
     changelog.md
     examples/*.hs
+    examples/*/*.hs
 
 flag developer
   description: operate in developer mode
