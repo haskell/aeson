@@ -760,6 +760,7 @@ instance (ToJSON a, ToJSON b) => ToJSON (a,b) where
 
     toEncoding (a,b) = tuple $
       builder a >*< builder b
+    {-# INLINE toEncoding #-}
 
 instance (FromJSON a, FromJSON b) => FromJSON (a,b) where
     parseJSON = withArray "(a,b)" $ \ab ->
@@ -784,6 +785,7 @@ instance (ToJSON a, ToJSON b, ToJSON c) => ToJSON (a,b,c) where
       builder a >*<
       builder b >*<
       builder c
+    {-# INLINE toEncoding #-}
 
 instance (FromJSON a, FromJSON b, FromJSON c) => FromJSON (a,b,c) where
     parseJSON = withArray "(a,b,c)" $ \abc ->
@@ -811,6 +813,7 @@ instance (ToJSON a, ToJSON b, ToJSON c, ToJSON d) => ToJSON (a,b,c,d) where
       builder b >*<
       builder c >*<
       builder d
+    {-# INLINE toEncoding #-}
 
 instance (FromJSON a, FromJSON b, FromJSON c, FromJSON d) =>
          FromJSON (a,b,c,d) where
