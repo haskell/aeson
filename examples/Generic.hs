@@ -2,9 +2,6 @@
 -- GHC's builtin generics instead of explicit instances of ToJSON and
 -- FromJSON.
 
--- This example only works with GHC 7.2 or newer, as it uses the
--- datatype-generic programming machinery introduced in 7.2.
-
 -- We enable the DeriveGeneric language extension so that GHC can
 -- automatically derive the Generic class for us.
 

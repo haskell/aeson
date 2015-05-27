@@ -1,0 +1,20 @@
+name:                aeson-examples
+version:             0
+build-type:          Simple
+cabal-version:       >=1.8
+
+executable aeson-example-generic
+  main-is: Generic.hs
+  ghc-options: -Wall
+  build-depends:
+    aeson >= 0.10,
+    base,
+    bytestring
+
+executable aeson-example-simplest
+  main-is: Simplest.hs
+  ghc-options: -Wall
+  build-depends:
+    aeson >= 0.10,
+    base,
+    bytestring
