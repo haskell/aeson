@@ -165,7 +165,7 @@ deriveToJSON opts name =
                   (classType `appT` instanceType)
                   [ funD 'toJSON
                          [ clause []
-                                  (normalB $ consToJSON opts cons)
+                                  (normalB $ consToValue opts cons)
                                   []
                          ]
                   ]
@@ -174,31 +174,32 @@ deriveToJSON opts name =
         typeNames = map tvbName tvbs
         instanceType = foldl' appT (conT name) $ map varT typeNames
 
--- | Generates a lambda expression which encodes the given data type as JSON.
+-- | Generates a lambda expression which encodes the given data type as a
+-- 'Value'.
 mkToJSON :: Options -- ^ Encoding options.
          -> Name -- ^ Name of the type to encode.
          -> Q Exp
-mkToJSON opts name = withType name (\_ cons -> consToJSON opts cons)
+mkToJSON opts name = withType name (\_ cons -> consToValue opts cons)
 
--- | Helper function used by both 'deriveToJSON' and 'mkToJSON'. Generates code
--- to generate the JSON encoding of a number of constructors. All constructors
+-- | Helper function used by both 'deriveToJSON' and 'mkToJSON'. Generates
+-- code to generate a 'Value' of a number of constructors. All constructors
 -- must be from the same type.
-consToJSON :: Options
+consToValue :: Options
            -- ^ Encoding options.
            -> [Con]
            -- ^ Constructors for which to generate JSON generating code.
            -> Q Exp
 
-consToJSON _ [] = error $ "Data.Aeson.TH.consToJSON: "
+consToValue _ [] = error $ "Data.Aeson.TH.consToValue: "
                           ++ "Not a single constructor given!"
 
 -- A single constructor is directly encoded. The constructor itself may be
 -- forgotten.
-consToJSON opts [con] = do
+consToValue opts [con] = do
     value <- newName "value"
-    lam1E (varP value) $ caseE (varE value) [encodeArgs opts False con]
+    lam1E (varP value) $ caseE (varE value) [argsToValue opts False con]
 
-consToJSON opts cons = do
+consToValue opts cons = do
     value <- newName "value"
     lam1E (varP value) $ caseE (varE value) matches
   where
@@ -208,7 +209,7 @@ consToJSON opts cons = do
               | con <- cons
               , let conName = getConName con
               ]
-        | otherwise = [encodeArgs opts True con | con <- cons]
+        | otherwise = [argsToValue opts True con | con <- cons]
 
 conStr :: Options -> Name -> Q Exp
 conStr opts = appE [|String|] . conTxt opts
@@ -224,8 +225,8 @@ isNullary :: Con -> Bool
 isNullary (NormalC _ []) = True
 isNullary _ = False
 
-encodeSum :: Options -> Bool -> Name -> Q Exp -> Q Exp
-encodeSum opts multiCons conName exp
+sumToValue :: Options -> Bool -> Name -> Q Exp -> Q Exp
+sumToValue opts multiCons conName exp
     | multiCons =
         case sumEncoding opts of
           TwoElemArray ->
@@ -243,17 +244,17 @@ encodeSum opts multiCons conName exp
     | otherwise = exp
 
 -- | Generates code to generate the JSON encoding of a single constructor.
-encodeArgs :: Options -> Bool -> Con -> Q Match
+argsToValue :: Options -> Bool -> Con -> Q Match
 -- Nullary constructors. Generates code that explicitly matches against the
 -- constructor even though it doesn't contain data. This is useful to prevent
 -- type errors.
-encodeArgs  opts multiCons (NormalC conName []) =
+argsToValue  opts multiCons (NormalC conName []) =
     match (conP conName [])
-          (normalB (encodeSum opts multiCons conName [e|toJSON ([] :: [()])|]))
+          (normalB (sumToValue opts multiCons conName [e|toJSON ([] :: [()])|]))
           []
 
 -- Polyadic constructors with special case for unary constructors.
-encodeArgs opts multiCons (NormalC conName ts) = do
+argsToValue opts multiCons (NormalC conName ts) = do
     let len = length ts
     args <- mapM newName ["arg" ++ show n | n <- [1..len]]
     js <- case [[|toJSON|] `appE` varE arg | arg <- args] of
@@ -277,11 +278,11 @@ encodeArgs opts multiCons (NormalC conName ts) = do
                          (varE 'V.create `appE`
                            doE (newMV:stmts++[ret]))
     match (conP conName $ map varP args)
-          (normalB $ encodeSum opts multiCons conName js)
+          (normalB $ sumToValue opts multiCons conName js)
           []
 
 -- Records.
-encodeArgs opts multiCons (RecC conName ts) = do
+argsToValue opts multiCons (RecC conName ts) = do
     args <- mapM newName ["arg" ++ show n | (_, n) <- zip ts [1 :: Integer ..]]
     let exp = [|object|] `appE` pairs
 
@@ -336,20 +337,20 @@ encodeArgs opts multiCons (RecC conName ts) = do
           ) []
 
 -- Infix constructors.
-encodeArgs opts multiCons (InfixC _ conName _) = do
+argsToValue opts multiCons (InfixC _ conName _) = do
     al <- newName "argL"
     ar <- newName "argR"
     match (infixP (varP al) conName (varP ar))
           ( normalB
-          $ encodeSum opts multiCons conName
+          $ sumToValue opts multiCons conName
           $ [|toJSON|] `appE` listE [ [|toJSON|] `appE` varE a
                                     | a <- [al,ar]
                                     ]
           )
           []
 -- Existentially quantified constructors.
-encodeArgs opts multiCons (ForallC _ _ con) =
-    encodeArgs opts multiCons con
+argsToValue opts multiCons (ForallC _ _ con) =
+    argsToValue opts multiCons con
 
 
 --------------------------------------------------------------------------------
