@@ -142,3 +142,9 @@ instance Arbitrary a => Arbitrary (SomeType a) where
                       , Product <$> arbitrary <*> arbitrary <*> arbitrary
                       , Record  <$> arbitrary <*> arbitrary <*> arbitrary
                       ]
+
+instance ApproxEq Char where
+    (=~) = (==)
+
+instance (ApproxEq a) => ApproxEq [a] where
+    a =~ b = length a == length b && all (uncurry (=~)) (zip a b)

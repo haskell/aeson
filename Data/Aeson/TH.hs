@@ -90,7 +90,7 @@ import Data.Aeson.Types ( Value(..), Parser
 -- from base:
 import Control.Applicative ( pure, (<$>), (<*>) )
 import Control.Monad       ( return, mapM, liftM2, fail )
-import Data.Bool           ( Bool(False, True), otherwise, (&&) )
+import Data.Bool           ( Bool(False, True), otherwise, (&&) , not)
 import Data.Eq             ( (==) )
 import Data.Function       ( ($), (.) )
 import Data.Functor        ( fmap )
@@ -281,7 +281,9 @@ encodeArgs opts multiCons (NormalC conName ts) = do
           []
 
 -- Records.
-encodeArgs opts multiCons (RecC conName ts) = do
+encodeArgs opts multiCons (RecC conName ts) = case (unwrapUnaryRecords opts,not multiCons,ts) of
+  (True,True,[(_,st,ty)])-> encodeArgs opts multiCons (NormalC conName [(st,ty)])
+  _ -> do
     args <- mapM newName ["arg" ++ show n | (_, n) <- zip ts [1 :: Integer ..]]
     let exp = [|object|] `appE` pairs
 
@@ -664,7 +666,9 @@ parseArgs tName _ (NormalC conName ts) (Right valName) =
 -- Records.
 parseArgs tName opts (RecC conName ts) (Left (_, obj)) =
     parseRecord opts tName conName ts obj
-parseArgs tName opts (RecC conName ts) (Right valName) = do
+parseArgs tName opts (RecC conName ts) (Right valName) = case (unwrapUnaryRecords opts,ts) of
+  (True,[(_,st,ty)])-> parseArgs tName opts (NormalC conName [(st,ty)]) (Right valName)
+  _ -> do
   obj <- newName "recObj"
   caseE (varE valName)
     [ match (conP 'Object [varP obj]) (normalB $ parseRecord opts tName conName ts obj) []
