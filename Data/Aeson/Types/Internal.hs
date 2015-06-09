@@ -362,6 +362,9 @@ data Options = Options
       -- object will include those fields mapping to @null@.
     , sumEncoding :: SumEncoding
       -- ^ Specifies how to encode constructors of a sum datatype.
+    , unwrapUnaryRecords :: Bool
+      -- ^ Hide the field name when a record constructor has only one
+      -- field, like a newtype.
     }
 
 -- | Specifies how to encode constructors of a sum datatype.
@@ -407,6 +410,7 @@ defaultOptions = Options
                  , allNullaryToStringTag   = True
                  , omitNothingFields       = False
                  , sumEncoding             = defaultTaggedObject
+                 , unwrapUnaryRecords      = False
                  }
 
 -- | Default 'TaggedObject' 'SumEncoding' options:
