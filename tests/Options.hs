@@ -29,3 +29,8 @@ optsObjectWithSingleField = optsDefault
                             { allNullaryToStringTag = False
                             , sumEncoding           = ObjectWithSingleField
                             }
+
+optsOmitEmptyContents :: Options
+optsOmitEmptyContents = 
+    optsTaggedObject 
+    { sumEncoding = defaultTaggedObject { omitEmptyContents = True } }

@@ -403,11 +403,12 @@ sumToEncoding opts multiCons conName exp
         case sumEncoding opts of
           TwoElemArray ->
               [|Array|] `appE` ([|V.fromList|] `appE` listE [conStr opts conName, exp])
-          TaggedObject{tagFieldName, contentsFieldName} ->
-              [|object|] `appE` listE
-                [ infixApp [|T.pack tagFieldName|]     [|(.=)|] (conStr opts conName)
-                , infixApp [|T.pack contentsFieldName|] [|(.=)|] exp
-                ]
+          TaggedObject{tagFieldName, contentsFieldName, omitEmptyContents} -> do
+              isEmptyExp <- (==) <$> exp <*> [e|toJSON ([] :: [()])|]
+              let tag = infixApp [|T.pack tagFieldName|] [|(.=)|] (conStr opts conName)
+                  contents = infixApp [|T.pack contentsFieldName|] [|(.=)|] exp
+                  omitCont = isEmptyExp && omitEmptyContents && multiCons
+              [|object|] `appE` listE (tag : if omitCont then [] else [contents])
           ObjectWithSingleField ->
               [|object|] `appE` listE
                 [ infixApp (conTxt opts conName) [|(.=)|] exp
@@ -819,8 +820,13 @@ parseArgs :: Name -- ^ Name of the type to which the constructor belongs.
                                         --   Right valName
           -> Q Exp
 -- Nullary constructors.
-parseArgs tName _ (NormalC conName []) (Left (valFieldName, obj)) =
-  getValField obj valFieldName $ parseNullaryMatches tName conName
+parseArgs tName opts (NormalC conName []) (Left (valFieldName, obj))
+    | omitCont  = [|pure|] `appE` conE conName
+    | otherwise = getValField obj valFieldName $ parseNullaryMatches tName conName
+  where
+    omitCont = case sumEncoding opts of
+        TaggedObject{omitEmptyContents} -> omitEmptyContents
+        _ -> False
 parseArgs tName _ (NormalC conName []) (Right valName) =
   caseE (varE valName) $ parseNullaryMatches tName conName
 

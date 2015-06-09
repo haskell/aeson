@@ -38,6 +38,12 @@ thNullaryToJSONObjectWithSingleField = $(mkToJSON optsObjectWithSingleField ''Nu
 thNullaryParseJSONObjectWithSingleField :: Value -> Parser Nullary
 thNullaryParseJSONObjectWithSingleField = $(mkParseJSON optsObjectWithSingleField ''Nullary)
 
+thNullaryToJSONOmitEmptyContents :: Nullary -> Value
+thNullaryToJSONOmitEmptyContents = $(mkToJSON optsOmitEmptyContents ''Nullary)
+
+thNullaryParseJSONOmitEmptyContents :: Value -> Parser Nullary
+thNullaryParseJSONOmitEmptyContents = $(mkParseJSON optsOmitEmptyContents ''Nullary)
+
 gNullaryToJSONString :: Nullary -> Value
 gNullaryToJSONString = genericToJSON defaultOptions
 
@@ -65,6 +71,27 @@ gNullaryToJSONObjectWithSingleField = genericToJSON optsObjectWithSingleField
 gNullaryParseJSONObjectWithSingleField :: Value -> Parser Nullary
 gNullaryParseJSONObjectWithSingleField = genericParseJSON optsObjectWithSingleField
 
+gNullaryToJSONOmitEmptyContents :: Nullary -> Value
+gNullaryToJSONOmitEmptyContents = genericToJSON optsOmitEmptyContents
+
+gNullaryParseJSONOmitEmptyContents :: Value -> Parser Nullary
+gNullaryParseJSONOmitEmptyContents = genericParseJSON optsOmitEmptyContents
+
+--------------------------------------------------------------------------------
+-- OneConstructor encoders/decoders
+--------------------------------------------------------------------------------
+
+thOneConstructorToJSONOmitEmptyContents :: OneConstructor -> Value
+thOneConstructorToJSONOmitEmptyContents = $(mkToJSON optsOmitEmptyContents ''OneConstructor)
+
+thOneConstructorParseJSONOmitEmptyContents :: Value -> Parser OneConstructor
+thOneConstructorParseJSONOmitEmptyContents = $(mkParseJSON optsOmitEmptyContents ''OneConstructor)
+
+gOneConstructorToJSONOmitEmptyContents :: OneConstructor -> Value
+gOneConstructorToJSONOmitEmptyContents = genericToJSON optsOmitEmptyContents
+
+gOneConstructorParseJSONOmitEmptyContents :: Value -> Parser OneConstructor
+gOneConstructorParseJSONOmitEmptyContents = genericParseJSON optsOmitEmptyContents
 
 --------------------------------------------------------------------------------
 -- SomeType encoders/decoders
@@ -92,6 +119,11 @@ thSomeTypeToJSONObjectWithSingleField = $(mkToJSON optsObjectWithSingleField ''S
 thSomeTypeParseJSONObjectWithSingleField :: FromJSON a => Value -> Parser (SomeType a)
 thSomeTypeParseJSONObjectWithSingleField = $(mkParseJSON optsObjectWithSingleField ''SomeType)
 
+thSomeTypeToJSONOmitEmptyContents :: ToJSON a => SomeType a -> Value
+thSomeTypeToJSONOmitEmptyContents = $(mkToJSON optsOmitEmptyContents ''SomeType)
+
+thSomeTypeParseJSONOmitEmptyContents :: FromJSON a => Value -> Parser (SomeType a)
+thSomeTypeParseJSONOmitEmptyContents = $(mkParseJSON optsOmitEmptyContents ''SomeType)
 
 gSomeTypeToJSON2ElemArray :: ToJSON a => SomeType a -> Value
 gSomeTypeToJSON2ElemArray = genericToJSON opts2ElemArray
@@ -113,7 +145,11 @@ gSomeTypeToJSONObjectWithSingleField = genericToJSON optsObjectWithSingleField
 gSomeTypeParseJSONObjectWithSingleField :: FromJSON a => Value -> Parser (SomeType a)
 gSomeTypeParseJSONObjectWithSingleField = genericParseJSON optsObjectWithSingleField
 
+gSomeTypeToJSONOmitEmptyContents :: ToJSON a => SomeType a -> Value
+gSomeTypeToJSONOmitEmptyContents = genericToJSON optsOmitEmptyContents
 
+gSomeTypeParseJSONOmitEmptyContents :: FromJSON a => Value -> Parser (SomeType a)
+gSomeTypeParseJSONOmitEmptyContents = genericParseJSON optsOmitEmptyContents
 --------------------------------------------------------------------------------
 -- Approx encoders/decoders
 --------------------------------------------------------------------------------

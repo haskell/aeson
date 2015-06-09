@@ -220,6 +220,21 @@ instance (GToJSON f) => TaggedObject' f False where
         gbuilder opts
     {-# INLINE taggedObjectEnc' #-}
 
+instance TaggedObject' U1 False where
+    taggedObjectPairs' opts contentsFieldName
+        | omitCont  = const $ Tagged []
+        | otherwise = Tagged . (:[]) . (pack contentsFieldName .=) . gToJSON opts
+      where
+        omitCont = omitEmptyContents $ sumEncoding opts
+    {-# INLINE taggedObjectPairs' #-}
+
+    taggedObjectEnc' opts contentsFieldName
+        | omitCont  = const $ Tagged mempty
+        | otherwise = Tagged . (\z -> builder contentsFieldName <> B.char7 ':' <> z) . gbuilder opts
+      where
+        omitCont = omitEmptyContents $ sumEncoding opts
+    {-# INLINE taggedObjectEnc' #-}
+
 --------------------------------------------------------------------------------
 
 -- | Get the name of the constructor of a sum datatype.
@@ -599,6 +614,14 @@ instance (FromRecord f) => FromTaggedObject'' f True where
 instance (GFromJSON f) => FromTaggedObject'' f False where
     parseFromTaggedObject'' opts contentsFieldName = Tagged .
       (gParseJSON opts <=< (.: pack contentsFieldName))
+    {-# INLINE parseFromTaggedObject'' #-}
+
+instance FromTaggedObject'' U1 False where
+    parseFromTaggedObject'' opts contentsFieldName v
+        | omitCont  = Tagged $ pure U1
+        | otherwise = Tagged $ gParseJSON opts =<< (v .: pack contentsFieldName)
+      where
+        omitCont = omitEmptyContents $ sumEncoding opts
     {-# INLINE parseFromTaggedObject'' #-}
 
 --------------------------------------------------------------------------------
