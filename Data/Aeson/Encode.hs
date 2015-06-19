@@ -27,7 +27,7 @@ module Data.Aeson.Encode
     , fromValue
     ) where
 
-import Data.Aeson.Encode.ByteString (encodeToBuilder)
+import Data.Aeson.Encode.Builder (encodeToBuilder)
 import Data.Aeson.Types (ToJSON(..), Value(..))
 import Data.Monoid ((<>))
 import Data.Scientific (FPFormat(..), Scientific, base10Exponent)

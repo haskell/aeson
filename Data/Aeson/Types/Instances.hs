@@ -56,7 +56,7 @@ module Data.Aeson.Types.Instances
     ) where
 
 import Control.Applicative ((<$>), (<*>), (<|>), pure, empty)
-import qualified Data.Aeson.Encode.ByteString as E
+import qualified Data.Aeson.Encode.Builder as E
 import qualified Data.ByteString.Builder as B
 import Data.Aeson.Functions
 import Data.Monoid ((<>), mempty)

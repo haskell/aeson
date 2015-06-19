@@ -1,7 +1,7 @@
 {-# LANGUAGE BangPatterns, OverloadedStrings #-}
 
 -- |
--- Module:      Data.Aeson.Encode.ByteString
+-- Module:      Data.Aeson.Encode.Builder
 -- Copyright:   (c) 2011 MailRank, Inc.
 --              (c) 2013 Simon Meier <iridcode@gmail.com>
 -- License:     Apache
@@ -11,7 +11,7 @@
 --
 -- Efficiently serialize a JSON value using the UTF-8 encoding.
 
-module Data.Aeson.Encode.ByteString
+module Data.Aeson.Encode.Builder
     (
       encodeToBuilder
     , null_

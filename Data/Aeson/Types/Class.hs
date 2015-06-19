@@ -26,17 +26,19 @@ module Data.Aeson.Types.Class
     , KeyValue(..)
     ) where
 
-import Data.Text (Text)
 import Data.Aeson.Types.Internal
-import GHC.Generics
+import Data.Text (Text)
+import GHC.Generics (Generic, Rep, from, to)
+import qualified Data.Aeson.Encode.Builder as E
 
--- | Class of generic representation types ('Rep') that can be converted to JSON.
+-- | Class of generic representation types ('Rep') that can be converted to
+-- JSON.
 class GToJSON f where
     -- | This method (applied to 'defaultOptions') is used as the
     -- default generic implementation of 'toJSON'.
     gToJSON :: Options -> f a -> Value
 
-    -- | This method (applied to 'defaultOptions') is used as the
+    -- | This method (applied to 'defaultOptions') can be used as the
     -- default generic implementation of 'toEncoding'.
     gToEncoding :: Options -> f a -> Encoding
 
@@ -120,9 +122,8 @@ class ToJSON a where
     toJSON = genericToJSON defaultOptions
 
     toEncoding :: a -> Encoding
-
-    default toEncoding :: (Generic a, GToJSON (Rep a)) => a -> Encoding
-    toEncoding = genericToEncoding defaultOptions
+    toEncoding = Encoding . E.encodeToBuilder . toJSON
+    {-# INLINE toEncoding #-}
 
 -- | A type that can be converted from JSON, with the possibility of
 -- failure.
