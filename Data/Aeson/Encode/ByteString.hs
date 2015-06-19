@@ -12,8 +12,8 @@
 -- Efficiently serialize a JSON value using the UTF-8 encoding.
 
 module Data.Aeson.Encode.ByteString
-    ( encode
-    , encodeToBuilder
+    (
+      encodeToBuilder
     , null_
     , bool
     , array
@@ -28,7 +28,6 @@ module Data.Aeson.Encode.ByteString
     , ascii5
     ) where
 
-import Data.Aeson.Types.Class (ToJSON(..))
 import Data.Aeson.Types.Internal (Encoding(..), Value(..))
 import Data.ByteString.Builder as B
 import Data.ByteString.Builder.Prim as BP
@@ -37,15 +36,10 @@ import Data.Char (ord)
 import Data.Monoid ((<>))
 import Data.Scientific (Scientific, base10Exponent, coefficient)
 import Data.Word (Word8)
-import qualified Data.ByteString.Lazy as L
 import qualified Data.HashMap.Strict as HMS
 import qualified Data.Text as T
 import qualified Data.Text.Encoding as TE
 import qualified Data.Vector as V
-
--- | Efficiently serialize a JSON value as a lazy 'L.ByteString'.
-encode :: ToJSON a => a -> L.ByteString
-encode = B.toLazyByteString . encodeToBuilder . toJSON
 
 -- | Encode a JSON value to a ByteString 'B.Builder'. Use this function if you
 -- must prepend or append further bytes to the encoded JSON value.
