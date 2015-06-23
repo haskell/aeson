@@ -979,7 +979,7 @@ conNotFoundFailTaggedObject t cs o =
                   t (intercalate ", " cs) o
 
 parseTypeMismatch' :: String -> String -> String -> String -> Parser fail
-parseTypeMismatch' tName conName expected actual =
+parseTypeMismatch' conName tName expected actual =
     fail $ printf "When parsing the constructor %s of type %s expected %s but got %s."
                   conName tName expected actual
 
