@@ -21,7 +21,7 @@ library
     Data.Aeson.TH
 
   other-modules:
-    Data.Aeson.Encode.ByteString
+    Data.Aeson.Encode.Builder
     Data.Aeson.Functions
     Data.Aeson.Parser.Internal
     Data.Aeson.Types.Class
