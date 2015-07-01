@@ -52,7 +52,7 @@ module Data.Aeson.Types.Internal
 import Control.Applicative
 import Control.Monad
 import Control.DeepSeq (NFData(..))
-import Data.ByteString.Builder (Builder, char7)
+import Data.ByteString.Builder (Builder, char7, toLazyByteString)
 import Data.Char (toLower, isUpper)
 import Data.Scientific (Scientific)
 import Data.Hashable (Hashable(..))
@@ -208,6 +208,16 @@ data Value = Object !Object
 newtype Encoding = Encoding {
       fromEncoding :: Builder
     } deriving (Monoid)
+
+instance Show Encoding where
+    show (Encoding e) = show (toLazyByteString e)
+
+instance Eq Encoding where
+    Encoding a == Encoding b = toLazyByteString a == toLazyByteString b
+
+instance Ord Encoding where
+    compare (Encoding a) (Encoding b) =
+      compare (toLazyByteString a) (toLazyByteString b)
 
 -- | A series of values that, when encoded, should be separated by commas.
 data Series = Empty
