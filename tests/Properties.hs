@@ -201,6 +201,10 @@ tests = [
       , testProperty "NullaryObjectWithSingleField" $
         thNullaryToJSONObjectWithSingleField `sameAs`
         thNullaryToEncodingObjectWithSingleField
+      , testProperty "ApproxUnwrap" $
+        thApproxToJSONUnwrap `sameAs` thApproxToEncodingUnwrap
+      , testProperty "ApproxDefault" $
+        thApproxToJSONDefault `sameAs` thApproxToEncodingDefault
       ]
     ]
   ]
