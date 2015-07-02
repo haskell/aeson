@@ -78,7 +78,7 @@ module Data.Aeson.TH
 --------------------------------------------------------------------------------
 
 -- from aeson:
-import Data.Aeson ( toJSON, Object, object, (.=), (.:), (.:?)
+import Data.Aeson ( toJSON, Object, (.=), (.:), (.:?)
                   , ToJSON, toEncoding, toJSON
                   , FromJSON, parseJSON
                   )
@@ -88,6 +88,10 @@ import Data.Aeson.Types ( Value(..), Parser
                         , defaultOptions
                         , defaultTaggedObject
                         )
+import Data.Aeson.Types.Internal (Encoding(..))
+import qualified Data.Aeson.Encode.Builder as E
+import qualified Data.Aeson.Encode.Functions as E
+import qualified Data.Aeson as A
 -- from base:
 import Control.Applicative ( pure, (<$>), (<*>) )
 import Control.Monad       ( return, mapM, liftM2, fail )
@@ -97,11 +101,12 @@ import Data.Function       ( ($), (.) )
 import Data.Functor        ( fmap )
 import Data.Int            ( Int )
 import Data.Either         ( Either(Left, Right) )
-import Data.List           ( (++), foldl, foldl', intercalate
+import Data.List           ( (++), foldl, foldl', intercalate, intersperse
                            , length, map, zip, genericLength, all, partition
                            )
 import Data.Maybe          ( Maybe(Nothing, Just), catMaybes )
-import Prelude             ( String, (-), Integer, fromIntegral, error )
+import Data.Monoid         ( (<>), mconcat )
+import Prelude             ( String, (-), Integer, error, foldr1, fromIntegral )
 import Text.Printf         ( printf )
 import Text.Show           ( show )
 -- from unordered-containers:
@@ -224,6 +229,15 @@ consToValue opts cons = do
               ]
         | otherwise = [argsToValue opts True con | con <- cons]
 
+conStr :: Options -> Name -> Q Exp
+conStr opts = appE [|String|] . conTxt opts
+
+conTxt :: Options -> Name -> Q Exp
+conTxt opts = appE [|T.pack|] . conStringE opts
+
+conStringE :: Options -> Name -> Q Exp
+conStringE opts = stringE . constructorTagModifier opts . nameBase
+
 -- | Helper function used by both 'deriveToJSON' and 'mkToEncoding'. Generates
 -- code to write out a value for a number of constructors. All constructors
 -- must be from the same type.
@@ -242,26 +256,23 @@ consToEncoding opts [con] = do
     value <- newName "value"
     lam1E (varP value) $ caseE (varE value) [argsToEncoding opts False con]
 
+-- Encode just the name of the constructor of a sum type iff all the
+-- constructors are nullary.
 consToEncoding opts cons = do
     value <- newName "value"
     lam1E (varP value) $ caseE (varE value) matches
   where
     matches
         | allNullaryToStringTag opts && all isNullary cons =
-              [ match (conP conName []) (normalB $ conStr opts conName) []
+              [ match (conP conName [])
+                (normalB $ [|Encoding|] `appE` encStr opts conName) []
               | con <- cons
               , let conName = getConName con
               ]
         | otherwise = [argsToEncoding opts True con | con <- cons]
 
-conStr :: Options -> Name -> Q Exp
-conStr opts = appE [|String|] . conTxt opts
-
-conTxt :: Options -> Name -> Q Exp
-conTxt opts = appE [|T.pack|] . conStringE opts
-
-conStringE :: Options -> Name -> Q Exp
-conStringE opts = stringE . constructorTagModifier opts . nameBase
+encStr :: Options -> Name -> Q Exp
+encStr opts = appE [|E.text|] . conTxt opts
 
 -- | If constructor is nullary.
 isNullary :: Con -> Bool
@@ -275,12 +286,12 @@ sumToValue opts multiCons conName exp
           TwoElemArray ->
               [|Array|] `appE` ([|V.fromList|] `appE` listE [conStr opts conName, exp])
           TaggedObject{tagFieldName, contentsFieldName} ->
-              [|object|] `appE` listE
+              [|A.object|] `appE` listE
                 [ infixApp [|T.pack tagFieldName|]     [|(.=)|] (conStr opts conName)
                 , infixApp [|T.pack contentsFieldName|] [|(.=)|] exp
                 ]
           ObjectWithSingleField ->
-              [|object|] `appE` listE
+              [|A.object|] `appE` listE
                 [ infixApp (conTxt opts conName) [|(.=)|] exp
                 ]
 
@@ -329,7 +340,7 @@ argsToValue opts multiCons (RecC conName ts) = case (unwrapUnaryRecords opts, no
   (True,True,[(_,st,ty)]) -> argsToValue opts multiCons (NormalC conName [(st,ty)])
   _ -> do
     args <- mapM newName ["arg" ++ show n | (_, n) <- zip ts [1 :: Integer ..]]
-    let exp = [|object|] `appE` pairs
+    let exp = [|A.object|] `appE` pairs
 
         pairs | omitNothingFields opts = infixApp maybeFields
                                                   [|(++)|]
@@ -367,7 +378,7 @@ argsToValue opts multiCons (RecC conName ts) = case (unwrapUnaryRecords opts, no
             then case sumEncoding opts of
                    TwoElemArray -> [|toJSON|] `appE` tupE [conStr opts conName, exp]
                    TaggedObject{tagFieldName} ->
-                       [|object|] `appE`
+                       [|A.object|] `appE`
                          -- TODO: Maybe throw an error in case
                          -- tagFieldName overwrites a field in pairs.
                          infixApp (infixApp [|T.pack tagFieldName|]
@@ -376,7 +387,7 @@ argsToValue opts multiCons (RecC conName ts) = case (unwrapUnaryRecords opts, no
                                   [|(:)|]
                                   pairs
                    ObjectWithSingleField ->
-                       [|object|] `appE` listE
+                       [|A.object|] `appE` listE
                          [ infixApp (conTxt opts conName) [|(.=)|] exp ]
             else exp
           ) []
@@ -397,21 +408,36 @@ argsToValue opts multiCons (InfixC _ conName _) = do
 argsToValue opts multiCons (ForallC _ _ con) =
     argsToValue opts multiCons con
 
+(<^>) :: ExpQ -> ExpQ -> ExpQ
+(<^>) a b = infixApp a [|(<>)|] b
+infixr 6 <^>
+
+(<:>) :: ExpQ -> ExpQ -> ExpQ
+(<:>) a b = a <^> [|E.char7 ':'|] <^> b
+infixr 5 <:>
+
+(<%>) :: ExpQ -> ExpQ -> ExpQ
+(<%>) a b = a <^> [|E.char7 ','|] <^> b
+infixr 4 <%>
+
+array :: ExpQ -> ExpQ
+array exp = [|Encoding|] `appE` ([|E.char7 '['|] <^> exp <^> [|E.char7 ']'|])
+
+object :: ExpQ -> ExpQ
+object exp = [|Encoding|] `appE` ([|E.char7 '{'|] <^> exp <^> [|E.char7 '}'|])
+
 sumToEncoding :: Options -> Bool -> Name -> Q Exp -> Q Exp
 sumToEncoding opts multiCons conName exp
     | multiCons =
         case sumEncoding opts of
           TwoElemArray ->
-              [|Array|] `appE` ([|V.fromList|] `appE` listE [conStr opts conName, exp])
+            array (encStr opts conName <%> exp)
           TaggedObject{tagFieldName, contentsFieldName} ->
-              [|object|] `appE` listE
-                [ infixApp [|T.pack tagFieldName|]     [|(.=)|] (conStr opts conName)
-                , infixApp [|T.pack contentsFieldName|] [|(.=)|] exp
-                ]
+            object $
+            ([|E.builder tagFieldName|] <:> encStr opts conName) <%>
+            ([|E.builder contentsFieldName|] <:> [|fromEncoding|] `appE` exp)
           ObjectWithSingleField ->
-              [|object|] `appE` listE
-                [ infixApp (conTxt opts conName) [|(.=)|] exp
-                ]
+            object (conTxt opts conName <:> [|fromEncoding|] `appE` exp)
 
     | otherwise = exp
 
@@ -422,33 +448,19 @@ argsToEncoding :: Options -> Bool -> Con -> Q Match
 -- type errors.
 argsToEncoding  opts multiCons (NormalC conName []) =
     match (conP conName [])
-          (normalB (sumToEncoding opts multiCons conName [e|toJSON ([] :: [()])|]))
+          (normalB (sumToEncoding opts multiCons conName [e|toEncoding ([] :: [()])|]))
           []
 
 -- Polyadic constructors with special case for unary constructors.
 argsToEncoding opts multiCons (NormalC conName ts) = do
     let len = length ts
     args <- mapM newName ["arg" ++ show n | n <- [1..len]]
-    js <- case [[|toJSON|] `appE` varE arg | arg <- args] of
+    js <- case args of
             -- Single argument is directly converted.
-            [e] -> return e
+            [e] -> return ([|toEncoding|] `appE` varE e)
             -- Multiple arguments are converted to a JSON array.
-            es  -> do
-              mv <- newName "mv"
-              let newMV = bindS (varP mv)
-                                ([|VM.unsafeNew|] `appE`
-                                  litE (integerL $ fromIntegral len))
-                  stmts = [ noBindS $
-                              [|VM.unsafeWrite|] `appE`
-                                (varE mv) `appE`
-                                  litE (integerL ix) `appE`
-                                    e
-                          | (ix, e) <- zip [(0::Integer)..] es
-                          ]
-                  ret = noBindS $ [|return|] `appE` varE mv
-              return $ [|Array|] `appE`
-                         (varE 'V.create `appE`
-                           doE (newMV:stmts++[ret]))
+            es  ->
+              return (array (foldr1 (<%>) [[|E.builder|] `appE` varE x | x <- es]))
     match (conP conName $ map varP args)
           (normalB $ sumToEncoding opts multiCons conName js)
           []
@@ -458,18 +470,21 @@ argsToEncoding opts multiCons (RecC conName ts) = case (unwrapUnaryRecords opts,
   (True,True,[(_,st,ty)]) -> argsToEncoding opts multiCons (NormalC conName [(st,ty)])
   _ -> do
     args <- mapM newName ["arg" ++ show n | (_, n) <- zip ts [1 :: Integer ..]]
-    let exp = [|object|] `appE` pairs
 
+    let exp = object objBody
+
+        objBody = [|mconcat|] `appE`
+                  ([|intersperse (E.char7 ',')|] `appE` pairs)
         pairs | omitNothingFields opts = infixApp maybeFields
-                                                  [|(++)|]
+                                                  [|(<>)|]
                                                   restFields
-              | otherwise = listE $ map toPair argCons
+              | otherwise = listE (map toPair argCons)
 
         argCons = zip args ts
 
         maybeFields = [|catMaybes|] `appE` listE (map maybeToPair maybes)
 
-        restFields = listE $ map toPair rest
+        restFields = listE (map toPair rest)
 
         (maybes, rest) = partition isMaybe argCons
 
@@ -484,29 +499,21 @@ argsToEncoding opts multiCons (RecC conName ts) = case (unwrapUnaryRecords opts,
                      (varE arg)
 
         toPair (arg, (field, _, _)) =
-            infixApp (toFieldName field)
-                     [|(.=)|]
-                     (varE arg)
+          toFieldName field <:> [|E.builder|] `appE` varE arg
 
-        toFieldName field = [|T.pack|] `appE` fieldLabelExp opts field
+        toFieldName field = [|E.builder|] `appE` fieldLabelExp opts field
 
     match (conP conName $ map varP args)
           ( normalB
           $ if multiCons
             then case sumEncoding opts of
-                   TwoElemArray -> [|toJSON|] `appE` tupE [conStr opts conName, exp]
-                   TaggedObject{tagFieldName} ->
-                       [|object|] `appE`
-                         -- TODO: Maybe throw an error in case
-                         -- tagFieldName overwrites a field in pairs.
-                         infixApp (infixApp [|T.pack tagFieldName|]
-                                            [|(.=)|]
-                                            (conStr opts conName))
-                                  [|(:)|]
-                                  pairs
-                   ObjectWithSingleField ->
-                       [|object|] `appE` listE
-                         [ infixApp (conTxt opts conName) [|(.=)|] exp ]
+                   TwoElemArray -> array $
+                     encStr opts conName <%> [|fromEncoding|] `appE` exp
+                   TaggedObject{tagFieldName} -> object $
+                     ([|E.builder tagFieldName|] <:> encStr opts conName) <%>
+                     objBody
+                   ObjectWithSingleField -> object $
+                     encStr opts conName <:> [|fromEncoding|] `appE` exp
             else exp
           ) []
 
@@ -517,9 +524,9 @@ argsToEncoding opts multiCons (InfixC _ conName _) = do
     match (infixP (varP al) conName (varP ar))
           ( normalB
           $ sumToEncoding opts multiCons conName
-          $ [|toJSON|] `appE` listE [ [|toJSON|] `appE` varE a
-                                    | a <- [al,ar]
-                                    ]
+          $ [|toEncoding|] `appE` listE [ [|toJSON|] `appE` varE a
+                                        | a <- [al,ar]
+                                        ]
           )
           []
 -- Existentially quantified constructors.
