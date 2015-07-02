@@ -355,9 +355,6 @@ argsToValue opts multiCons (RecC conName ts) = case (unwrapUnaryRecords opts, no
 
         (maybes, rest) = partition isMaybe argCons
 
-        isMaybe (_, (_, _, AppT (ConT t) _)) = t == ''Maybe
-        isMaybe _ = False
-
         maybeToPair (arg, (field, _, _)) =
             infixApp (infixE (Just $ toFieldName field)
                              [|(.=)|]
@@ -407,6 +404,10 @@ argsToValue opts multiCons (InfixC _ conName _) = do
 -- Existentially quantified constructors.
 argsToValue opts multiCons (ForallC _ _ con) =
     argsToValue opts multiCons con
+
+isMaybe :: (a, (b, c, Type)) -> Bool
+isMaybe (_, (_, _, AppT (ConT t) _)) = t == ''Maybe
+isMaybe _                            = False
 
 (<^>) :: ExpQ -> ExpQ -> ExpQ
 (<^>) a b = infixApp a [|(<>)|] b
@@ -488,9 +489,6 @@ argsToEncoding opts multiCons (RecC conName ts) = case (unwrapUnaryRecords opts,
         restFields = listE (map toPair rest)
 
         (maybes, rest) = partition isMaybe argCons
-
-        isMaybe (_, (_, _, AppT (ConT t) _)) = t == ''Maybe
-        isMaybe _ = False
 
         maybeToPair (arg, (field, _, _)) =
             infixApp (infixE (Just $ toFieldName field)
