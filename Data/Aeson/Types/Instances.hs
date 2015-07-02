@@ -47,9 +47,7 @@ module Data.Aeson.Types.Instances
     , (.:)
     , (.:?)
     , (.!=)
-    , builder
     , series
-    , foldable
     , tuple
     , (>*<)
     , typeMismatch
@@ -60,14 +58,14 @@ import qualified Data.Aeson.Encode.Builder as E
 import qualified Data.ByteString.Builder as B
 import Data.Aeson.Functions
 import Data.Monoid ((<>), mempty)
+import Data.Aeson.Encode.Functions (brackets, builder, foldable, list)
 import Data.Aeson.Types.Class
 import Data.Aeson.Types.Internal
 import Data.Scientific (Scientific)
 import qualified Data.Scientific as Scientific (coefficient, base10Exponent, fromFloatDigits, toRealFloat)
 import Data.Attoparsec.Number (Number(..))
 import Data.Fixed
-import Data.Foldable (Foldable, foldMap, toList)
-import Data.ByteString.Builder.Prim (primBounded)
+import Data.Foldable (Foldable, toList)
 import Data.Functor.Identity (Identity(..))
 import Data.Hashable (Hashable(..))
 import Data.Int (Int8, Int16, Int32, Int64)
@@ -98,7 +96,6 @@ import qualified Data.Vector.Primitive as VP
 import qualified Data.Vector.Storable as VS
 import qualified Data.Vector.Unboxed as VU
 import qualified Data.Vector.Mutable as VM ( unsafeNew, unsafeWrite )
-import qualified Prelude as P
 
 #if MIN_VERSION_time(1,5,0)
 import Data.Time.Format (defaultTimeLocale, dateTimeFmt)
@@ -142,10 +139,6 @@ instance (ToJSON a, ToJSON b) => ToJSON (Either a b) where
       B.shortByteString "{\"left\":" <> builder a <> B.char7 '}'
     toEncoding (Right a) = Encoding $
       B.shortByteString "{\"right\":" <> builder a <> B.char7 '}'
-
-builder :: ToJSON a => a -> B.Builder
-builder = fromEncoding . toEncoding
-{-# INLINE builder #-}
 
 instance (FromJSON a, FromJSON b) => FromJSON (Either a b) where
     parseJSON (Object (H.toList -> [(key, value)]))
@@ -427,10 +420,7 @@ instance (ToJSON a) => ToJSON [a] where
     toJSON = Array . V.fromList . map toJSON
     {-# INLINE toJSON #-}
 
-    toEncoding [] = E.emptyArray_
-    toEncoding (x:xs) = Encoding $
-                        B.char7 '[' <> builder x <> commas xs <> B.char7 ']'
-      where commas = P.foldr (\v vs -> B.char7 ',' <> builder v <> vs) mempty
+    toEncoding xs = list xs
 
 instance (FromJSON a) => FromJSON [a] where
     parseJSON = withArray "[a]" $ Tr.sequence .
@@ -452,15 +442,6 @@ instance (ToJSON a) => ToJSON (Vector a) where
     {-# INLINE toJSON #-}
 
     toEncoding = encodeVector
-
--- | Encode a 'Foldable' as a JSON array.
-foldable :: (Foldable t, ToJSON a) => t a -> Encoding
-foldable = brackets '[' ']' . foldMap (Value . toEncoding)
-
-brackets :: Char -> Char -> Series -> Encoding
-brackets begin end (Value v) = Encoding $
-                               B.char7 begin <> fromEncoding v <> B.char7 end
-brackets begin end Empty     = Encoding (primBounded (E.ascii2 (begin,end)) ())
 
 encodeVector :: (ToJSON a, VG.Vector v a) => v a -> Encoding
 encodeVector xs
@@ -575,18 +556,18 @@ encodeMap minViewWithKey foldrWithKey xs =
     case minViewWithKey xs of
       Nothing         -> E.emptyObject_
       Just ((k,v),ys) -> Encoding $
-                         B.char7 '{' <> encodePair k v <>
+                         B.char7 '{' <> encodeKV k v <>
                          foldrWithKey go mempty ys <> B.char7 '}'
-  where go k v b = B.char7 ',' <> encodePair k v <> b
+  where go k v b = B.char7 ',' <> encodeKV k v <> b
 
 encodeWithKey :: (ToJSON k, ToJSON v) =>
                  ((k -> v -> Series -> Series) -> Series -> m -> Series)
               -> m -> Encoding
 encodeWithKey foldrWithKey = brackets '{' '}' . foldrWithKey go mempty
-  where go k v c = Value (Encoding $ encodePair k v) <> c
+  where go k v c = Value (Encoding $ encodeKV k v) <> c
 
-encodePair :: (ToJSON k, ToJSON v) => k -> v -> B.Builder
-encodePair k v = builder k <> B.char7 ':' <> builder v
+encodeKV :: (ToJSON k, ToJSON v) => k -> v -> B.Builder
+encodeKV k v = builder k <> B.char7 ':' <> builder v
 
 instance (FromJSON v) => FromJSON (M.Map Text v) where
     parseJSON = withObject "Map Text a" $

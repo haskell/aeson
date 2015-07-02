@@ -22,6 +22,7 @@ library
 
   other-modules:
     Data.Aeson.Encode.Builder
+    Data.Aeson.Encode.Functions
     Data.Aeson.Functions
     Data.Aeson.Parser.Internal
     Data.Aeson.Types.Class

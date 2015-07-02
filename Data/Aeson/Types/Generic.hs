@@ -26,6 +26,7 @@ import Data.Aeson.Types.Instances
 import Data.Aeson.Types.Internal
 import Data.Bits
 import Data.Aeson.Encode.Builder (emptyArray_)
+import Data.Aeson.Encode.Functions (builder)
 import Data.ByteString.Builder as B
 import Data.Monoid ((<>), mempty)
 import Data.DList (DList, toList, empty)
