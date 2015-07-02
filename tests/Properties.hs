@@ -5,6 +5,7 @@ import Data.Aeson (eitherDecode)
 import Data.Aeson.Encode
 import Data.Aeson.Parser (value)
 import Data.Aeson.Types
+import Data.ByteString.Builder (toLazyByteString)
 import Data.Char (toUpper)
 import Test.Framework (Test, defaultMain, testGroup)
 import Test.Framework.Providers.QuickCheck2 (testProperty)
@@ -75,6 +76,11 @@ modifyFailureProp orig added =
     parser = const $ modifyFailure (added ++) $ fail orig
     result :: Result ()
     result = parse parser ()
+
+sameAs :: (a -> Value) -> (a -> Encoding) -> a -> Property
+sameAs toVal toEnc v =
+  toLazyByteString (encodeToBuilder (toVal v)) ===
+  toLazyByteString (fromEncoding (toEnc v))
 
 main :: IO ()
 main = do
@@ -184,6 +190,10 @@ tests = [
             ]
           ]
         ]
+      ]
+    , testGroup "toEncoding" [
+        testProperty "NullaryString" $
+        thNullaryToJSONString `sameAs` thNullaryToEncodingString
       ]
     ]
   ]

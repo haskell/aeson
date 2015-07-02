@@ -14,6 +14,9 @@ import Types
 thNullaryToJSONString :: Nullary -> Value
 thNullaryToJSONString = $(mkToJSON defaultOptions ''Nullary)
 
+thNullaryToEncodingString :: Nullary -> Encoding
+thNullaryToEncodingString = $(mkToEncoding defaultOptions ''Nullary)
+
 thNullaryParseJSONString :: Value -> Parser Nullary
 thNullaryParseJSONString = $(mkParseJSON defaultOptions ''Nullary)
 
