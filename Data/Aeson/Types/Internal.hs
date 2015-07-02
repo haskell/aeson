@@ -1,4 +1,5 @@
-{-# LANGUAGE DeriveDataTypeable, GeneralizedNewtypeDeriving, Rank2Types #-}
+{-# LANGUAGE DeriveDataTypeable, GeneralizedNewtypeDeriving, Rank2Types,
+    RecordWildCards #-}
 
 -- |
 -- Module:      Data.Aeson.Types.Internal
@@ -377,6 +378,18 @@ data Options = Options
       -- field, like a newtype.
     }
 
+instance Show Options where
+  show Options{..} = "Options {" ++
+    "fieldLabelModifier =~ " ++
+      show (fieldLabelModifier "exampleField") ++ ", " ++
+    "constructorTagModifier =~ " ++
+      show (constructorTagModifier "ExampleConstructor") ++ ", " ++
+    "allNullaryToStringTag = " ++ show allNullaryToStringTag ++ ", " ++
+    "omitNothingFields = " ++ show omitNothingFields ++ ", " ++
+    "sumEncoding = " ++ show sumEncoding ++ ", " ++
+    "unwrapUnaryRecords = " ++ show unwrapUnaryRecords ++
+    "}"
+
 -- | Specifies how to encode constructors of a sum datatype.
 data SumEncoding =
     TaggedObject { tagFieldName      :: String
@@ -401,6 +414,7 @@ data SumEncoding =
     -- first element is the tag of the constructor (modified by the
     -- 'constructorTagModifier') and the second element the encoded
     -- contents of the constructor.
+    deriving (Eq, Show)
 
 -- | Default encoding 'Options':
 --
