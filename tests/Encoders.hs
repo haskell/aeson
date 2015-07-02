@@ -87,6 +87,9 @@ gNullaryParseJSONObjectWithSingleField = genericParseJSON optsObjectWithSingleFi
 thSomeTypeToJSON2ElemArray :: SomeType Int -> Value
 thSomeTypeToJSON2ElemArray = $(mkToJSON opts2ElemArray ''SomeType)
 
+thSomeTypeToEncoding2ElemArray :: SomeType Int -> Encoding
+thSomeTypeToEncoding2ElemArray = $(mkToEncoding opts2ElemArray ''SomeType)
+
 thSomeTypeParseJSON2ElemArray :: Value -> Parser (SomeType Int)
 thSomeTypeParseJSON2ElemArray = $(mkParseJSON opts2ElemArray ''SomeType)
 
@@ -94,15 +97,24 @@ thSomeTypeParseJSON2ElemArray = $(mkParseJSON opts2ElemArray ''SomeType)
 thSomeTypeToJSONTaggedObject :: SomeType Int -> Value
 thSomeTypeToJSONTaggedObject = $(mkToJSON optsTaggedObject ''SomeType)
 
+thSomeTypeToEncodingTaggedObject :: SomeType Int -> Encoding
+thSomeTypeToEncodingTaggedObject = $(mkToEncoding optsTaggedObject ''SomeType)
+
 thSomeTypeParseJSONTaggedObject :: Value -> Parser (SomeType Int)
 thSomeTypeParseJSONTaggedObject = $(mkParseJSON optsTaggedObject ''SomeType)
 
 
 thSomeTypeToJSONObjectWithSingleField :: SomeType Int -> Value
-thSomeTypeToJSONObjectWithSingleField = $(mkToJSON optsObjectWithSingleField ''SomeType)
+thSomeTypeToJSONObjectWithSingleField =
+  $(mkToJSON optsObjectWithSingleField ''SomeType)
+
+thSomeTypeToEncodingObjectWithSingleField :: SomeType Int -> Encoding
+thSomeTypeToEncodingObjectWithSingleField =
+  $(mkToEncoding optsObjectWithSingleField ''SomeType)
 
 thSomeTypeParseJSONObjectWithSingleField :: Value -> Parser (SomeType Int)
-thSomeTypeParseJSONObjectWithSingleField = $(mkParseJSON optsObjectWithSingleField ''SomeType)
+thSomeTypeParseJSONObjectWithSingleField =
+  $(mkParseJSON optsObjectWithSingleField ''SomeType)
 
 
 gSomeTypeToJSON2ElemArray :: SomeType Int -> Value

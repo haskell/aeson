@@ -77,10 +77,17 @@ modifyFailureProp orig added =
     result :: Result ()
     result = parse parser ()
 
+-- | Perform a bit-for-bit comparison of two encoding methods.
 sameAs :: (a -> Value) -> (a -> Encoding) -> a -> Property
 sameAs toVal toEnc v =
   toLazyByteString (encodeToBuilder (toVal v)) ===
   toLazyByteString (fromEncoding (toEnc v))
+
+-- | Behaves like 'sameAs', but compares decoded values to account for
+-- HashMap-driven variation in JSON object key ordering.
+sameAsV :: (a -> Value) -> (a -> Encoding) -> a -> Property
+sameAsV toVal toEnc v =
+  eitherDecode (toLazyByteString (fromEncoding (toEnc v))) === Right (toVal v)
 
 main :: IO ()
 main = do
@@ -205,6 +212,13 @@ tests = [
         thApproxToJSONUnwrap `sameAs` thApproxToEncodingUnwrap
       , testProperty "ApproxDefault" $
         thApproxToJSONDefault `sameAs` thApproxToEncodingDefault
+      , testProperty "SomeType2ElemArray" $
+        thSomeTypeToJSON2ElemArray `sameAsV` thSomeTypeToEncoding2ElemArray
+      , testProperty "SomeTypeTaggedObject" $
+        thSomeTypeToJSONTaggedObject `sameAsV` thSomeTypeToEncodingTaggedObject
+      , testProperty "SomeTypeObjectWithSingleField" $
+        thSomeTypeToJSONObjectWithSingleField `sameAsV`
+        thSomeTypeToEncodingObjectWithSingleField
       ]
     ]
   ]
