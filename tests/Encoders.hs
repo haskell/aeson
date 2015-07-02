@@ -45,6 +45,10 @@ thNullaryToJSONObjectWithSingleField :: Nullary -> Value
 thNullaryToJSONObjectWithSingleField =
   $(mkToJSON optsObjectWithSingleField ''Nullary)
 
+thNullaryToEncodingObjectWithSingleField :: Nullary -> Encoding
+thNullaryToEncodingObjectWithSingleField =
+  $(mkToEncoding optsObjectWithSingleField ''Nullary)
+
 thNullaryParseJSONObjectWithSingleField :: Value -> Parser Nullary
 thNullaryParseJSONObjectWithSingleField = $(mkParseJSON optsObjectWithSingleField ''Nullary)
 

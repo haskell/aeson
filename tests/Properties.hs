@@ -198,6 +198,9 @@ tests = [
         thNullaryToJSON2ElemArray `sameAs` thNullaryToEncoding2ElemArray
       , testProperty "NullaryTaggedObject" $
         thNullaryToJSONTaggedObject `sameAs` thNullaryToEncodingTaggedObject
+      , testProperty "NullaryObjectWithSingleField" $
+        thNullaryToJSONObjectWithSingleField `sameAs`
+        thNullaryToEncodingObjectWithSingleField
       ]
     ]
   ]

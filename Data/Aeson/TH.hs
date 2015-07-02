@@ -438,7 +438,7 @@ sumToEncoding opts multiCons conName exp
             ([|E.builder tagFieldName|] <:> encStr opts conName) <%>
             ([|E.builder contentsFieldName|] <:> fexp)
           ObjectWithSingleField ->
-            object (conTxt opts conName <:> fexp)
+            object (encStr opts conName <:> fexp)
 
     | otherwise = exp
 
