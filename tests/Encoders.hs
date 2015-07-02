@@ -84,47 +84,45 @@ gNullaryParseJSONObjectWithSingleField = genericParseJSON optsObjectWithSingleFi
 -- SomeType encoders/decoders
 --------------------------------------------------------------------------------
 
-type SomeTypeToJSON = SomeType Int -> Value
-
-thSomeTypeToJSON2ElemArray :: ToJSON a => SomeType a -> Value
+thSomeTypeToJSON2ElemArray :: SomeType Int -> Value
 thSomeTypeToJSON2ElemArray = $(mkToJSON opts2ElemArray ''SomeType)
 
-thSomeTypeParseJSON2ElemArray :: FromJSON a => Value -> Parser (SomeType a)
+thSomeTypeParseJSON2ElemArray :: Value -> Parser (SomeType Int)
 thSomeTypeParseJSON2ElemArray = $(mkParseJSON opts2ElemArray ''SomeType)
 
 
-thSomeTypeToJSONTaggedObject :: ToJSON a => SomeType a -> Value
+thSomeTypeToJSONTaggedObject :: SomeType Int -> Value
 thSomeTypeToJSONTaggedObject = $(mkToJSON optsTaggedObject ''SomeType)
 
-thSomeTypeParseJSONTaggedObject :: FromJSON a => Value -> Parser (SomeType a)
+thSomeTypeParseJSONTaggedObject :: Value -> Parser (SomeType Int)
 thSomeTypeParseJSONTaggedObject = $(mkParseJSON optsTaggedObject ''SomeType)
 
 
-thSomeTypeToJSONObjectWithSingleField :: ToJSON a => SomeType a -> Value
+thSomeTypeToJSONObjectWithSingleField :: SomeType Int -> Value
 thSomeTypeToJSONObjectWithSingleField = $(mkToJSON optsObjectWithSingleField ''SomeType)
 
-thSomeTypeParseJSONObjectWithSingleField :: FromJSON a => Value -> Parser (SomeType a)
+thSomeTypeParseJSONObjectWithSingleField :: Value -> Parser (SomeType Int)
 thSomeTypeParseJSONObjectWithSingleField = $(mkParseJSON optsObjectWithSingleField ''SomeType)
 
 
-gSomeTypeToJSON2ElemArray :: ToJSON a => SomeType a -> Value
+gSomeTypeToJSON2ElemArray :: SomeType Int -> Value
 gSomeTypeToJSON2ElemArray = genericToJSON opts2ElemArray
 
-gSomeTypeParseJSON2ElemArray :: FromJSON a => Value -> Parser (SomeType a)
+gSomeTypeParseJSON2ElemArray :: Value -> Parser (SomeType Int)
 gSomeTypeParseJSON2ElemArray = genericParseJSON opts2ElemArray
 
 
-gSomeTypeToJSONTaggedObject :: ToJSON a => SomeType a -> Value
+gSomeTypeToJSONTaggedObject :: SomeType Int -> Value
 gSomeTypeToJSONTaggedObject = genericToJSON optsTaggedObject
 
-gSomeTypeParseJSONTaggedObject :: FromJSON a => Value -> Parser (SomeType a)
+gSomeTypeParseJSONTaggedObject :: Value -> Parser (SomeType Int)
 gSomeTypeParseJSONTaggedObject = genericParseJSON optsTaggedObject
 
 
-gSomeTypeToJSONObjectWithSingleField :: ToJSON a => SomeType a -> Value
+gSomeTypeToJSONObjectWithSingleField :: SomeType Int -> Value
 gSomeTypeToJSONObjectWithSingleField = genericToJSON optsObjectWithSingleField
 
-gSomeTypeParseJSONObjectWithSingleField :: FromJSON a => Value -> Parser (SomeType a)
+gSomeTypeParseJSONObjectWithSingleField :: Value -> Parser (SomeType Int)
 gSomeTypeParseJSONObjectWithSingleField = genericParseJSON optsObjectWithSingleField
 
 
