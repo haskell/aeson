@@ -429,15 +429,16 @@ object exp = [|Encoding|] `appE` ([|E.char7 '{'|] <^> exp <^> [|E.char7 '}'|])
 sumToEncoding :: Options -> Bool -> Name -> Q Exp -> Q Exp
 sumToEncoding opts multiCons conName exp
     | multiCons =
+        let fexp = [|fromEncoding|] `appE` exp in
         case sumEncoding opts of
           TwoElemArray ->
-            array (encStr opts conName <%> exp)
+            array (encStr opts conName <%> fexp)
           TaggedObject{tagFieldName, contentsFieldName} ->
             object $
             ([|E.builder tagFieldName|] <:> encStr opts conName) <%>
-            ([|E.builder contentsFieldName|] <:> [|fromEncoding|] `appE` exp)
+            ([|E.builder contentsFieldName|] <:> fexp)
           ObjectWithSingleField ->
-            object (conTxt opts conName <:> [|fromEncoding|] `appE` exp)
+            object (conTxt opts conName <:> fexp)
 
     | otherwise = exp
 

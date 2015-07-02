@@ -24,6 +24,9 @@ thNullaryParseJSONString = $(mkParseJSON defaultOptions ''Nullary)
 thNullaryToJSON2ElemArray :: Nullary -> Value
 thNullaryToJSON2ElemArray = $(mkToJSON opts2ElemArray ''Nullary)
 
+thNullaryToEncoding2ElemArray :: Nullary -> Encoding
+thNullaryToEncoding2ElemArray = $(mkToEncoding opts2ElemArray ''Nullary)
+
 thNullaryParseJSON2ElemArray :: Value -> Parser Nullary
 thNullaryParseJSON2ElemArray = $(mkParseJSON opts2ElemArray ''Nullary)
 

@@ -194,6 +194,8 @@ tests = [
     , testGroup "toEncoding" [
         testProperty "NullaryString" $
         thNullaryToJSONString `sameAs` thNullaryToEncodingString
+      , testProperty "Nullary2ElemArray" $
+        thNullaryToJSON2ElemArray `sameAs` thNullaryToEncoding2ElemArray
       ]
     ]
   ]
