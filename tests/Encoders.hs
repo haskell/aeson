@@ -132,19 +132,17 @@ gSomeTypeParseJSONObjectWithSingleField = genericParseJSON optsObjectWithSingleF
 -- Approx encoders/decoders
 --------------------------------------------------------------------------------
 
-type ApproxToJSON = Approx String -> Value
-
-thApproxToJSONUnwrap :: ToJSON a => Approx a -> Value
+thApproxToJSONUnwrap :: Approx String -> Value
 thApproxToJSONUnwrap = $(mkToJSON optsUnwrapUnaryRecords ''Approx)
 
-thApproxParseJSONUnwrap :: FromJSON a => Value -> Parser (Approx a)
+thApproxParseJSONUnwrap :: Value -> Parser (Approx String)
 thApproxParseJSONUnwrap = $(mkParseJSON optsUnwrapUnaryRecords ''Approx)
 
 
-thApproxToJSONDefault :: ToJSON a => Approx a -> Value
+thApproxToJSONDefault :: Approx String -> Value
 thApproxToJSONDefault = $(mkToJSON defaultOptions ''Approx)
 
-thApproxParseJSONDefault :: FromJSON a => Value -> Parser (Approx a)
+thApproxParseJSONDefault :: Value -> Parser (Approx String)
 thApproxParseJSONDefault = $(mkParseJSON defaultOptions ''Approx)
 
 gApproxToJSONUnwrap :: Approx String -> Value

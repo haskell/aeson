@@ -182,11 +182,11 @@ tests = [
           , testProperty "ObjectWithSingleField" (toParseJSON thSomeTypeParseJSONObjectWithSingleField (thSomeTypeToJSONObjectWithSingleField :: SomeTypeToJSON))
           ]
        , testGroup "Approx" [
-            testProperty "string"                (isString                . (thApproxToJSONUnwrap  ::ApproxToJSON))
-          , testProperty "ObjectWithSingleField" (isObjectWithSingleField . (thApproxToJSONDefault ::ApproxToJSON))
+            testProperty "string"                (isString                . thApproxToJSONUnwrap)
+          , testProperty "ObjectWithSingleField" (isObjectWithSingleField . thApproxToJSONDefault)
           , testGroup "roundTrip" [
-                testProperty "string"                (toParseJSON thApproxParseJSONUnwrap  (thApproxToJSONUnwrap  ::ApproxToJSON))
-              , testProperty "ObjectWithSingleField" (toParseJSON thApproxParseJSONDefault (thApproxToJSONDefault ::ApproxToJSON))
+                testProperty "string"                (toParseJSON thApproxParseJSONUnwrap  thApproxToJSONUnwrap)
+              , testProperty "ObjectWithSingleField" (toParseJSON thApproxParseJSONDefault thApproxToJSONDefault)
             ]
           ]
         ]
