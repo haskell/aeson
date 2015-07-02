@@ -34,12 +34,16 @@ thNullaryParseJSON2ElemArray = $(mkParseJSON opts2ElemArray ''Nullary)
 thNullaryToJSONTaggedObject :: Nullary -> Value
 thNullaryToJSONTaggedObject = $(mkToJSON optsTaggedObject ''Nullary)
 
+thNullaryToEncodingTaggedObject :: Nullary -> Encoding
+thNullaryToEncodingTaggedObject = $(mkToEncoding optsTaggedObject ''Nullary)
+
 thNullaryParseJSONTaggedObject :: Value -> Parser Nullary
 thNullaryParseJSONTaggedObject = $(mkParseJSON optsTaggedObject ''Nullary)
 
 
 thNullaryToJSONObjectWithSingleField :: Nullary -> Value
-thNullaryToJSONObjectWithSingleField = $(mkToJSON optsObjectWithSingleField ''Nullary)
+thNullaryToJSONObjectWithSingleField =
+  $(mkToJSON optsObjectWithSingleField ''Nullary)
 
 thNullaryParseJSONObjectWithSingleField :: Value -> Parser Nullary
 thNullaryParseJSONObjectWithSingleField = $(mkParseJSON optsObjectWithSingleField ''Nullary)
