@@ -29,6 +29,7 @@ module Data.Aeson.Types.Instances
     , GFromJSON(..)
     , GToJSON(..)
     , genericToJSON
+    , genericToEncoding
     , genericParseJSON
 
     -- * Types
@@ -44,6 +45,7 @@ module Data.Aeson.Types.Instances
 
     -- * Functions
     , fromJSON
+    , ifromJSON
     , (.:)
     , (.:?)
     , (.!=)
@@ -1456,6 +1458,11 @@ series (Value v) = v
 fromJSON :: (FromJSON a) => Value -> Result a
 fromJSON = parse parseJSON
 {-# INLINE fromJSON #-}
+
+-- | Convert a value from JSON, failing if the types do not match.
+ifromJSON :: (FromJSON a) => Value -> IResult a
+ifromJSON = iparse parseJSON
+{-# INLINE ifromJSON #-}
 
 -- | Retrieve the value associated with the given key of an 'Object'.
 -- The result is 'empty' if the key is not present or the value cannot

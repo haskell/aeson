@@ -58,6 +58,7 @@ module Data.Aeson
     , GFromJSON(..)
     , GToJSON(..)
     , genericToJSON
+    , genericToEncoding
     , genericParseJSON
 
     -- * Inspecting @'Value's@
@@ -85,6 +86,8 @@ import Data.Aeson.Parser.Internal (decodeWith, decodeStrictWith,
                                    eitherDecodeWith, eitherDecodeStrictWith,
                                    jsonEOF, json, jsonEOF', json')
 import Data.Aeson.Types
+import Data.Aeson.Types.Internal (JSONPath, formatError)
+import Data.Aeson.Types.Instances (ifromJSON)
 import qualified Data.ByteString as B
 import qualified Data.ByteString.Lazy as L
 
@@ -149,22 +152,24 @@ eitherFormatError = either (Left . uncurry formatError) Right
 
 -- | Like 'decode' but returns an error message when decoding fails.
 eitherDecode :: (FromJSON a) => L.ByteString -> Either String a
-eitherDecode = eitherFormatError . eitherDecodeWith jsonEOF fromJSON
+eitherDecode = eitherFormatError . eitherDecodeWith jsonEOF ifromJSON
 {-# INLINE eitherDecode #-}
 
 -- | Like 'decodeStrict' but returns an error message when decoding fails.
 eitherDecodeStrict :: (FromJSON a) => B.ByteString -> Either String a
-eitherDecodeStrict = eitherFormatError . eitherDecodeStrictWith jsonEOF fromJSON
+eitherDecodeStrict =
+  eitherFormatError . eitherDecodeStrictWith jsonEOF ifromJSON
 {-# INLINE eitherDecodeStrict #-}
 
 -- | Like 'decode'' but returns an error message when decoding fails.
 eitherDecode' :: (FromJSON a) => L.ByteString -> Either String a
-eitherDecode' = eitherFormatError . eitherDecodeWith jsonEOF' fromJSON
+eitherDecode' = eitherFormatError . eitherDecodeWith jsonEOF' ifromJSON
 {-# INLINE eitherDecode' #-}
 
 -- | Like 'decodeStrict'' but returns an error message when decoding fails.
 eitherDecodeStrict' :: (FromJSON a) => B.ByteString -> Either String a
-eitherDecodeStrict' = eitherFormatError . eitherDecodeStrictWith jsonEOF' fromJSON
+eitherDecodeStrict' =
+  eitherFormatError . eitherDecodeStrictWith jsonEOF' ifromJSON
 {-# INLINE eitherDecodeStrict' #-}
 
 -- $use

@@ -26,8 +26,10 @@ module Data.Aeson.Types.Internal
     -- * Type conversion
     , Parser
     , Result(..)
+    , IResult(..)
     , JSONPathElement(..)
     , JSONPath
+    , iparse
     , parse
     , parseEither
     , parseMaybe
@@ -80,8 +82,13 @@ data JSONPathElement = Key Text
                        deriving (Eq, Show, Typeable)
 type JSONPath = [JSONPathElement]
 
+-- | The internal result of running a 'Parser'.
+data IResult a = IError JSONPath String
+               | ISuccess a
+               deriving (Eq, Show, Typeable)
+
 -- | The result of running a 'Parser'.
-data Result a = Error JSONPath String
+data Result a = Error String
               | Success a
                 deriving (Eq, Show, Typeable)
 
@@ -89,27 +96,56 @@ instance NFData JSONPathElement where
   rnf (Key t)   = rnf t
   rnf (Index i) = rnf i
 
+instance (NFData a) => NFData (IResult a) where
+    rnf (ISuccess a)      = rnf a
+    rnf (IError path err) = rnf path `seq` rnf err
+
 instance (NFData a) => NFData (Result a) where
     rnf (Success a) = rnf a
-    rnf (Error path err) = rnf path `seq` rnf err
+    rnf (Error err) = rnf err
+
+instance Functor IResult where
+    fmap f (ISuccess a)      = ISuccess (f a)
+    fmap _ (IError path err) = IError path err
+    {-# INLINE fmap #-}
 
 instance Functor Result where
     fmap f (Success a) = Success (f a)
-    fmap _ (Error path err) = Error path err
+    fmap _ (Error err) = Error err
     {-# INLINE fmap #-}
+
+instance Monad IResult where
+    return = ISuccess
+    {-# INLINE return #-}
+    ISuccess a      >>= k = k a
+    IError path err >>= _ = IError path err
+    {-# INLINE (>>=) #-}
 
 instance Monad Result where
     return = Success
     {-# INLINE return #-}
-    Success a      >>= k = k a
-    Error path err >>= _ = Error path err
+    Success a >>= k = k a
+    Error err >>= _ = Error err
     {-# INLINE (>>=) #-}
+
+instance Applicative IResult where
+    pure  = return
+    {-# INLINE pure #-}
+    (<*>) = ap
+    {-# INLINE (<*>) #-}
 
 instance Applicative Result where
     pure  = return
     {-# INLINE pure #-}
     (<*>) = ap
     {-# INLINE (<*>) #-}
+
+instance MonadPlus IResult where
+    mzero = fail "mzero"
+    {-# INLINE mzero #-}
+    mplus a@(ISuccess _) _ = a
+    mplus _ b             = b
+    {-# INLINE mplus #-}
 
 instance MonadPlus Result where
     mzero = fail "mzero"
@@ -118,11 +154,23 @@ instance MonadPlus Result where
     mplus _ b             = b
     {-# INLINE mplus #-}
 
+instance Alternative IResult where
+    empty = mzero
+    {-# INLINE empty #-}
+    (<|>) = mplus
+    {-# INLINE (<|>) #-}
+
 instance Alternative Result where
     empty = mzero
     {-# INLINE empty #-}
     (<|>) = mplus
     {-# INLINE (<|>) #-}
+
+instance Monoid (IResult a) where
+    mempty  = fail "mempty"
+    {-# INLINE mempty #-}
+    mappend = mplus
+    {-# INLINE mappend #-}
 
 instance Monoid (Result a) where
     mempty  = fail "mempty"
@@ -288,8 +336,13 @@ emptyObject = Object H.empty
 
 -- | Run a 'Parser'.
 parse :: (a -> Parser b) -> a -> Result b
-parse m v = runParser (m v) [] Error Success
+parse m v = runParser (m v) [] (const Error) Success
 {-# INLINE parse #-}
+
+-- | Run a 'Parser'.
+iparse :: (a -> Parser b) -> a -> IResult b
+iparse m v = runParser (m v) [] IError ISuccess
+{-# INLINE iparse #-}
 
 -- | Run a 'Parser' with a 'Maybe' result type.
 parseMaybe :: (a -> Parser b) -> a -> Maybe b
@@ -298,18 +351,18 @@ parseMaybe m v = runParser (m v) [] (\_ _ -> Nothing) Just
 
 -- | Run a 'Parser' with an 'Either' result type.
 parseEither :: (a -> Parser b) -> a -> Either String b
-parseEither m v = runParser (m v) [] (\path msg -> Left $ formatError path msg) Right
+parseEither m v = runParser (m v) [] onError Right
+  where onError path msg = Left (formatError path msg)
 {-# INLINE parseEither #-}
 
--- | Annotate error message with JSON Path error location
+-- | Annotate an error message with a
+-- <http://goessner.net/articles/JsonPath/ JSONPath> error location.
 formatError :: JSONPath -> String -> String
-formatError path msg = "Error in " ++ (formatJSONPath path) ++ ": " ++ msg
-  where formatJSONPath :: JSONPath -> String
-        formatJSONPath p = format "$" p
-          where format :: String -> JSONPath -> String
-                format prefix [] = prefix
-                format prefix (Index idx:parts) = format (prefix ++ "[" ++ show idx ++ "]") parts
-                format prefix (Key key:parts) = format (prefix ++ "." ++ unpack key) parts
+formatError path msg = "Error in " ++ (format "$" path) ++ ": " ++ msg
+  where
+    format pfx []                = pfx
+    format pfx (Index idx:parts) = format (pfx ++ "[" ++ show idx ++ "]") parts
+    format pfx (Key key:parts)   = format (pfx ++ "." ++ unpack key) parts
 
 -- | A key\/value pair for an 'Object'.
 type Pair = (Text, Value)

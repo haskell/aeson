@@ -35,13 +35,12 @@ module Data.Aeson.Types
     , ToJSON(..)
     , KeyValue(..)
     , modifyFailure
-    , JSONPath
-    , formatError
 
     -- ** Generic JSON classes
     , GFromJSON(..)
     , GToJSON(..)
     , genericToJSON
+    , genericToEncoding
     , genericParseJSON
 
     -- * Inspecting @'Value's@

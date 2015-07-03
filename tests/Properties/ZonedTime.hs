@@ -2,12 +2,13 @@
 
 module Properties.ZonedTime (zonedTimeToJSON) where
 
+import Data.Aeson.Internal (IResult(..), formatError, ifromJSON)
 import Data.Aeson.Types
 import Data.Time
 import Instances ()
 import Test.Framework (Test, testGroup)
 import Test.Framework.Providers.QuickCheck2 (testProperty)
-import Test.QuickCheck ((===))
+import Test.QuickCheck ((===), Property)
 import Types
 
 #if !MIN_VERSION_time(1,5,0)
@@ -42,9 +43,10 @@ zonedTimeToJSON = testGroup "ZonedTime" [
     test :: String -> (ZonedTime -> ZonedTime) -> Test
     test format f = testProperty format go
       where
-        go t = case fromJSON (toJSON' format t) of
-                 Error path msg -> failure "fromJSON" (formatError path msg) t
-                 Success t'     -> t' === f t
+        go :: ZonedTime -> Property
+        go t = case ifromJSON (toJSON' format t) of
+                 IError path msg -> failure "fromJSON" (formatError path msg) t
+                 ISuccess t'     -> t' === f t
 
 clearTimeZone :: ZonedTime -> ZonedTime
 clearTimeZone t = t { zonedTimeZone = TimeZone 0 False "" }

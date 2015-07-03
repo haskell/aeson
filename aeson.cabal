@@ -87,6 +87,7 @@ library
   exposed-modules:
     Data.Aeson
     Data.Aeson.Encode
+    Data.Aeson.Internal
     Data.Aeson.Parser
     Data.Aeson.Types
     Data.Aeson.TH

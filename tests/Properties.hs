@@ -3,6 +3,7 @@
 import Control.Monad (forM)
 import Data.Aeson (eitherDecode)
 import Data.Aeson.Encode
+import Data.Aeson.Internal (IResult(..), formatError, ifromJSON, iparse)
 import Data.Aeson.Parser (value)
 import Data.Aeson.Types
 import Data.ByteString.Builder (toLazyByteString)
@@ -49,29 +50,29 @@ encodeInteger i = encode i === L.pack (show i)
 toParseJSON :: (Arbitrary a, Eq a, Show a) =>
                (Value -> Parser a) -> (a -> Value) -> a -> Property
 toParseJSON parsejson tojson x =
-    case parse parsejson . tojson $ x of
-      Error path msg -> failure "parse" (formatError path msg) x
-      Success x'     -> x === x'
+    case iparse parsejson . tojson $ x of
+      IError path msg -> failure "parse" (formatError path msg) x
+      ISuccess x'     -> x === x'
 
 roundTrip :: (FromJSON a, ToJSON a, Show a) =>
              (a -> a -> Property) -> a -> a -> Property
 roundTrip eq _ i =
-    case fmap fromJSON . L.parse value . encode . toJSON $ i of
-      L.Done _ (Success v)      -> v `eq` i
-      L.Done _ (Error path err) -> failure "fromJSON" (formatError path err) i
-      L.Fail _ _ err            -> failure "parse" err i
+    case fmap ifromJSON . L.parse value . encode . toJSON $ i of
+      L.Done _ (ISuccess v)      -> v `eq` i
+      L.Done _ (IError path err) -> failure "fromJSON" (formatError path err) i
+      L.Fail _ _ err             -> failure "parse" err i
 
 roundTripEq :: (Eq a, FromJSON a, ToJSON a, Show a) => a -> a -> Property
 roundTripEq x y = roundTrip (===) x y
 
 toFromJSON :: (Arbitrary a, Eq a, FromJSON a, ToJSON a, Show a) => a -> Property
-toFromJSON x = case fromJSON (toJSON x) of
-                Error path err -> failure "fromJSON" (formatError path err) x
-                Success x'     -> x === x'
+toFromJSON x = case ifromJSON (toJSON x) of
+                IError path err -> failure "fromJSON" (formatError path err) x
+                ISuccess x'     -> x === x'
 
 modifyFailureProp :: String -> String -> Bool
 modifyFailureProp orig added =
-    result == Error [] (added ++ orig)
+    result == Error (added ++ orig)
   where
     parser = const $ modifyFailure (added ++) $ fail orig
     result :: Result ()
