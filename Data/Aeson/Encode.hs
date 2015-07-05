@@ -41,11 +41,17 @@ import qualified Data.Text as T
 import qualified Data.Vector as V
 
 -- | Efficiently serialize a JSON value as a lazy 'L.ByteString'.
+--
+-- This is implemented in terms of the 'ToJSON' class's 'toEncoding' method.
 encode :: ToJSON a => a -> L.ByteString
 encode = B.toLazyByteString . fromEncoding . toEncoding
 
 -- | Encode a JSON 'Value' to a "Data.Text" 'Builder', which can be
 -- embedded efficiently in a text-based protocol.
+--
+-- If you are going to immediately encode straight to a
+-- 'L.ByteString', it is more efficient to use 'encodeToBuilder'
+-- instead.
 encodeToTextBuilder :: Value -> Builder
 encodeToTextBuilder =
     go

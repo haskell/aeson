@@ -41,8 +41,10 @@ import qualified Data.Text as T
 import qualified Data.Text.Encoding as TE
 import qualified Data.Vector as V
 
--- | Encode a JSON value to a ByteString 'B.Builder'. Use this function if you
--- must prepend or append further bytes to the encoded JSON value.
+-- | Encode a JSON value to a "Data.ByteString" 'B.Builder'.
+--
+-- Use this function if you are encoding over the wire, or need to
+-- prepend or append further bytes to the encoded JSON value.
 encodeToBuilder :: Value -> Builder
 encodeToBuilder Null       = null_
 encodeToBuilder (Bool b)   = bool b

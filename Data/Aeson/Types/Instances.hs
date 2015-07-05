@@ -1450,6 +1450,7 @@ instance KeyValue Series where
                     E.text name <> B.char7 ':' <> builder value
     {-# INLINE (.=) #-}
 
+-- | Encode a series of key/value pairs, separated by commas.
 series :: Series -> Encoding
 series Empty     = mempty
 series (Value v) = v
