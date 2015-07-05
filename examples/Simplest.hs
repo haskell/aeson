@@ -14,7 +14,7 @@ instance ToJSON Coord where
   toJSON (Coord xV yV) = object [ "x" .= xV,
                                   "y" .= yV ]
 
-  toEncoding Coord{..} = series $
+  toEncoding Coord{..} = pairs $
     "x" .= x <>
     "y" .= y
 

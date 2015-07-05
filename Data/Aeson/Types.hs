@@ -51,7 +51,7 @@ module Data.Aeson.Types
     , withScientific
     , withBool
 
-    , series
+    , pairs
     , foldable
     , (.:)
     , (.:?)
@@ -66,7 +66,7 @@ module Data.Aeson.Types
     , defaultTaggedObject
     ) where
 
-import Data.Aeson.Encode.Functions (foldable, series)
+import Data.Aeson.Encode.Functions (foldable, pairs)
 import Data.Aeson.Types.Generic ()
 import Data.Aeson.Types.Instances
 import Data.Aeson.Types.Internal

@@ -70,7 +70,7 @@ module Data.Aeson
     , withBool
     -- * Constructors and accessors
     , Series
-    , series
+    , pairs
     , foldable
     , (.:)
     , (.:?)
@@ -252,7 +252,7 @@ eitherDecodeStrict' =
 -- >
 -- >     -- this encodes directly to a ByteString Builder
 -- >     toEncoding (Person name age) =
--- >         series $ "name" .= name <> "age" .= age
+-- >         pairs $ "name" .= name <> "age" .= age
 --
 -- We can now encode a value like so:
 --

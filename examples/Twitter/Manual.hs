@@ -22,7 +22,7 @@ instance ToJSON Metadata where
       "result_type" .= result_type
     ]
 
-  toEncoding Metadata{..} = series $
+  toEncoding Metadata{..} = pairs $
     "result_type" .= result_type
 
 instance FromJSON Metadata where
@@ -35,7 +35,7 @@ instance ToJSON Geo where
     , "coordinates" .= coordinates
     ]
 
-  toEncoding Geo{..} = series $
+  toEncoding Geo{..} = pairs $
        "type_"       .= type_
     <> "coordinates" .= coordinates
 
@@ -63,7 +63,7 @@ instance ToJSON Story where
     , "source"            .= source
     ]
 
-  toEncoding Story{..} = series $
+  toEncoding Story{..} = pairs $
        "from_user_id_str"  .= from_user_id_str
     <> "profile_image_url" .= profile_image_url
     <> "created_at"        .= created_at
@@ -112,7 +112,7 @@ instance ToJSON Result where
     , "query"            .= query
     ]
 
-  toEncoding Result{..} = series $
+  toEncoding Result{..} = pairs $
        "results" .= results
     <> "max_id" .= max_id
     <> "since_id" .= since_id
