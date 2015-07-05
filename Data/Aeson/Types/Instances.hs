@@ -49,7 +49,6 @@ module Data.Aeson.Types.Instances
     , (.:)
     , (.:?)
     , (.!=)
-    , series
     , tuple
     , (>*<)
     , typeMismatch
@@ -1449,11 +1448,6 @@ instance KeyValue Series where
     name .= value = Value . Encoding $
                     E.text name <> B.char7 ':' <> builder value
     {-# INLINE (.=) #-}
-
--- | Encode a series of key/value pairs, separated by commas.
-series :: Series -> Encoding
-series Empty     = mempty
-series (Value v) = v
 
 -- | Convert a value from JSON, failing if the types do not match.
 fromJSON :: (FromJSON a) => Value -> Result a

@@ -5,6 +5,7 @@ module Data.Aeson.Encode.Functions
     , char7
     , foldable
     , list
+    , series
     ) where
 
 import Data.Aeson.Encode.Builder
@@ -35,3 +36,8 @@ brackets :: Char -> Char -> Series -> Encoding
 brackets begin end (Value v) = Encoding $
                                char7 begin <> fromEncoding v <> char7 end
 brackets begin end Empty     = Encoding (primBounded (ascii2 (begin,end)) ())
+
+-- | Encode a series of key/value pairs, separated by commas.
+series :: Series -> Encoding
+series Empty     = mempty
+series (Value v) = v

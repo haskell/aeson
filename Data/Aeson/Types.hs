@@ -66,7 +66,7 @@ module Data.Aeson.Types
     , defaultTaggedObject
     ) where
 
-import Data.Aeson.Encode.Functions (foldable)
+import Data.Aeson.Encode.Functions (foldable, series)
 import Data.Aeson.Types.Generic ()
 import Data.Aeson.Types.Instances
 import Data.Aeson.Types.Internal
