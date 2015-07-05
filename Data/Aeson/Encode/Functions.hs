@@ -39,5 +39,5 @@ brackets begin end Empty     = Encoding (primBounded (ascii2 (begin,end)) ())
 
 -- | Encode a series of key/value pairs, separated by commas.
 pairs :: Series -> Encoding
-pairs Empty     = mempty
-pairs (Value v) = v
+pairs s = brackets '{' '}' s
+{-# INLINE pairs #-}
