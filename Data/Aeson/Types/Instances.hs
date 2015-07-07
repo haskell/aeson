@@ -410,8 +410,7 @@ instance ToJSON LT.Text where
 
     toEncoding t = Encoding $
       B.char7 '"' <>
-      LT.foldrChunks (\x xs -> E.unquoted x <> xs) mempty t <>
-      B.char7 '"'
+      LT.foldrChunks (\x xs -> E.unquoted x <> xs) (B.char7 '"') t
 
 instance FromJSON LT.Text where
     parseJSON = withText "Lazy Text" $ pure . LT.fromStrict
@@ -449,8 +448,7 @@ encodeVector xs
   | VG.null xs = E.emptyArray_
   | otherwise  = Encoding $
                  B.char7 '[' <> builder (VG.unsafeHead xs) <>
-                 VG.foldr go mempty (VG.unsafeTail xs) <>
-                 B.char7 ']'
+                 VG.foldr go (B.char7 ']') (VG.unsafeTail xs)
     where go v b = B.char7 ',' <> builder v <> b
 
 instance (FromJSON a) => FromJSON (Vector a) where
@@ -524,9 +522,7 @@ encodeSet minView foldr xs =
     case minView xs of
       Nothing     -> E.emptyArray_
       Just (m,ys) -> Encoding $
-                     B.char7 '[' <> builder m <>
-                     foldr go mempty ys <>
-                     B.char7 ']'
+                     B.char7 '[' <> builder m <> foldr go (B.char7 ']') ys
         where go v b = B.char7 ',' <> builder v <> b
 
 instance FromJSON IntSet.IntSet where
@@ -558,7 +554,7 @@ encodeMap minViewWithKey foldrWithKey xs =
       Nothing         -> E.emptyObject_
       Just ((k,v),ys) -> Encoding $
                          B.char7 '{' <> encodeKV k v <>
-                         foldrWithKey go mempty ys <> B.char7 '}'
+                         foldrWithKey go (B.char7 '}') ys
   where go k v b = B.char7 ',' <> encodeKV k v <> b
 
 encodeWithKey :: (ToJSON k, ToJSON v) =>
