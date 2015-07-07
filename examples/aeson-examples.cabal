@@ -21,8 +21,6 @@ executable aeson-example-simplest
     bytestring
 
 executable aeson-example-th
-  -- FIXME Disabled until TH support for toEncoding is implemented
-  buildable: False
   main-is: TemplateHaskell.hs
   ghc-options: -Wall
   build-depends:

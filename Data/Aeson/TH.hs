@@ -436,8 +436,8 @@ sumToEncoding opts multiCons conName exp
             array (encStr opts conName <%> fexp)
           TaggedObject{tagFieldName, contentsFieldName} ->
             object $
-            ([|E.builder tagFieldName|] <:> encStr opts conName) <%>
-            ([|E.builder contentsFieldName|] <:> fexp)
+            ([|E.text (T.pack tagFieldName)|] <:> encStr opts conName) <%>
+            ([|E.text (T.pack contentsFieldName)|] <:> fexp)
           ObjectWithSingleField ->
             object (encStr opts conName <:> fexp)
 
@@ -500,7 +500,8 @@ argsToEncoding opts multiCons (RecC conName ts) = case (unwrapUnaryRecords opts,
         toPair (arg, (field, _, _)) =
           toFieldName field <:> [|E.builder|] `appE` varE arg
 
-        toFieldName field = [|E.builder|] `appE` fieldLabelExp opts field
+        toFieldName field = [|E.text|] `appE`
+                            ([|T.pack|] `appE` fieldLabelExp opts field)
 
     match (conP conName $ map varP args)
           ( normalB
@@ -509,7 +510,8 @@ argsToEncoding opts multiCons (RecC conName ts) = case (unwrapUnaryRecords opts,
                    TwoElemArray -> array $
                      encStr opts conName <%> [|fromEncoding|] `appE` exp
                    TaggedObject{tagFieldName} -> object $
-                     ([|E.builder tagFieldName|] <:> encStr opts conName) <%>
+                     ([|E.text (T.pack tagFieldName)|] <:>
+                      encStr opts conName) <%>
                      objBody
                    ObjectWithSingleField -> object $
                      encStr opts conName <:> [|fromEncoding|] `appE` exp
