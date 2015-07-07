@@ -282,7 +282,6 @@ instance Monoid Series where
         a <> case b of
                Empty   -> mempty
                Value c -> Encoding (char7 ',') <> c
-    {-# INLINE mappend #-}
 
 -- | A newtype wrapper for 'UTCTime' that uses the same non-standard
 -- serialization format as Microsoft .NET, whose @System.DateTime@
