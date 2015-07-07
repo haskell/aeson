@@ -67,7 +67,7 @@ bool = BP.primBounded (BP.condB id (ascii4 ('t',('r',('u','e'))))
 -- | Encode a JSON array.
 array :: V.Vector Value -> Builder
 array v
-  | V.null v  = B.char8 '[' <> B.char8 ']'
+  | V.null v  = emptyArray__
   | otherwise = B.char8 '[' <>
                 encodeToBuilder (V.unsafeHead v) <>
                 V.foldr withComma (B.char8 ']') (V.unsafeTail v)
@@ -78,7 +78,7 @@ array v
 object :: HMS.HashMap T.Text Value -> Builder
 object m = case HMS.toList m of
     (x:xs) -> B.char8 '{' <> one x <> foldr withComma (B.char8 '}') xs
-    _      -> B.char8 '{' <> B.char8 '}'
+    _      -> emptyObject__
   where
     withComma a z = B.char8 ',' <> one a <> z
     one (k,v)     = text k <> B.char8 ':' <> encodeToBuilder v
@@ -125,10 +125,16 @@ number s
     e = base10Exponent s
 
 emptyArray_ :: Encoding
-emptyArray_ = Encoding (BP.primBounded (ascii2 ('[',']')) ())
+emptyArray_ = Encoding emptyArray__
+
+emptyArray__ :: Builder
+emptyArray__ = BP.primBounded (ascii2 ('[',']')) ()
 
 emptyObject_ :: Encoding
-emptyObject_ = Encoding (BP.primBounded (ascii2 ('{','}')) ())
+emptyObject_ = Encoding emptyObject__
+
+emptyObject__ :: Builder
+emptyObject__ = BP.primBounded (ascii2 ('{','}')) ()
 
 ascii2 :: (Char, Char) -> BP.BoundedPrim a
 ascii2 cs = BP.liftFixedToBounded $ (const cs) BP.>$< BP.char7 >*< BP.char7
