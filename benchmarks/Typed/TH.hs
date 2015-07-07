@@ -5,7 +5,7 @@ import Criterion
 import Data.Aeson hiding (Result)
 import Data.ByteString.Builder as B
 import Data.ByteString.Lazy as L
-import Twitter.Generic
+import Twitter.TH
 import Typed.Common
 
 encodeDirect :: Result -> L.ByteString
