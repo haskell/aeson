@@ -21,6 +21,7 @@ module Data.Aeson.Encode.Builder
     , emptyObject_
     , object
     , text
+    , string
     , unquoted
     , number
     , ascii2
@@ -33,6 +34,7 @@ import Data.ByteString.Builder as B
 import Data.ByteString.Builder.Prim as BP
 import Data.ByteString.Builder.Scientific (scientificBuilder)
 import Data.Char (ord)
+import Data.Foldable (foldMap)
 import Data.Monoid ((<>))
 import Data.Scientific (Scientific, base10Exponent, coefficient)
 import Data.Word (Word8)
@@ -89,6 +91,12 @@ text t = B.char8 '"' <> unquoted t <> B.char8 '"'
 unquoted :: T.Text -> Builder
 unquoted t = TE.encodeUtf8BuilderEscaped escapeAscii t
 
+-- | Encode a JSON string.
+string :: String -> Builder
+string t = B.char8 '"' <> foldMap go t <> B.char8 '"'
+  where go c | c > '\x7f' = B.charUtf8 c
+             | otherwise  = BP.primBounded escapeAscii (c2w c)
+
 escapeAscii :: BP.BoundedPrim Word8
 escapeAscii =
     BP.condB (== c2w '\\'  ) (ascii2 ('\\','\\')) $
@@ -102,6 +110,7 @@ escapeAscii =
     hexEscape :: BP.FixedPrim Word8
     hexEscape = (\c -> ('\\', ('u', fromIntegral c))) BP.>$<
         BP.char8 >*< BP.char8 >*< BP.word16HexFixed
+{-# INLINE escapeAscii #-}
 
 c2w :: Char -> Word8
 c2w c = fromIntegral (ord c)
