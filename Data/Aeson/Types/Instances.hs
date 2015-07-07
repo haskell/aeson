@@ -182,7 +182,7 @@ instance ToJSON [Char] where
     toJSON = String . T.pack
     {-# INLINE toJSON #-}
 
-    toEncoding = Encoding . E.text . T.pack
+    toEncoding = Encoding . E.string
 
 instance FromJSON [Char] where
     parseJSON = withText "String" $ pure . T.unpack
@@ -192,7 +192,7 @@ instance ToJSON Char where
     toJSON = String . T.singleton
     {-# INLINE toJSON #-}
 
-    toEncoding = Encoding . E.text . T.singleton
+    toEncoding = Encoding . E.string . (:[])
 
 instance FromJSON Char where
     parseJSON = withText "Char" $ \t ->
