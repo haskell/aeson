@@ -64,6 +64,7 @@ extra-source-files:
     benchmarks/*.cabal
     benchmarks/*.hs
     benchmarks/*.py
+    benchmarks/Compare/*.hs
     benchmarks/Makefile
     benchmarks/Typed/*.hs
     benchmarks/json-data/*.json

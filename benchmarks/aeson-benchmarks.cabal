@@ -55,6 +55,21 @@ library
   ghc-options: -O2 -Wall
   cpp-options: -DGENERICS
 
+executable aeson-benchmark-compare
+  main-is: Compare.hs
+  hs-source-dirs: ../examples .
+  ghc-options: -Wall -O2 -rtsopts
+  build-depends:
+    aeson-benchmarks,
+    base,
+    bytestring,
+    criterion >= 1.0,
+    deepseq,
+    ghc-prim,
+    json-builder,
+    text,
+    time
+
 executable aeson-benchmark-micro
   main-is: Micro.hs
   hs-source-dirs: ../examples .
