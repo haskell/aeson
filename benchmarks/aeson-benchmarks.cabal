@@ -16,15 +16,13 @@ library
   exposed-modules:
     Data.Aeson
     Data.Aeson.Encode
-    Data.Aeson.Parser
-    Data.Aeson.Types
-    Data.Aeson.TH
-
-  other-modules:
     Data.Aeson.Encode.Builder
     Data.Aeson.Encode.Functions
     Data.Aeson.Functions
+    Data.Aeson.Parser
     Data.Aeson.Parser.Internal
+    Data.Aeson.TH
+    Data.Aeson.Types
     Data.Aeson.Types.Class
     Data.Aeson.Types.Generic
     Data.Aeson.Types.Instances
@@ -56,6 +54,20 @@ library
 
   ghc-options: -O2 -Wall
   cpp-options: -DGENERICS
+
+executable aeson-benchmark-micro
+  main-is: Micro.hs
+  hs-source-dirs: ../examples .
+  ghc-options: -Wall -O2 -rtsopts
+  build-depends:
+    aeson-benchmarks,
+    base,
+    bytestring,
+    criterion >= 1.0,
+    deepseq,
+    ghc-prim,
+    text,
+    time
 
 executable aeson-benchmark-typed
   main-is: Typed.hs

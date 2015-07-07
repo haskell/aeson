@@ -96,6 +96,7 @@ string :: String -> Builder
 string t = B.char8 '"' <> foldMap go t <> B.char8 '"'
   where go c | c > '\x7f' = B.charUtf8 c
              | otherwise  = BP.primBounded escapeAscii (c2w c)
+{-# INLINE string #-}
 
 escapeAscii :: BP.BoundedPrim Word8
 escapeAscii =
