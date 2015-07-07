@@ -93,10 +93,8 @@ unquoted t = TE.encodeUtf8BuilderEscaped escapeAscii t
 
 -- | Encode a JSON string.
 string :: String -> Builder
-string t = B.char8 '"' <> foldMap go t <> B.char8 '"'
-  where go c | c > '\x7f' = BP.primBounded BP.charUtf8 c
-             | otherwise  = BP.primBounded escapeAscii (c2w c)
-{-# INLINE string #-}
+string t = B.char8 '"' <> BP.primMapListBounded go t <> B.char8 '"'
+  where go = BP.condB (> '\x7f') BP.charUtf8 (c2w >$< escapeAscii)
 
 escapeAscii :: BP.BoundedPrim Word8
 escapeAscii =
