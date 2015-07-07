@@ -88,22 +88,23 @@ text t = B.char8 '"' <> unquoted t <> B.char8 '"'
 -- | Encode a JSON string, without enclosing quotes.
 unquoted :: T.Text -> Builder
 unquoted t = TE.encodeUtf8BuilderEscaped escapeAscii t
+
+escapeAscii :: BP.BoundedPrim Word8
+escapeAscii =
+    BP.condB (== c2w '\\'  ) (ascii2 ('\\','\\')) $
+    BP.condB (== c2w '\"'  ) (ascii2 ('\\','"' )) $
+    BP.condB (>= c2w '\x20') (BP.liftFixedToBounded BP.word8) $
+    BP.condB (== c2w '\n'  ) (ascii2 ('\\','n' )) $
+    BP.condB (== c2w '\r'  ) (ascii2 ('\\','r' )) $
+    BP.condB (== c2w '\t'  ) (ascii2 ('\\','t' )) $
+    (BP.liftFixedToBounded hexEscape) -- fallback for chars < 0x20
   where
-    escapeAscii :: BP.BoundedPrim Word8
-    escapeAscii =
-        BP.condB (== c2w '\\'  ) (ascii2 ('\\','\\')) $
-        BP.condB (== c2w '\"'  ) (ascii2 ('\\','"' )) $
-        BP.condB (>= c2w '\x20') (BP.liftFixedToBounded BP.word8) $
-        BP.condB (== c2w '\n'  ) (ascii2 ('\\','n' )) $
-        BP.condB (== c2w '\r'  ) (ascii2 ('\\','r' )) $
-        BP.condB (== c2w '\t'  ) (ascii2 ('\\','t' )) $
-        (BP.liftFixedToBounded hexEscape) -- fallback for chars < 0x20
-
-    c2w = fromIntegral . ord
-
     hexEscape :: BP.FixedPrim Word8
     hexEscape = (\c -> ('\\', ('u', fromIntegral c))) BP.>$<
         BP.char8 >*< BP.char8 >*< BP.word16HexFixed
+
+c2w :: Char -> Word8
+c2w c = fromIntegral (ord c)
 
 -- | Encode a JSON number.
 number :: Scientific -> Builder
