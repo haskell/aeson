@@ -9,10 +9,10 @@ import Twitter.Manual
 import Typed.Common
 
 encodeDirect :: Result -> L.ByteString
-encodeDirect = B.toLazyByteString . fromEncoding . toEncoding
+encodeDirect = encode
 
 encodeViaValue :: Result -> L.ByteString
-encodeViaValue = encode
+encodeViaValue = encode . toJSON
 
 benchmarks :: Benchmark
 benchmarks =
