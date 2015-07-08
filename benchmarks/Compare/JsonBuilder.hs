@@ -7,7 +7,6 @@ import Data.Json.Builder
 import Data.Monoid ((<>))
 import Prelude hiding (id)
 import Twitter
-import Twitter.Manual ()
 
 instance JsObject Metadata where
     toObject Metadata{..} = row "result_type" result_type

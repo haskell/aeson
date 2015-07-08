@@ -2,6 +2,8 @@ module Main (main) where
 
 import Criterion.Main
 import Data.Json.Builder
+import Data.BufferBuilder.Json
+import Compare.BufferBuilder ()
 import Compare.JsonBuilder ()
 import Twitter
 import Twitter.Manual ()
@@ -13,5 +15,6 @@ main = do
   twtr <- load "json-data/twitter100.json" :: IO Result
   defaultMain [
      bench "aeson" $ nf Aeson.encode twtr
+   , bench "buffer-builder" $ nf encodeJson twtr
    , bench "json-builder" $ nf toJsonLBS twtr
    ]

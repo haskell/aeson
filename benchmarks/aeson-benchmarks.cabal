@@ -62,6 +62,7 @@ executable aeson-benchmark-compare
   build-depends:
     aeson-benchmarks,
     base,
+    buffer-builder,
     bytestring,
     criterion >= 1.0,
     deepseq,
