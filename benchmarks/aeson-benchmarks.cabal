@@ -68,8 +68,22 @@ executable aeson-benchmark-compare
     deepseq,
     ghc-prim,
     json-builder,
+    text
+
+executable aeson-benchmark-json-bench
+  main-is: JsonBench.hs
+  ghc-options: -Wall -O2 -rtsopts
+  build-depends:
+    aeson-benchmarks,
+    base,
+    buffer-builder,
+    bytestring,
+    criterion >= 1.0,
+    deepseq,
+    ghc-prim,
+    json-builder,
     text,
-    time
+    vector
 
 executable aeson-benchmark-micro
   main-is: Micro.hs
@@ -82,8 +96,7 @@ executable aeson-benchmark-micro
     criterion >= 1.0,
     deepseq,
     ghc-prim,
-    text,
-    time
+    text
 
 executable aeson-benchmark-typed
   main-is: Typed.hs
