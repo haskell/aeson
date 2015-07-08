@@ -70,21 +70,6 @@ executable aeson-benchmark-compare
     json-builder,
     text
 
-executable aeson-benchmark-json-bench
-  main-is: JsonBench.hs
-  ghc-options: -Wall -O2 -rtsopts
-  build-depends:
-    aeson-benchmarks,
-    base,
-    buffer-builder,
-    bytestring,
-    criterion >= 1.0,
-    deepseq,
-    ghc-prim,
-    json-builder,
-    text,
-    vector
-
 executable aeson-benchmark-micro
   main-is: Micro.hs
   hs-source-dirs: ../examples .

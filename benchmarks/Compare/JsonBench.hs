@@ -6,18 +6,17 @@
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE MagicHash, ScopedTypeVariables #-}
 
-module Main (main) where
+module Compare.JsonBench (benchmarks) where
 
 import Control.DeepSeq (NFData(..))
 import Criterion
-import Criterion.Main
 import Data.Aeson ((.:))
 import Data.Monoid ((<>))
 import Data.Text (Text)
+import Typed.Common (load)
 import qualified Data.Aeson as Aeson
 import qualified Data.BufferBuilder.Json as Json
 import qualified Data.Json.Builder as JB
-import Typed.Common (load)
 
 data EyeColor = Green | Blue | Brown
     deriving (Eq, Show)
@@ -316,11 +315,11 @@ instance JB.Value User where
             <> t "greeting" `JB.row` uGreeting
             <> t "favoriteFruit" `JB.row` uFavouriteFruit
 
-main :: IO ()
-main = do
-    (parsedUserList :: [User]) <- load "json-data/buffer-builder.json"
-
-    defaultMain [ bench "bufferbuilder" $ nf Json.encodeJson parsedUserList
-                , bench "aeson" $ nf Aeson.encode parsedUserList
-                , bench "json-builder" $ nf JB.toJsonLBS parsedUserList
-                ]
+benchmarks :: Benchmark
+benchmarks = env (load "json-data/buffer-builder.json") $
+    \ ~(parsedUserList :: [User]) ->
+    bgroup "json-bench" [
+      bench "buffer-builder" $ nf Json.encodeJson parsedUserList
+    , bench "aeson" $ nf Aeson.encode parsedUserList
+    , bench "json-builder" $ nf JB.toJsonLBS parsedUserList
+    ]
