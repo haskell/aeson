@@ -125,6 +125,7 @@ instance (ToJSON a) => ToJSON (Maybe a) where
 
     toEncoding (Just a) = toEncoding a
     toEncoding Nothing  = Encoding E.null_
+    {-# INLINE toEncoding #-}
 
 instance (FromJSON a) => FromJSON (Maybe a) where
     parseJSON Null   = pure Nothing
@@ -140,6 +141,7 @@ instance (ToJSON a, ToJSON b) => ToJSON (Either a b) where
       B.shortByteString "{\"left\":" <> builder a <> B.char7 '}'
     toEncoding (Right a) = Encoding $
       B.shortByteString "{\"right\":" <> builder a <> B.char7 '}'
+    {-# INLINE toEncoding #-}
 
 instance (FromJSON a, FromJSON b) => FromJSON (Either a b) where
     parseJSON (Object (H.toList -> [(key, value)]))
@@ -160,6 +162,7 @@ instance ToJSON Bool where
     {-# INLINE toJSON #-}
 
     toEncoding = Encoding . E.bool
+    {-# INLINE toEncoding #-}
 
 instance FromJSON Bool where
     parseJSON = withBool "Bool" pure
@@ -170,6 +173,7 @@ instance ToJSON () where
     {-# INLINE toJSON #-}
 
     toEncoding _ = E.emptyArray_
+    {-# INLINE toEncoding #-}
 
 instance FromJSON () where
     parseJSON = withArray "()" $ \v ->
@@ -183,6 +187,7 @@ instance ToJSON [Char] where
     {-# INLINE toJSON #-}
 
     toEncoding = Encoding . E.string
+    {-# INLINE toEncoding #-}
 
 instance FromJSON [Char] where
     parseJSON = withText "String" $ pure . T.unpack
@@ -193,6 +198,7 @@ instance ToJSON Char where
     {-# INLINE toJSON #-}
 
     toEncoding = Encoding . E.string . (:[])
+    {-# INLINE toEncoding #-}
 
 instance FromJSON Char where
     parseJSON = withText "Char" $ \t ->
@@ -253,11 +259,13 @@ instance ToJSON (Ratio Integer) where
     toJSON r = object [ "numerator"   .= numerator   r
                       , "denominator" .= denominator r
                       ]
+    {-# INLINE toJSON #-}
 
     toEncoding r = Encoding $
       B.shortByteString "{\"numerator\":" <> builder (numerator r) <>
       B.shortByteString ",\"denominator\":" <> builder (denominator r) <>
       B.char7 '}'
+    {-# INLINE toEncoding #-}
 
 instance FromJSON (Ratio Integer) where
     parseJSON = withObject "Rational" $ \obj ->
@@ -270,6 +278,7 @@ instance HasResolution a => ToJSON (Fixed a) where
     {-# INLINE toJSON #-}
 
     toEncoding = Encoding . E.number . realToFrac
+    {-# INLINE toEncoding #-}
 
 -- | /WARNING:/ Only parse fixed-precision numbers from trusted input
 -- since an attacker could easily fill up the memory of the target
@@ -295,6 +304,7 @@ instance ToJSON Integer where
     {-# INLINE toJSON #-}
 
     toEncoding = Encoding . B.integerDec
+    {-# INLINE toEncoding #-}
 
 -- | /WARNING:/ Only parse Integers from trusted input since an
 -- attacker could easily fill up the memory of the target system by
@@ -309,6 +319,7 @@ instance ToJSON Int8 where
     {-# INLINE toJSON #-}
 
     toEncoding = Encoding . B.int8Dec
+    {-# INLINE toEncoding #-}
 
 instance FromJSON Int8 where
     parseJSON = parseIntegral "Int8"
@@ -319,6 +330,7 @@ instance ToJSON Int16 where
     {-# INLINE toJSON #-}
 
     toEncoding = Encoding . B.int16Dec
+    {-# INLINE toEncoding #-}
 
 instance FromJSON Int16 where
     parseJSON = parseIntegral "Int16"
@@ -329,6 +341,7 @@ instance ToJSON Int32 where
     {-# INLINE toJSON #-}
 
     toEncoding = Encoding . B.int32Dec
+    {-# INLINE toEncoding #-}
 
 instance FromJSON Int32 where
     parseJSON = parseIntegral "Int32"
@@ -339,6 +352,7 @@ instance ToJSON Int64 where
     {-# INLINE toJSON #-}
 
     toEncoding = Encoding . B.int64Dec
+    {-# INLINE toEncoding #-}
 
 instance FromJSON Int64 where
     parseJSON = parseIntegral "Int64"
@@ -349,6 +363,7 @@ instance ToJSON Word where
     {-# INLINE toJSON #-}
 
     toEncoding = Encoding . B.wordDec
+    {-# INLINE toEncoding #-}
 
 instance FromJSON Word where
     parseJSON = parseIntegral "Word"
@@ -359,6 +374,7 @@ instance ToJSON Word8 where
     {-# INLINE toJSON #-}
 
     toEncoding = Encoding . B.word8Dec
+    {-# INLINE toEncoding #-}
 
 instance FromJSON Word8 where
     parseJSON = parseIntegral "Word8"
@@ -369,6 +385,7 @@ instance ToJSON Word16 where
     {-# INLINE toJSON #-}
 
     toEncoding = Encoding . B.word16Dec
+    {-# INLINE toEncoding #-}
 
 instance FromJSON Word16 where
     parseJSON = parseIntegral "Word16"
@@ -379,6 +396,7 @@ instance ToJSON Word32 where
     {-# INLINE toJSON #-}
 
     toEncoding = Encoding . B.word32Dec
+    {-# INLINE toEncoding #-}
 
 instance FromJSON Word32 where
     parseJSON = parseIntegral "Word32"
@@ -389,6 +407,7 @@ instance ToJSON Word64 where
     {-# INLINE toJSON #-}
 
     toEncoding = Encoding . B.word64Dec
+    {-# INLINE toEncoding #-}
 
 instance FromJSON Word64 where
     parseJSON = parseIntegral "Word64"
@@ -399,6 +418,7 @@ instance ToJSON Text where
     {-# INLINE toJSON #-}
 
     toEncoding = Encoding . E.text
+    {-# INLINE toEncoding #-}
 
 instance FromJSON Text where
     parseJSON = withText "Text" pure
@@ -411,6 +431,7 @@ instance ToJSON LT.Text where
     toEncoding t = Encoding $
       B.char7 '"' <>
       LT.foldrChunks (\x xs -> E.unquoted x <> xs) (B.char7 '"') t
+    {-# INLINE toEncoding #-}
 
 instance FromJSON LT.Text where
     parseJSON = withText "Lazy Text" $ pure . LT.fromStrict
@@ -421,6 +442,7 @@ instance (ToJSON a) => ToJSON [a] where
     {-# INLINE toJSON #-}
 
     toEncoding xs = list xs
+    {-# INLINE toEncoding #-}
 
 instance (FromJSON a) => FromJSON [a] where
     parseJSON = withArray "[a]" $ Tr.sequence .
@@ -432,6 +454,7 @@ instance (Foldable t, ToJSON a) => ToJSON (t a) where
     {-# INLINE toJSON #-}
 
     toEncoding = foldable
+    {-# INLINE toEncoding #-}
 
 instance (FromJSON a) => FromJSON (Seq.Seq a) where
     parseJSON = withArray "Seq a" $ traverse parseJSON . Seq.fromList . V.toList
@@ -442,6 +465,7 @@ instance (ToJSON a) => ToJSON (Vector a) where
     {-# INLINE toJSON #-}
 
     toEncoding = encodeVector
+    {-# INLINE toEncoding #-}
 
 encodeVector :: (ToJSON a, VG.Vector v a) => v a -> Encoding
 encodeVector xs
@@ -450,6 +474,7 @@ encodeVector xs
                  B.char7 '[' <> builder (VG.unsafeHead xs) <>
                  VG.foldr go (B.char7 ']') (VG.unsafeTail xs)
     where go v b = B.char7 ',' <> builder v <> b
+{-# INLINE encodeVector #-}
 
 instance (FromJSON a) => FromJSON (Vector a) where
     parseJSON = withArray "Vector a" $ V.mapM (uncurry parseIndexedJSON) .
@@ -466,33 +491,42 @@ vectorParseJSON s = withArray s $ fmap V.convert . V.mapM (uncurry parseIndexedJ
 
 instance (Storable a, ToJSON a) => ToJSON (VS.Vector a) where
     toJSON = vectorToJSON
+    {-# INLINE toJSON #-}
 
     toEncoding = encodeVector
+    {-# INLINE toEncoding #-}
 
 instance (Storable a, FromJSON a) => FromJSON (VS.Vector a) where
     parseJSON = vectorParseJSON "Data.Vector.Storable.Vector a"
 
 instance (VP.Prim a, ToJSON a) => ToJSON (VP.Vector a) where
     toJSON = vectorToJSON
+    {-# INLINE toJSON #-}
 
     toEncoding = encodeVector
+    {-# INLINE toEncoding #-}
 
 instance (VP.Prim a, FromJSON a) => FromJSON (VP.Vector a) where
     parseJSON = vectorParseJSON "Data.Vector.Primitive.Vector a"
+    {-# INLINE parseJSON #-}
 
 instance (VG.Vector VU.Vector a, ToJSON a) => ToJSON (VU.Vector a) where
     toJSON = vectorToJSON
+    {-# INLINE toJSON #-}
 
     toEncoding = encodeVector
+    {-# INLINE toEncoding #-}
 
 instance (VG.Vector VU.Vector a, FromJSON a) => FromJSON (VU.Vector a) where
     parseJSON = vectorParseJSON "Data.Vector.Unboxed.Vector a"
+    {-# INLINE parseJSON #-}
 
 instance (ToJSON a) => ToJSON (Set.Set a) where
     toJSON = toJSON . Set.toList
     {-# INLINE toJSON #-}
 
     toEncoding = encodeSet Set.minView Set.foldr
+    {-# INLINE toEncoding #-}
 
 instance (Ord a, FromJSON a) => FromJSON (Set.Set a) where
     parseJSON = fmap Set.fromList . parseJSON
@@ -503,6 +537,7 @@ instance (ToJSON a) => ToJSON (HashSet.HashSet a) where
     {-# INLINE toJSON #-}
 
     toEncoding = foldable
+    {-# INLINE toEncoding #-}
 
 instance (Eq a, Hashable a, FromJSON a) => FromJSON (HashSet.HashSet a) where
     parseJSON = fmap HashSet.fromList . parseJSON
@@ -513,6 +548,7 @@ instance ToJSON IntSet.IntSet where
     {-# INLINE toJSON #-}
 
     toEncoding = encodeSet IntSet.minView IntSet.foldr
+    {-# INLINE toEncoding #-}
 
 encodeSet :: (ToJSON a) =>
              (s -> Maybe (a, s))
@@ -524,6 +560,7 @@ encodeSet minView foldr xs =
       Just (m,ys) -> Encoding $
                      B.char7 '[' <> builder m <> foldr go (B.char7 ']') ys
         where go v b = B.char7 ',' <> builder v <> b
+{-# INLINE encodeSet #-}
 
 instance FromJSON IntSet.IntSet where
     parseJSON = fmap IntSet.fromList . parseJSON
@@ -534,6 +571,7 @@ instance ToJSON a => ToJSON (IntMap.IntMap a) where
     {-# INLINE toJSON #-}
 
     toEncoding = toEncoding . IntMap.toList
+    {-# INLINE toEncoding #-}
 
 instance FromJSON a => FromJSON (IntMap.IntMap a) where
     parseJSON = fmap IntMap.fromList . parseJSON
@@ -544,6 +582,7 @@ instance (ToJSON v) => ToJSON (M.Map Text v) where
     {-# INLINE toJSON #-}
 
     toEncoding = encodeMap M.minViewWithKey M.foldrWithKey
+    {-# INLINE toEncoding #-}
 
 encodeMap :: (ToJSON k, ToJSON v) =>
              (m -> Maybe ((k,v), m))
@@ -556,15 +595,18 @@ encodeMap minViewWithKey foldrWithKey xs =
                          B.char7 '{' <> encodeKV k v <>
                          foldrWithKey go (B.char7 '}') ys
   where go k v b = B.char7 ',' <> encodeKV k v <> b
+{-# INLINE encodeMap #-}
 
 encodeWithKey :: (ToJSON k, ToJSON v) =>
                  ((k -> v -> Series -> Series) -> Series -> m -> Series)
               -> m -> Encoding
 encodeWithKey foldrWithKey = brackets '{' '}' . foldrWithKey go mempty
   where go k v c = Value (Encoding $ encodeKV k v) <> c
+{-# INLINE encodeWithKey #-}
 
 encodeKV :: (ToJSON k, ToJSON v) => k -> v -> B.Builder
 encodeKV k v = builder k <> B.char7 ':' <> builder v
+{-# INLINE encodeKV #-}
 
 instance (FromJSON v) => FromJSON (M.Map Text v) where
     parseJSON = withObject "Map Text a" $
@@ -572,58 +614,76 @@ instance (FromJSON v) => FromJSON (M.Map Text v) where
 
 instance (ToJSON v) => ToJSON (M.Map LT.Text v) where
     toJSON = Object . mapHashKeyVal LT.toStrict toJSON
+    {-# INLINE toJSON #-}
 
     toEncoding = encodeMap M.minViewWithKey M.foldrWithKey
+    {-# INLINE toEncoding #-}
 
 instance (FromJSON v) => FromJSON (M.Map LT.Text v) where
     parseJSON = fmap (hashMapKey LT.fromStrict) . parseJSON
+    {-# INLINE parseJSON #-}
 
 instance (ToJSON v) => ToJSON (M.Map String v) where
     toJSON = Object . mapHashKeyVal pack toJSON
+    {-# INLINE toJSON #-}
 
     toEncoding = encodeMap M.minViewWithKey M.foldrWithKey
+    {-# INLINE toEncoding #-}
 
 instance (FromJSON v) => FromJSON (M.Map String v) where
     parseJSON = fmap (hashMapKey unpack) . parseJSON
+    {-# INLINE parseJSON #-}
 
 instance (ToJSON v) => ToJSON (H.HashMap Text v) where
     toJSON = Object . H.map toJSON
     {-# INLINE toJSON #-}
 
     toEncoding = encodeWithKey H.foldrWithKey
+    {-# INLINE toEncoding #-}
 
 instance (FromJSON v) => FromJSON (H.HashMap Text v) where
     parseJSON = withObject "HashMap Text a" $ H.traverseWithKey (\k v -> parseJSON v <?> Key k)
+    {-# INLINE parseJSON #-}
 
 instance (ToJSON v) => ToJSON (H.HashMap LT.Text v) where
     toJSON = Object . mapKeyVal LT.toStrict toJSON
+    {-# INLINE toJSON #-}
 
     toEncoding = encodeWithKey H.foldrWithKey
+    {-# INLINE toEncoding #-}
 
 instance (FromJSON v) => FromJSON (H.HashMap LT.Text v) where
     parseJSON = fmap (mapKey LT.fromStrict) . parseJSON
+    {-# INLINE parseJSON #-}
 
 instance (ToJSON v) => ToJSON (H.HashMap String v) where
     toJSON = Object . mapKeyVal pack toJSON
+    {-# INLINE toJSON #-}
 
     toEncoding = encodeWithKey H.foldrWithKey
+    {-# INLINE toEncoding #-}
 
 instance (FromJSON v) => FromJSON (H.HashMap String v) where
     parseJSON = fmap (mapKey unpack) . parseJSON
+    {-# INLINE parseJSON #-}
 
 instance (ToJSON v) => ToJSON (Tree.Tree v) where
     toJSON (Tree.Node root branches) = toJSON (root,branches)
+    {-# INLINE toJSON #-}
 
     toEncoding (Tree.Node root branches) = toEncoding (root,branches)
+    {-# INLINE toEncoding #-}
 
 instance (FromJSON v) => FromJSON (Tree.Tree v) where
     parseJSON j = uncurry Tree.Node <$> parseJSON j
+    {-# INLINE parseJSON #-}
 
 instance ToJSON Value where
     toJSON a = a
     {-# INLINE toJSON #-}
 
     toEncoding = Encoding . E.encodeToBuilder
+    {-# INLINE toEncoding #-}
 
 instance FromJSON Value where
     parseJSON a = pure a
@@ -631,7 +691,6 @@ instance FromJSON Value where
 
 instance ToJSON DotNetTime where
     toJSON = toJSON . dotNetTime
-    {-# INLINE toJSON #-}
 
     toEncoding = toEncoding . dotNetTime
 
@@ -701,7 +760,6 @@ instance FromJSON ZonedTime where
 
 instance ToJSON UTCTime where
     toJSON = toJSON . utcTime
-    {-# INLINE toJSON #-}
 
     toEncoding = toEncoding . utcTime
 
@@ -714,7 +772,6 @@ instance FromJSON UTCTime where
         case parseTime defaultTimeLocale "%FT%T%QZ" (unpack t) of
           Just d -> pure d
           _      -> fail "could not parse ISO-8601 date"
-    {-# INLINE parseJSON #-}
 
 parseJSONElemAtIndex :: FromJSON a => Int -> Vector Value -> Parser a
 parseJSONElemAtIndex idx ary = parseJSON (V.unsafeIndex ary idx) <?> Index idx
@@ -824,6 +881,7 @@ instance (ToJSON a, ToJSON b, ToJSON c, ToJSON d, ToJSON e) =>
       builder c >*<
       builder d >*<
       builder e
+    {-# INLINE toEncoding #-}
 
 instance (FromJSON a, FromJSON b, FromJSON c, FromJSON d, FromJSON e) =>
          FromJSON (a,b,c,d,e) where
@@ -859,6 +917,7 @@ instance (ToJSON a, ToJSON b, ToJSON c, ToJSON d, ToJSON e, ToJSON f) =>
       builder d >*<
       builder e >*<
       builder f
+    {-# INLINE toEncoding #-}
 
 instance (FromJSON a, FromJSON b, FromJSON c, FromJSON d, FromJSON e,
           FromJSON f) => FromJSON (a,b,c,d,e,f) where
@@ -897,6 +956,7 @@ instance (ToJSON a, ToJSON b, ToJSON c, ToJSON d, ToJSON e, ToJSON f,
       builder e >*<
       builder f >*<
       builder g
+    {-# INLINE toEncoding #-}
 
 instance (FromJSON a, FromJSON b, FromJSON c, FromJSON d, FromJSON e,
           FromJSON f, FromJSON g) => FromJSON (a,b,c,d,e,f,g) where
@@ -938,6 +998,7 @@ instance (ToJSON a, ToJSON b, ToJSON c, ToJSON d, ToJSON e, ToJSON f,
       builder f >*<
       builder g >*<
       builder h
+    {-# INLINE toEncoding #-}
 
 instance (FromJSON a, FromJSON b, FromJSON c, FromJSON d, FromJSON e,
           FromJSON f, FromJSON g, FromJSON h) =>
@@ -984,6 +1045,7 @@ instance (ToJSON a, ToJSON b, ToJSON c, ToJSON d, ToJSON e, ToJSON f,
       builder g >*<
       builder h >*<
       builder i
+    {-# INLINE toEncoding #-}
 
 instance (FromJSON a, FromJSON b, FromJSON c, FromJSON d, FromJSON e,
           FromJSON f, FromJSON g, FromJSON h, FromJSON i) =>
@@ -1034,6 +1096,7 @@ instance (ToJSON a, ToJSON b, ToJSON c, ToJSON d, ToJSON e, ToJSON f,
       builder h >*<
       builder i >*<
       builder j
+    {-# INLINE toEncoding #-}
 
 instance (FromJSON a, FromJSON b, FromJSON c, FromJSON d, FromJSON e,
           FromJSON f, FromJSON g, FromJSON h, FromJSON i, FromJSON j) =>
@@ -1087,6 +1150,7 @@ instance (ToJSON a, ToJSON b, ToJSON c, ToJSON d, ToJSON e, ToJSON f,
       builder i >*<
       builder j >*<
       builder k
+    {-# INLINE toEncoding #-}
 
 instance (FromJSON a, FromJSON b, FromJSON c, FromJSON d, FromJSON e,
           FromJSON f, FromJSON g, FromJSON h, FromJSON i, FromJSON j,
@@ -1144,6 +1208,7 @@ instance (ToJSON a, ToJSON b, ToJSON c, ToJSON d, ToJSON e, ToJSON f,
       builder j >*<
       builder k >*<
       builder l
+    {-# INLINE toEncoding #-}
 
 instance (FromJSON a, FromJSON b, FromJSON c, FromJSON d, FromJSON e,
           FromJSON f, FromJSON g, FromJSON h, FromJSON i, FromJSON j,
@@ -1205,6 +1270,7 @@ instance (ToJSON a, ToJSON b, ToJSON c, ToJSON d, ToJSON e, ToJSON f,
       builder k >*<
       builder l >*<
       builder m
+    {-# INLINE toEncoding #-}
 
 instance (FromJSON a, FromJSON b, FromJSON c, FromJSON d, FromJSON e,
           FromJSON f, FromJSON g, FromJSON h, FromJSON i, FromJSON j,
@@ -1269,6 +1335,7 @@ instance (ToJSON a, ToJSON b, ToJSON c, ToJSON d, ToJSON e, ToJSON f,
       builder l >*<
       builder m >*<
       builder n
+    {-# INLINE toEncoding #-}
 
 instance (FromJSON a, FromJSON b, FromJSON c, FromJSON d, FromJSON e,
           FromJSON f, FromJSON g, FromJSON h, FromJSON i, FromJSON j,
@@ -1336,6 +1403,7 @@ instance (ToJSON a, ToJSON b, ToJSON c, ToJSON d, ToJSON e, ToJSON f,
       builder m >*<
       builder n >*<
       builder o
+    {-# INLINE toEncoding #-}
 
 instance (FromJSON a, FromJSON b, FromJSON c, FromJSON d, FromJSON e,
           FromJSON f, FromJSON g, FromJSON h, FromJSON i, FromJSON j,
@@ -1369,6 +1437,7 @@ instance ToJSON a => ToJSON (Dual a) where
     {-# INLINE toJSON #-}
 
     toEncoding = toEncoding . getDual
+    {-# INLINE toEncoding #-}
 
 instance FromJSON a => FromJSON (Dual a) where
     parseJSON = fmap Dual . parseJSON
@@ -1379,6 +1448,7 @@ instance ToJSON a => ToJSON (First a) where
     {-# INLINE toJSON #-}
 
     toEncoding = toEncoding . getFirst
+    {-# INLINE toEncoding #-}
 
 instance FromJSON a => FromJSON (First a) where
     parseJSON = fmap First . parseJSON
@@ -1389,6 +1459,7 @@ instance ToJSON a => ToJSON (Last a) where
     {-# INLINE toJSON #-}
 
     toEncoding = toEncoding . getLast
+    {-# INLINE toEncoding #-}
 
 instance FromJSON a => FromJSON (Last a) where
     parseJSON = fmap Last . parseJSON

@@ -45,6 +45,7 @@ import qualified Data.Vector as V
 -- This is implemented in terms of the 'ToJSON' class's 'toEncoding' method.
 encode :: ToJSON a => a -> L.ByteString
 encode = B.toLazyByteString . fromEncoding . toEncoding
+{-# INLINE encode #-}
 
 -- | Encode a JSON 'Value' to a "Data.Text" 'Builder', which can be
 -- embedded efficiently in a text-based protocol.
