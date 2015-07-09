@@ -1,5 +1,7 @@
 {-# LANGUAGE OverloadedStrings, RecordWildCards, ScopedTypeVariables #-}
 
+module Properties (encoderComparisonTests, tests) where
+
 import Control.Monad (forM)
 import Data.Aeson (eitherDecode)
 import Data.Aeson.Encode
@@ -89,11 +91,6 @@ sameAs toVal toEnc v =
 sameAsV :: (a -> Value) -> (a -> Encoding) -> a -> Property
 sameAsV toVal toEnc v =
   eitherDecode (toLazyByteString (fromEncoding (toEnc v))) === Right (toVal v)
-
-main :: IO ()
-main = do
-    comparisonTest <- encoderComparisonTests
-    defaultMain (comparisonTest : tests)
 
 type P6 = Product6 Int Bool String (Approx Double) (Int, Approx Double) ()
 type S4 = Sum4 Int8 ZonedTime T.Text (Map.Map String Int)

@@ -135,12 +135,13 @@ library
 test-suite tests
   type:           exitcode-stdio-1.0
   hs-source-dirs: tests
-  main-is:        Properties.hs
+  main-is:        Tests.hs
   other-modules:
     Encoders
     Functions
     Instances
     Options
+    Properties
     Properties.ZonedTime
     Types
 
