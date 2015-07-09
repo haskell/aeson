@@ -144,6 +144,7 @@ test-suite tests
     Properties
     Properties.ZonedTime
     Types
+    UnitTests
 
   ghc-options: -Wall -threaded -rtsopts
 

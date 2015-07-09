@@ -1,44 +1,28 @@
 {-# LANGUAGE OverloadedStrings, RecordWildCards, ScopedTypeVariables #-}
 
-module Properties (encoderComparisonTests, tests) where
+module Properties (tests) where
 
-import Control.Monad (forM)
 import Data.Aeson (eitherDecode)
-import Data.Aeson.Encode
+import Data.Aeson.Encode (encode, encodeToBuilder)
 import Data.Aeson.Internal (IResult(..), formatError, ifromJSON, iparse)
 import Data.Aeson.Parser (value)
 import Data.Aeson.Types
 import Data.ByteString.Builder (toLazyByteString)
-import Data.Char (toUpper)
-import Test.Framework (Test, defaultMain, testGroup)
+import Data.Int (Int8)
+import Data.Time (UTCTime, ZonedTime)
+import Encoders
+import Instances ()
+import Properties.ZonedTime (zonedTimeToJSON)
+import Test.Framework (Test, testGroup)
 import Test.Framework.Providers.QuickCheck2 (testProperty)
-import Test.Framework.Providers.HUnit (testCase)
-import Test.HUnit                     (Assertion, assertFailure, assertEqual)
 import Test.QuickCheck (Arbitrary(..), Property, (===))
-import qualified Data.Vector as V
+import Types
 import qualified Data.Attoparsec.Lazy as L
 import qualified Data.ByteString.Lazy.Char8 as L
-import qualified Data.Text as T
-import qualified Data.Text.Lazy.Builder as TLB
-import qualified Data.Text.Lazy.Encoding as TLE
 import qualified Data.HashMap.Strict as H
-import Data.Time
-import Instances ()
-import Types
-import Encoders
-import Data.Int
 import qualified Data.Map as Map
-import Properties.ZonedTime (zonedTimeToJSON)
-
-roundTripCamel :: String -> Assertion
-roundTripCamel name = assertEqual "" name (camelFrom '_' $ camelTo '_' name)
-
-
-  where
-    camelFrom c s = let (p:ps) = split c s
-                    in concat $ p : map capitalize ps
-    split c s = map L.unpack $ L.split c $ L.pack s
-    capitalize t = toUpper (head t) : tail t
+import qualified Data.Text as T
+import qualified Data.Vector as V
 
 encodeDouble :: Double -> Double -> Property
 encodeDouble num denom
@@ -122,16 +106,11 @@ isObjectWithSingleField _            = False
 
 --------------------------------------------------------------------------------
 
-tests :: [Test]
-tests = [
+tests :: Test
+tests = testGroup "properties" [
   testGroup "encode" [
       testProperty "encodeDouble" encodeDouble
     , testProperty "encodeInteger" encodeInteger
-    ]
-  , testGroup "camelCase" [
-      testCase "camelTo" $ roundTripCamel "aName"
-    , testCase "camelTo" $ roundTripCamel "another"
-    , testCase "camelTo" $ roundTripCamel "someOtherName"
     ]
   , testGroup "roundTrip" [
       testProperty "Bool" $ roundTripEq True
@@ -220,37 +199,3 @@ tests = [
       ]
     ]
   ]
-
-------------------------------------------------------------------------------
--- Comparison between bytestring and text encoders
-------------------------------------------------------------------------------
-
-encoderComparisonTests :: IO Test
-encoderComparisonTests = do
-    encoderTests <- forM testFiles $ \file0 -> do
-        let file = "benchmarks/json-data/" ++ file0
-        return $ testCase file $ do
-            inp <- L.readFile file
-            case eitherDecode inp of
-              Left  err -> assertFailure $ "Decoding failure: " ++ err
-              Right val -> assertEqual "" (encode val) (encodeViaText val)
-    return $ testGroup "Compare bytestring and text encoders" encoderTests
-  where
-    encodeViaText :: Value -> L.ByteString
-    encodeViaText =
-        TLE.encodeUtf8 . TLB.toLazyText . encodeToTextBuilder . toJSON
-
-    testFiles =
-      [ "example.json"
-      , "integers.json"
-      , "jp100.json"
-      , "numbers.json"
-      , "twitter10.json"
-      , "twitter20.json"
-      , "geometry.json"
-      , "jp10.json"
-      , "jp50.json"
-      , "twitter1.json"
-      , "twitter100.json"
-      , "twitter50.json"
-      ]
