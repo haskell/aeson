@@ -1,14 +1,17 @@
+{-# LANGUAGE DeriveGeneric #-}
+
 module UnitTests (ioTests, tests) where
 
 import Control.Monad (forM)
-import Data.Char (toUpper)
-import qualified Data.ByteString.Lazy.Char8 as L
-import Data.Aeson (eitherDecode, encode)
+import Data.Aeson (eitherDecode, encode, genericToJSON, genericToEncoding)
 import Data.Aeson.Encode (encodeToTextBuilder)
-import Data.Aeson.Types (Value, camelTo, toJSON)
+import Data.Aeson.Types (ToJSON(..), Value, camelTo, defaultOptions)
+import Data.Char (toUpper)
+import GHC.Generics (Generic)
 import Test.Framework (Test, testGroup)
 import Test.Framework.Providers.HUnit (testCase)
 import Test.HUnit (Assertion, assertFailure, assertEqual)
+import qualified Data.ByteString.Lazy.Char8 as L
 import qualified Data.Text.Lazy.Builder as TLB
 import qualified Data.Text.Lazy.Encoding as TLE
 
@@ -18,6 +21,9 @@ tests = testGroup "unit" [
       testCase "camelTo" $ roundTripCamel "aName"
     , testCase "camelTo" $ roundTripCamel "another"
     , testCase "camelTo" $ roundTripCamel "someOtherName"
+    ]
+  , testGroup "encoding" [
+      testCase "goodProducer" $ goodProducer
     ]
   ]
 
@@ -30,6 +36,26 @@ roundTripCamel name = assertEqual "" name (camelFrom '_' $ camelTo '_' name)
                     in concat $ p : map capitalize ps
     split c s = map L.unpack $ L.split c $ L.pack s
     capitalize t = toUpper (head t) : tail t
+
+data Wibble = Wibble {
+    wibbleString :: String
+  , wibbleInt :: Int
+  } deriving (Generic, Show)
+
+instance ToJSON Wibble where
+    toJSON     = genericToJSON defaultOptions
+    toEncoding = genericToEncoding defaultOptions
+
+-- Test that if we put a bomb in a data structure, but only demand
+-- part of it via lazy encoding, we do not unexpectedly fail.
+goodProducer :: Assertion
+goodProducer = assertEqual "partial encoding should not explode on undefined"
+                           '{' (L.head (encode wibble))
+  where
+    wibble = Wibble {
+                 wibbleString = replicate 4030 'a'
+               , wibbleInt = undefined
+               }
 
 ------------------------------------------------------------------------------
 -- Comparison between bytestring and text encoders
