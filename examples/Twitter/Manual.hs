@@ -113,17 +113,17 @@ instance ToJSON Result where
     ]
 
   toEncoding Result{..} = pairs $
-       "results" .= results
-    <> "max_id" .= max_id
-    <> "since_id" .= since_id
-    <> "refresh_url" .= refresh_url
-    <> "next_page" .= next_page
+       "results"          .= results
+    <> "max_id"           .= max_id
+    <> "since_id"         .= since_id
+    <> "refresh_url"      .= refresh_url
+    <> "next_page"        .= next_page
     <> "results_per_page" .= results_per_page
-    <> "page" .= page
-    <> "completed_in" .= completed_in
-    <> "since_id_str" .= since_id_str
-    <> "max_id_str" .= max_id_str
-    <> "query" .= query
+    <> "page"             .= page
+    <> "completed_in"     .= completed_in
+    <> "since_id_str"     .= since_id_str
+    <> "max_id_str"       .= max_id_str
+    <> "query"            .= query
 
 instance FromJSON Result where
   parseJSON (Object v) = Result <$>
