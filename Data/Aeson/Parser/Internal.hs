@@ -113,7 +113,19 @@ objectValues :: Parser Text -> Parser Value -> Parser (H.HashMap Text Value)
 objectValues str val = do
   skipSpace
   let pair = liftA2 (,) (str <* skipSpace) (char ':' *> val)
-  H.fromList <$> commaSeparated pair CLOSE_CURLY
+  w <- A.peekWord8'
+  if w == CLOSE_CURLY
+    then A.anyWord8 >> return H.empty
+    else loop H.empty
+ where
+  loop m0 = do
+    k <- str <* skipSpace <* char ':'
+    v <- val <* skipSpace
+    let !m = H.insert k v m0
+    ch <- A.satisfy $ \w -> w == COMMA || w == CLOSE_CURLY
+    if ch == COMMA
+      then skipSpace >> loop m
+      else return m
 {-# INLINE objectValues #-}
 
 array_ :: Parser Value
