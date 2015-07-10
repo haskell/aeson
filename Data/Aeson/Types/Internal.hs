@@ -117,16 +117,24 @@ instance Functor Result where
 instance Monad IResult where
     return = ISuccess
     {-# INLINE return #-}
+
     ISuccess a      >>= k = k a
     IError path err >>= _ = IError path err
     {-# INLINE (>>=) #-}
 
+    fail err = IError [] err
+    {-# INLINE fail #-}
+
 instance Monad Result where
     return = Success
     {-# INLINE return #-}
+
     Success a >>= k = k a
     Error err >>= _ = Error err
     {-# INLINE (>>=) #-}
+
+    fail err = Error err
+    {-# INLINE fail #-}
 
 instance Applicative IResult where
     pure  = return
