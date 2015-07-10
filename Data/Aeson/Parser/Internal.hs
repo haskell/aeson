@@ -40,7 +40,7 @@ import Data.Text (Text)
 import Data.Text.Encoding (decodeUtf8')
 import Data.Text.Internal.Encoding.Utf8 (ord2, ord3, ord4)
 import Data.Text.Internal.Unsafe.Char (ord)
-import Data.Vector as Vector (Vector, fromList)
+import Data.Vector as Vector (Vector, empty, fromList)
 import Data.Word (Word8)
 import Foreign.ForeignPtr (withForeignPtr)
 import Foreign.Ptr (minusPtr)
@@ -136,25 +136,20 @@ array_' = {-# SCC "array_'" #-} do
   !vals <- arrayValues value'
   return (Array vals)
 
-commaSeparated :: Parser a -> Word8 -> Parser [a]
-commaSeparated item endByte = do
-  w <- A.peekWord8'
-  if w == endByte
-    then A.anyWord8 >> return []
-    else loop
-  where
-    loop = do
-      v <- item <* skipSpace
-      ch <- A.satisfy $ \w -> w == COMMA || w == endByte
-      if ch == COMMA
-        then skipSpace >> (v:) <$> loop
-        else return [v]
-{-# INLINE commaSeparated #-}
-
 arrayValues :: Parser Value -> Parser (Vector Value)
 arrayValues val = do
   skipSpace
-  Vector.fromList <$> commaSeparated val CLOSE_SQUARE
+  w <- A.peekWord8'
+  if w == CLOSE_SQUARE
+    then A.anyWord8 >> return Vector.empty
+    else Vector.fromList <$> loop
+  where
+    loop = do
+      v <- val <* skipSpace
+      ch <- A.satisfy $ \w -> w == COMMA || w == CLOSE_SQUARE
+      if ch == COMMA
+        then skipSpace >> (v:) <$> loop
+        else return [v]
 {-# INLINE arrayValues #-}
 
 -- | Parse any JSON value.  You should usually 'json' in preference to
