@@ -40,7 +40,7 @@ import Data.Text (Text)
 import Data.Text.Encoding (decodeUtf8')
 import Data.Text.Internal.Encoding.Utf8 (ord2, ord3, ord4)
 import Data.Text.Internal.Unsafe.Char (ord)
-import Data.Vector as Vector (Vector, empty, fromList)
+import Data.Vector as Vector (Vector, empty, fromList, reverse)
 import Data.Word (Word8)
 import Foreign.ForeignPtr (withForeignPtr)
 import Foreign.Ptr (minusPtr)
@@ -142,14 +142,14 @@ arrayValues val = do
   w <- A.peekWord8'
   if w == CLOSE_SQUARE
     then A.anyWord8 >> return Vector.empty
-    else Vector.fromList <$> loop
+    else loop []
   where
-    loop = do
+    loop acc = do
       v <- val <* skipSpace
       ch <- A.satisfy $ \w -> w == COMMA || w == CLOSE_SQUARE
       if ch == COMMA
-        then skipSpace >> (v:) <$> loop
-        else return [v]
+        then skipSpace >> loop (v:acc)
+        else return (Vector.reverse (Vector.fromList (v:acc)))
 {-# INLINE arrayValues #-}
 
 -- | Parse any JSON value.  You should usually 'json' in preference to
