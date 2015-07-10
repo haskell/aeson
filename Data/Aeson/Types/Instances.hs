@@ -311,7 +311,7 @@ instance ToJSON Integer where
 -- specifying a scientific number with a big exponent like
 -- @1e1000000000@.
 instance FromJSON Integer where
-    parseJSON = withScientific "Integral" $ pure . floor
+    parseJSON = withScientific "Integral" $ pure . truncate
     {-# INLINE parseJSON #-}
 
 instance ToJSON Int8 where
@@ -1614,5 +1614,5 @@ parseRealFloat expected v          = typeMismatch expected v
 {-# INLINE parseRealFloat #-}
 
 parseIntegral :: Integral a => String -> Value -> Parser a
-parseIntegral expected = withScientific expected $ pure . floor
+parseIntegral expected = withScientific expected $ pure . truncate
 {-# INLINE parseIntegral #-}
