@@ -58,6 +58,7 @@ import Control.DeepSeq (NFData(..))
 import Data.ByteString.Builder (Builder, char7, toLazyByteString)
 import Data.Char (toLower, isUpper)
 import Data.Scientific (Scientific)
+import Data.Foldable (Foldable(..))
 import Data.Hashable (Hashable(..))
 import Data.Data (Data)
 import Data.HashMap.Strict (HashMap)
@@ -66,6 +67,7 @@ import Data.String (IsString(..))
 import Data.Text (Text, pack, unpack)
 import Data.Time (UTCTime)
 import Data.Time.Format (FormatTime)
+import Data.Traversable (Traversable(..))
 import Data.Typeable (Typeable)
 import Data.Vector (Vector)
 import qualified Data.HashMap.Strict as H
@@ -185,6 +187,34 @@ instance Monoid (Result a) where
     {-# INLINE mempty #-}
     mappend = mplus
     {-# INLINE mappend #-}
+
+instance Foldable IResult where
+    foldMap _ (IError _ _) = mempty
+    foldMap f (ISuccess y) = f y
+    {-# INLINE foldMap #-}
+
+    foldr _ z (IError _ _) = z
+    foldr f z (ISuccess y) = f y z
+    {-# INLINE foldr #-}
+
+instance Foldable Result where
+    foldMap _ (Error _)   = mempty
+    foldMap f (Success y) = f y
+    {-# INLINE foldMap #-}
+
+    foldr _ z (Error _)   = z
+    foldr f z (Success y) = f y z
+    {-# INLINE foldr #-}
+
+instance Traversable IResult where
+    traverse _ (IError path err) = pure (IError path err)
+    traverse f (ISuccess a)      = ISuccess <$> f a
+    {-# INLINE traverse #-}
+
+instance Traversable Result where
+    traverse _ (Error err) = pure (Error err)
+    traverse f (Success a) = Success <$> f a
+    {-# INLINE traverse #-}
 
 -- | Failure continuation.
 type Failure f r   = JSONPath -> String -> f r
