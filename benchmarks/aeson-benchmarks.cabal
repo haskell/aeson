@@ -140,3 +140,15 @@ executable aeson-benchmark-json-parse
     deepseq,
     json,
     time
+
+executable aeson-benchmark-dates
+  main-is: Dates.hs
+  ghc-options: -Wall -O2 -rtsopts
+  build-depends:
+    base,
+    bytestring,
+    criterion,
+    deepseq,
+    aeson-benchmarks,
+    text,
+    time
