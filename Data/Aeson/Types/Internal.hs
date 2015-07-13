@@ -551,6 +551,7 @@ defaultTaggedObject = TaggedObject
 --
 --   > camelTo '_' 'CamelCaseAPI' == "camel_case_api"
 camelTo :: Char -> String -> String
+{-# DEPRECATED camelTo "Use camelTo2 for better results" #-}
 camelTo c = lastWasCap True
   where
     lastWasCap :: Bool    -- ^ Previous was a capital letter
