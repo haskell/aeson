@@ -62,6 +62,7 @@ module Data.Aeson.Types
     , Options(..)
     , SumEncoding(..)
     , camelTo
+    , camelTo2
     , defaultOptions
     , defaultTaggedObject
     ) where
