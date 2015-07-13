@@ -47,6 +47,7 @@ module Data.Aeson.Types.Internal
 
     -- * Used for changing CamelCase names into something else.
     , camelTo
+    , camelTo2
 
     -- * Other types
     , DotNetTime(..)
@@ -56,7 +57,7 @@ import Control.Applicative
 import Control.Monad
 import Control.DeepSeq (NFData(..))
 import Data.ByteString.Builder (Builder, char7, toLazyByteString)
-import Data.Char (toLower, isUpper)
+import Data.Char (toLower, isUpper, isLower)
 import Data.Scientific (Scientific)
 import Data.Foldable (Foldable(..))
 import Data.Hashable (Hashable(..))
@@ -561,3 +562,16 @@ camelTo c = lastWasCap True
                                              then toLower x : lastWasCap True xs
                                              else c : toLower x : lastWasCap True xs
                                       else x : lastWasCap False xs
+
+-- | Better version of 'camelTo'. Example where it works better:
+--
+--   > camelTo '_' 'CamelAPICase' == "camel_apicase"
+--   > camelTo2 '_' 'CamelAPICase' == "camel_api_case"
+camelTo2 :: Char -> String -> String
+camelTo2 c = map toLower . go2 . go1
+    where go1 "" = ""
+          go1 (x:u:l:xs) | isUpper u && isLower l = x : c : u : l : go1 xs
+          go1 (x:xs) = x : go1 xs
+          go2 "" = ""
+          go2 (l:u:xs) | isLower l && isUpper u = l : c : u : go2 xs
+          go2 (x:xs) = x : go2 xs
