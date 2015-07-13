@@ -47,6 +47,7 @@ module Data.Aeson.Types.Internal
 
     -- * Used for changing CamelCase names into something else.
     , camelTo
+    , camelTo2
 
     -- * Other types
     , DotNetTime(..)
@@ -519,9 +520,24 @@ defaultTaggedObject = TaggedObject
 --   For use by Aeson template haskell calls.
 --
 --   > camelTo '_' 'CamelCaseAPI' == "camel_case_api"
---   > camelTo '_' 'CamelAPICase' == "camel_api_case"
 camelTo :: Char -> String -> String
-camelTo c = map toLower . go2 . go1
+camelTo c = lastWasCap True
+  where
+    lastWasCap :: Bool    -- ^ Previous was a capital letter
+              -> String  -- ^ The remaining string
+              -> String
+    lastWasCap _    []           = []
+    lastWasCap prev (x : xs)     = if isUpper x
+                                      then if prev
+                                             then toLower x : lastWasCap True xs
+                                             else c : toLower x : lastWasCap True xs
+                                      else x : lastWasCap False xs
+
+-- | Better version of 'camelTo'. Example where it works better:
+--
+--   > camelTo2 '_' 'CamelAPICase' == "camel_api_case"
+camelTo2 :: Char -> String -> String
+camelTo2 c = map toLower . go2 . go1
     where go1 "" = ""
           go1 (x:u:l:xs) | isUpper u && isLower l = x : c : u : l : go1 xs
           go1 (x:xs) = x : go1 xs

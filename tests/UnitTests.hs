@@ -5,7 +5,7 @@ module UnitTests (ioTests, tests) where
 import Control.Monad (forM)
 import Data.Aeson (eitherDecode, encode, genericToJSON, genericToEncoding)
 import Data.Aeson.Encode (encodeToTextBuilder)
-import Data.Aeson.Types (ToJSON(..), Value, camelTo, defaultOptions)
+import Data.Aeson.Types (ToJSON(..), Value, camelTo, camelTo2, defaultOptions)
 import Data.Char (toUpper)
 import GHC.Generics (Generic)
 import Test.Framework (Test, testGroup)
@@ -21,6 +21,13 @@ tests = testGroup "unit" [
       testCase "camelTo" $ roundTripCamel "aName"
     , testCase "camelTo" $ roundTripCamel "another"
     , testCase "camelTo" $ roundTripCamel "someOtherName"
+    , testCase "camelTo" $
+        assertEqual "" "camel_apicase" (camelTo '_' "CamelAPICase")
+    , testCase "camelTo2" $ roundTripCamel2 "aName"
+    , testCase "camelTo2" $ roundTripCamel2 "another"
+    , testCase "camelTo2" $ roundTripCamel2 "someOtherName"
+    , testCase "camelTo2" $
+        assertEqual "" "camel_api_case" (camelTo2 '_' "CamelAPICase")
     ]
   , testGroup "encoding" [
       testCase "goodProducer" $ goodProducer
@@ -30,10 +37,13 @@ tests = testGroup "unit" [
 roundTripCamel :: String -> Assertion
 roundTripCamel name = assertEqual "" name (camelFrom '_' $ camelTo '_' name)
 
+roundTripCamel2 :: String -> Assertion
+roundTripCamel2 name = assertEqual "" name (camelFrom '_' $ camelTo2 '_' name)
 
+camelFrom :: Char -> String -> String
+camelFrom c s = let (p:ps) = split c s
+                in concat $ p : map capitalize ps
   where
-    camelFrom c s = let (p:ps) = split c s
-                    in concat $ p : map capitalize ps
     split c s = map L.unpack $ L.split c $ L.pack s
     capitalize t = toUpper (head t) : tail t
 
