@@ -21,6 +21,7 @@ library
     Data.Aeson.Functions
     Data.Aeson.Parser
     Data.Aeson.Parser.Internal
+    Data.Aeson.Parser.Time
     Data.Aeson.TH
     Data.Aeson.Types
     Data.Aeson.Types.Class
