@@ -60,6 +60,7 @@ import qualified Data.ByteString.Builder as B
 import Data.Aeson.Functions
 import Data.Monoid ((<>), mempty)
 import Data.Aeson.Encode.Functions (brackets, builder, foldable, list)
+import qualified Data.Aeson.Parser.Time as Time
 import Data.Aeson.Types.Class
 import Data.Aeson.Types.Internal
 import Data.Scientific (Scientific)
@@ -726,35 +727,7 @@ formatSubseconds :: (FormatTime t) => t -> String
 formatSubseconds = formatTime defaultTimeLocale "%q"
 
 instance FromJSON ZonedTime where
-    parseJSON (String t) =
-      tryFormats alternateFormats
-      <|> fail "could not parse ECMA-262 ISO-8601 date"
-      where
-        tryFormat f =
-          case parseTime defaultTimeLocale f (unpack t) of
-            Just d -> pure d
-            Nothing -> empty
-        tryFormats = foldr1 (<|>) . map tryFormat
-        alternateFormats =
-            "%FT%T%QZ" :  -- (javascript new Date().toISOString())
-            "%F %T%Q%z" :   -- (postgres)
-            "%F %T%Q %Z" :   -- (time's Show format)
-            "%FT%T%Q%z" :
-            "%Y-%mT%T%Q" :
-            "%Y-%mT%R" :
-            "%Y-%mT%T" :
-            "%Y-%mT%T%QZ" :
-            "%Y-%mT%T%Q%z" :
-            "%YT%T%Q" :
-            "%YT%R" :
-            "%YT%T" :
-            "%YT%T%QZ" :
-            "%YT%T%Q%z" :
-            "%FT%T%Q" :
-            "%FT%R" :
-            "%FT%T" :
-            dateTimeFmt defaultTimeLocale :
-            []
+    parseJSON (String t) = Time.zonedTime t
 
     parseJSON v = typeMismatch "ZonedTime" v
 

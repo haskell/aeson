@@ -1,19 +1,31 @@
+{-# LANGUAGE CPP #-}
+
 module Data.Aeson.Parser.Time
     (
       day
     , timeOfDay
     , timeZone
     , utcTime
+    , zonedTime
     ) where
 
-import Control.Applicative ((<$>))
+import Control.Applicative ((<$>), (<|>), empty)
 import Control.Monad (when, void)
+import qualified Data.Aeson.Types.Internal as Aeson
 import Data.Attoparsec.Text as A
+import Data.Text (Text)
 import Data.Time.Calendar (Day, fromGregorianValid)
 import Data.Time.Clock (UTCTime)
+import Data.Time.Format (parseTime)
 import qualified Data.Time.LocalTime as Local
 import qualified Data.Text as T
 import qualified Data.Text.Read as T
+
+#if MIN_VERSION_time(1,5,0)
+import Data.Time.Format (defaultTimeLocale, dateTimeFmt)
+#else
+import System.Locale (defaultTimeLocale, dateTimeFmt)
+#endif
 
 day :: A.Parser Day
 day = do
@@ -54,3 +66,34 @@ utcTime = do
   lt <- Local.LocalTime <$> day <* daySep <*> timeOfDay
   tz <- timeZone
   return (Local.localTimeToUTC tz lt)
+
+zonedTime :: Text -> Aeson.Parser Local.ZonedTime
+zonedTime t =
+      tryFormats alternateFormats
+      <|> fail "could not parse ECMA-262 ISO-8601 date"
+      where
+        tryFormat f =
+          case parseTime defaultTimeLocale f (T.unpack t) of
+            Just d -> pure d
+            Nothing -> empty
+        tryFormats = foldr1 (<|>) . map tryFormat
+        alternateFormats =
+            "%FT%T%QZ" :  -- (javascript new Date().toISOString())
+            "%F %T%Q%z" :   -- (postgres)
+            "%F %T%Q %Z" :   -- (time's Show format)
+            "%FT%T%Q%z" :
+            "%Y-%mT%T%Q" :
+            "%Y-%mT%R" :
+            "%Y-%mT%T" :
+            "%Y-%mT%T%QZ" :
+            "%Y-%mT%T%Q%z" :
+            "%YT%T%Q" :
+            "%YT%R" :
+            "%YT%T" :
+            "%YT%T%QZ" :
+            "%YT%T%Q%z" :
+            "%FT%T%Q" :
+            "%FT%R" :
+            "%FT%T" :
+            dateTimeFmt defaultTimeLocale :
+            []
