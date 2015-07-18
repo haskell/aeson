@@ -55,7 +55,7 @@ module Data.Aeson.Types.Instances
     , typeMismatch
     ) where
 
-import Control.Applicative ((<$>), (<*>), (<|>), pure, empty)
+import Control.Applicative ((<$>), (<*>), pure)
 import qualified Data.Aeson.Encode.Builder as E
 import qualified Data.ByteString.Builder as B
 import Data.Aeson.Functions
