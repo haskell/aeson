@@ -56,11 +56,9 @@ module Data.Aeson.Types.Instances
     ) where
 
 import Control.Applicative ((<$>), (<*>), (<|>), pure, empty)
-import Control.Monad (when)
 import qualified Data.Aeson.Encode.Builder as E
 import qualified Data.ByteString.Builder as B
 import Data.Aeson.Functions
-import Data.Bits ((.&.))
 import Data.Monoid ((<>), mempty)
 import Data.Aeson.Encode.Functions (brackets, builder, foldable, list)
 import qualified Data.Aeson.Parser.Time as Time
@@ -69,8 +67,6 @@ import Data.Aeson.Types.Internal
 import Data.Scientific (Scientific)
 import qualified Data.Scientific as Scientific (coefficient, base10Exponent, fromFloatDigits, toRealFloat)
 import Data.Attoparsec.Number (Number(..))
-import qualified Data.Attoparsec.Text as A
-import Data.Char (isDigit, ord)
 import Data.Fixed
 import Data.Foldable (Foldable, toList)
 import Data.Functor.Identity (Identity(..))
@@ -80,10 +76,8 @@ import Data.Maybe (fromMaybe)
 import Data.Monoid (Dual(..), First(..), Last(..))
 import Data.Ratio (Ratio, (%), numerator, denominator)
 import Data.Text (Text, pack, unpack)
-import Data.Time (UTCTime(..), ZonedTime(..), TimeZone(..), Day, utc)
-import Data.Time.Calendar (fromGregorianValid, addDays)
+import Data.Time (UTCTime(..), ZonedTime(..), TimeZone(..))
 import Data.Time.Format (FormatTime, formatTime, parseTime)
-import Data.Time.LocalTime (TimeOfDay, makeTimeOfDayValid, minutesToTimeZone, timeOfDayToTime, localToUTCTimeOfDay)
 import Data.Traversable as Tr (sequence, traverse)
 import Data.Vector (Vector)
 import Data.Word (Word, Word8, Word16, Word32, Word64)
@@ -107,9 +101,9 @@ import qualified Data.Vector.Unboxed as VU
 import qualified Data.Vector.Mutable as VM ( unsafeNew, unsafeWrite )
 
 #if MIN_VERSION_time(1,5,0)
-import Data.Time.Format (defaultTimeLocale, dateTimeFmt)
+import Data.Time.Format (defaultTimeLocale)
 #else
-import System.Locale (defaultTimeLocale, dateTimeFmt)
+import System.Locale (defaultTimeLocale)
 #endif
 
 parseIndexedJSON :: FromJSON a => Int -> Value -> Parser a
@@ -734,9 +728,7 @@ formatSubseconds :: (FormatTime t) => t -> String
 formatSubseconds = formatTime defaultTimeLocale "%q"
 
 instance FromJSON ZonedTime where
-    parseJSON (String t) = Time.zonedTime t
-
-    parseJSON v = typeMismatch "ZonedTime" v
+    parseJSON = withText "ZonedTime" (Time.run Time.zonedTime)
 
 instance ToJSON UTCTime where
     toJSON = toJSON . utcTime
@@ -747,87 +739,8 @@ utcTime :: UTCTime -> String
 utcTime t = formatTime defaultTimeLocale format t
   where format = "%FT%T." ++ formatSubseconds t ++ "Z"
 
-getDay :: A.Parser Day
-getDay = do
-    yearStr <- A.takeWhile isDigit
-    when (T.length yearStr < 4) (fail "year must consist of at least 4 digits")
-
-    let !year = toNum yearStr
-    _       <- A.char '-'
-    month   <- digits "month"
-    _       <- A.char '-'
-    day     <- digits "day"
-
-    case fromGregorianValid year month day of
-      Nothing -> fail "invalid date"
-      Just x  -> return $! x
-
-toNum :: Num n => T.Text -> n
-toNum = T.foldl' (\a c -> 10*a + digit c) 0
-{-# INLINE toNum #-}
-
-digit :: Num n => Char -> n
-digit c = fromIntegral (ord c .&. 0x0f)
-{-# INLINE digit #-}
-
-digits :: Num n => String -> A.Parser n
-digits msg = do
-  x <- A.anyChar
-  y <- A.anyChar
-  if isDigit x && isDigit y
-    then return $! (10 * digit x + digit y)
-    else fail (msg ++ " is not 2 digits")
-{-# INLINE digits #-}
-
-decimal :: Fractional a => T.Text -> a
-decimal str = toNum str / 10^(T.length str)
-{-# INLINE decimal #-}
-
-getTimeOfDay :: A.Parser TimeOfDay
-getTimeOfDay = do
-    hour   <- digits "hours"
-    _      <- A.char ':'
-    minute <- digits "minutes"
-    -- Allow omission of seconds.  If seconds is omitted, don't try to
-    -- parse the sub-second part.
-    (sec,subsec)
-           <- ((,) <$> (A.char ':' *> digits "seconds") <*> fract) <|> pure (0,0)
-
-    let !picos' = sec + subsec
-
-    case makeTimeOfDayValid hour minute picos' of
-      Nothing -> fail "invalid time of day"
-      Just x  -> return $! x
-
-    where
-      fract =
-        (A.char '.' *> (decimal <$> A.takeWhile1 isDigit)) <|> pure 0
-
-getTimeZone :: A.Parser TimeZone
-getTimeZone = do
-    sign  <- A.satisfy (\c -> c == '+' || c == '-')
-    hours <- digits "timezone"
-    mins  <- (A.char ':' *> digits "timezone minutes") <|> pure 0
-    let !absset = 60 * hours + mins
-        !offset = if sign == '+' then absset else -absset
-    return $! minutesToTimeZone offset
-
-getUTCTime :: A.Parser UTCTime
-getUTCTime = do
-    day  <- getDay
-    _    <- A.char ' ' <|> A.char 'T'
-    time <- getTimeOfDay
-    zone <- getTimeZone <|> (A.char 'Z' *> pure utc)
-    let (!dayDelta,!time') = localToUTCTimeOfDay zone time
-    let !day' = addDays dayDelta day
-    let !time'' = timeOfDayToTime time'
-    return (UTCTime day' time'')
-
 instance FromJSON UTCTime where
-    parseJSON = withText "UTCTime" $ \t ->
-      case A.parseOnly (getUTCTime <* A.endOfInput) t of
-          Right d  -> pure d
-          Left msg -> fail ("could not parse ISO-8601 date: " ++ msg)
+    parseJSON = withText "UTCTime" (Time.run Time.utcTime)
 
 parseJSONElemAtIndex :: FromJSON a => Int -> Vector Value -> Parser a
 parseJSONElemAtIndex idx ary = parseJSON (V.unsafeIndex ary idx) <?> Index idx
