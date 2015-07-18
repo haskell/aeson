@@ -12,7 +12,6 @@ import Data.Int (Int8)
 import Data.Time (UTCTime, ZonedTime)
 import Encoders
 import Instances ()
-import Properties.ZonedTime (zonedTimeToJSON)
 import Test.Framework (Test, testGroup)
 import Test.Framework.Providers.QuickCheck2 (testProperty)
 import Test.QuickCheck (Arbitrary(..), Property, (===))
@@ -136,7 +135,6 @@ tests = testGroup "properties" [
     , testProperty "Maybe Integer" (toFromJSON :: Maybe Integer -> Property)
     , testProperty "Either Integer Double" (toFromJSON :: Either Integer Double -> Property)
     , testProperty "Either Integer Integer" (toFromJSON :: Either Integer Integer -> Property)
-    , zonedTimeToJSON
     ]
   , testGroup "failure messages" [
       testProperty "modify failure" modifyFailureProp

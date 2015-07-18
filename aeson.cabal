@@ -143,7 +143,6 @@ test-suite tests
     Instances
     Options
     Properties
-    Properties.ZonedTime
     Types
     UnitTests
 
