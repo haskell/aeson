@@ -90,6 +90,7 @@ library
     Data.Aeson.Encode
     Data.Aeson.Internal
     Data.Aeson.Parser
+    Data.Aeson.Parser.Time
     Data.Aeson.Types
     Data.Aeson.TH
 
@@ -98,7 +99,6 @@ library
     Data.Aeson.Encode.Functions
     Data.Aeson.Functions
     Data.Aeson.Parser.Internal
-    Data.Aeson.Parser.Time
     Data.Aeson.Types.Class
     Data.Aeson.Types.Generic
     Data.Aeson.Types.Instances

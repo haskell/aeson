@@ -1,5 +1,15 @@
 {-# LANGUAGE BangPatterns, ScopedTypeVariables #-}
 
+-- |
+-- Module:      Data.Aeson.Parser.Time
+-- Copyright:   (c) 2015 Bryan O'Sullivan
+-- License:     Apache
+-- Maintainer:  Bryan O'Sullivan <bos@serpentine.com>
+-- Stability:   experimental
+-- Portability: portable
+--
+-- Parsers for parsing dates and times.
+
 module Data.Aeson.Parser.Time
     (
       run
@@ -25,11 +35,13 @@ import qualified Data.Aeson.Types.Internal as Aeson
 import qualified Data.Text as T
 import qualified Data.Time.LocalTime as Local
 
+-- | Run an attoparsec parser as an aeson parser.
 run :: Parser a -> Text -> Aeson.Parser a
 run p t = case A.parseOnly (p <* endOfInput) t of
-              Left err -> fail $ "could not parse date: " ++ err
-              Right r  -> return r
+            Left err -> fail $ "could not parse date: " ++ err
+            Right r  -> return r
 
+-- | Parse a date of the form @YYYY-MM-DD@.
 day :: Parser Day
 day = do
   y <- decimal <* char '-'
@@ -37,26 +49,28 @@ day = do
   d <- twoDigits
   maybe (fail "invalid date") return (fromGregorianValid y m d)
 
-c2d :: Char -> Int
-c2d c = ord c .&. 15
-
+-- | Parse a two-digit integer (e.g. day of month, hour).
 twoDigits :: Parser Int
 twoDigits = do
   a <- digit
   b <- digit
+  let c2d c = ord c .&. 15
   return $! c2d a * 10 + c2d b
 
+-- | Parse a time of the form @HH:MM:SS[.SSS]@.
 timeOfDay :: Parser Local.TimeOfDay
 timeOfDay = do
   h <- twoDigits <* char ':'
   m <- twoDigits <* char ':'
-  s <- pico
+  s <- seconds
   if h < 24 && m < 60 && s < 61
     then return (Local.TimeOfDay h m s)
     else fail "invalid time"
 
-pico :: Parser Pico
-pico = do
+-- | Parse a count of seconds., with the integer part being two digits
+-- long.
+seconds :: Parser Pico
+seconds = do
   w <- twoDigits
   mc <- peekChar
   case mc of
@@ -65,6 +79,8 @@ pico = do
       return $! fromIntegral w + fromIntegral f / 10 ^ T.length t
     _ -> return $! fromIntegral w
 
+-- | Parse a time zone, and return 'Nothing' if the offset from UTC is
+-- zero. (This makes some speedups possible.)
 timeZone :: Parser (Maybe Local.TimeZone)
 timeZone = do
   let maybeSkip c = do ch <- peekChar'; when (ch == c) (void anyChar)
@@ -86,10 +102,15 @@ timeZone = do
               let !tz = Local.minutesToTimeZone off
               in return (Just tz)
 
+-- | Parse a date and time, of the form @YYYY-MM-DD HH:MM:SS@.
+-- The space may be replaced with a @T@.  The number of seconds may be
+-- followed by a fractional component.
 localTime :: Parser Local.LocalTime
 localTime = Local.LocalTime <$> day <* daySep <*> timeOfDay
   where daySep = satisfy (\c -> c == 'T' || c == ' ')
 
+-- | Behaves as 'zonedTime', but converts any time zone offset into a
+-- UTC time.
 utcTime :: Parser UTCTime
 utcTime = do
   lt@(Local.LocalTime d t) <- localTime
@@ -99,6 +120,15 @@ utcTime = do
                in return (UTCTime d tt)
     Just tz -> return $! Local.localTimeToUTC tz lt
 
+-- | Parse a date with time zone info. Acceptable formats:
+--
+-- @YYYY-MM-DD HH:MM:SS Z@
+--
+-- The first space may instead be a @T@, and the second space is
+-- optional.  The @Z@ represents UTC.  The @Z@ may be replaced with a
+-- time zone offset of the form @+0000@ or @-08:00@, where the first
+-- two digits are hours, the @:@ is optional and the second two digits
+-- are minutes.
 zonedTime :: Parser Local.ZonedTime
 zonedTime = Local.ZonedTime <$> localTime <*> (fromMaybe utc <$> timeZone)
 
