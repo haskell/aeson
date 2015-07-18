@@ -67,7 +67,7 @@ timeOfDay = do
     then return (Local.TimeOfDay h m s)
     else fail "invalid time"
 
--- | Parse a count of seconds., with the integer part being two digits
+-- | Parse a count of seconds, with the integer part being two digits
 -- long.
 seconds :: Parser Pico
 seconds = do
