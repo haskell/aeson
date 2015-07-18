@@ -71,13 +71,13 @@ timeOfDay = do
 -- long.
 seconds :: Parser Pico
 seconds = do
-  w <- twoDigits
+  real <- twoDigits
   mc <- peekChar
   case mc of
     Just '.' -> do
-      (t,f :: Int64) <- anyChar *> match decimal
-      return $! fromIntegral w + fromIntegral f / 10 ^ T.length t
-    _ -> return $! fromIntegral w
+      (t, frac :: Int64) <- anyChar *> match decimal
+      return $! fromIntegral real + fromIntegral frac / 10 ^ T.length t
+    _ -> return $! fromIntegral real
 
 -- | Parse a time zone, and return 'Nothing' if the offset from UTC is
 -- zero. (This makes some speedups possible.)
