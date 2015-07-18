@@ -70,7 +70,7 @@ timeZone = do
   maybeSkip ' '
   ch <- satisfy $ \c -> c == 'Z' || c == '+' || c == '-'
   if ch == 'Z'
-    then return Local.utc
+    then return (Local.TimeZone 0 False "")
     else do
       h0 <- twoDigits
       m <- maybeSkip ':' *> twoDigits
