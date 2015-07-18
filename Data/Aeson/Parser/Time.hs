@@ -1,4 +1,4 @@
-{-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE BangPatterns, ScopedTypeVariables #-}
 
 module Data.Aeson.Parser.Time
     (
@@ -17,9 +17,10 @@ import Data.Bits ((.&.))
 import Data.Char (ord)
 import Data.Fixed (Pico)
 import Data.Int (Int64)
+import Data.Maybe (fromMaybe)
 import Data.Text (Text)
 import Data.Time.Calendar (Day, fromGregorianValid)
-import Data.Time.Clock (UTCTime)
+import Data.Time.Clock (UTCTime(..))
 import qualified Data.Aeson.Types.Internal as Aeson
 import qualified Data.Text as T
 import qualified Data.Time.LocalTime as Local
@@ -64,22 +65,26 @@ pico = do
       return $! fromIntegral w + fromIntegral f / 10 ^ T.length t
     _ -> return $! fromIntegral w
 
-timeZone :: Parser Local.TimeZone
+timeZone :: Parser (Maybe Local.TimeZone)
 timeZone = do
   let maybeSkip c = do ch <- peekChar'; when (ch == c) (void anyChar)
   maybeSkip ' '
   ch <- satisfy $ \c -> c == 'Z' || c == '+' || c == '-'
   if ch == 'Z'
-    then return (Local.TimeZone 0 False "")
+    then return Nothing
     else do
       h0 <- twoDigits
       m <- maybeSkip ':' *> twoDigits
       let h | ch == '-' = negate h0
             | otherwise = h0
-          off           = h * 60 + m
-      if off < -720 || off > 840 || m > 59
-        then fail "invalid time zone offset"
-        else return $! Local.minutesToTimeZone off
+      case h * 60 + m of
+        off | off == 0 ->
+              return Nothing
+            | off < -720 || off > 840 || m > 59 ->
+              fail "invalid time zone offset"
+            | otherwise ->
+              let !tz = Local.minutesToTimeZone off
+              in return (Just tz)
 
 localTime :: Parser Local.LocalTime
 localTime = Local.LocalTime <$> day <* daySep <*> timeOfDay
@@ -87,9 +92,15 @@ localTime = Local.LocalTime <$> day <* daySep <*> timeOfDay
 
 utcTime :: Parser UTCTime
 utcTime = do
-  lt <- localTime
-  tz <- timeZone
-  return $! Local.localTimeToUTC tz lt
+  lt@(Local.LocalTime d t) <- localTime
+  mtz <- timeZone
+  case mtz of
+    Nothing -> let !tt = Local.timeOfDayToTime t
+               in return (UTCTime d tt)
+    Just tz -> return $! Local.localTimeToUTC tz lt
 
 zonedTime :: Parser Local.ZonedTime
-zonedTime = Local.ZonedTime <$> localTime <*> timeZone
+zonedTime = Local.ZonedTime <$> localTime <*> (fromMaybe utc <$> timeZone)
+
+utc :: Local.TimeZone
+utc = Local.TimeZone 0 False ""
