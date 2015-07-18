@@ -1,4 +1,4 @@
-{-# LANGUAGE BangPatterns, ScopedTypeVariables #-}
+{-# LANGUAGE BangPatterns, ScopedTypeVariables, CPP #-}
 
 -- |
 -- Module:      Data.Aeson.Parser.Time
@@ -34,6 +34,17 @@ import Data.Time.Clock (UTCTime(..))
 import qualified Data.Aeson.Types.Internal as Aeson
 import qualified Data.Text as T
 import qualified Data.Time.LocalTime as Local
+#if !MIN_VERSION_base(4,7,0)
+import Unsafe.Coerce
+
+mkPico :: Integer -> Pico
+mkPico = unsafeCoerce
+#else
+import Data.Fixed (Fixed(MkFixed))
+
+mkPico :: Integer -> Pico
+mkPico = MkFixed
+#endif
 
 -- | Run an attoparsec parser as an aeson parser.
 run :: Parser a -> Text -> Aeson.Parser a
@@ -75,9 +86,18 @@ seconds = do
   mc <- peekChar
   case mc of
     Just '.' -> do
-      (t,f :: Int64) <- anyChar *> match decimal
-      return $! fromIntegral w + fromIntegral f / 10 ^ T.length t
+      t <- anyChar *> takeWhile1 (\c -> c >= '0' && c <= '9')
+      return $! parsePicos w t
     _ -> return $! fromIntegral w
+
+parsePicos :: Int -> T.Text -> Pico
+parsePicos a0 t =
+    let (n,t') = T.foldl' step (12 :: Int, fromIntegral a0 :: Int64) t
+     in mkPico (fromIntegral (t' * 10^n))
+  where step na@(n,a) c
+            | n <= 0    = na
+            | otherwise = mkPair (n-1) (10 * a + fromIntegral (ord c) .&. 15)
+        mkPair !x !y = (x,y)
 
 -- | Parse a time zone, and return 'Nothing' if the offset from UTC is
 -- zero. (This makes some speedups possible.)
