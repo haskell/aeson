@@ -1,4 +1,4 @@
-{-# LANGUAGE CPP #-}
+{-# LANGUAGE CPP, ScopedTypeVariables #-}
 
 module Data.Aeson.Parser.Time
     (
@@ -13,6 +13,8 @@ import Control.Applicative ((<$>), (<|>), empty)
 import Control.Monad (when, void)
 import qualified Data.Aeson.Types.Internal as Aeson
 import Data.Attoparsec.Text as A
+import Data.Char (isDigit)
+import Data.Fixed (Pico)
 import Data.Text (Text)
 import Data.Time.Calendar (Day, fromGregorianValid)
 import Data.Time.Clock (UTCTime)
@@ -40,6 +42,19 @@ timeOfDay = do
   m <- decimal <* char ':'
   s <- (fromRational . toRational) <$> double
   maybe (fail "invalid time") return (Local.makeTimeOfDayValid h m s)
+
+pico :: A.Parser Pico
+pico = do
+  (w :: Int) <- decimal
+  mc <- peekChar
+  case mc of
+    Just '.' -> do
+      fs <- A.takeWhile isDigit
+      let e = negate (T.length (T.takeWhile (=='0') fs)) - 1
+      case T.decimal fs of
+        Right (f :: Int, _) -> return (fromIntegral w + fromIntegral f * 10 ^ e)
+        _ -> fail "invalid number"
+    _ -> fail "invalid number"
 
 timeZone :: A.Parser Local.TimeZone
 timeZone = do
