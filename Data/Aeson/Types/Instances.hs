@@ -76,7 +76,7 @@ import Data.Maybe (fromMaybe)
 import Data.Monoid (Dual(..), First(..), Last(..))
 import Data.Ratio (Ratio, (%), numerator, denominator)
 import Data.Text (Text, pack, unpack)
-import Data.Time (UTCTime(..), ZonedTime(..), TimeZone(..))
+import Data.Time (UTCTime(..), ZonedTime(..), TimeZone(..), LocalTime(..))
 import Data.Time.Format (FormatTime, formatTime, parseTime)
 import Data.Traversable as Tr (sequence, traverse)
 import Data.Vector (Vector)
@@ -741,6 +741,18 @@ utcTime t = formatTime defaultTimeLocale format t
 
 instance FromJSON UTCTime where
     parseJSON = withText "UTCTime" (Time.run Time.utcTime)
+
+instance ToJSON LocalTime where
+    toJSON = toJSON . localTime
+
+    toEncoding = toEncoding . localTime
+
+localTime :: LocalTime -> String
+localTime t = formatTime defaultTimeLocale format t
+  where format = "%FT%T." ++ formatSubseconds t
+
+instance FromJSON LocalTime where
+    parseJSON = withText "LocalTime" (Time.run Time.localTime)
 
 parseJSONElemAtIndex :: FromJSON a => Int -> Vector Value -> Parser a
 parseJSONElemAtIndex idx ary = parseJSON (V.unsafeIndex ary idx) <?> Index idx
