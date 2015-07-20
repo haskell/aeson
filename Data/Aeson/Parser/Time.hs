@@ -18,6 +18,7 @@ module Data.Aeson.Parser.Time
     , timeZone
     , utcTime
     , zonedTime
+    , localTime
     ) where
 
 import Control.Applicative ((<$>), (<*>), (<*), (*>))
