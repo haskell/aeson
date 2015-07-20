@@ -112,7 +112,6 @@ object_' = {-# SCC "object_'" #-} do
 objectValues :: Parser Text -> Parser Value -> Parser (H.HashMap Text Value)
 objectValues str val = do
   skipSpace
-  let pair = liftA2 (,) (str <* skipSpace) (char ':' *> val)
   w <- A.peekWord8'
   if w == CLOSE_CURLY
     then A.anyWord8 >> return H.empty
