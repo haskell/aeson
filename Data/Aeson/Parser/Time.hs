@@ -24,7 +24,7 @@ import Control.Applicative ((<$>), (<*>), (<*), (*>))
 import Control.Monad (when, void)
 import Data.Attoparsec.Text as A
 import Data.Bits ((.&.))
-import Data.Char (ord)
+import Data.Char (isDigit, ord)
 import Data.Fixed (Pico)
 import Data.Int (Int64)
 import Data.Maybe (fromMaybe)
@@ -78,6 +78,8 @@ timeOfDay = do
     then return (Local.TimeOfDay h m s)
     else fail "invalid time"
 
+data T = T {-# UNPACK #-} !Int {-# UNPACK #-} !Int64
+
 -- | Parse a count of seconds, with the integer part being two digits
 -- long.
 seconds :: Parser Pico
@@ -86,18 +88,16 @@ seconds = do
   mc <- peekChar
   case mc of
     Just '.' -> do
-      t <- anyChar *> takeWhile1 (\c -> c >= '0' && c <= '9')
+      t <- anyChar *> takeWhile1 isDigit
       return $! parsePicos real t
     _ -> return $! fromIntegral real
 
 parsePicos :: Int -> T.Text -> Pico
-parsePicos a0 t =
-    let (n,t') = T.foldl' step (12 :: Int, fromIntegral a0 :: Int64) t
-     in mkPico (fromIntegral (t' * 10^n))
-  where step na@(n,a) c
-            | n <= 0    = na
-            | otherwise = mkPair (n-1) (10 * a + fromIntegral (ord c) .&. 15)
-        mkPair !x !y = (x,y)
+parsePicos a0 t = mkPico (fromIntegral (t' * 10^n))
+  where T n t'  = T.foldl' step (T 12 (fromIntegral a0)) t
+        step ma@(T m a) c
+            | m <= 0    = ma
+            | otherwise = T (m-1) (10 * a + fromIntegral (ord c) .&. 15)
 
 -- | Parse a time zone, and return 'Nothing' if the offset from UTC is
 -- zero. (This makes some speedups possible.)
