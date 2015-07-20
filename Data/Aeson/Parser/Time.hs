@@ -34,16 +34,21 @@ import Data.Time.Clock (UTCTime(..))
 import qualified Data.Aeson.Types.Internal as Aeson
 import qualified Data.Text as T
 import qualified Data.Time.LocalTime as Local
-#if !MIN_VERSION_base(4,7,0)
-import Unsafe.Coerce
 
-mkPico :: Integer -> Pico
-mkPico = unsafeCoerce
-#else
+#if MIN_VERSION_base(4,7,0)
+
 import Data.Fixed (Fixed(MkFixed))
 
 mkPico :: Integer -> Pico
 mkPico = MkFixed
+
+#else
+
+import Unsafe.Coerce
+
+mkPico :: Integer -> Pico
+mkPico = unsafeCoerce
+
 #endif
 
 -- | Run an attoparsec parser as an aeson parser.
@@ -91,13 +96,12 @@ seconds = do
       t <- anyChar *> takeWhile1 isDigit
       return $! parsePicos real t
     _ -> return $! fromIntegral real
-
-parsePicos :: Int -> T.Text -> Pico
-parsePicos a0 t = mkPico (fromIntegral (t' * 10^n))
-  where T n t'  = T.foldl' step (T 12 (fromIntegral a0)) t
-        step ma@(T m a) c
-            | m <= 0    = ma
-            | otherwise = T (m-1) (10 * a + fromIntegral (ord c) .&. 15)
+ where
+  parsePicos a0 t = mkPico (fromIntegral (t' * 10^n))
+    where T n t'  = T.foldl' step (T 12 (fromIntegral a0)) t
+          step ma@(T m a) c
+              | m <= 0    = ma
+              | otherwise = T (m-1) (10 * a + fromIntegral (ord c) .&. 15)
 
 -- | Parse a time zone, and return 'Nothing' if the offset from UTC is
 -- zero. (This makes some speedups possible.)
