@@ -102,11 +102,12 @@ utcTimeGood = do
   assertEqual "utctime" (parseWithRead "%FT%T%QZ" ts2) t2
   assertEqual "utctime" (parseWithRead "%F %T%QZ" ts3) t3
   assertEqual "utctime" (parseWithRead "%F %T%QZ" ts4) t4
-  -- timezones.  Both +HHMM and +HH:MM are allowed for timezone offset
-  let ts5 = "2015-01-01T12:30:00.00+0000" :: LT.Text
+  -- Time zones.  Both +HHMM and +HH:MM are allowed for timezone
+  -- offset, and MM may be omitted.
+  let ts5 = "2015-01-01T12:30:00.00+00" :: LT.Text
   let ts6 = "2015-01-01T12:30:00.00+01:15" :: LT.Text
-  let ts7 = "2015-01-01T12:30:00.00-0200" :: LT.Text
-  let ts8 = "2015-01-01T22:00:00.00-03:00" :: LT.Text
+  let ts7 = "2015-01-01T12:30:00.00-02" :: LT.Text
+  let ts8 = "2015-01-01T22:00:00.00-03" :: LT.Text
   let ts9 = "2015-01-01T22:00:00.00-04:30" :: LT.Text
   let (Just (t5 ::  UTCTime)) = parseWithAeson ts5
   let (Just (t6 ::  UTCTime)) = parseWithAeson ts6

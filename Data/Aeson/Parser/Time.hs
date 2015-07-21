@@ -99,7 +99,11 @@ timeZone = do
     then return Nothing
     else do
       h <- twoDigits
-      m <- maybeSkip ':' *> twoDigits
+      mm <- peekChar
+      m <- case mm of
+             Just ':'           -> anyChar *> twoDigits
+             Just d | isDigit d -> twoDigits
+             _                  -> return 0
       let off | ch == '-' = negate off0
               | otherwise = off0
           off0 = h * 60 + m
@@ -138,7 +142,7 @@ utcTime = do
 -- optional.  The @Z@ represents UTC.  The @Z@ may be replaced with a
 -- time zone offset of the form @+0000@ or @-08:00@, where the first
 -- two digits are hours, the @:@ is optional and the second two digits
--- are minutes.
+-- (also optional) are minutes.
 zonedTime :: Parser Local.ZonedTime
 zonedTime = Local.ZonedTime <$> localTime <*> (fromMaybe utc <$> timeZone)
 
