@@ -214,7 +214,7 @@ jstring_ = {-# SCC "jstring_" #-} do
     Right r  -> return r
     Left err -> fail $ show err
  where go (a, b) c
-         | a = Just (False, True)
+         | a = Just (False, b)
          | c == DOUBLE_QUOTE = Nothing
          | otherwise = let a' = c == backSlash
                        in Just (a', a' || b)
