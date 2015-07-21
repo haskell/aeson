@@ -3,6 +3,7 @@ module Data.Aeson.Encode.Functions
       brackets
     , builder
     , char7
+    , encode
     , foldable
     , list
     , pairs
@@ -15,10 +16,19 @@ import Data.ByteString.Builder (Builder, char7)
 import Data.ByteString.Builder.Prim (primBounded)
 import Data.Foldable (Foldable, foldMap)
 import Data.Monoid ((<>), mempty)
+import qualified Data.ByteString.Builder as B
+import qualified Data.ByteString.Lazy as L
 
 builder :: ToJSON a => a -> Builder
 builder = fromEncoding . toEncoding
 {-# INLINE builder #-}
+
+-- | Efficiently serialize a JSON value as a lazy 'L.ByteString'.
+--
+-- This is implemented in terms of the 'ToJSON' class's 'toEncoding' method.
+encode :: ToJSON a => a -> L.ByteString
+encode = B.toLazyByteString . builder
+{-# INLINE encode #-}
 
 -- | Encode a 'Foldable' as a JSON array.
 foldable :: (Foldable t, ToJSON a) => t a -> Encoding
