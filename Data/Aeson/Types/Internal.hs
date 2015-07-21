@@ -222,7 +222,7 @@ type Failure f r   = JSONPath -> String -> f r
 -- | Success continuation.
 type Success a f r = a -> f r
 
--- | A continuation-based parser type.
+-- | A JSON parser.
 newtype Parser a = Parser {
       runParser :: forall f r.
                    JSONPath
@@ -325,7 +325,7 @@ instance Monoid Series where
 
 -- | A newtype wrapper for 'UTCTime' that uses the same non-standard
 -- serialization format as Microsoft .NET, whose
--- <https://msdn.microsoft.com/en-us/library/system.datetime(v=vs.110).aspx @System.DateTime@>
+-- <https://msdn.microsoft.com/en-us/library/system.datetime(v=vs.110).aspx System.DateTime>
 -- type is by default serialized to JSON as in the following example:
 --
 -- > /Date(1302547608878)/
@@ -390,7 +390,8 @@ parseMaybe :: (a -> Parser b) -> a -> Maybe b
 parseMaybe m v = runParser (m v) [] (\_ _ -> Nothing) Just
 {-# INLINE parseMaybe #-}
 
--- | Run a 'Parser' with an 'Either' result type.
+-- | Run a 'Parser' with an 'Either' result type.  If the parse fails,
+-- the 'Left' payload will contain an error message.
 parseEither :: (a -> Parser b) -> a -> Either String b
 parseEither m v = runParser (m v) [] onError Right
   where onError path msg = Left (formatError path msg)

@@ -30,6 +30,9 @@ module Data.Aeson
 
     -- * Encoding and decoding
     -- $encoding_and_decoding
+
+    -- ** Direct encoding
+    -- $encoding
       decode
     , decode'
     , eitherDecode
@@ -54,12 +57,13 @@ module Data.Aeson
     , fromJSON
     , ToJSON(..)
     , KeyValue(..)
-    -- ** Generic JSON classes
+    -- ** Generic JSON classes and options
     , GFromJSON(..)
     , GToJSON(..)
     , genericToJSON
     , genericToEncoding
     , genericParseJSON
+    , defaultOptions
 
     -- * Inspecting @'Value's@
     , withObject
@@ -199,8 +203,17 @@ eitherDecodeStrict' =
 -- 'FromJSON' and 'ToJSON' instances for which the compiler will
 -- generate sensible default implementations.
 --
--- > instance ToJSON Person
--- > instance FromJSON Person
+-- @
+-- instance 'ToJSON' Person where
+--     \-- No need to provide a 'toJSON' implementation.
+--
+--     \-- For efficiency, we write a simple 'toEncoding' implementation, as
+--     \-- the default version uses 'toJSON'.
+--     'toEncoding' = 'genericToEncoding' 'defaultOptions'
+--
+-- instance 'FromJSON' Person
+--     \-- No need to provide a 'parseJSON' implementation.
+-- @
 --
 -- We can now encode a value like so:
 --
@@ -240,16 +253,19 @@ eitherDecodeStrict' =
 -- > >>> decode "{\"name\":\"Joe\",\"age\":12}" :: Maybe Person
 -- > Just (Person {name = "Joe", age = 12})
 --
--- To encode data, we need to define a 'ToJSON' instance:
+-- To encode data, we need to define a 'ToJSON' instance. Let's begin
+-- with an instance written entirely by hand.
 --
--- > instance ToJSON Person where
--- >     -- this generates a Value
--- >     toJSON (Person name age) =
--- >         object ["name" .= name, "age" .= age]
--- >
--- >     -- this encodes directly to a ByteString Builder
--- >     toEncoding (Person name age) =
--- >         pairs $ "name" .= name <> "age" .= age
+-- @
+-- instance ToJSON Person where
+--     \-- this generates a 'Value'
+--     'toJSON' (Person name age) =
+--         'object' [\"name\" '.=' name, \"age\" '.=' age]
+--
+--     \-- this encodes directly to a bytestring Builder
+--     'toEncoding' (Person name age) =
+--         'pairs' (\"name\" '.=' 'name' '<>' \"age\" '.=' age)
+-- @
 --
 -- We can now encode a value like so:
 --
@@ -363,3 +379,47 @@ eitherDecodeStrict' =
 --
 -- For convenience, the 'encode' and 'decode' functions combine both
 -- steps.
+
+-- $encoding
+--
+-- In older versions of this library, encoding a Haskell value
+-- involved converting to an intermediate 'Value', then encoding that.
+--
+-- A \"direct\" encoder converts straight from a source Haskell value
+-- to a 'BL.ByteString' without constructing an intermediate 'Value'.
+-- This approach is faster than 'toJSON', and allocates less memory.
+-- The 'toEncoding' method makes it possible to implement direct
+-- encoding with low memory overhead.
+--
+-- To complicate matters, the default implementation of 'toEncoding'
+-- uses 'toJSON'.  Why?  The 'toEncoding' method was added to this
+-- library much more recently than 'toJSON'.  Using 'toJSON' ensures
+-- that packages written against older versions of this library will
+-- compile and produce correct output, but they will not see any
+-- speedup from direct encoding.
+--
+-- To write a minimal implementation of direct encoding, your type
+-- must implement GHC's 'Generic' class, and your code should look
+-- like this:
+--
+-- @
+--     'toEncoding' = 'genericToEncoding' 'defaultOptions'
+-- @
+--
+-- What if you have more elaborate encoding needs?  For example,
+-- perhaps you need to change the names of object keys, omit parts of
+-- a value.
+--
+-- To encode to a JSON \"object\", use the 'pairs' function.
+--
+-- @
+--     'toEncoding' (Person name age) =
+--         'pairs' (\"name\" '.=' 'name' '<>' \"age\" '.=' age)
+-- @
+--
+-- Any container type that implements 'Foldable' can be encoded to a
+-- JSON \"array\" using 'foldable'.
+--
+-- > > import Data.Sequence as Seq
+-- > > encode (Seq.fromList [1,2,3])
+-- > "[1,2,3]"

@@ -1,4 +1,4 @@
-{-# LANGUAGE DefaultSignatures, FlexibleContexts #-}
+{-# LANGUAGE CPP, DefaultSignatures, FlexibleContexts #-}
 
 -- |
 -- Module:      Data.Aeson.Types.Class
@@ -72,45 +72,60 @@ genericParseJSON opts = fmap to . gParseJSON opts
 --
 -- An example type and instance:
 --
--- @{-\# LANGUAGE OverloadedStrings #-}
+-- @
+-- \-- Allow ourselves to write 'Text' literals.
+-- {-\# LANGUAGE OverloadedStrings #-}
 --
 -- data Coord = Coord { x :: Double, y :: Double }
 --
 -- instance ToJSON Coord where
 --   toJSON (Coord x y) = 'object' [\"x\" '.=' x, \"y\" '.=' y]
+--
+--   toEncoding (Coord x y) = 'pairs' (\"x\" '.=' x '<>' \"y\" '.=' y)
 -- @
 --
--- Note the use of the @OverloadedStrings@ language extension which enables
--- 'Text' values to be written as string literals.
---
--- Instead of manually writing your 'ToJSON' instance, there are three options
+-- Instead of manually writing your 'ToJSON' instance, there are two options
 -- to do it automatically:
 --
 -- * "Data.Aeson.TH" provides Template Haskell functions which will derive an
 -- instance at compile time. The generated instance is optimized for your type
 -- so will probably be more efficient than the following two options:
 --
--- * The compiler can provide default generic implementations for 'toJSON' and
--- 'toEncoding'.
+-- * The compiler can provide a default generic implementation for
+-- 'toJSON'.
 --
 -- To use the second, simply add a @deriving 'Generic'@ clause to your
 -- datatype and declare a 'ToJSON' instance for your datatype without giving
 -- definitions for 'toJSON' or 'toEncoding'.
 --
--- For example, the previous example can be simplified to just:
+-- For example, the previous example can be simplified to a more
+-- minimal instance:
 --
--- @{-\# LANGUAGE DeriveGeneric \#-}
+-- @
+-- {-\# LANGUAGE DeriveGeneric \#-}
 --
--- import GHC.Generics
+-- import "GHC.Generics"
 --
--- data Coord = Coord { x :: Double, y :: Double } deriving Generic
+-- data Coord = Coord { x :: Double, y :: Double } deriving 'Generic'
 --
--- instance ToJSON Coord
+-- instance ToJSON Coord where
+--     toEncoding = 'genericToEncoding' 'defaultOptions'
 -- @
 --
--- Note that, instead of using @DefaultSignatures@, it's also possible
--- to parameterize the generic encoding using 'genericToJSON' applied
--- to your encoding/decoding 'Options':
+-- Why do we provide an implementation for 'toEncoding' here?  The
+-- 'toEncoding' function is a relatively new addition to this class.
+-- To allow users of older versions of this library to upgrade without
+-- having to edit all of their instances or encounter surprising
+-- incompatibilities, the default implementation of 'toEncoding' uses
+-- 'toJSON'.  This produces correct results, but since it performs an
+-- intermediate conversion to a 'Value', it will be less efficient
+-- than directly emitting an 'Encoding'.  Our one-liner definition of
+-- 'toEncoding' above bypasses the intermediate 'Value'.
+--
+-- If @DefaultSignatures@ doesn't give exactly the results you want,
+-- you can customize the generic encoding with only a tiny amount of
+-- effort, using 'genericToJSON' and 'genericToEncoding' with your
+-- preferred 'Options':
 --
 -- @
 -- instance ToJSON Coord where
@@ -118,10 +133,30 @@ genericParseJSON opts = fmap to . gParseJSON opts
 --     toEncoding = 'genericToEncoding' 'defaultOptions'
 -- @
 class ToJSON a where
+    -- | Convert a Haskell value to a JSON-friendly intermediate type.
     toJSON     :: a -> Value
+    {-# MINIMAL toJSON #-}
 
     default toJSON :: (Generic a, GToJSON (Rep a)) => a -> Value
     toJSON = genericToJSON defaultOptions
+
+    -- | Encode a Haskell value as JSON.
+    --
+    -- The default implementation of this method creates an
+    -- intermediate 'Value' using 'toJSON'.  This provides
+    -- source-level compatibility for people upgrading from older
+    -- versions of this library, but obviously offers no performance
+    -- advantage.
+    --
+    -- To benefit from direct encoding, you /must/ provide an
+    -- implementation for this method.  The easiest way to do so is by
+    -- having your types implement 'Generic' using the @DeriveGeneric@
+    -- extension, and then have GHC generate a method body as follows.
+    --
+    -- @
+    -- instance ToJSON Coord where
+    --     toEncoding = 'genericToEncoding' 'defaultOptions'
+    -- @
 
     toEncoding :: a -> Encoding
     toEncoding = Encoding . E.encodeToBuilder . toJSON
@@ -129,6 +164,10 @@ class ToJSON a where
 
 -- | A type that can be converted from JSON, with the possibility of
 -- failure.
+--
+-- In many cases, you can get the compiler to generate parsing code
+-- for you (see below).  To begin, let's cover writing an instance by
+-- hand.
 --
 -- There are various reasons a conversion could fail.  For example, an
 -- 'Object' could be missing a required key, an 'Array' could be of
@@ -138,7 +177,7 @@ class ToJSON a where
 --
 -- * 'empty' and 'mzero' work, but are terse and uninformative
 --
--- * 'fail' produces a custom error message
+-- * 'fail' yields a custom error message
 --
 -- * 'typeMismatch' produces an informative message for cases when the
 -- value encountered is not of the expected type
@@ -146,6 +185,7 @@ class ToJSON a where
 -- An example type and instance:
 --
 -- @
+-- \-- Allow ourselves to write 'Text' literals.
 -- {-\# LANGUAGE OverloadedStrings #-}
 --
 -- data Coord = Coord { x :: Double, y :: Double }
@@ -155,14 +195,11 @@ class ToJSON a where
 --                          v '.:' \"x\" '<*>'
 --                          v '.:' \"y\"
 --
---   \-- A non-'Object' value is of the wrong type.
---   \-- We could use mzero to fail, but typeMismatch
+--   \-- We do not expect a non-'Object' value here.
+--   \-- We could use 'mzero' to fail, but 'typeMismatch'
 --   \-- gives a much more informative error message.
 --   parseJSON invalid    = 'typeMismatch' \"Coord\" invalid
 -- @
---
--- Note the use of the @OverloadedStrings@ language extension which enables
--- 'Text' values to be written as string literals.
 --
 -- Instead of manually writing your 'FromJSON' instance, there are two options
 -- to do it automatically:
@@ -183,16 +220,16 @@ class ToJSON a where
 -- @
 -- {-\# LANGUAGE DeriveGeneric \#-}
 --
--- import GHC.Generics
+-- import "GHC.Generics"
 --
--- data Coord = Coord { x :: Double, y :: Double } deriving Generic
+-- data Coord = Coord { x :: Double, y :: Double } deriving 'Generic'
 --
 -- instance FromJSON Coord
 -- @
 --
--- Note that, instead of using @DefaultSignatures@, it's also possible
--- to parameterize the generic decoding using 'genericParseJSON' applied
--- to your encoding/decoding 'Options':
+-- If @DefaultSignatures@ doesn't give exactly the results you want,
+-- you can customize the generic decoding with only a tiny amount of
+-- effort, using 'genericParseJSON' with your preferred 'Options':
 --
 -- @
 -- instance FromJSON Coord where
@@ -205,9 +242,9 @@ class FromJSON a where
     default parseJSON :: (Generic a, GFromJSON (Rep a)) => Value -> Parser a
     parseJSON = genericParseJSON defaultOptions
 
--- | A key-value pair for a JSON object.
-class KeyValue t where
-    (.=) :: ToJSON v => Text -> v -> t
+-- | A key-value pair for encoding a JSON object.
+class KeyValue kv where
+    (.=) :: ToJSON v => Text -> v -> kv
     infixr 8 .=
 
 -- | Fail parsing due to a type mismatch, with a descriptive message.
@@ -215,7 +252,6 @@ class KeyValue t where
 -- Example usage:
 --
 -- @
---
 -- instance FromJSON Coord where
 --   parseJSON ('Object' v) = {- type matches, life is good -}
 --   parseJSON wat        = 'typeMismatch' \"Coord\" wat
