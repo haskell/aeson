@@ -24,19 +24,24 @@ module Data.Aeson.Encode.Builder
     , string
     , unquoted
     , number
+    , day
+    , timeOfDay
     , ascii2
     , ascii4
     , ascii5
     ) where
 
+import Data.Aeson.Functions (fromPico)
 import Data.Aeson.Types.Internal (Encoding(..), Value(..))
 import Data.ByteString.Builder as B
 import Data.ByteString.Builder.Prim as BP
 import Data.ByteString.Builder.Scientific (scientificBuilder)
-import Data.Char (ord)
+import Data.Char (chr, ord)
 import Data.Foldable (foldMap)
 import Data.Monoid ((<>))
 import Data.Scientific (Scientific, base10Exponent, coefficient)
+import Data.Time.Calendar (Day(..), toGregorian)
+import Data.Time.LocalTime (TimeOfDay(..))
 import Data.Word (Word8)
 import qualified Data.HashMap.Strict as HMS
 import qualified Data.Text as T
@@ -147,3 +152,54 @@ ascii5 :: (Char, (Char, (Char, (Char, Char)))) -> BP.BoundedPrim a
 ascii5 cs = BP.liftFixedToBounded $ (const cs) >$<
     BP.char7 >*< BP.char7 >*< BP.char7 >*< BP.char7 >*< BP.char7
 {-# INLINE ascii5 #-}
+
+ascii6 :: (Char, (Char, (Char, (Char, (Char, Char))))) -> BP.BoundedPrim a
+ascii6 cs = BP.liftFixedToBounded $ (const cs) >$<
+    BP.char7 >*< BP.char7 >*< BP.char7 >*< BP.char7 >*< BP.char7 >*< BP.char7
+{-# INLINE ascii6 #-}
+
+ascii8 :: (Char, (Char, (Char, (Char, (Char, (Char, (Char, Char)))))))
+       -> BP.BoundedPrim a
+ascii8 cs = BP.liftFixedToBounded $ (const cs) >$<
+    BP.char7 >*< BP.char7 >*< BP.char7 >*< BP.char7 >*<
+    BP.char7 >*< BP.char7 >*< BP.char7 >*< BP.char7
+{-# INLINE ascii8 #-}
+
+day :: Day -> Builder
+day dd = B.integerDec y <>
+         BP.primBounded (ascii6 ('-',(mh,(ml,('-',(dh,dl)))))) ()
+  where (y,m,d)     = toGregorian dd
+        !(T mh ml)  = twoDigits m
+        !(T dh dl)  = twoDigits d
+{-# INLINE day #-}
+
+timeOfDay :: TimeOfDay -> Builder
+timeOfDay (TimeOfDay h m s)
+  | micro100 < 5 = hhmmss -- omit trailing milliseconds if zero
+  | otherwise    = hhmmss <> BP.primBounded (ascii4 ('.',(a,(b,c)))) ()
+  where
+    hhmmss  = BP.primBounded (ascii8 (hh,(hl,(':',(mh,(ml,(':',(sh,sl)))))))) ()
+    !(T hh hl)  = twoDigits h
+    !(T mh ml)  = twoDigits m
+    !(T sh sl)  = twoDigits (fromIntegral real)
+    picos       = fromPico s
+    (real,frac) = picos `quotRem` 1000000000000
+    -- Units of 100 microseconds (tenths of a millisecond), which we
+    -- round up so that milliseconds >= 0.5 render correctly.
+    micro100
+      | d `rem` 10 < 5 = d
+      | otherwise      = d + 10
+      where d          = fromIntegral (frac `quot` 100000000)
+    !(T a b)   = twoDigits ab
+    (ab,cc)    = micro100 `quotRem` 100
+    !c         = digit (cc `quot` 10)
+{-# INLINE timeOfDay #-}
+
+data T = T {-# UNPACK #-} !Char {-# UNPACK #-} !Char
+
+twoDigits :: Int -> T
+twoDigits a     = T (digit hi) (digit lo)
+  where (hi,lo) = a `quotRem` 10
+
+digit :: Int -> Char
+digit x = chr (x + 48)

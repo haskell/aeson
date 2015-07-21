@@ -58,6 +58,7 @@ module Data.Aeson.Types.Instances
 import Control.Applicative ((<$>), (<*>), pure)
 import qualified Data.Aeson.Encode.Builder as E
 import qualified Data.ByteString.Builder as B
+import qualified Data.ByteString.Lazy as L
 import Data.Aeson.Functions
 import Data.Monoid ((<>), mempty)
 import Data.Aeson.Encode.Functions (brackets, builder, foldable, list)
@@ -78,6 +79,7 @@ import Data.Ratio (Ratio, (%), numerator, denominator)
 import Data.Text (Text, pack, unpack)
 import Data.Time (UTCTime(..), ZonedTime(..), TimeZone(..))
 import Data.Time.Format (FormatTime, formatTime, parseTime)
+import Data.Time.LocalTime (timeToTimeOfDay)
 import Data.Traversable as Tr (sequence, traverse)
 import Data.Vector (Vector)
 import Data.Word (Word, Word8, Word16, Word32, Word64)
@@ -92,6 +94,7 @@ import qualified Data.Set as Set
 import qualified Data.Sequence as Seq
 import qualified Data.Tree as Tree
 import qualified Data.Text as T
+import qualified Data.Text.Encoding as T
 import qualified Data.Text.Lazy as LT
 import qualified Data.Vector as V
 import qualified Data.Vector.Generic as VG
@@ -731,13 +734,13 @@ instance FromJSON ZonedTime where
     parseJSON = withText "ZonedTime" (Time.run Time.zonedTime)
 
 instance ToJSON UTCTime where
-    toJSON = toJSON . utcTime
+    toJSON = String . T.decodeLatin1 . L.toStrict . B.toLazyByteString . utcTime
 
-    toEncoding = toEncoding . utcTime
+    toEncoding t = Encoding (utcTime t)
 
-utcTime :: UTCTime -> String
-utcTime t = formatTime defaultTimeLocale format t
-  where format = "%FT%T." ++ formatSubseconds t ++ "Z"
+utcTime :: UTCTime -> B.Builder
+utcTime (UTCTime day secs) =
+  E.day day <> B.char7 'T' <> E.timeOfDay (timeToTimeOfDay secs) <> B.char7 'Z'
 
 instance FromJSON UTCTime where
     parseJSON = withText "UTCTime" (Time.run Time.utcTime)
