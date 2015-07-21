@@ -26,6 +26,9 @@ module Data.Aeson.Encode.Builder
     , number
     , day
     , timeOfDay
+    , timeZone
+    , utcTime
+    , zonedTime
     , ascii2
     , ascii4
     , ascii5
@@ -40,8 +43,9 @@ import Data.Char (chr, ord)
 import Data.Foldable (foldMap)
 import Data.Monoid ((<>))
 import Data.Scientific (Scientific, base10Exponent, coefficient)
+import Data.Time (UTCTime(..))
 import Data.Time.Calendar (Day(..), toGregorian)
-import Data.Time.LocalTime (TimeOfDay(..))
+import Data.Time.LocalTime
 import Data.Word (Word8)
 import qualified Data.HashMap.Strict as HMS
 import qualified Data.Text as T
@@ -194,6 +198,28 @@ timeOfDay (TimeOfDay h m s)
     (ab,cc)    = micro100 `quotRem` 100
     !c         = digit (cc `quot` 10)
 {-# INLINE timeOfDay #-}
+
+timeZone :: TimeZone -> Builder
+timeZone (TimeZone off _ _)
+  | off == 0  = B.char7 'Z'
+  | otherwise = BP.primBounded (ascii5 (s,(hh,(hl,(mh,ml))))) ()
+  where !s         = if off < 0 then '-' else '+'
+        !(T hh hl) = twoDigits h
+        !(T mh ml) = twoDigits m
+        (h,m)      = abs off `quotRem` 60
+{-# INLINE timeZone #-}
+
+dayTime :: Day -> TimeOfDay -> Builder
+dayTime d t = day d <> B.char7 'T' <> timeOfDay t
+{-# INLINE dayTime #-}
+
+utcTime :: UTCTime -> B.Builder
+utcTime (UTCTime d s) = dayTime d (timeToTimeOfDay s) <> B.char7 'Z'
+{-# INLINE utcTime #-}
+
+zonedTime :: ZonedTime -> Builder
+zonedTime (ZonedTime (LocalTime d t) z) = dayTime d t <> timeZone z
+{-# INLINE zonedTime #-}
 
 data T = T {-# UNPACK #-} !Char {-# UNPACK #-} !Char
 

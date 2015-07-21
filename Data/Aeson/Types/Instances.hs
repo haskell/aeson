@@ -61,7 +61,7 @@ import qualified Data.ByteString.Builder as B
 import qualified Data.ByteString.Lazy as L
 import Data.Aeson.Functions
 import Data.Monoid ((<>), mempty)
-import Data.Aeson.Encode.Functions (brackets, builder, foldable, list)
+import Data.Aeson.Encode.Functions (brackets, builder, encode, foldable, list)
 import qualified Data.Aeson.Parser.Time as Time
 import Data.Aeson.Types.Class
 import Data.Aeson.Types.Internal
@@ -79,7 +79,6 @@ import Data.Ratio (Ratio, (%), numerator, denominator)
 import Data.Text (Text, pack, unpack)
 import Data.Time (UTCTime(..), ZonedTime(..), TimeZone(..))
 import Data.Time.Format (FormatTime, formatTime, parseTime)
-import Data.Time.LocalTime (timeToTimeOfDay)
 import Data.Traversable as Tr (sequence, traverse)
 import Data.Vector (Vector)
 import Data.Word (Word, Word8, Word16, Word32, Word64)
@@ -713,34 +712,25 @@ instance FromJSON DotNetTime where
     {-# INLINE parseJSON #-}
 
 instance ToJSON ZonedTime where
-    toJSON = toJSON . zonedTime
+    toJSON = stringEncoding
 
-    toEncoding = toEncoding . zonedTime
-
-zonedTime :: ZonedTime -> String
-zonedTime t = formatTime defaultTimeLocale format t
-  where
-    format = "%FT%T." ++ formatMillis t ++ tzFormat
-    tzFormat | timeZoneMinutes (zonedTimeZone t) == 0 = "Z"
-             | otherwise                              = "%z"
+    toEncoding z = Encoding (E.zonedTime z)
 
 formatMillis :: (FormatTime t) => t -> String
-formatMillis = take 3 . formatSubseconds
-
-formatSubseconds :: (FormatTime t) => t -> String
-formatSubseconds = formatTime defaultTimeLocale "%q"
+formatMillis = take 3 . formatTime defaultTimeLocale "%q"
 
 instance FromJSON ZonedTime where
     parseJSON = withText "ZonedTime" (Time.run Time.zonedTime)
 
 instance ToJSON UTCTime where
-    toJSON = String . T.decodeLatin1 . L.toStrict . B.toLazyByteString . utcTime
+    toJSON = stringEncoding
 
-    toEncoding t = Encoding (utcTime t)
+    toEncoding t = Encoding (E.utcTime t)
 
-utcTime :: UTCTime -> B.Builder
-utcTime (UTCTime day secs) =
-  E.day day <> B.char7 'T' <> E.timeOfDay (timeToTimeOfDay secs) <> B.char7 'Z'
+-- | Encode something to a JSON string.
+stringEncoding :: (ToJSON a) => a -> Value
+stringEncoding = String . T.decodeLatin1 . L.toStrict . encode
+{-# INLINE stringEncoding #-}
 
 instance FromJSON UTCTime where
     parseJSON = withText "UTCTime" (Time.run Time.utcTime)
