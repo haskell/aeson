@@ -1,3 +1,4 @@
+import Control.Applicative ((<$>))
 import Criterion.Main
 import Data.Aeson (decode, encode)
 import Data.Time.Clock (UTCTime)
