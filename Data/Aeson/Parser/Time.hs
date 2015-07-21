@@ -98,12 +98,13 @@ timeZone = do
   if ch == 'Z'
     then return Nothing
     else do
-      h0 <- twoDigits
+      h <- twoDigits
       m <- maybeSkip ':' *> twoDigits
-      let h | ch == '-' = negate h0
-            | otherwise = h0
-      case h * 60 + m of
-        off | off == 0 ->
+      let off | ch == '-' = negate off0
+              | otherwise = off0
+          off0 = h * 60 + m
+      case undefined of
+        _   | off == 0 ->
               return Nothing
             | off < -720 || off > 840 || m > 59 ->
               fail "invalid time zone offset"
