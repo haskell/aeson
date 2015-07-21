@@ -25,8 +25,6 @@ module Data.Aeson.Encode.Builder
     , unquoted
     , number
     , day
-    , timeOfDay
-    , timeZone
     , utcTime
     , zonedTime
     , ascii2
@@ -41,12 +39,14 @@ import Data.ByteString.Builder.Prim as BP
 import Data.ByteString.Builder.Scientific (scientificBuilder)
 import Data.Char (chr, ord)
 import Data.Foldable (foldMap)
+import Data.Int (Int64)
 import Data.Monoid ((<>))
 import Data.Scientific (Scientific, base10Exponent, coefficient)
-import Data.Time (UTCTime(..))
+import Data.Time (DiffTime, UTCTime(..))
 import Data.Time.Calendar (Day(..), toGregorian)
 import Data.Time.LocalTime
 import Data.Word (Word8)
+import Unsafe.Coerce (unsafeCoerce)
 import qualified Data.HashMap.Strict as HMS
 import qualified Data.Text as T
 import qualified Data.Text.Encoding as TE
@@ -177,8 +177,8 @@ day dd = B.integerDec y <>
         !(T dh dl)  = twoDigits d
 {-# INLINE day #-}
 
-timeOfDay :: TimeOfDay -> Builder
-timeOfDay (TimeOfDay h m s)
+timeOfDay :: TimeOfDay64 -> Builder
+timeOfDay (TOD h m s)
   | micro100 < 5 = hhmmss -- omit trailing milliseconds if zero
   | otherwise    = hhmmss <> BP.primBounded (ascii4 ('.',(a,(b,c)))) ()
   where
@@ -186,8 +186,7 @@ timeOfDay (TimeOfDay h m s)
     !(T hh hl)  = twoDigits h
     !(T mh ml)  = twoDigits m
     !(T sh sl)  = twoDigits (fromIntegral real)
-    picos       = fromPico s
-    (real,frac) = picos `quotRem` 1000000000000
+    (real,frac) = s `quotRem` 1000000000000
     -- Units of 100 microseconds (tenths of a millisecond), which we
     -- round up so that milliseconds >= 0.5 render correctly.
     micro100
@@ -209,16 +208,30 @@ timeZone (TimeZone off _ _)
         (h,m)      = abs off `quotRem` 60
 {-# INLINE timeZone #-}
 
-dayTime :: Day -> TimeOfDay -> Builder
+dayTime :: Day -> TimeOfDay64 -> Builder
 dayTime d t = day d <> B.char7 'T' <> timeOfDay t
 {-# INLINE dayTime #-}
 
 utcTime :: UTCTime -> B.Builder
-utcTime (UTCTime d s) = dayTime d (timeToTimeOfDay s) <> B.char7 'Z'
+utcTime (UTCTime d s) = dayTime d (diffTimeOfDay64 s) <> B.char7 'Z'
 {-# INLINE utcTime #-}
 
+data TimeOfDay64 = TOD {-# UNPACK #-} !Int
+                       {-# UNPACK #-} !Int
+                       {-# UNPACK #-} !Int64
+
+diffTimeOfDay64 :: DiffTime -> TimeOfDay64
+diffTimeOfDay64 t = TOD (fromIntegral h) (fromIntegral m) s
+  where (h,mp) = fromIntegral pico `quotRem` 3600000000000000
+        (m,s)  = mp `quotRem` 60000000000000
+        pico   = unsafeCoerce t :: Integer
+
+toTimeOfDay64 :: TimeOfDay -> TimeOfDay64
+toTimeOfDay64 (TimeOfDay h m s) = TOD h m (fromIntegral (fromPico s))
+
 zonedTime :: ZonedTime -> Builder
-zonedTime (ZonedTime (LocalTime d t) z) = dayTime d t <> timeZone z
+zonedTime (ZonedTime (LocalTime d t) z) =
+  dayTime d (toTimeOfDay64 t) <> timeZone z
 {-# INLINE zonedTime #-}
 
 data T = T {-# UNPACK #-} !Char {-# UNPACK #-} !Char
