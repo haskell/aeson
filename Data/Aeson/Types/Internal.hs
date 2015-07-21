@@ -295,6 +295,7 @@ data Value = Object !Object
 -- | An encoding of a JSON value.
 newtype Encoding = Encoding {
       fromEncoding :: Builder
+      -- ^ Acquire the underlying bytestring builder.
     } deriving (Monoid)
 
 instance Show Encoding where
@@ -323,7 +324,8 @@ instance Monoid Series where
                Value c -> Encoding (char7 ',') <> c
 
 -- | A newtype wrapper for 'UTCTime' that uses the same non-standard
--- serialization format as Microsoft .NET, whose @System.DateTime@
+-- serialization format as Microsoft .NET, whose
+-- <https://msdn.microsoft.com/en-us/library/system.datetime(v=vs.110).aspx @System.DateTime@>
 -- type is by default serialized to JSON as in the following example:
 --
 -- > /Date(1302547608878)/
@@ -331,6 +333,7 @@ instance Monoid Series where
 -- The number represents milliseconds since the Unix epoch.
 newtype DotNetTime = DotNetTime {
       fromDotNetTime :: UTCTime
+      -- ^ Acquire the underlying value.
     } deriving (Eq, Ord, Read, Show, Typeable, FormatTime)
 
 instance NFData Value where
