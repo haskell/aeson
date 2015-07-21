@@ -260,8 +260,7 @@ typeMismatch :: String -- ^ The name of the type you are trying to parse.
              -> Value  -- ^ The actual value encountered.
              -> Parser a
 typeMismatch expected actual =
-    fail $ "when expecting a " ++ expected ++ ", encountered " ++ name ++
-           " instead"
+    fail $ "expected " ++ expected ++ ", encountered " ++ name
   where
     name = case actual of
              Object _ -> "Object"
