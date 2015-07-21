@@ -107,15 +107,18 @@ utcTimeGood = do
   let ts6 = "2015-01-01T12:30:00.00+01:15" :: LT.Text
   let ts7 = "2015-01-01T12:30:00.00-0200" :: LT.Text
   let ts8 = "2015-01-01T22:00:00.00-03:00" :: LT.Text
+  let ts9 = "2015-01-01T22:00:00.00-04:30" :: LT.Text
   let (Just (t5 ::  UTCTime)) = parseWithAeson ts5
   let (Just (t6 ::  UTCTime)) = parseWithAeson ts6
   let (Just (t7 ::  UTCTime)) = parseWithAeson ts7
   let (Just (t8 ::  UTCTime)) = parseWithAeson ts8
+  let (Just (t9 ::  UTCTime)) = parseWithAeson ts9
   assertEqual "utctime" (parseWithRead "%FT%T%QZ" "2015-01-01T12:30:00.00Z") t5
   assertEqual "utctime" (parseWithRead "%FT%T%QZ" "2015-01-01T11:15:00.00Z") t6
   assertEqual "utctime" (parseWithRead "%FT%T%QZ" "2015-01-01T14:30:00Z") t7
   -- ts8 wraps around to the next day in UTC
   assertEqual "utctime" (parseWithRead "%FT%T%QZ" "2015-01-02T01:00:00Z") t8
+  assertEqual "utctime" (parseWithRead "%FT%T%QZ" "2015-01-02T02:30:00Z") t9
   where
     parseWithRead :: String -> LT.Text -> UTCTime
     parseWithRead f s =
