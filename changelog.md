@@ -1,3 +1,55 @@
+0.10.0.0
+
+MANY MAJOR CHANGES, READ CAREFULLY
+
+* The ToJSON class has a new method, toEncoding, that allows direct
+  encoding from a Haskell value to a lazy bytestring without
+  construction of an intermediate Value.
+
+  The performance benefits of direct encoding are significant: more
+  than 3x faster than before, with less than 1/3 the memory usage.
+
+  To preserve API compatibility across upgrades from older versions of
+  this library, toEncoding is implemented using toJSON.  You will not
+  see a performance improvement unless you write an implementation of
+  toEncoding.
+
+  If you use Template Haskell or GHC Generics to auto-generate your
+  ToJSON instances, you'll benefit from fast toEncoding
+  implementations for free!
+
+* When converting from a Value to a target Haskell type, FromJSON
+  instances now provide much better error messages, including a
+  complete JSON path from the root of the object to the offending
+  element.  This greatly eases debugging.
+
+* If you used to use the camelTo function to rename fields when using
+  TH or generics, the new camelTo2 function is smarter.  For example,
+  camelTo will rename `CamelAPICase` to `camelapi_case`, while
+  camelTo2 will map it to `camel_api_case`.
+
+* Both encoding and decoding of time-related types are 10x faster.
+
+* Encoding [Char] no longer goes via Text.  This is faster and uses
+  less memory.
+
+* New ToJSON and FromJSON instances for the following time-related
+  types: Day, LocalTime.
+
+* The Result type is now an instance of Foldable and Traversable.
+
+* Parsing into an Object is now 5% faster and more memory-efficient.
+
+* The Data.Aeson.Generic module has been removed. It was deprecated in
+  late 2013.
+
+* GHC 7.2 and older are no longer supported.
+
+* The instance of Monad for the Result type lacked an implementation
+  of fail.  This has been corrected.
+
+
+
 0.9.0.1
 
 * A stray export of encodeToBuilder got away!
