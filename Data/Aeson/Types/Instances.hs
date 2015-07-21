@@ -77,7 +77,7 @@ import Data.Maybe (fromMaybe)
 import Data.Monoid (Dual(..), First(..), Last(..))
 import Data.Ratio (Ratio, (%), numerator, denominator)
 import Data.Text (Text, pack, unpack)
-import Data.Time (UTCTime, ZonedTime)
+import Data.Time (Day, UTCTime, ZonedTime)
 import Data.Time.Format (FormatTime, formatTime, parseTime)
 import Data.Traversable as Tr (sequence, traverse)
 import Data.Vector (Vector)
@@ -710,6 +710,13 @@ instance FromJSON DotNetTime where
              Just d -> pure (DotNetTime d)
              _      -> fail "could not parse .NET time"
     {-# INLINE parseJSON #-}
+
+instance ToJSON Day where
+    toJSON       = stringEncoding
+    toEncoding z = Encoding (E.day z)
+
+instance FromJSON Day where
+    parseJSON = withText "Day" (Time.run Time.day)
 
 instance ToJSON ZonedTime where
     toJSON = stringEncoding
