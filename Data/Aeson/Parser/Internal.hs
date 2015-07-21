@@ -203,21 +203,22 @@ jstring = A.word8 DOUBLE_QUOTE *> jstring_
 -- | Parse a string without a leading quote.
 jstring_ :: Parser Text
 jstring_ = {-# SCC "jstring_" #-} do
-  s <- A.scan False $ \s c -> if s then Just False
-                                   else if c == DOUBLE_QUOTE
-                                        then Nothing
-                                        else Just (c == BACKSLASH)
-  _ <- A.word8 DOUBLE_QUOTE
-  s1 <- if BACKSLASH `B.elem` s
-        then case unescape s of
-            Right r  -> return r
-            Left err -> fail err
-         else return s
-
+  (s, (_, escaped)) <- A.runScanner (False, False) go
+  _ <- A.anyWord8
+  s1 <- if escaped
+          then case unescape s of
+                 Right r  -> return r
+                 Left err -> fail err
+          else return s
   case decodeUtf8' s1 of
-      Right r  -> return r
-      Left err -> fail $ show err
-
+    Right r  -> return r
+    Left err -> fail $ show err
+ where go (a, b) c
+         | a = Just (False, True)
+         | c == DOUBLE_QUOTE = Nothing
+         | otherwise = let a' = c == backSlash
+                       in Just (a', a' || b)
+         where backSlash = BACKSLASH
 {-# INLINE jstring_ #-}
 
 unescape :: ByteString -> Either String ByteString
