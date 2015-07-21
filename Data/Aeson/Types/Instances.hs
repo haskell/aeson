@@ -1532,22 +1532,6 @@ obj .:? key = case H.lookup key obj of
 pmval .!= val = fromMaybe val <$> pmval
 {-# INLINE (.!=) #-}
 
--- | Fail parsing due to a type mismatch, with a descriptive message.
-typeMismatch :: String -- ^ The name of the type you are trying to parse.
-             -> Value  -- ^ The actual value encountered.
-             -> Parser a
-typeMismatch expected actual =
-    fail $ "when expecting a " ++ expected ++ ", encountered " ++ name ++
-           " instead"
-  where
-    name = case actual of
-             Object _ -> "Object"
-             Array _  -> "Array"
-             String _ -> "String"
-             Number _ -> "Number"
-             Bool _   -> "Boolean"
-             Null     -> "Null"
-
 realFloatToJSON :: RealFloat a => a -> Value
 realFloatToJSON d
     | isNaN d || isInfinite d = Null

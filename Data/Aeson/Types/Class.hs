@@ -24,6 +24,8 @@ module Data.Aeson.Types.Class
     , genericParseJSON
     -- * Object key-value pairs
     , KeyValue(..)
+    -- * Functions needed for documentation
+    , typeMismatch
     ) where
 
 import Data.Aeson.Types.Internal
@@ -128,9 +130,18 @@ class ToJSON a where
 -- | A type that can be converted from JSON, with the possibility of
 -- failure.
 --
--- When writing an instance, use 'empty', 'mzero', or 'fail' to make a
--- conversion fail, e.g. if an 'Object' is missing a required key, or
--- the value is of the wrong type.
+-- There are various reasons a conversion could fail.  For example, an
+-- 'Object' could be missing a required key, an 'Array' could be of
+-- the wrong size, or a value could be of an incompatible type.
+--
+-- The basic ways to signal a failed conversion are as follows:
+--
+-- * 'empty' and 'mzero' work, but are terse and uninformative
+--
+-- * 'fail' produces a custom error message
+--
+-- * 'typeMismatch' produces an informative message for cases when the
+-- value encountered is not of the expected type
 --
 -- An example type and instance:
 --
@@ -144,8 +155,10 @@ class ToJSON a where
 --                          v '.:' \"x\" '<*>'
 --                          v '.:' \"y\"
 --
---   \-- A non-'Object' value is of the wrong type, so use 'mzero' to fail.
---   parseJSON _          = 'mzero'
+--   \-- A non-'Object' value is of the wrong type.
+--   \-- We could use mzero to fail, but typeMismatch
+--   \-- gives a much more informative error message.
+--   parseJSON invalid    = 'typeMismatch' \"Coord\" invalid
 -- @
 --
 -- Note the use of the @OverloadedStrings@ language extension which enables
@@ -196,3 +209,28 @@ class FromJSON a where
 class KeyValue t where
     (.=) :: ToJSON v => Text -> v -> t
     infixr 8 .=
+
+-- | Fail parsing due to a type mismatch, with a descriptive message.
+--
+-- Example usage:
+--
+-- @
+--
+-- instance FromJSON Coord where
+--   parseJSON ('Object' v) = {- type matches, life is good -}
+--   parseJSON wat        = 'typeMismatch' \"Coord\" wat
+-- @
+typeMismatch :: String -- ^ The name of the type you are trying to parse.
+             -> Value  -- ^ The actual value encountered.
+             -> Parser a
+typeMismatch expected actual =
+    fail $ "when expecting a " ++ expected ++ ", encountered " ++ name ++
+           " instead"
+  where
+    name = case actual of
+             Object _ -> "Object"
+             Array _  -> "Array"
+             String _ -> "String"
+             Number _ -> "Number"
+             Bool _   -> "Boolean"
+             Null     -> "Null"
