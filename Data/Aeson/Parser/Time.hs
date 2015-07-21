@@ -14,6 +14,7 @@ module Data.Aeson.Parser.Time
     (
       run
     , day
+    , localTime
     , timeOfDay
     , timeZone
     , utcTime

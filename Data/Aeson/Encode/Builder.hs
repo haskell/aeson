@@ -25,6 +25,7 @@ module Data.Aeson.Encode.Builder
     , unquoted
     , number
     , day
+    , localTime
     , utcTime
     , zonedTime
     , ascii2
@@ -228,9 +229,12 @@ diffTimeOfDay64 t = TOD (fromIntegral h) (fromIntegral m) s
 toTimeOfDay64 :: TimeOfDay -> TimeOfDay64
 toTimeOfDay64 (TimeOfDay h m s) = TOD h m (fromIntegral (fromPico s))
 
+localTime :: LocalTime -> Builder
+localTime (LocalTime d t) = dayTime d (toTimeOfDay64 t)
+{-# INLINE localTime #-}
+
 zonedTime :: ZonedTime -> Builder
-zonedTime (ZonedTime (LocalTime d t) z) =
-  dayTime d (toTimeOfDay64 t) <> timeZone z
+zonedTime (ZonedTime t z) = localTime t <> timeZone z
 {-# INLINE zonedTime #-}
 
 data T = T {-# UNPACK #-} !Char {-# UNPACK #-} !Char

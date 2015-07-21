@@ -77,7 +77,7 @@ import Data.Maybe (fromMaybe)
 import Data.Monoid (Dual(..), First(..), Last(..))
 import Data.Ratio (Ratio, (%), numerator, denominator)
 import Data.Text (Text, pack, unpack)
-import Data.Time (Day, UTCTime, ZonedTime)
+import Data.Time (Day, LocalTime, UTCTime, ZonedTime)
 import Data.Time.Format (FormatTime, formatTime, parseTime)
 import Data.Traversable as Tr (sequence, traverse)
 import Data.Vector (Vector)
@@ -717,6 +717,13 @@ instance ToJSON Day where
 
 instance FromJSON Day where
     parseJSON = withText "Day" (Time.run Time.day)
+
+instance ToJSON LocalTime where
+    toJSON       = stringEncoding
+    toEncoding z = Encoding (E.localTime z)
+
+instance FromJSON LocalTime where
+    parseJSON = withText "LocalTime" (Time.run Time.localTime)
 
 instance ToJSON ZonedTime where
     toJSON = stringEncoding
