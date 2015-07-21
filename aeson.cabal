@@ -8,7 +8,7 @@ copyright:       (c) 2011-2015 Bryan O'Sullivan
 author:          Bryan O'Sullivan <bos@serpentine.com>
 maintainer:      Bryan O'Sullivan <bos@serpentine.com>
 stability:       experimental
-tested-with:     GHC == 7.4, GHC == 7.6, GHC == 7.8
+tested-with:     GHC == 7.4, GHC == 7.6, GHC == 7.8, GHC == 7.10
 synopsis:        Fast JSON parsing and encoding
 cabal-version:   >= 1.8
 homepage:        https://github.com/bos/aeson
@@ -21,41 +21,19 @@ description:
     To get started, see the documentation for the @Data.Aeson@ module
     below.
     .
-    Parsing performance on an early 2011 MacBook Pro (2.2GHz Core i7),
-    running 64-bit GHC 7.6.3, for mostly-English tweets from Twitter's
+    Parsing performance on a late 2013 MacBook Pro (2.6GHz Core i7),
+    running 64-bit GHC 7.10.1, for mostly-English tweets from Twitter's
     JSON search API:
     .
-    * 0.8 KB: 34124 msg\/sec (27.8 MB\/sec)
+    * 6.4 KB payloads, English: 7570 msg\/sec (47.6 MB\/sec)
     .
-    * 6.4 KB: 6833 msg\/sec (43.0 MB\/sec)
-    .
-    * 11.8 KB: 3410 msg\/sec (39.2 MB\/sec)
-    .
-    * 31.2 KB: 1157 msg\/sec (35.3 MB\/sec)
-    .
-    * 61.5 KB: 542 msg\/sec (32.5 MB\/sec)
-    .
-    Handling heavily-escaped text is a little more work.  Here is
-    parsing performance with Japanese tweets, where much of the text
-    is entirely Unicode-escaped.
-    .
-    * 14.6 KB: 2101 msg\/sec (30.0 MB\/sec)
-    .
-    * 44.1 KB: 667 msg\/sec (28.7 MB\/sec)
-    .
-    * 82.9 KB: 360 msg\/sec (29.2 MB\/sec)
+    * 14.6 KB payloads, Japanese: 3261 msg\/sec (46.6 MB\/sec)
     .
     Encoding performance on the same machine and data:
     .
-    * English, 0.8 KB: 109697 msg\/sec (89.3 MB\/sec)
+    * 6.4 KB payloads, English: 22738 msg\/sec (142.9 MB\/sec)
     .
-    * English, 6.4 KB: 18517 msg\/sec (116.4 MB\/sec)
-    .
-    * Engish, 61.5 KB: 1963 msg\/sec (118.0 MB\/sec)
-    .
-    * Japanese, 14.6 KB: 12140 msg\/sec (173.5 MB\/sec)
-    .
-    * Japanese, 44.1 KB: 3980 msg\/sec (171.3 MB\/sec)
+    * 14.6 KB payloads, Japanese: 15911 msg\/sec (227.4 MB\/sec)
     .
     (A note on naming: in Greek mythology, Aeson was the father of Jason.)
 
