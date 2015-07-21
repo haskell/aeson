@@ -98,17 +98,22 @@ timeZone = do
   if ch == 'Z'
     then return Nothing
     else do
-      h0 <- twoDigits
-      m <- maybeSkip ':' *> twoDigits
-      let h | ch == '-' = negate h0
-            | otherwise = h0
-      case h * 60 + m of
-        off | off == 0 ->
+      h  <- twoDigits
+      mc <- peekChar
+      m  <- case mc of
+              Just c | c == ':'  -> anyChar *> twoDigits
+                     | isDigit c -> twoDigits
+              _ -> return 0
+      case () of
+        _ | h == 0 && m == 0 ->
               return Nothing
-            | off < -720 || off > 840 || m > 59 ->
+          | h > 23 || m > 59 ->
               fail "invalid time zone offset"
-            | otherwise ->
-              let !tz = Local.minutesToTimeZone off
+          | otherwise ->
+              let !absset = h * 60 + m
+                  !offset | ch == '-' = negate absset
+                          | otherwise = absset
+                  !tz = Local.minutesToTimeZone offset
               in return (Just tz)
 
 -- | Parse a date and time, of the form @YYYY-MM-DD HH:MM:SS@.
@@ -135,9 +140,7 @@ utcTime = do
 --
 -- The first space may instead be a @T@, and the second space is
 -- optional.  The @Z@ represents UTC.  The @Z@ may be replaced with a
--- time zone offset of the form @+0000@ or @-08:00@, where the first
--- two digits are hours, the @:@ is optional and the second two digits
--- are minutes.
+-- time zone offset of the form @±HH@ or @±HH:MM@.
 zonedTime :: Parser Local.ZonedTime
 zonedTime = Local.ZonedTime <$> localTime <*> (fromMaybe utc <$> timeZone)
 

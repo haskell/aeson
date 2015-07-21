@@ -102,20 +102,23 @@ utcTimeGood = do
   assertEqual "utctime" (parseWithRead "%FT%T%QZ" ts2) t2
   assertEqual "utctime" (parseWithRead "%F %T%QZ" ts3) t3
   assertEqual "utctime" (parseWithRead "%F %T%QZ" ts4) t4
-  -- timezones.  Both +HHMM and +HH:MM are allowed for timezone offset
-  let ts5 = "2015-01-01T12:30:00.00+0000" :: LT.Text
+  -- offsets.  ±HH, ±HHMM, and ±HH:MM are allowed for utc offset
+  let ts5 = "2015-01-01T12:30:00.00+00" :: LT.Text
   let ts6 = "2015-01-01T12:30:00.00+01:15" :: LT.Text
   let ts7 = "2015-01-01T12:30:00.00-0200" :: LT.Text
   let ts8 = "2015-01-01T22:00:00.00-03:00" :: LT.Text
+  let ts9 = "2015-01-01T22:00:00.00-04:30" :: LT.Text
   let (Just (t5 ::  UTCTime)) = parseWithAeson ts5
   let (Just (t6 ::  UTCTime)) = parseWithAeson ts6
   let (Just (t7 ::  UTCTime)) = parseWithAeson ts7
   let (Just (t8 ::  UTCTime)) = parseWithAeson ts8
+  let (Just (t9 ::  UTCTime)) = parseWithAeson ts9
   assertEqual "utctime" (parseWithRead "%FT%T%QZ" "2015-01-01T12:30:00.00Z") t5
   assertEqual "utctime" (parseWithRead "%FT%T%QZ" "2015-01-01T11:15:00.00Z") t6
   assertEqual "utctime" (parseWithRead "%FT%T%QZ" "2015-01-01T14:30:00Z") t7
   -- ts8 wraps around to the next day in UTC
   assertEqual "utctime" (parseWithRead "%FT%T%QZ" "2015-01-02T01:00:00Z") t8
+  assertEqual "utctime" (parseWithRead "%FT%T%QZ" "2015-01-02T02:30:00Z") t9
   where
     parseWithRead :: String -> LT.Text -> UTCTime
     parseWithRead f s =
@@ -136,6 +139,7 @@ utcTimeBad = do
   verifyFailParse "2015-01-01T12:30:00.00+00Z" -- no Zulu if offset given
   verifyFailParse "2015-01-01T12:30:00.00+00:00Z" -- no Zulu if offset given
   verifyFailParse "2015-01-03 12:13:00.Z" -- decimal at the end but no digits
+  verifyFailParse "2015-01-01 13:30:00-01:60" -- malformed offset
   where
     verifyFailParse (s :: LT.Text) =
       let (dec :: Maybe UTCTime) = decode . LT.encodeUtf8 $ (LT.concat ["\"", s, "\""]) in
