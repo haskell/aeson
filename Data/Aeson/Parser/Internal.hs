@@ -28,7 +28,7 @@ module Data.Aeson.Parser.Internal
     , eitherDecodeStrictWith
     ) where
 
-import Control.Applicative ((*>), (<$>), (<*), liftA2, pure)
+import Control.Applicative ((*>), (<$>), (<*), pure)
 import Control.Monad.IO.Class (liftIO)
 import Data.Aeson.Types.Internal (IResult(..), JSONPath, Result(..), Value(..))
 import Data.Attoparsec.ByteString.Char8 (Parser, char, endOfInput, scientific,
