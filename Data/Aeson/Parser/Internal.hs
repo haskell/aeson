@@ -1,4 +1,7 @@
 {-# LANGUAGE BangPatterns, CPP, OverloadedStrings #-}
+#if MIN_VERSION_ghc_prim(0,3,1)
+{-# LANGUAGE MagicHash #-}
+#endif
 
 -- |
 -- Module:      Data.Aeson.Parser.Internal
@@ -55,6 +58,11 @@ import qualified Data.ByteString.Lazy as L
 import qualified Data.ByteString.Internal as B
 import qualified Data.ByteString.Unsafe as B
 import qualified Data.HashMap.Strict as H
+
+#if MIN_VERSION_ghc_prim(0,3,1)
+import GHC.Base (Int#, (==#), isTrue#, orI#, word2Int#)
+import GHC.Word (Word8(W8#))
+#endif
 
 #define BACKSLASH 92
 #define CLOSE_CURLY 125
@@ -200,28 +208,41 @@ value' = do
 jstring :: Parser Text
 jstring = A.word8 DOUBLE_QUOTE *> jstring_
 
-data S = S !Bool !Bool
-
 -- | Parse a string without a leading quote.
 jstring_ :: Parser Text
+{-# INLINE jstring_ #-}
 jstring_ = {-# SCC "jstring_" #-} do
-  (s, S _ escaped) <- A.runScanner (S False False) go
+  (s, fin) <- A.runScanner (S 0# 0#) go
   _ <- A.anyWord8
-  s1 <- if escaped
-          then case unescape s of
-                 Right r  -> return r
-                 Left err -> fail err
-          else return s
+  s1 <- if isEscaped fin
+        then case unescape s of
+               Right r  -> return r
+               Left err -> fail err
+        else return s
   case decodeUtf8' s1 of
     Right r  -> return r
     Left err -> fail $ show err
+#if MIN_VERSION_ghc_prim(0,3,1)
+ where
+    isEscaped (S _ escaped) = isTrue# escaped
+    go (S a b) (W8# c)
+      | isTrue# a                     = Just (S 0# b)
+      | isTrue# (word2Int# c ==# 34#) = Nothing
+      | otherwise = let a' = word2Int# c ==# 92#
+                    in Just (S a' (orI# a' b))
+
+data S = S Int# Int#
+#else
  where go (S a b) c
          | a                  = Just (S False b)
          | c == DOUBLE_QUOTE  = Nothing
          | otherwise = let a' = c == backSlash
                        in Just (S a' (a' || b))
          where backSlash = BACKSLASH
-{-# INLINE jstring_ #-}
+       isEscaped (S _ escaped) = escaped
+
+data S = S !Bool !Bool
+#endif
 
 unescape :: ByteString -> Either String ByteString
 unescape s = unsafePerformIO $ do
