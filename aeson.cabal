@@ -67,6 +67,7 @@ library
     Data.Aeson
     Data.Aeson.Encode
     Data.Aeson.Internal
+    Data.Aeson.Internal.Time
     Data.Aeson.Parser
     Data.Aeson.Types
     Data.Aeson.TH

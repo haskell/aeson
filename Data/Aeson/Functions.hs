@@ -1,5 +1,3 @@
-{-# LANGUAGE CPP #-}
-
 -- |
 -- Module:      Data.Aeson.Functions
 -- Copyright:   (c) 2011-2015 Bryan O'Sullivan
@@ -14,36 +12,11 @@ module Data.Aeson.Functions
     , hashMapKey
     , mapKeyVal
     , mapKey
-    , fromPico
-    , toPico
     ) where
 
 import Data.Hashable (Hashable)
 import qualified Data.HashMap.Strict as H
 import qualified Data.Map as M
-
-#if MIN_VERSION_base(4,7,0)
-
-import Data.Fixed (Fixed(MkFixed), Pico)
-
-toPico :: Integer -> Pico
-toPico = MkFixed
-
-fromPico :: Pico -> Integer
-fromPico (MkFixed i) = i
-
-#else
-
-import Data.Fixed (Pico)
-import Unsafe.Coerce (unsafeCoerce)
-
-toPico :: Integer -> Pico
-toPico = unsafeCoerce
-
-fromPico :: Pico -> Integer
-fromPico = unsafeCoerce
-
-#endif
 
 -- | Transform a 'M.Map' into a 'H.HashMap' while transforming the keys.
 mapHashKeyVal :: (Eq k2, Hashable k2) => (k1 -> k2) -> (v1 -> v2)

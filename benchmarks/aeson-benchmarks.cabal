@@ -19,6 +19,8 @@ library
     Data.Aeson.Encode.Builder
     Data.Aeson.Encode.Functions
     Data.Aeson.Functions
+    Data.Aeson.Internal
+    Data.Aeson.Internal.Time
     Data.Aeson.Parser
     Data.Aeson.Parser.Internal
     Data.Aeson.Parser.Time

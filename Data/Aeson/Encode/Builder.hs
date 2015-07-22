@@ -34,20 +34,18 @@ module Data.Aeson.Encode.Builder
     , ascii5
     ) where
 
-import Data.Aeson.Functions (fromPico)
+import Data.Aeson.Internal.Time
 import Data.Aeson.Types.Internal (Encoding(..), Value(..))
 import Data.ByteString.Builder as B
 import Data.ByteString.Builder.Prim as BP
 import Data.ByteString.Builder.Scientific (scientificBuilder)
 import Data.Char (chr, ord)
-import Data.Int (Int64)
 import Data.Monoid ((<>))
 import Data.Scientific (Scientific, base10Exponent, coefficient)
-import Data.Time (DiffTime, UTCTime(..))
+import Data.Time (UTCTime(..))
 import Data.Time.Calendar (Day(..), toGregorian)
 import Data.Time.LocalTime
 import Data.Word (Word8)
-import Unsafe.Coerce (unsafeCoerce)
 import qualified Data.HashMap.Strict as HMS
 import qualified Data.Text as T
 import qualified Data.Text.Encoding as TE
@@ -224,19 +222,6 @@ dayTime d t = day d <> B.char7 'T' <> timeOfDay64 t
 utcTime :: UTCTime -> B.Builder
 utcTime (UTCTime d s) = dayTime d (diffTimeOfDay64 s) <> B.char7 'Z'
 {-# INLINE utcTime #-}
-
-data TimeOfDay64 = TOD {-# UNPACK #-} !Int
-                       {-# UNPACK #-} !Int
-                       {-# UNPACK #-} !Int64
-
-diffTimeOfDay64 :: DiffTime -> TimeOfDay64
-diffTimeOfDay64 t = TOD (fromIntegral h) (fromIntegral m) s
-  where (h,mp) = fromIntegral pico `quotRem` 3600000000000000
-        (m,s)  = mp `quotRem` 60000000000000
-        pico   = unsafeCoerce t :: Integer
-
-toTimeOfDay64 :: TimeOfDay -> TimeOfDay64
-toTimeOfDay64 (TimeOfDay h m s) = TOD h m (fromIntegral (fromPico s))
 
 localTime :: LocalTime -> Builder
 localTime (LocalTime d t) = dayTime d (toTimeOfDay64 t)

@@ -23,7 +23,7 @@ module Data.Aeson.Parser.Time
 
 import Control.Applicative ((<$>), (<*>), (<*), (*>))
 import Control.Monad (when, void)
-import Data.Aeson.Functions (toPico)
+import Data.Aeson.Internal.Time (toPico)
 import Data.Attoparsec.Text as A
 import Data.Bits ((.&.))
 import Data.Char (isDigit, ord)
