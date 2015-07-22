@@ -212,7 +212,7 @@ jstring = A.word8 DOUBLE_QUOTE *> jstring_
 jstring_ :: Parser Text
 {-# INLINE jstring_ #-}
 jstring_ = {-# SCC "jstring_" #-} do
-  (s, fin) <- A.runScanner (S 0# 0#) go
+  (s, fin) <- A.runScanner startState go
   _ <- A.anyWord8
   s1 <- if isEscaped fin
         then case unescape s of
@@ -225,6 +225,7 @@ jstring_ = {-# SCC "jstring_" #-} do
  where
 #if MIN_VERSION_ghc_prim(0,3,1)
     isEscaped (S _ escaped) = isTrue# escaped
+    startState              = S 0# 0#
     go (S a b) (W8# c)
       | isTrue# a                     = Just (S 0# b)
       | isTrue# (word2Int# c ==# 34#) = Nothing   -- double quote
@@ -234,11 +235,13 @@ jstring_ = {-# SCC "jstring_" #-} do
 data S = S Int# Int#
 #else
     isEscaped (S _ escaped) = escaped
+    startState              = S False False
     go (S a b) c
       | a                  = Just (S False b)
       | c == DOUBLE_QUOTE  = Nothing
-      | otherwise = let a' = c == BACKSLASH
+      | otherwise = let a' = c == backslash
                     in Just (S a' (a' || b))
+      where backslash = BACKSLASH
 
 data S = S !Bool !Bool
 #endif
