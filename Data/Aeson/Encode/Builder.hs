@@ -192,9 +192,12 @@ timeOfDay64 (TOD h m s0)
     !(T mh ml)  = twoDigits m
     !(T sh sl)  = twoDigits (fromIntegral real)
     (real,frac) = s `quotRem` pico
-    -- Round up picoseconds so that milliseconds >= 0.5 render correctly.
-    s | s0 `rem` mu < nu = s0
-      | otherwise        = s0 + mu
+    -- Round fractional milliseconds to render more accurately.  We
+    -- give up when there are leap seconds in play or there might be a
+    -- need for carry propagation.
+    s | s0 >= 59999000000000 = s0
+      | s0 `rem` mu < nu     = s0
+      | otherwise            = s0 + mu
     tenths     = fromIntegral (frac `quot` mu)
     pico       = 1000000000000 -- 1 second in picoseconds
     mu         =    1000000000 -- 100 microseconds
