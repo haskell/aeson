@@ -72,7 +72,7 @@ into upgrade problems, please file an issue with details.
 * GHC 7.2 and older are no longer supported.
 
 * The instance of `Monad` for the `Result` type lacked an implementation
-  of fail (oops).  This has been corrected.
+  of `fail` (oops).  This has been corrected.
 
 
 
@@ -108,7 +108,7 @@ into upgrade problems, please file an issue with details.
 * The `ToJSON` instance for `UTCTime` is rendered with higher
   (picosecond) resolution.
 
-* The value parser now correctly handles leading whitespace.
+* The `value` parser now correctly handles leading whitespace.
 
 * New instances of `ToJSON` and `FromJSON` for `Data.Sequence` and
   `Data.Functor.Identity`.  The `Value` type now has a `Read` instance.
