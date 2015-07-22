@@ -39,7 +39,7 @@ into upgrade problems, please file an issue with details.
 
   ```haskell
   instance ToJSON Coord where
-    toEncoding = 'genericToEncoding' 'defaultOptions'
+    toEncoding = genericToEncoding defaultOptions
   ```
 
   (Behind the scenes, the `encode` function uses `toEncoding` now, so
