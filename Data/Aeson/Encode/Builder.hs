@@ -27,6 +27,7 @@ module Data.Aeson.Encode.Builder
     , day
     , localTime
     , utcTime
+    , timeOfDay
     , zonedTime
     , ascii2
     , ascii4
@@ -177,26 +178,31 @@ day dd = B.integerDec y <>
         !(T dh dl)  = twoDigits d
 {-# INLINE day #-}
 
-timeOfDay :: TimeOfDay64 -> Builder
-timeOfDay (TOD h m s)
-  | micro100 < 5 = hhmmss -- omit trailing milliseconds if zero
-  | otherwise    = hhmmss <> BP.primBounded (ascii4 ('.',(a,(b,c)))) ()
+timeOfDay :: TimeOfDay -> Builder
+timeOfDay t = timeOfDay64 (toTimeOfDay64 t)
+{-# INLINE timeOfDay #-}
+
+timeOfDay64 :: TimeOfDay64 -> Builder
+timeOfDay64 (TOD h m s0)
+  | frac < mu = hhmmss -- omit trailing milliseconds if zero
+  | otherwise = hhmmss <> BP.primBounded (ascii4 ('.',(a,(b,c)))) ()
   where
     hhmmss  = BP.primBounded (ascii8 (hh,(hl,(':',(mh,(ml,(':',(sh,sl)))))))) ()
     !(T hh hl)  = twoDigits h
     !(T mh ml)  = twoDigits m
     !(T sh sl)  = twoDigits (fromIntegral real)
-    (real,frac) = s `quotRem` 1000000000000
-    -- Units of 100 microseconds (tenths of a millisecond), which we
-    -- round up so that milliseconds >= 0.5 render correctly.
-    micro100
-      | d `rem` 10 < 5 = d
-      | otherwise      = d + 10
-      where d          = fromIntegral (frac `quot` 100000000)
+    (real,frac) = s `quotRem` pico
+    -- Round up picoseconds so that milliseconds >= 0.5 render correctly.
+    s | s0 `rem` mu < nu = s0
+      | otherwise        = s0 + mu
+    tenths     = fromIntegral (frac `quot` mu)
+    pico       = 1000000000000 -- 1 second in picoseconds
+    mu         =    1000000000 -- 100 microseconds
+    nu         =     500000000
     !(T a b)   = twoDigits ab
-    (ab,cc)    = micro100 `quotRem` 100
-    !c         = digit (cc `quot` 10)
-{-# INLINE timeOfDay #-}
+    (ab,cc)    = tenths `quotRem` 10
+    !c         = digit cc
+{-# INLINE timeOfDay64 #-}
 
 timeZone :: TimeZone -> Builder
 timeZone (TimeZone off _ _)
@@ -209,7 +215,7 @@ timeZone (TimeZone off _ _)
 {-# INLINE timeZone #-}
 
 dayTime :: Day -> TimeOfDay64 -> Builder
-dayTime d t = day d <> B.char7 'T' <> timeOfDay t
+dayTime d t = day d <> B.char7 'T' <> timeOfDay64 t
 {-# INLINE dayTime #-}
 
 utcTime :: UTCTime -> B.Builder
