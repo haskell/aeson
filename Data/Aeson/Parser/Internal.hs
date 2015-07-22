@@ -200,10 +200,12 @@ value' = do
 jstring :: Parser Text
 jstring = A.word8 DOUBLE_QUOTE *> jstring_
 
+data S = S !Bool !Bool
+
 -- | Parse a string without a leading quote.
 jstring_ :: Parser Text
 jstring_ = {-# SCC "jstring_" #-} do
-  (s, (_, escaped)) <- A.runScanner (False, False) go
+  (s, S _ escaped) <- A.runScanner (S False False) go
   _ <- A.anyWord8
   s1 <- if escaped
           then case unescape s of
@@ -213,11 +215,11 @@ jstring_ = {-# SCC "jstring_" #-} do
   case decodeUtf8' s1 of
     Right r  -> return r
     Left err -> fail $ show err
- where go (a, b) c
-         | a = Just (False, b)
-         | c == DOUBLE_QUOTE = Nothing
+ where go (S a b) c
+         | a                  = Just (S False b)
+         | c == DOUBLE_QUOTE  = Nothing
          | otherwise = let a' = c == backSlash
-                       in Just (a', a' || b)
+                       in Just (S a' (a' || b))
          where backSlash = BACKSLASH
 {-# INLINE jstring_ #-}
 
