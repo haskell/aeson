@@ -27,7 +27,7 @@ into upgrade problems, please file an issue with details.
 
 * The `ToJSON` class has a new method, `toEncoding`, that allows
   direct encoding from a Haskell value to a lazy bytestring without
-  construction of an intermediate Value.
+  construction of an intermediate `Value`.
 
   The performance benefits of direct encoding are significant: more
   than 2x faster than before, with less than 1/3 the memory usage.
@@ -35,7 +35,12 @@ into upgrade problems, please file an issue with details.
   To preserve API compatibility across upgrades from older versions of
   this library, the default implementation of `toEncoding` uses
   `toJSON`.  You will *not* see any performance improvement unless you
-  write an implementation of toEncoding.
+  write an implementation of `toEncoding`, which can be very simple:
+
+  ```haskell
+  instance ToJSON Coord where
+    toEncoding = 'genericToEncoding' 'defaultOptions'
+  ```
 
   (Behind the scenes, the `encode` function uses `toEncoding` now, so
   if you implement `toEncoding` for your types, you should see a
@@ -163,9 +168,9 @@ into upgrade problems, please file an issue with details.
   * The `Fixed` class
   * ISO-8601 dates: `UTCTime`, `ZonedTime`, and `TimeZone`
 
-* Added accessor functions for inspecting Values.
+* Added accessor functions for inspecting `Value`s.
 
-* Added eitherDecode function that returns an error message if
+* Added `eitherDecode` function that returns an error message if
   decoding fails.
 
 # 0.5 to 0.6
