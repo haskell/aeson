@@ -1,6 +1,28 @@
 0.10.0.0
 
-MANY MAJOR CHANGES, READ CAREFULLY
+SPEEDUPS:
+
+* Direct encoding via toEncoding is over 2x faster than under 0.9 and
+  earlier.  (You must write or code-gen a toEncoding implementation to
+  unlock this speedup.  See below for details.)
+
+* Improved string decoding gives a 12% speed win in parsing
+  string-heavy JSON payloads (very common).
+
+* Encoding and decoding of time-related types are 10x faster (!!) as a
+  result of bypassing Data.Time.Format and arbitrary-precision Integers.
+
+* When using toEncoding, [Char] can be encoded without a conversion to
+  Text.  This is fast and efficient.
+
+* Parsing into an Object is now 5% faster and more
+  allocation-efficient.
+
+MANY API CHANGES, READ CAREFULLY.
+
+With the exception of long-deprecated code, the API changes below
+should be upwards compatible from older versions of aeson.  If you run
+into upgrade problems, please file an issue with details.
 
 * The ToJSON class has a new method, toEncoding, that allows direct
   encoding from a Haskell value to a lazy bytestring without
@@ -28,17 +50,10 @@ MANY MAJOR CHANGES, READ CAREFULLY
   camelTo will rename `CamelAPICase` to `camelapi_case`, while
   camelTo2 will map it to `camel_api_case`.
 
-* Both encoding and decoding of time-related types are 10x faster.
-
-* Encoding [Char] no longer goes via Text.  This is faster and uses
-  less memory.
-
 * New ToJSON and FromJSON instances for the following time-related
   types: Day, LocalTime.
 
 * The Result type is now an instance of Foldable and Traversable.
-
-* Parsing into an Object is now 5% faster and more memory-efficient.
 
 * The Data.Aeson.Generic module has been removed. It was deprecated in
   late 2013.
