@@ -55,10 +55,11 @@ into upgrade problems, please file an issue with details.
   complete JSON path from the root of the object to the offending
   element.  This greatly eases debugging.
 
-* If you used to use the `camelTo` function to rename fields when
-  using TH or generics, the new `camelTo2` function is smarter.  For
-  example, `camelTo` will rename `CamelAPICase` to `camelapi_case`,
-  while `camelTo2` will map it to `camel_api_case`.
+* If you use Template Haskell or generics, and used to use the
+  `camelTo` function to rename fields, the new `camelTo2` function is
+  smarter.  For example, `camelTo` will rename `CamelAPICase` to
+  `camelapi_case` (ugh!), while `camelTo2` will map it to
+  `camel_api_case` (yay!).
 
 * New `ToJSON` and `FromJSON` instances for the following time-related
   types: `Day`, `LocalTime`.
