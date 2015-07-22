@@ -19,10 +19,10 @@
 * Parsing into an `Object` is now 5% faster and more
   allocation-efficient.
 
-## MANY API CHANGES, READ CAREFULLY
+## SUBTLE API CHANGES, READ CAREFULLY
 
 With the exception of long-deprecated code, the API changes below
-should be upwards compatible from older versions of `aeson`.  If you run
+**should be upwards compatible** from older versions of `aeson`.  If you run
 into upgrade problems, please file an issue with details.
 
 * The `ToJSON` class has a new method, `toEncoding`, that allows
