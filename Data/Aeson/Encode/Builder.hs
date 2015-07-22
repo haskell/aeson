@@ -208,7 +208,7 @@ timeOfDay64 (TOD h m s0)
 timeZone :: TimeZone -> Builder
 timeZone (TimeZone off _ _)
   | off == 0  = B.char7 'Z'
-  | otherwise = BP.primBounded (ascii5 (s,(hh,(hl,(mh,ml))))) ()
+  | otherwise = BP.primBounded (ascii6 (s,(hh,(hl,(':',(mh,ml)))))) ()
   where !s         = if off < 0 then '-' else '+'
         !(T hh hl) = twoDigits h
         !(T mh ml) = twoDigits m
