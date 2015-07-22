@@ -222,24 +222,23 @@ jstring_ = {-# SCC "jstring_" #-} do
   case decodeUtf8' s1 of
     Right r  -> return r
     Left err -> fail $ show err
-#if MIN_VERSION_ghc_prim(0,3,1)
  where
+#if MIN_VERSION_ghc_prim(0,3,1)
     isEscaped (S _ escaped) = isTrue# escaped
     go (S a b) (W8# c)
       | isTrue# a                     = Just (S 0# b)
-      | isTrue# (word2Int# c ==# 34#) = Nothing
-      | otherwise = let a' = word2Int# c ==# 92#
+      | isTrue# (word2Int# c ==# 34#) = Nothing   -- double quote
+      | otherwise = let a' = word2Int# c ==# 92#  -- backslash
                     in Just (S a' (orI# a' b))
 
 data S = S Int# Int#
 #else
- where go (S a b) c
-         | a                  = Just (S False b)
-         | c == DOUBLE_QUOTE  = Nothing
-         | otherwise = let a' = c == backSlash
-                       in Just (S a' (a' || b))
-         where backSlash = BACKSLASH
-       isEscaped (S _ escaped) = escaped
+    isEscaped (S _ escaped) = escaped
+    go (S a b) c
+      | a                  = Just (S False b)
+      | c == DOUBLE_QUOTE  = Nothing
+      | otherwise = let a' = c == BACKSLASH
+                    in Just (S a' (a' || b))
 
 data S = S !Bool !Bool
 #endif
