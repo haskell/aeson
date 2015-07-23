@@ -53,17 +53,17 @@ module Data.Aeson.Types.Internal
     , DotNetTime(..)
     ) where
 
-import Control.Applicative
-import Control.Monad
+import Control.Applicative (Alternative(..))
 import Control.DeepSeq (NFData(..))
+import Control.Monad (MonadPlus(..), ap)
 import Data.ByteString.Builder (Builder, char7, toLazyByteString)
-import Data.Char (toLower, isUpper, isLower)
-import Data.Scientific (Scientific)
-import Data.Foldable (Foldable(..))
-import Data.Hashable (Hashable(..))
+import Data.Char (isLower, isUpper, toLower)
 import Data.Data (Data)
+import Data.Foldable (Foldable(..))
 import Data.HashMap.Strict (HashMap)
+import Data.Hashable (Hashable(..))
 import Data.Monoid (Monoid(..), (<>))
+import Data.Scientific (Scientific)
 import Data.String (IsString(..))
 import Data.Text (Text, pack, unpack)
 import Data.Time (UTCTime)

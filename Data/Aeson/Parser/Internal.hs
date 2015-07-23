@@ -46,16 +46,16 @@ import Data.Text.Internal.Unsafe.Char (ord)
 import Data.Vector as Vector (Vector, empty, fromList, reverse)
 import Data.Word (Word8)
 import Foreign.ForeignPtr (withForeignPtr)
-import Foreign.Ptr (minusPtr)
 import Foreign.Ptr (Ptr, plusPtr)
+import Foreign.Ptr (minusPtr)
 import Foreign.Storable (poke)
 import System.IO.Unsafe (unsafePerformIO)
 import qualified Data.Attoparsec.ByteString as A
 import qualified Data.Attoparsec.Lazy as L
 import qualified Data.Attoparsec.Zepto as Z
 import qualified Data.ByteString as B
-import qualified Data.ByteString.Lazy as L
 import qualified Data.ByteString.Internal as B
+import qualified Data.ByteString.Lazy as L
 import qualified Data.ByteString.Unsafe as B
 import qualified Data.HashMap.Strict as H
 

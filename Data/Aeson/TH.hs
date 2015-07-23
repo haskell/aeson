@@ -73,11 +73,8 @@ module Data.Aeson.TH
     , mkParseJSON
     ) where
 
---------------------------------------------------------------------------------
--- Imports
---------------------------------------------------------------------------------
-
--- from aeson:
+import Control.Applicative ( pure, (<$>), (<*>) )
+import Control.Monad       ( return, mapM, liftM2, fail )
 import Data.Aeson ( toJSON, Object, (.=), (.:), (.:?)
                   , ToJSON, toEncoding, toJSON
                   , FromJSON, parseJSON
@@ -89,34 +86,27 @@ import Data.Aeson.Types ( Value(..), Parser
                         , defaultTaggedObject
                         )
 import Data.Aeson.Types.Internal (Encoding(..))
-import qualified Data.Aeson.Encode.Builder as E
-import qualified Data.Aeson.Encode.Functions as E
-import qualified Data.Aeson as A
--- from base:
-import Control.Applicative ( pure, (<$>), (<*>) )
-import Control.Monad       ( return, mapM, liftM2, fail )
 import Data.Bool           ( Bool(False, True), otherwise, (&&) , not)
+import Data.Either         ( Either(Left, Right) )
 import Data.Eq             ( (==) )
 import Data.Function       ( ($), (.) )
 import Data.Functor        ( fmap )
 import Data.Int            ( Int )
-import Data.Either         ( Either(Left, Right) )
 import Data.List           ( (++), foldl, foldl', intercalate, intersperse
                            , length, map, zip, genericLength, all, partition
                            )
 import Data.Maybe          ( Maybe(Nothing, Just), catMaybes )
 import Data.Monoid         ( (<>), mconcat )
+import Language.Haskell.TH
+import Language.Haskell.TH.Syntax ( VarStrictType )
 import Prelude             ( String, (-), Integer, error, foldr1, fromIntegral )
 import Text.Printf         ( printf )
 import Text.Show           ( show )
--- from unordered-containers:
+import qualified Data.Aeson as A
+import qualified Data.Aeson.Encode.Builder as E
+import qualified Data.Aeson.Encode.Functions as E
 import qualified Data.HashMap.Strict as H ( lookup, toList )
--- from template-haskell:
-import Language.Haskell.TH
-import Language.Haskell.TH.Syntax ( VarStrictType )
--- from text:
 import qualified Data.Text as T ( Text, pack, unpack )
--- from vector:
 import qualified Data.Vector as V ( unsafeIndex, null, length, create, fromList )
 import qualified Data.Vector.Mutable as VM ( unsafeNew, unsafeWrite )
 

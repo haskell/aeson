@@ -22,15 +22,15 @@ module Data.Aeson.Types.Generic ( ) where
 import Control.Applicative ((<*>), (<$>), (<|>), pure)
 import Control.Monad ((<=<))
 import Control.Monad.ST (ST)
-import Data.Aeson.Types.Instances
-import Data.Aeson.Types.Internal
-import Data.Bits
 import Data.Aeson.Encode.Builder (emptyArray_)
 import Data.Aeson.Encode.Functions (builder)
+import Data.Aeson.Types.Instances
+import Data.Aeson.Types.Internal
+import Data.Bits (unsafeShiftR)
 import Data.ByteString.Builder as B
-import Data.Monoid ((<>), mempty)
 import Data.DList (DList, toList, empty)
 import Data.Maybe (fromMaybe)
+import Data.Monoid ((<>), mempty)
 import Data.Text (Text, pack, unpack)
 import GHC.Generics
 import qualified Data.HashMap.Strict as H

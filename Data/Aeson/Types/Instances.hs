@@ -56,26 +56,21 @@ module Data.Aeson.Types.Instances
     ) where
 
 import Control.Applicative ((<$>), (<*>), pure)
-import qualified Data.Aeson.Encode.Builder as E
-import qualified Data.ByteString.Builder as B
-import qualified Data.ByteString.Lazy as L
-import Data.Aeson.Functions
-import Data.Monoid ((<>), mempty)
 import Data.Aeson.Encode.Functions (brackets, builder, encode, foldable, list)
-import qualified Data.Aeson.Parser.Time as Time
+import Data.Aeson.Functions (hashMapKey, mapHashKeyVal, mapKey, mapKeyVal)
 import Data.Aeson.Types.Class
 import Data.Aeson.Types.Internal
-import Data.Scientific (Scientific)
-import qualified Data.Scientific as Scientific (coefficient, base10Exponent, fromFloatDigits, toRealFloat)
 import Data.Attoparsec.Number (Number(..))
-import Data.Fixed
+import Data.Fixed (Fixed, HasResolution)
 import Data.Foldable (Foldable, toList)
 import Data.Functor.Identity (Identity(..))
 import Data.Hashable (Hashable(..))
 import Data.Int (Int8, Int16, Int32, Int64)
 import Data.Maybe (fromMaybe)
+import Data.Monoid ((<>), mempty)
 import Data.Monoid (Dual(..), First(..), Last(..))
 import Data.Ratio (Ratio, (%), numerator, denominator)
+import Data.Scientific (Scientific)
 import Data.Text (Text, pack, unpack)
 import Data.Time (Day, LocalTime, UTCTime, ZonedTime)
 import Data.Time.Format (FormatTime, formatTime, parseTime)
@@ -84,23 +79,28 @@ import Data.Vector (Vector)
 import Data.Word (Word, Word8, Word16, Word32, Word64)
 import Foreign.Storable (Storable)
 import Prelude hiding (foldr)
+import qualified Data.Aeson.Encode.Builder as E
+import qualified Data.Aeson.Parser.Time as Time
+import qualified Data.ByteString.Builder as B
+import qualified Data.ByteString.Lazy as L
 import qualified Data.HashMap.Strict as H
 import qualified Data.HashSet as HashSet
 import qualified Data.IntMap as IntMap
 import qualified Data.IntSet as IntSet
 import qualified Data.Map as M
-import qualified Data.Set as Set
+import qualified Data.Scientific as Scientific
 import qualified Data.Sequence as Seq
-import qualified Data.Tree as Tree
+import qualified Data.Set as Set
 import qualified Data.Text as T
 import qualified Data.Text.Encoding as T
 import qualified Data.Text.Lazy as LT
+import qualified Data.Tree as Tree
 import qualified Data.Vector as V
 import qualified Data.Vector.Generic as VG
+import qualified Data.Vector.Mutable as VM (unsafeNew, unsafeWrite)
 import qualified Data.Vector.Primitive as VP
 import qualified Data.Vector.Storable as VS
 import qualified Data.Vector.Unboxed as VU
-import qualified Data.Vector.Mutable as VM ( unsafeNew, unsafeWrite )
 
 #if MIN_VERSION_time(1,5,0)
 import Data.Time.Format (defaultTimeLocale)
