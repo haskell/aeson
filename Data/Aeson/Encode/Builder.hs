@@ -169,11 +169,19 @@ ascii8 cs = BP.liftFixedToBounded $ (const cs) >$<
 {-# INLINE ascii8 #-}
 
 day :: Day -> Builder
-day dd = B.integerDec y <>
+day dd = encodeYear y <>
          BP.primBounded (ascii6 ('-',(mh,(ml,('-',(dh,dl)))))) ()
   where (y,m,d)     = toGregorian dd
         !(T mh ml)  = twoDigits m
         !(T dh dl)  = twoDigits d
+        encodeYear y
+            | y >= 1000 = B.integerDec y
+            | y > 0 =
+                let (ab,c) = fromIntegral y `quotRem` 10
+                    (a,b)  = ab `quotRem` 10
+                in BP.primBounded (ascii4 ('0',(digit a,(digit b,digit c)))) ()
+            | otherwise =
+                error "Data.Aeson.Encode.Builder.day:  years BCE not supported"
 {-# INLINE day #-}
 
 timeOfDay :: TimeOfDay -> Builder
