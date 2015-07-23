@@ -53,7 +53,7 @@ module Data.Aeson.Types.Internal
     , DotNetTime(..)
     ) where
 
-import Control.Applicative (Alternative(..), Applicative(..))
+import Control.Applicative
 import Control.DeepSeq (NFData(..))
 import Control.Monad (MonadPlus(..), ap)
 import Data.ByteString.Builder (Builder, char7, toLazyByteString)
