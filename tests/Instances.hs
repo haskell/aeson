@@ -8,8 +8,10 @@ import Data.Function (on)
 import Control.Monad
 import Test.QuickCheck (Arbitrary(..), Gen, choose, oneof, elements)
 import Data.Time.Clock (DiffTime, UTCTime(..), picosecondsToDiffTime)
+import Data.Fixed (Pico)
 import Data.Time (ZonedTime(..), LocalTime(..), TimeZone(..),
-                  hoursToTimeZone, Day(..), TimeOfDay(..))
+                  hoursToTimeZone, Day(..), TimeOfDay(..),
+                  NominalDiffTime)
 import qualified Data.Text as T
 import qualified Data.Map as Map
 import Data.Text (Text)
@@ -48,6 +50,9 @@ instance Arbitrary DotNetTime where
 
 instance Arbitrary ZonedTime where
     arbitrary = liftM2 ZonedTime arbitrary arbitrary
+
+instance Arbitrary NominalDiffTime where
+    arbitrary = realToFrac <$> (arbitrary :: Gen Pico)
 
 deriving instance Eq ZonedTime
 
