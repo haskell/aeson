@@ -20,7 +20,7 @@
 module Data.Aeson.Types.Generic ( ) where
 
 import Control.Applicative ((<*>), (<$>), (<|>), pure)
-import Control.Monad ((<=<))
+import Control.Monad ((<=<), join)
 import Control.Monad.ST (ST)
 import Data.Aeson.Types.Instances
 import Data.Aeson.Types.Internal
@@ -656,8 +656,8 @@ instance (Selector s, GFromJSON a) => FromRecord (S1 s a) where
     {-# INLINE parseRecord #-}
 
 instance (Selector s, FromJSON a) => FromRecord (S1 s (K1 i (Maybe a))) where
-    parseRecord _ (Just lab) obj = (M1 . K1) <$> obj .:? lab
-    parseRecord opts Nothing obj = (M1 . K1) <$> obj .:? pack label
+    parseRecord _ (Just lab) obj = (M1 . K1) . join <$> obj .:? lab
+    parseRecord opts Nothing obj = (M1 . K1) . join <$> obj .:? pack label
         where
           label = fieldLabelModifier opts $
                     selName (undefined :: t s (K1 i (Maybe a)) p)
