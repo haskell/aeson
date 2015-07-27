@@ -89,23 +89,32 @@ import Data.Aeson.Types.Internal (Encoding(..))
 import Data.Bool           ( Bool(False, True), otherwise, (&&) , not)
 import Data.Either         ( Either(Left, Right) )
 import Data.Eq             ( (==) )
-import Data.Function       ( ($), (.) )
+import Data.Function       ( ($), (.), flip )
 import Data.Functor        ( fmap )
 import Data.Int            ( Int )
-import Data.List           ( (++), foldl, foldl', intercalate, intersperse
-                           , length, map, zip, genericLength, all, partition
+import Data.List           ( (++), all, any, filter, find, foldl, foldl'
+                           , genericLength , intercalate , intersperse, length, map
+                           , partition, zip
                            )
 import Data.Maybe          ( Maybe(Nothing, Just), catMaybes )
 import Data.Monoid         ( (<>), mconcat )
 import Language.Haskell.TH
 import Language.Haskell.TH.Syntax ( VarStrictType )
-import Prelude             ( String, (-), Integer, error, foldr1, fromIntegral )
+import Prelude             ( String, (-), Integer, error, foldr1, fromIntegral
+                           , snd, uncurry
+                           )
+#if MIN_VERSION_template_haskell(2,8,0) && __GLASGOW_HASKELL__ < 710
+import Prelude             ( drop )
+#endif
 import Text.Printf         ( printf )
 import Text.Show           ( show )
 import qualified Data.Aeson as A
 import qualified Data.Aeson.Encode.Builder as E
 import qualified Data.Aeson.Encode.Functions as E
 import qualified Data.HashMap.Strict as H ( lookup, toList )
+#if MIN_VERSION_template_haskell(2,8,0) && __GLASGOW_HASKELL__ < 710
+import qualified Data.Set as Set ( Set, empty, singleton, size, union, unions )
+#endif
 import qualified Data.Text as T ( Text, pack, unpack )
 import qualified Data.Vector as V ( unsafeIndex, null, length, create, fromList )
 import qualified Data.Vector.Mutable as VM ( unsafeNew, unsafeWrite )
@@ -153,12 +162,12 @@ deriveToJSON :: Options
              -- declaration.
              -> Q [Dec]
 deriveToJSON opts name =
-    withType name $ \tvbs cons -> fmap (:[]) $ fromCons tvbs cons
+    withType name $ \name' tvbs cons mbTys -> fmap (:[]) $ fromCons name' tvbs cons mbTys
   where
-    fromCons :: [TyVarBndr] -> [Con] -> Q Dec
-    fromCons tvbs cons =
-        instanceD (applyCon ''ToJSON typeNames)
-                  (classType `appT` instanceType)
+    fromCons :: Name -> [TyVarBndr] -> [Con] -> Maybe [Type] -> Q Dec
+    fromCons name' tvbs cons mbTys =
+        instanceD instanceCxt
+                  instanceType
                   [ funD 'toJSON
                          [ clause []
                                   (normalB $ consToValue opts cons)
@@ -171,23 +180,22 @@ deriveToJSON opts name =
                          ]
                   ]
       where
-        classType = conT ''ToJSON
-        typeNames = map tvbName tvbs
-        instanceType = foldl' appT (conT name) $ map varT typeNames
+        (instanceCxt, instanceType) =
+            buildTypeInstance name' ''ToJSON tvbs mbTys
 
 -- | Generates a lambda expression which encodes the given data type as a
 -- 'Value'.
 mkToJSON :: Options -- ^ Encoding options.
          -> Name -- ^ Name of the type to encode.
          -> Q Exp
-mkToJSON opts name = withType name (\_ cons -> consToValue opts cons)
+mkToJSON opts name = withType name (\_ _ cons _ -> consToValue opts cons)
 
 -- | Generates a lambda expression which encodes the given data type
 -- as a JSON string.
 mkToEncoding :: Options -- ^ Encoding options.
              -> Name -- ^ Name of the type to encode.
              -> Q Exp
-mkToEncoding opts name = withType name (\_ cons -> consToEncoding opts cons)
+mkToEncoding opts name = withType name (\_ _ cons _ -> consToEncoding opts cons)
 
 -- | Helper function used by both 'deriveToJSON' and 'mkToJSON'. Generates
 -- code to generate a 'Value' of a number of constructors. All constructors
@@ -537,22 +545,21 @@ deriveFromJSON :: Options
                -- declaration.
                -> Q [Dec]
 deriveFromJSON opts name =
-    withType name $ \tvbs cons -> fmap (:[]) $ fromCons tvbs cons
+    withType name $ \name' tvbs cons mbTys -> fmap (:[]) $ fromCons name' tvbs cons mbTys
   where
-    fromCons :: [TyVarBndr] -> [Con] -> Q Dec
-    fromCons tvbs cons =
-        instanceD (applyCon ''FromJSON typeNames)
-                  (classType `appT` instanceType)
+    fromCons :: Name -> [TyVarBndr] -> [Con] -> Maybe [Type] -> Q Dec
+    fromCons name' tvbs cons mbTys =
+        instanceD instanceCxt
+                  instanceType
                   [ funD 'parseJSON
                          [ clause []
-                                  (normalB $ consFromJSON name opts cons)
+                                  (normalB $ consFromJSON name' opts cons)
                                   []
                          ]
                   ]
       where
-        classType = conT ''FromJSON
-        typeNames = map tvbName tvbs
-        instanceType = foldl' appT (conT name) $ map varT typeNames
+        (instanceCxt, instanceType) =
+            buildTypeInstance name' ''FromJSON tvbs mbTys
 
 -- | Generates a lambda expression which parses the JSON encoding of the given
 -- data type.
@@ -560,7 +567,7 @@ mkParseJSON :: Options -- ^ Encoding options.
             -> Name -- ^ Name of the encoded type.
             -> Q Exp
 mkParseJSON opts name =
-    withType name (\_ cons -> consFromJSON name opts cons)
+    withType name (\name' _ cons _ -> consFromJSON name' opts cons)
 
 -- | Helper function used by both 'deriveFromJSON' and 'mkParseJSON'. Generates
 -- code to parse the JSON encoding of a number of constructors. All constructors
@@ -988,14 +995,19 @@ parseTypeMismatch' conName tName expected actual =
 
 -- | Boilerplate for top level splices.
 --
--- The given 'Name' must be from a type constructor. Furthermore, the
--- type constructor must be either a data type or a newtype. Any other
--- value will result in an exception.
+-- The given 'Name' must meet one of two criteria:
+--
+-- 1. It must be the name of a type constructor of a plain data type or newtype.
+-- 2. It must be the name of a data family instance or newtype instance constructor.
+
+-- Any other value will result in an exception.
 withType :: Name
-         -> ([TyVarBndr] -> [Con] -> Q a)
+         -> (Name -> [TyVarBndr] -> [Con] -> Maybe [Type] -> Q a)
          -- ^ Function that generates the actual code. Will be applied
-         -- to the type variable binders and constructors extracted
-         -- from the given 'Name'.
+         -- to the datatype/data family 'Name', type variable binders and
+         -- constructors extracted from the given 'Name'. If the 'Name' is
+         -- from a data family instance constructor, it will also have its
+         -- instantiated types; otherwise, it will be 'Nothing'.
          -> Q a
          -- ^ Resulting value in the 'Q'uasi monad.
 withType name f = do
@@ -1003,11 +1015,125 @@ withType name f = do
     case info of
       TyConI dec ->
         case dec of
-          DataD    _ _ tvbs cons _ -> f tvbs cons
-          NewtypeD _ _ tvbs con  _ -> f tvbs [con]
-          other -> error $ "Data.Aeson.TH.withType: Unsupported type: "
-                          ++ show other
-      _ -> error "Data.Aeson.TH.withType: I need the name of a type."
+          DataD    _ _ tvbs cons _ -> f name tvbs cons Nothing
+          NewtypeD _ _ tvbs con  _ -> f name tvbs [con] Nothing
+          other -> error $ ns ++ "Unsupported type: " ++ show other
+      DataConI _ _ parentName _ -> do
+        parentInfo <- reify parentName
+        case parentInfo of
+          FamilyI (FamilyD DataFam _ tvbs _) decs ->
+            let instDec = flip find decs $ \dec -> case dec of
+                  DataInstD    _ _ _ cons _ -> any ((name ==) . getConName) cons
+                  NewtypeInstD _ _ _ con  _ -> name == getConName con
+                  _ -> error $ ns ++ "Must be a data or newtype instance."
+             in case instDec of
+                  Just (DataInstD    _ _ instTys cons _)
+                    -> f parentName tvbs cons $ Just instTys
+                  Just (NewtypeInstD _ _ instTys con  _)
+                    -> f parentName tvbs [con] $ Just instTys
+                  _ -> error $ ns ++
+                    "Could not find data or newtype instance constructor."
+          _ -> error $ ns ++ "Data constructor " ++ show name ++
+            " is not from a data family instance constructor."
+      FamilyI (FamilyD DataFam _ _ _) _ -> error $ ns ++
+        "Cannot use a data family name. Use a data family instance constructor instead."
+      _ -> error $ ns ++ "I need the name of a plain data type constructor, "
+                      ++ "or a data family instance constructor."
+  where
+    ns :: String
+    ns = "Data.Aeson.TH.withType: "
+
+-- | Infer the context and instance head needed for a FromJSON or ToJSON instance.
+buildTypeInstance :: Name
+                  -- ^ The type constructor or data family name
+                  -> Name
+                  -- ^ The typeclass name ('ToJSON' or 'FromJSON')
+                  -> [TyVarBndr]
+                  -- ^ The type variables from the data type/data family declaration
+                  -> Maybe [Type]
+                  -- ^ 'Just' the types used to instantiate a data family instance,
+                  -- or 'Nothing' if it's a plain data type
+                  -> (Q Cxt, Q Type)
+                  -- ^ The resulting 'Cxt' and 'Type' to use in a class instance
+-- Plain data type/newtype case
+buildTypeInstance tyConName constraint tvbs Nothing =
+    (applyCon constraint typeNames, conT constraint `appT` instanceType)
+  where
+    typeNames :: [Name]
+    typeNames = map tvbName tvbs
+
+    instanceType :: Q Type
+    instanceType = applyTyCon tyConName $ map varT typeNames
+-- Data family instance case
+buildTypeInstance dataFamName constraint tvbs (Just instTysAndKinds) =
+    (applyCon constraint lhsTvbNames, conT constraint `appT` instanceType)
+  where
+    -- We need to make sure that type variables in the instance head which have
+    -- constraints aren't poly-kinded, e.g.,
+    --
+    -- @
+    -- instance ToJSON a => ToJSON (Foo (a :: k)) where
+    -- @
+    --
+    -- To do this, we remove every kind ascription (i.e., strip off every 'SigT').
+    instanceType :: Q Type
+    instanceType = applyTyCon dataFamName $ map (return . unSigT) rhsTypes
+
+    -- We need to mindful of an old GHC bug which causes kind variables appear in
+    -- @instTysAndKinds@ (as the name suggests) if (1) @PolyKinds@ is enabled, and
+    -- (2) either GHC 7.6 or 7.8 is being used (for more info, see
+    -- https://ghc.haskell.org/trac/ghc/ticket/9692).
+    --
+    -- Since Template Haskell doesn't seem to have a mechanism for detecting which
+    -- language extensions are enabled, we do the next-best thing by counting
+    -- the number of distinct kind variables in the data family declaration, and
+    -- then dropping that number of entries from @instTysAndKinds@
+    instTypes :: [Type]
+    instTypes =
+#if __GLASGOW_HASKELL__ >= 710 || !(MIN_VERSION_template_haskell(2,8,0))
+        instTysAndKinds
+#else
+        drop (Set.size . Set.unions $ map (distinctKindVars . tvbKind) tvbs)
+             instTysAndKinds
+#endif
+
+    lhsTvbNames :: [Name]
+    lhsTvbNames = map (tvbName . uncurry replaceTyVarName)
+                . filter (isTyVar . snd)
+                $ zip tvbs rhsTypes
+
+    -- In GHC 7.8, only the @Type@s up to the rightmost non-eta-reduced type variable
+    -- in @instTypes@ are provided (as a result of this bug:
+    -- https://ghc.haskell.org/trac/ghc/ticket/9692). To work around this, we borrow
+    -- some type variables from the data family instance declaration.
+    rhsTypes :: [Type]
+    rhsTypes =
+#if __GLASGOW_HASKELL__ >= 708 && __GLASGOW_HASKELL__ < 710
+            instTypes ++ map tvbToType
+                             (drop (length instTypes)
+                                   tvbs)
+#else
+            instTypes
+#endif
+
+#if MIN_VERSION_template_haskell(2,8,0) && __GLASGOW_HASKELL__ < 710
+distinctKindVars :: Kind -> Set.Set Name
+distinctKindVars (AppT k1 k2) = distinctKindVars k1 `Set.union` distinctKindVars k2
+distinctKindVars (SigT k _)   = distinctKindVars k
+distinctKindVars (VarT k)     = Set.singleton k
+distinctKindVars _            = Set.empty
+
+-- | Extracts the kind from a type variable binder.
+tvbKind :: TyVarBndr -> Kind
+tvbKind (PlainTV  _  ) = starK
+tvbKind (KindedTV _ k) = k
+#endif
+
+#if __GLASGOW_HASKELL__ >= 708 && __GLASGOW_HASKELL__ < 710
+tvbToType :: TyVarBndr -> Type
+tvbToType (PlainTV n)    = VarT n
+tvbToType (KindedTV n k) = SigT (VarT n) k
+#endif
 
 -- | Extracts the name from a constructor.
 getConName :: Con -> Name
@@ -1020,6 +1146,28 @@ getConName (ForallC _ _ con) = getConName con
 tvbName :: TyVarBndr -> Name
 tvbName (PlainTV  name  ) = name
 tvbName (KindedTV name _) = name
+
+-- | Replace the Name of a TyVarBndr with one from a Type (if the Type has a Name).
+replaceTyVarName :: TyVarBndr -> Type -> TyVarBndr
+replaceTyVarName tvb            (SigT t _) = replaceTyVarName tvb t
+replaceTyVarName (PlainTV  _)   (VarT n)   = PlainTV  n
+replaceTyVarName (KindedTV _ k) (VarT n)   = KindedTV n k
+replaceTyVarName tvb            _          = tvb
+
+-- | Fully applies a type constructor to its type variables.
+applyTyCon :: Name -> [Q Type] -> Q Type
+applyTyCon = foldl' appT . conT
+
+-- | Is the given type a variable?
+isTyVar :: Type -> Bool
+isTyVar (VarT _)   = True
+isTyVar (SigT t _) = isTyVar t
+isTyVar _          = False
+
+-- | Peel off a kind signature from a Type (if it has one).
+unSigT :: Type -> Type
+unSigT (SigT t _) = t
+unSigT t          = t
 
 -- | Makes a string literal expression from a constructor's name.
 conNameExp :: Options -> Con -> Q Exp

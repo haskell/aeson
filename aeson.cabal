@@ -95,7 +95,7 @@ library
     mtl,
     scientific >= 0.3.1 && < 0.4,
     syb,
-    template-haskell >= 2.4,
+    template-haskell >= 2.7,
     text >= 1.1.1.0,
     transformers,
     unordered-containers >= 0.2.5.0,
@@ -117,6 +117,8 @@ test-suite tests
   hs-source-dirs: tests
   main-is:        Tests.hs
   other-modules:
+    DataFamilies.Encoders
+    DataFamilies.Types
     Encoders
     Functions
     Instances

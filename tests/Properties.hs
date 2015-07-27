@@ -1,6 +1,6 @@
 {-# LANGUAGE OverloadedStrings, RecordWildCards, ScopedTypeVariables #-}
 
-module Properties (tests) where
+module Properties where
 
 import Data.Aeson (eitherDecode)
 import Data.Aeson.Encode (encode, encodeToBuilder)
