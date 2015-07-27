@@ -49,6 +49,20 @@ d = Record { testOne = 3.14159
 >>> fromJSON (toJSON d) == Success d
 > True
 
+This also works for data family instances, but instead of passing in the data
+family name (with double quotes), we pass in a data family instance
+constructor (with a single quote):
+
+@
+data family DF a
+data instance DF Int = DF1 Int
+                     | DF2 Int Int
+                     deriving Eq
+
+$('deriveJSON' 'defaultOptions' 'DF1)
+-- Alternatively, one could pass 'DF2 instead
+@
+
 Please note that you can derive instances for tuples using the following syntax:
 
 @
@@ -125,7 +139,7 @@ import qualified Data.Vector.Mutable as VM ( unsafeNew, unsafeWrite )
 --------------------------------------------------------------------------------
 
 -- | Generates both 'ToJSON' and 'FromJSON' instance declarations for the given
--- data type.
+-- data type or data family instance constructor.
 --
 -- This is a convienience function which is equivalent to calling both
 -- 'deriveToJSON' and 'deriveFromJSON'.
@@ -154,7 +168,8 @@ instance (ToJSON a) ⇒ ToJSON Foo where ...
 The above (ToJSON a) constraint is not necessary and perhaps undesirable.
 -}
 
--- | Generates a 'ToJSON' instance declaration for the given data type.
+-- | Generates a 'ToJSON' instance declaration for the given data type or
+-- data family instance constructor.
 deriveToJSON :: Options
              -- ^ Encoding options.
              -> Name
@@ -183,15 +198,15 @@ deriveToJSON opts name =
         (instanceCxt, instanceType) =
             buildTypeInstance name' ''ToJSON tvbs mbTys
 
--- | Generates a lambda expression which encodes the given data type as a
--- 'Value'.
+-- | Generates a lambda expression which encodes the given data type or
+-- data family instance constructor as a 'Value'.
 mkToJSON :: Options -- ^ Encoding options.
          -> Name -- ^ Name of the type to encode.
          -> Q Exp
 mkToJSON opts name = withType name (\_ _ cons _ -> consToValue opts cons)
 
--- | Generates a lambda expression which encodes the given data type
--- as a JSON string.
+-- | Generates a lambda expression which encodes the given data type or
+-- data family instance constructor as a JSON string.
 mkToEncoding :: Options -- ^ Encoding options.
              -> Name -- ^ Name of the type to encode.
              -> Q Exp
@@ -537,7 +552,8 @@ argsToEncoding opts multiCons (ForallC _ _ con) =
 -- FromJSON
 --------------------------------------------------------------------------------
 
--- | Generates a 'FromJSON' instance declaration for the given data type.
+-- | Generates a 'FromJSON' instance declaration for the given data type or
+-- data family instance constructor.
 deriveFromJSON :: Options
                -- ^ Encoding options.
                -> Name
@@ -562,7 +578,7 @@ deriveFromJSON opts name =
             buildTypeInstance name' ''FromJSON tvbs mbTys
 
 -- | Generates a lambda expression which parses the JSON encoding of the given
--- data type.
+-- data type or data family instance constructor.
 mkParseJSON :: Options -- ^ Encoding options.
             -> Name -- ^ Name of the encoded type.
             -> Q Exp
