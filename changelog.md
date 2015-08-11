@@ -55,6 +55,9 @@ into upgrade problems, please file an issue with details.
   complete JSON path from the root of the object to the offending
   element.  This greatly eases debugging.
 
+* It is now possible to use Template Haskell to generate `FromJSON`
+  and `ToJSON` instances for types in data families.
+
 * If you use Template Haskell or generics, and used to use the
   `camelTo` function to rename fields, the new `camelTo2` function is
   smarter.  For example, `camelTo` will rename `CamelAPICase` to
