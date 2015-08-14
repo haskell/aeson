@@ -72,7 +72,7 @@ import Data.Monoid (Dual(..), First(..), Last(..))
 import Data.Ratio (Ratio, (%), numerator, denominator)
 import Data.Scientific (Scientific)
 import Data.Text (Text, pack, unpack)
-import Data.Time (Day, LocalTime, UTCTime, ZonedTime)
+import Data.Time (Day, LocalTime, NominalDiffTime, UTCTime, ZonedTime)
 import Data.Time.Format (FormatTime, formatTime, parseTime)
 import Data.Traversable as Tr (sequence, traverse)
 import Data.Vector (Vector)
@@ -748,6 +748,21 @@ stringEncoding = String . T.decodeLatin1 . L.toStrict . encode
 
 instance FromJSON UTCTime where
     parseJSON = withText "UTCTime" (Time.run Time.utcTime)
+
+instance ToJSON NominalDiffTime where
+    toJSON = Number . realToFrac
+    {-# INLINE toJSON #-}
+
+    toEncoding = Encoding . E.number . realToFrac
+    {-# INLINE toEncoding #-}
+
+-- | /WARNING:/ Only parse lengths of time from trusted input
+-- since an attacker could easily fill up the memory of the target
+-- system by specifying a scientific number with a big exponent like
+-- @1e1000000000@.
+instance FromJSON NominalDiffTime where
+    parseJSON = withScientific "NominalDiffTime" $ pure . realToFrac
+    {-# INLINE parseJSON #-}
 
 parseJSONElemAtIndex :: FromJSON a => Int -> Vector Value -> Parser a
 parseJSONElemAtIndex idx ary = parseJSON (V.unsafeIndex ary idx) <?> Index idx

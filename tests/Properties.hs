@@ -9,7 +9,7 @@ import Data.Aeson.Parser (value)
 import Data.Aeson.Types
 import Data.ByteString.Builder (toLazyByteString)
 import Data.Int (Int8)
-import Data.Time (Day, LocalTime, UTCTime, ZonedTime)
+import Data.Time (Day, LocalTime, NominalDiffTime, UTCTime, ZonedTime)
 import Encoders
 import Instances ()
 import Test.Framework (Test, testGroup)
@@ -124,6 +124,7 @@ tests = testGroup "properties" [
     , testProperty "LocalTime" $ roundTripEq (undefined :: LocalTime)
     , testProperty "UTCTime" $ roundTripEq (undefined :: UTCTime)
     , testProperty "ZonedTime" $ roundTripEq (undefined :: ZonedTime)
+    , testProperty "NominalDiffTime" $ roundTripEq (undefined :: NominalDiffTime)
     , testGroup "ghcGenerics" [
         testProperty "OneConstructor" $ roundTripEq OneConstructor
       , testProperty "Product2" $ roundTripEq (undefined :: Product2 Int Bool)
