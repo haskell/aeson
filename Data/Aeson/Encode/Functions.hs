@@ -1,3 +1,5 @@
+{-# LANGUAGE CPP #-}
+
 module Data.Aeson.Encode.Functions
     (
       brackets
@@ -14,10 +16,14 @@ import Data.Aeson.Types.Class
 import Data.Aeson.Types.Internal
 import Data.ByteString.Builder (Builder, char7)
 import Data.ByteString.Builder.Prim (primBounded)
-import Data.Foldable (Foldable, foldMap)
-import Data.Monoid ((<>), mempty)
+import Data.Monoid ((<>))
 import qualified Data.ByteString.Builder as B
 import qualified Data.ByteString.Lazy as L
+
+#if !MIN_VERSION_base(4,8,0)
+import Data.Foldable (Foldable, foldMap)
+import Data.Monoid (mempty)
+#endif
 
 builder :: ToJSON a => a -> Builder
 builder = fromEncoding . toEncoding

@@ -55,28 +55,27 @@ module Data.Aeson.Types.Instances
     , typeMismatch
     ) where
 
-import Control.Applicative ((<$>), (<*>), pure)
 import Data.Aeson.Encode.Functions (brackets, builder, encode, foldable, list)
 import Data.Aeson.Functions (hashMapKey, mapHashKeyVal, mapKey, mapKeyVal)
 import Data.Aeson.Types.Class
 import Data.Aeson.Types.Internal
 import Data.Attoparsec.Number (Number(..))
 import Data.Fixed (Fixed, HasResolution)
-import Data.Foldable (Foldable, toList)
+import Data.Foldable (toList)
 import Data.Functor.Identity (Identity(..))
 import Data.Hashable (Hashable(..))
 import Data.Int (Int8, Int16, Int32, Int64)
 import Data.Maybe (fromMaybe)
-import Data.Monoid ((<>), mempty)
+import Data.Monoid ((<>))
 import Data.Monoid (Dual(..), First(..), Last(..))
 import Data.Ratio (Ratio, (%), numerator, denominator)
 import Data.Scientific (Scientific)
 import Data.Text (Text, pack, unpack)
 import Data.Time (Day, LocalTime, NominalDiffTime, UTCTime, ZonedTime)
 import Data.Time.Format (FormatTime, formatTime, parseTime)
-import Data.Traversable as Tr (sequence, traverse)
+import Data.Traversable as Tr (sequence)
 import Data.Vector (Vector)
-import Data.Word (Word, Word8, Word16, Word32, Word64)
+import Data.Word (Word8, Word16, Word32, Word64)
 import Foreign.Storable (Storable)
 import Prelude hiding (foldr)
 import qualified Data.Aeson.Encode.Builder as E
@@ -101,6 +100,14 @@ import qualified Data.Vector.Mutable as VM (unsafeNew, unsafeWrite)
 import qualified Data.Vector.Primitive as VP
 import qualified Data.Vector.Storable as VS
 import qualified Data.Vector.Unboxed as VU
+
+#if !MIN_VERSION_base(4,8,0)
+import Control.Applicative ((<$>), (<*>), pure)
+import Data.Foldable (Foldable)
+import Data.Monoid (mempty)
+import Data.Traversable as Tr (traverse)
+import Data.Word (Word)
+#endif
 
 #if MIN_VERSION_time(1,5,0)
 import Data.Time.Format (defaultTimeLocale)

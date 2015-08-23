@@ -1,4 +1,4 @@
-{-# LANGUAGE DefaultSignatures, EmptyDataDecls, FlexibleInstances,
+{-# LANGUAGE CPP, DefaultSignatures, EmptyDataDecls, FlexibleInstances,
     FunctionalDependencies, KindSignatures, OverlappingInstances,
     ScopedTypeVariables, TypeOperators, UndecidableInstances,
     ViewPatterns, NamedFieldPuns, FlexibleContexts, PatternGuards,
@@ -19,7 +19,7 @@
 
 module Data.Aeson.Types.Generic ( ) where
 
-import Control.Applicative ((<*>), (<$>), (<|>), pure)
+import Control.Applicative ((<|>))
 import Control.Monad ((<=<), join)
 import Control.Monad.ST (ST)
 import Data.Aeson.Encode.Builder (emptyArray_)
@@ -30,12 +30,17 @@ import Data.Bits (unsafeShiftR)
 import Data.ByteString.Builder as B
 import Data.DList (DList, toList, empty)
 import Data.Maybe (fromMaybe)
-import Data.Monoid ((<>), mempty)
+import Data.Monoid ((<>))
 import Data.Text (Text, pack, unpack)
 import GHC.Generics
 import qualified Data.HashMap.Strict as H
 import qualified Data.Vector as V
 import qualified Data.Vector.Mutable as VM
+
+#if !MIN_VERSION_base(4,8,0)
+import Control.Applicative ((<*>), (<$>), pure)
+import Data.Monoid (mempty)
+#endif
 
 --------------------------------------------------------------------------------
 -- Generic toJSON

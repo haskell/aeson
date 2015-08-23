@@ -1,4 +1,4 @@
-{-# LANGUAGE BangPatterns, ScopedTypeVariables #-}
+{-# LANGUAGE BangPatterns, CPP, ScopedTypeVariables #-}
 
 -- |
 -- Module:      Data.Aeson.Parser.Time
@@ -21,7 +21,6 @@ module Data.Aeson.Parser.Time
     , zonedTime
     ) where
 
-import Control.Applicative ((<$>), (<*>), (<*), (*>))
 import Control.Monad (when, void)
 import Data.Aeson.Internal.Time (toPico)
 import Data.Attoparsec.Text as A
@@ -36,6 +35,10 @@ import Data.Time.Clock (UTCTime(..))
 import qualified Data.Aeson.Types.Internal as Aeson
 import qualified Data.Text as T
 import qualified Data.Time.LocalTime as Local
+
+#if !MIN_VERSION_base(4,8,0)
+import Control.Applicative ((<$>), (<*>), (<*), (*>))
+#endif
 
 -- | Run an attoparsec parser as an aeson parser.
 run :: Parser a -> Text -> Aeson.Parser a

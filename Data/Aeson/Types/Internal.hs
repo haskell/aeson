@@ -1,4 +1,4 @@
-{-# LANGUAGE DeriveDataTypeable, GeneralizedNewtypeDeriving, Rank2Types,
+{-# LANGUAGE CPP, DeriveDataTypeable, GeneralizedNewtypeDeriving, Rank2Types,
     RecordWildCards #-}
 
 -- |
@@ -59,20 +59,24 @@ import Control.Monad (MonadPlus(..), ap)
 import Data.ByteString.Builder (Builder, char7, toLazyByteString)
 import Data.Char (isLower, isUpper, toLower)
 import Data.Data (Data)
-import Data.Foldable (Foldable(..))
 import Data.HashMap.Strict (HashMap)
 import Data.Hashable (Hashable(..))
-import Data.Monoid (Monoid(..), (<>))
+import Data.Monoid ((<>))
 import Data.Scientific (Scientific)
 import Data.String (IsString(..))
 import Data.Text (Text, pack, unpack)
 import Data.Time (UTCTime)
 import Data.Time.Format (FormatTime)
-import Data.Traversable (Traversable(..))
 import Data.Typeable (Typeable)
 import Data.Vector (Vector)
 import qualified Data.HashMap.Strict as H
 import qualified Data.Vector as V
+
+#if !MIN_VERSION_base(4,8,0)
+import Data.Foldable (Foldable(..))
+import Data.Monoid (Monoid(..))
+import Data.Traversable (Traversable(..))
+#endif
 
 -- | Elements of a JSON path used to describe the location of an
 -- error.

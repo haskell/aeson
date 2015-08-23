@@ -174,10 +174,10 @@ day dd = encodeYear y <>
   where (y,m,d)     = toGregorian dd
         !(T mh ml)  = twoDigits m
         !(T dh dl)  = twoDigits d
-        encodeYear y
-            | y >= 1000 = B.integerDec y
-            | y > 0 =
-                let (ab,c) = fromIntegral y `quotRem` 10
+        encodeYear yr
+            | yr >= 1000 = B.integerDec yr
+            | yr > 0 =
+                let (ab,c) = fromIntegral yr `quotRem` 10
                     (a,b)  = ab `quotRem` 10
                 in BP.primBounded (ascii4 ('0',(digit a,(digit b,digit c)))) ()
             | otherwise =
