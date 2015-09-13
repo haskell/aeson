@@ -1035,10 +1035,18 @@ withType name f = do
           DataD    _ _ tvbs cons _ -> f name tvbs cons Nothing
           NewtypeD _ _ tvbs con  _ -> f name tvbs [con] Nothing
           other -> error $ ns ++ "Unsupported type: " ++ show other
+#if MIN_VERSION_template_haskell(2,11,0)
+      DataConI _ _ parentName   -> do
+#else
       DataConI _ _ parentName _ -> do
+#endif
         parentInfo <- reify parentName
         case parentInfo of
+#if MIN_VERSION_template_haskell(2,11,0)
+          FamilyI (DataFamilyD _ tvbs _) decs ->
+#else
           FamilyI (FamilyD DataFam _ tvbs _) decs ->
+#endif
             let instDec = flip find decs $ \dec -> case dec of
                   DataInstD    _ _ _ cons _ -> any ((name ==) . getConName) cons
                   NewtypeInstD _ _ _ con  _ -> name == getConName con
@@ -1052,8 +1060,13 @@ withType name f = do
                     "Could not find data or newtype instance constructor."
           _ -> error $ ns ++ "Data constructor " ++ show name ++
             " is not from a data family instance constructor."
-      FamilyI (FamilyD DataFam _ _ _) _ -> error $ ns ++
-        "Cannot use a data family name. Use a data family instance constructor instead."
+#if MIN_VERSION_template_haskell(2,11,0)
+      FamilyI DataFamilyD{} _ ->
+#else
+      FamilyI (FamilyD DataFam _ _ _) _ ->
+#endif
+        error $ ns ++
+          "Cannot use a data family name. Use a data family instance constructor instead."
       _ -> error $ ns ++ "I need the name of a plain data type constructor, "
                       ++ "or a data family instance constructor."
   where
