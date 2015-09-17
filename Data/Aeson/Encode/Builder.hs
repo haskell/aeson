@@ -189,28 +189,43 @@ timeOfDay t = timeOfDay64 (toTimeOfDay64 t)
 {-# INLINE timeOfDay #-}
 
 timeOfDay64 :: TimeOfDay64 -> Builder
-timeOfDay64 (TOD h m s0)
-  | frac < mu = hhmmss -- omit trailing milliseconds if zero
-  | otherwise = hhmmss <> BP.primBounded (ascii4 ('.',(a,(b,c)))) ()
+timeOfDay64 (TOD h m s)
+  | frac == 0 = hhmmss -- omit subseconds if 0
+  | otherwise = hhmmss <> BP.primBounded showFrac frac
   where
     hhmmss  = BP.primBounded (ascii8 (hh,(hl,(':',(mh,(ml,(':',(sh,sl)))))))) ()
     !(T hh hl)  = twoDigits h
     !(T mh ml)  = twoDigits m
     !(T sh sl)  = twoDigits (fromIntegral real)
     (real,frac) = s `quotRem` pico
-    -- Round fractional milliseconds to render more accurately.  We
-    -- give up when there are leap seconds in play or there might be a
-    -- need for carry propagation.
-    s | s0 >= 59999000000000 = s0
-      | s0 `rem` mu < nu     = s0
-      | otherwise            = s0 + mu
-    tenths     = fromIntegral (frac `quot` mu)
-    pico       = 1000000000000 -- 1 second in picoseconds
-    mu         =    1000000000 -- 100 microseconds
-    nu         =     500000000
-    !(T a b)   = twoDigits ab
-    (ab,cc)    = tenths `quotRem` 10
-    !c         = digit cc
+
+    showFrac = (\x -> ('.', x)) >$< (BP.liftFixedToBounded BP.char7 >*< trunc12)
+
+    trunc12 =
+        (`quotRem` micro) >$<
+            BP.condB (\(_,y) -> y == 0) (fst >$< trunc6) (digits6 >*< trunc6)
+
+    digits6 = ((`quotRem` milli) . fromIntegral) >$< (digits3 >*< digits3)
+
+    trunc6 =
+        ((`quotRem` milli) . fromIntegral) >$<
+            BP.condB (\(_,y) -> y == 0) (fst >$< trunc3) (digits3 >*< trunc3)
+
+    digits3 = ((`quotRem` 10) >$< (digits2 >*< digits1))
+
+    digits2 = (`quotRem` 10) >$< (digits1 >*< digits1)
+
+    digits1 = BP.liftFixedToBounded (digit >$< BP.char7)
+
+    trunc3 = BP.condB (== 0) BP.emptyB $
+               ((`quotRem` 100) >$< (digits1 >*< trunc2))
+    trunc2 = BP.condB (== 0) BP.emptyB $
+               ((`quotRem` 10)  >$< (digits1 >*< trunc1))
+    trunc1 = BP.condB (== 0) BP.emptyB digits1
+
+    pico       = 1000000000000 -- number of picoseconds  in 1 second
+    micro      =       1000000 -- number of microseconds in 1 second
+    milli      =          1000 -- number of milliseconds in 1 second
 {-# INLINE timeOfDay64 #-}
 
 timeZone :: TimeZone -> Builder
