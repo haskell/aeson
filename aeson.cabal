@@ -90,6 +90,7 @@ library
     containers,
     deepseq,
     dlist >= 0.2,
+    exceptions >= 0.8,
     ghc-prim >= 0.2,
     hashable >= 1.1.2.0,
     mtl,

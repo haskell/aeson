@@ -11,6 +11,7 @@
 --
 -- (A note on naming: in Greek mythology, Aeson was the father of Jason.)
 
+{-# LANGUAGE DeriveDataTypeable #-}
 module Data.Aeson
     (
     -- * How to use this library
@@ -43,6 +44,12 @@ module Data.Aeson
     , decodeStrict'
     , eitherDecodeStrict
     , eitherDecodeStrict'
+    -- ** 'MonadThrow' variants
+    , throwDecode
+    , throwDecode'
+    , throwDecodeStrict
+    , throwDecodeStrict'
+    , AesonException(..)
     -- * Core JSON types
     , Value(..)
     , Encoding
@@ -85,6 +92,7 @@ module Data.Aeson
     , json'
     ) where
 
+import Control.Monad.Catch (Exception, MonadThrow(..))
 import Data.Aeson.Encode (encode)
 import Data.Aeson.Parser.Internal (decodeWith, decodeStrictWith,
                                    eitherDecodeWith, eitherDecodeStrictWith,
@@ -92,6 +100,7 @@ import Data.Aeson.Parser.Internal (decodeWith, decodeStrictWith,
 import Data.Aeson.Types
 import Data.Aeson.Types.Instances (ifromJSON)
 import Data.Aeson.Types.Internal (JSONPath, formatError)
+import Data.Typeable (Typeable)
 import qualified Data.ByteString as B
 import qualified Data.ByteString.Lazy as L
 
@@ -172,6 +181,32 @@ eitherDecodeStrict' :: (FromJSON a) => B.ByteString -> Either String a
 eitherDecodeStrict' =
   eitherFormatError . eitherDecodeStrictWith jsonEOF' ifromJSON
 {-# INLINE eitherDecodeStrict' #-}
+
+-- | Exception thrown by 'throwDecode' - family of functions.
+newtype AesonException = AesonException String
+  deriving (Show, Typeable)
+
+instance Exception AesonException
+
+eitherAesonExc :: (MonadThrow m) => Either String a -> m a
+eitherAesonExc (Left err) = throwM (AesonException err)
+eitherAesonExc (Right x)  = return x
+
+-- | Like 'decode' but in arbitrary 'MonadThrow'.
+throwDecode :: (FromJSON a, MonadThrow m) => L.ByteString -> m a
+throwDecode = eitherAesonExc . eitherDecode
+
+-- | Like 'decode'' but in arbitrary 'MonadThrow'.
+throwDecode' :: (FromJSON a, MonadThrow m) => L.ByteString -> m a
+throwDecode' = eitherAesonExc . eitherDecode'
+
+-- | Like 'decodeStrict' but in arbitrary 'MonadThrow'.
+throwDecodeStrict :: (FromJSON a, MonadThrow m) => B.ByteString -> m a
+throwDecodeStrict = eitherAesonExc . eitherDecodeStrict
+
+-- | Like 'decodeStrict'' but in arbitrary 'MonadThrow'.
+throwDecodeStrict' :: (FromJSON a, MonadThrow m) => B.ByteString -> m a
+throwDecodeStrict' = eitherAesonExc . eitherDecodeStrict'
 
 -- $use
 --
