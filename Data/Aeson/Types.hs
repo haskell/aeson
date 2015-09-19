@@ -55,6 +55,7 @@ module Data.Aeson.Types
     , foldable
     , (.:)
     , (.:?)
+    , (.:!)
     , (.!=)
     , object
 

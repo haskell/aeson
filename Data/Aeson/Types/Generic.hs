@@ -22,7 +22,7 @@
 module Data.Aeson.Types.Generic ( ) where
 
 import Control.Applicative ((<|>))
-import Control.Monad ((<=<), join)
+import Control.Monad ((<=<))
 import Control.Monad.ST (ST)
 import Data.Aeson.Encode.Builder (emptyArray_)
 import Data.Aeson.Encode.Functions (builder)
@@ -665,8 +665,8 @@ instance (Selector s, GFromJSON a) => FromRecord (S1 s a) where
 
 instance OVERLAPPING_ (Selector s, FromJSON a) =>
   FromRecord (S1 s (K1 i (Maybe a))) where
-    parseRecord _ (Just lab) obj = (M1 . K1) . join <$> obj .:? lab
-    parseRecord opts Nothing obj = (M1 . K1) . join <$> obj .:? pack label
+    parseRecord _ (Just lab) obj = (M1 . K1) <$> obj .:? lab
+    parseRecord opts Nothing obj = (M1 . K1) <$> obj .:? pack label
         where
           label = fieldLabelModifier opts $
                     selName (undefined :: t s (K1 i (Maybe a)) p)

@@ -101,7 +101,7 @@ import Data.Aeson.Types ( Value(..), Parser
                         , defaultTaggedObject
                         )
 import Data.Aeson.Types.Internal (Encoding(..))
-import Control.Monad       ( join, liftM2, return, mapM, fail )
+import Control.Monad       ( liftM2, return, mapM, fail )
 import Data.Bool           ( Bool(False, True), otherwise, (&&), not )
 import Data.Either         ( Either(Left, Right) )
 import Data.Eq             ( (==) )
@@ -960,7 +960,7 @@ instance OVERLAPPABLE_ (FromJSON a) => LookupField a where
           Just v  -> parseJSON v
 
 instance (FromJSON a) => LookupField (Maybe a) where
-    lookupField _ _ obj key = join <$> obj .:? key
+    lookupField _ _ = (.:?)
 
 unknownFieldFail :: String -> String -> String -> Parser fail
 unknownFieldFail tName rec key =
