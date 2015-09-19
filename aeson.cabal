@@ -117,6 +117,8 @@ test-suite tests
   hs-source-dirs: tests
   main-is:        Tests.hs
   other-modules:
+    DataFamilies.Properties
+    DataFamilies.Instances
     DataFamilies.Encoders
     DataFamilies.Types
     Encoders
