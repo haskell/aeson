@@ -4,6 +4,7 @@ cabal.sandbox.config
 
 *.o
 *.hi
+*.nix
 
 benchmarks/AesonEncode
 
