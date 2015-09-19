@@ -5,10 +5,10 @@
 module UnitTests (ioTests, tests) where
 
 import Control.Monad (forM)
-import Data.Aeson (decode, eitherDecode, encode, genericToJSON, genericToEncoding)
-import Data.Aeson.TH ( deriveJSON )
+import Data.Aeson (decode, eitherDecode, encode, genericToJSON, genericToEncoding, FromJSON(..), withObject, (.:), (.:?), (.:!))
 import Data.Aeson.Encode (encodeToTextBuilder)
-import Data.Aeson.Types (ToJSON(..), FromJSON, Value, camelTo, camelTo2, defaultOptions, omitNothingFields)
+import Data.Aeson.TH (deriveJSON)
+import Data.Aeson.Types (ToJSON(..), Value, camelTo, camelTo2, defaultOptions, omitNothingFields)
 import Data.Char (toUpper)
 import Data.Time (UTCTime)
 import Data.Time.Format (parseTime)
@@ -49,6 +49,7 @@ tests = testGroup "unit" [
       testCase "good" $ utcTimeGood
     , testCase "bad"  $ utcTimeBad
     ]
+  , testGroup ".:, .:?, .:!" $ fmap (testCase "-") dotColonMark
   ]
 
 roundTripCamel :: String -> Assertion
@@ -147,6 +148,36 @@ utcTimeBad = do
     verifyFailParse (s :: LT.Text) =
       let (dec :: Maybe UTCTime) = decode . LT.encodeUtf8 $ (LT.concat ["\"", s, "\""]) in
       assertEqual "verify failure" Nothing dec
+
+------------------------------------------------------------------------------
+-- Comparison (.:?) and (.:!)
+------------------------------------------------------------------------------
+
+newtype T1 = T1 (Maybe Int) deriving (Eq, Show)
+newtype T2 = T2 (Maybe Int) deriving (Eq, Show)
+newtype T3 = T3 (Maybe Int) deriving (Eq, Show)
+
+instance FromJSON T1 where parseJSON = fmap T1 . withObject "T1" (.: "value")
+instance FromJSON T2 where parseJSON = fmap T2 . withObject "T2" (.:? "value")
+instance FromJSON T3 where parseJSON = fmap T3 . withObject "T3" (.:! "value")
+
+dotColonMark :: [Assertion]
+dotColonMark = [
+    assertEqual ".:  not-present" Nothing               (decode ex1 :: Maybe T1)
+  , assertEqual ".:  42"          (Just (T1 (Just 42))) (decode ex2 :: Maybe T1)
+  , assertEqual ".:  null"        (Just (T1 Nothing))   (decode ex3 :: Maybe T1)
+
+  , assertEqual ".:? not-present" (Just (T2 (Nothing))) (decode ex1 :: Maybe T2)
+  , assertEqual ".:? 42"          (Just (T2 (Just 42))) (decode ex2 :: Maybe T2)
+  , assertEqual ".:? null"        (Just (T2 Nothing))   (decode ex3 :: Maybe T2)
+
+  , assertEqual ".:! not-present" (Just (T3 (Nothing))) (decode ex1 :: Maybe T3)
+  , assertEqual ".:! 42"          (Just (T3 (Just 42))) (decode ex2 :: Maybe T3)
+  , assertEqual ".:! null"        Nothing               (decode ex3 :: Maybe T3)
+  ]
+  where ex1 = "{}"
+        ex2 = "{\"value\": 42 }"
+        ex3 = "{\"value\": null }"
 
 
 ------------------------------------------------------------------------------
