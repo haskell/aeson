@@ -135,7 +135,6 @@ genericParseJSON opts = fmap to . gParseJSON opts
 class ToJSON a where
     -- | Convert a Haskell value to a JSON-friendly intermediate type.
     toJSON     :: a -> Value
-    {-# MINIMAL toJSON #-}
 
     default toJSON :: (Generic a, GToJSON (Rep a)) => a -> Value
     toJSON = genericToJSON defaultOptions
