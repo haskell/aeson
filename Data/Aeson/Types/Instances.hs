@@ -713,14 +713,14 @@ instance FromJSON DotNetTime where
 
 instance ToJSON Day where
     toJSON       = stringEncoding
-    toEncoding z = Encoding (E.day z)
+    toEncoding z = Encoding (E.quote $ E.day z)
 
 instance FromJSON Day where
     parseJSON = withText "Day" (Time.run Time.day)
 
 instance ToJSON LocalTime where
     toJSON       = stringEncoding
-    toEncoding z = Encoding (E.localTime z)
+    toEncoding z = Encoding (E.quote $ E.localTime z)
 
 instance FromJSON LocalTime where
     parseJSON = withText "LocalTime" (Time.run Time.localTime)
@@ -728,7 +728,7 @@ instance FromJSON LocalTime where
 instance ToJSON ZonedTime where
     toJSON = stringEncoding
 
-    toEncoding z = Encoding (E.zonedTime z)
+    toEncoding z = Encoding (E.quote $ E.zonedTime z)
 
 formatMillis :: (FormatTime t) => t -> String
 formatMillis = take 3 . formatTime defaultTimeLocale "%q"
@@ -739,11 +739,11 @@ instance FromJSON ZonedTime where
 instance ToJSON UTCTime where
     toJSON = stringEncoding
 
-    toEncoding t = Encoding (E.utcTime t)
+    toEncoding t = Encoding (E.quote $ E.utcTime t)
 
 -- | Encode something to a JSON string.
 stringEncoding :: (ToJSON a) => a -> Value
-stringEncoding = String . T.decodeLatin1 . L.toStrict . encode
+stringEncoding = String . T.dropAround (== '"') . T.decodeLatin1 . L.toStrict . encode
 {-# INLINE stringEncoding #-}
 
 instance FromJSON UTCTime where

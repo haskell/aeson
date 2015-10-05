@@ -23,6 +23,7 @@ module Data.Aeson.Encode.Builder
     , text
     , string
     , unquoted
+    , quote
     , number
     , day
     , localTime
@@ -98,6 +99,10 @@ text t = B.char8 '"' <> unquoted t <> B.char8 '"'
 -- | Encode a JSON string, without enclosing quotes.
 unquoted :: T.Text -> Builder
 unquoted t = TE.encodeUtf8BuilderEscaped escapeAscii t
+
+-- | Add quotes surrounding a builder
+quote :: Builder -> Builder
+quote b = B.char8 '"' <> b <> B.char8 '"'
 
 -- | Encode a JSON string.
 string :: String -> Builder
