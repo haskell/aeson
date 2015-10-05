@@ -14,7 +14,7 @@ import Encoders
 import Instances ()
 import Test.Framework (Test, testGroup)
 import Test.Framework.Providers.QuickCheck2 (testProperty)
-import Test.QuickCheck (Arbitrary(..), Property, (===))
+import Test.QuickCheck (Arbitrary(..), Property, (===), (.&&.))
 import Types
 import qualified Data.Attoparsec.Lazy as L
 import qualified Data.ByteString.Lazy.Char8 as L
@@ -39,16 +39,23 @@ toParseJSON parsejson tojson x =
       IError path msg -> failure "parse" (formatError path msg) x
       ISuccess x'     -> x === x'
 
-roundTrip :: (FromJSON a, ToJSON a, Show a) =>
+roundTripEnc :: (FromJSON a, ToJSON a, Show a) =>
              (a -> a -> Property) -> a -> a -> Property
-roundTrip eq _ i =
-    case fmap ifromJSON . L.parse value . encode . toJSON $ i of
+roundTripEnc eq _ i =
+    case fmap ifromJSON . L.parse value . encode $ i of
       L.Done _ (ISuccess v)      -> v `eq` i
       L.Done _ (IError path err) -> failure "fromJSON" (formatError path err) i
       L.Fail _ _ err             -> failure "parse" err i
 
+roundTripNoEnc :: (FromJSON a, ToJSON a, Show a) =>
+             (a -> a -> Property) -> a -> a -> Property
+roundTripNoEnc eq _ i =
+    case ifromJSON . toJSON $ i of
+      (ISuccess v)      -> v `eq` i
+      (IError path err) -> failure "fromJSON" (formatError path err) i
+
 roundTripEq :: (Eq a, FromJSON a, ToJSON a, Show a) => a -> a -> Property
-roundTripEq x y = roundTrip (===) x y
+roundTripEq x y = roundTripEnc (===) x y .&&. roundTripNoEnc (===) x y
 
 toFromJSON :: (Arbitrary a, Eq a, FromJSON a, ToJSON a, Show a) => a -> Property
 toFromJSON x = case ifromJSON (toJSON x) of
