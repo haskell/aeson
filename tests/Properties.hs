@@ -9,7 +9,7 @@ import Data.Aeson.Parser (value)
 import Data.Aeson.Types
 import Data.ByteString.Builder (toLazyByteString)
 import Data.Int (Int8)
-import Data.Time (Day, LocalTime, NominalDiffTime, UTCTime, ZonedTime)
+import Data.Time (Day, LocalTime, NominalDiffTime, UTCTime, ZonedTime, TimeOfDay)
 import Encoders
 import Instances ()
 import Test.Framework (Test, testGroup)
@@ -129,6 +129,7 @@ tests = testGroup "properties" [
     , testProperty "Day" $ roundTripEq (undefined :: Day)
     , testProperty "DotNetTime" $ roundTripEq (undefined :: DotNetTime)
     , testProperty "LocalTime" $ roundTripEq (undefined :: LocalTime)
+    , testProperty "TimeOfDay" $ roundTripEq (undefined :: TimeOfDay)
     , testProperty "UTCTime" $ roundTripEq (undefined :: UTCTime)
     , testProperty "ZonedTime" $ roundTripEq (undefined :: ZonedTime)
     , testProperty "NominalDiffTime" $ roundTripEq (undefined :: NominalDiffTime)

@@ -6,15 +6,16 @@ module Instances where
 import Types
 import Data.Function (on)
 import Control.Monad
-import Test.QuickCheck (Arbitrary(..), Gen, choose, oneof, elements)
+import Test.QuickCheck (Arbitrary(..), Gen, choose, oneof, elements, Positive(..))
 import Data.Time.Clock (DiffTime, UTCTime(..), picosecondsToDiffTime)
 import Data.Fixed (Pico)
 import Data.Time (ZonedTime(..), LocalTime(..), TimeZone(..),
                   hoursToTimeZone, Day(..), TimeOfDay(..),
-                  NominalDiffTime)
+                  NominalDiffTime, makeTimeOfDayValid)
 import qualified Data.Text as T
 import qualified Data.Map as Map
 import Data.Text (Text)
+import Data.Maybe
 import Data.Aeson.Types
 import Control.Applicative
 import Functions
@@ -27,8 +28,15 @@ instance Arbitrary Text where
 instance (Ord k, Arbitrary k, Arbitrary v) => Arbitrary (Map.Map k v) where
     arbitrary = Map.fromList <$> arbitrary
 
+instance Arbitrary TimeOfDay where
+    arbitrary = do
+      Positive h <- arbitrary
+      Positive m <- arbitrary
+      Positive s <- arbitrary
+      return $ fromMaybe (TimeOfDay 0 0 0 ) (makeTimeOfDayValid h m s)
+
 instance Arbitrary LocalTime where
-    arbitrary = return $ LocalTime (ModifiedJulianDay 1) (TimeOfDay 1 2 3)
+    arbitrary = LocalTime <$> arbitrary <*> arbitrary
 
 instance Arbitrary TimeZone where
     arbitrary = do
