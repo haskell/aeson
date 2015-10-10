@@ -1,3 +1,11 @@
+# 0.10.0.1
+
+* Add quotes to surround time encodings.
+
+* Fix toEncoding method for Either
+
+* Fix #293: Bug in TH when omitNothingFields = True.
+
 # 0.10.0.0
 
 ## Performance improvements
