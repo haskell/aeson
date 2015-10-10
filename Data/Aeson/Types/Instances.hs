@@ -142,9 +142,9 @@ instance (ToJSON a, ToJSON b) => ToJSON (Either a b) where
     {-# INLINE toJSON #-}
 
     toEncoding (Left a) = Encoding $
-      B.shortByteString "{\"left\":" <> builder a <> B.char7 '}'
+      B.shortByteString "{\"Left\":" <> builder a <> B.char7 '}'
     toEncoding (Right a) = Encoding $
-      B.shortByteString "{\"right\":" <> builder a <> B.char7 '}'
+      B.shortByteString "{\"Right\":" <> builder a <> B.char7 '}'
     {-# INLINE toEncoding #-}
 
 instance (FromJSON a, FromJSON b) => FromJSON (Either a b) where
