@@ -505,11 +505,16 @@ argsToEncoding opts multiCons (RecC conName ts) = case (unwrapUnaryRecords opts,
         (maybes, rest) = partition isMaybe argCons
 
         maybeToPair (arg, (field, _, _)) =
-            infixApp (infixE (Just $ toFieldName field)
-                             [|(.=)|]
-                             Nothing)
-                     [|(<$>)|]
-                     (varE arg)
+            infixApp
+              (infixApp
+                (infixE
+                  (Just $ toFieldName field <^> [|E.char7 ':'|])
+                  [|(<>)|]
+                  Nothing)
+                [|(.)|]
+                [|E.builder|])
+              [|(<$>)|]
+              (varE arg)
 
         toPair (arg, (field, _, _)) =
           toFieldName field <:> [|E.builder|] `appE` varE arg

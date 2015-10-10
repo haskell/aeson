@@ -1,11 +1,12 @@
-{-# LANGUAGE CPP, DeriveGeneric, OverloadedStrings, ScopedTypeVariables #-}
+{-# LANGUAGE CPP, DeriveGeneric, OverloadedStrings, ScopedTypeVariables, TemplateHaskell #-}
 
 module UnitTests (ioTests, tests) where
 
 import Control.Monad (forM)
 import Data.Aeson (decode, eitherDecode, encode, genericToJSON, genericToEncoding)
+import Data.Aeson.TH ( deriveJSON )
 import Data.Aeson.Encode (encodeToTextBuilder)
-import Data.Aeson.Types (ToJSON(..), Value, camelTo, camelTo2, defaultOptions)
+import Data.Aeson.Types (ToJSON(..), Value, camelTo, camelTo2, defaultOptions, omitNothingFields)
 import Data.Char (toUpper)
 import Data.Time (UTCTime)
 import Data.Time.Format (parseTime)
@@ -184,3 +185,7 @@ encoderComparisonTests = do
     , "twitter100.json"
     , "twitter50.json"
     ]
+
+-- A regression test for: https://github.com/bos/aeson/issues/293
+data MyRecord = MyRecord {field1 :: Maybe Int, field2 :: Maybe Bool}
+deriveJSON defaultOptions{omitNothingFields=True} ''MyRecord
