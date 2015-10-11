@@ -1,5 +1,7 @@
 {-# LANGUAGE CPP, DeriveGeneric, OverloadedStrings, ScopedTypeVariables, TemplateHaskell #-}
 
+{-# OPTIONS_GHC -fno-warn-deprecations #-}
+
 module UnitTests (ioTests, tests) where
 
 import Control.Monad (forM)
@@ -59,7 +61,7 @@ camelFrom :: Char -> String -> String
 camelFrom c s = let (p:ps) = split c s
                 in concat $ p : map capitalize ps
   where
-    split c s = map L.unpack $ L.split c $ L.pack s
+    split c' s' = map L.unpack $ L.split c' $ L.pack s'
     capitalize t = toUpper (head t) : tail t
 
 data Wibble = Wibble {
