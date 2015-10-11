@@ -92,7 +92,6 @@ module Data.Aeson.TH
     ) where
 
 import Control.Applicative ( pure, (<$>), (<*>) )
-import Control.Monad       ( return, mapM, liftM2, fail )
 import Data.Aeson ( toJSON, Object, (.=), (.:), (.:?)
                   , ToJSON, toEncoding, toJSON
                   , FromJSON, parseJSON
@@ -104,7 +103,7 @@ import Data.Aeson.Types ( Value(..), Parser
                         , defaultTaggedObject
                         )
 import Data.Aeson.Types.Internal (Encoding(..))
-import Control.Monad       ( join )
+import Control.Monad       ( join, liftM2, return, mapM, fail )
 import Data.Bool           ( Bool(False, True), otherwise, (&&), not )
 import Data.Either         ( Either(Left, Right) )
 import Data.Eq             ( (==) )
@@ -138,9 +137,6 @@ import qualified Data.Text as T ( Text, pack, unpack )
 import qualified Data.Vector as V ( unsafeIndex, null, length, create, fromList )
 import qualified Data.Vector.Mutable as VM ( unsafeNew, unsafeWrite )
 
-#if !MIN_VERSION_base(4,8,0)
-import Control.Monad       ( return, mapM, liftM2, fail )
-#endif
 
 --------------------------------------------------------------------------------
 -- Convenience
