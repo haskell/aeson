@@ -1,6 +1,10 @@
-{-# LANGUAGE CPP, FlexibleInstances, IncoherentInstances, NamedFieldPuns,
-    NoImplicitPrelude, OverlappingInstances, TemplateHaskell,
+{-# LANGUAGE CPP, FlexibleInstances, NamedFieldPuns,
+    NoImplicitPrelude, TemplateHaskell,
     UndecidableInstances #-}
+
+#if __GLASGOW_HASKELL__ < 710
+{-# LANGUAGE OverlappingInstances #-}
+#endif
 
 {-|
 Module:      Data.Aeson.TH
@@ -955,7 +959,11 @@ parseTypeMismatch tName conName expected actual =
 class (FromJSON a) => LookupField a where
     lookupField :: String -> String -> Object -> T.Text -> Parser a
 
-instance (FromJSON a) => LookupField a where
+instance
+#if __GLASGOW_HASKELL__ >= 710
+  {-# OVERLAPPABLE #-}
+#endif
+  (FromJSON a) => LookupField a where
     lookupField tName rec obj key =
         case H.lookup key obj of
           Nothing -> unknownFieldFail tName rec (T.unpack key)

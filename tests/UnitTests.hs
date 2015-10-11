@@ -6,7 +6,7 @@ import Control.Monad (forM)
 import Data.Aeson (decode, eitherDecode, encode, genericToJSON, genericToEncoding)
 import Data.Aeson.TH ( deriveJSON )
 import Data.Aeson.Encode (encodeToTextBuilder)
-import Data.Aeson.Types (ToJSON(..), Value, camelTo, camelTo2, defaultOptions, omitNothingFields)
+import Data.Aeson.Types (ToJSON(..), FromJSON, Value, camelTo, camelTo2, defaultOptions, omitNothingFields)
 import Data.Char (toUpper)
 import Data.Time (UTCTime)
 import Data.Time.Format (parseTime)
@@ -187,5 +187,11 @@ encoderComparisonTests = do
     ]
 
 -- A regression test for: https://github.com/bos/aeson/issues/293
-data MyRecord = MyRecord {field1 :: Maybe Int, field2 :: Maybe Bool}
+data MyRecord = MyRecord {_field1 :: Maybe Int, _field2 :: Maybe Bool}
 deriveJSON defaultOptions{omitNothingFields=True} ''MyRecord
+
+data MyRecord2 = MyRecord2 {_field3 :: Maybe Int, _field4 :: Maybe Bool}
+  deriving Generic
+
+instance ToJSON   MyRecord2
+instance FromJSON MyRecord2

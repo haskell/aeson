@@ -1,8 +1,13 @@
 {-# LANGUAGE CPP, BangPatterns, DeriveDataTypeable, FlexibleContexts,
-    FlexibleInstances, GeneralizedNewtypeDeriving, IncoherentInstances,
-    OverlappingInstances, OverloadedStrings, UndecidableInstances,
+    FlexibleInstances, GeneralizedNewtypeDeriving,
+    OverloadedStrings, UndecidableInstances,
     ViewPatterns #-}
 {-# LANGUAGE DefaultSignatures #-}
+
+#if __GLASGOW_HASKELL__ < 710
+{-# LANGUAGE OverlappingInstances #-}
+#endif
+
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 
 -- TODO: Drop this when we remove support for Data.Attoparsec.Number
@@ -448,19 +453,31 @@ instance FromJSON LT.Text where
     parseJSON = withText "Lazy Text" $ pure . LT.fromStrict
     {-# INLINE parseJSON #-}
 
-instance (ToJSON a) => ToJSON [a] where
+instance
+#if __GLASGOW_HASKELL__ >= 710
+  {-# OVERLAPPABLE #-}
+#endif
+  (ToJSON a) => ToJSON [a] where
     toJSON = Array . V.fromList . map toJSON
     {-# INLINE toJSON #-}
 
     toEncoding xs = list xs
     {-# INLINE toEncoding #-}
 
-instance (FromJSON a) => FromJSON [a] where
+instance
+#if __GLASGOW_HASKELL__ >= 710
+  {-# OVERLAPPABLE #-}
+#endif
+  (FromJSON a) => FromJSON [a] where
     parseJSON = withArray "[a]" $ Tr.sequence .
                 zipWith parseIndexedJSON [0..] . V.toList
     {-# INLINE parseJSON #-}
 
-instance (Foldable t, ToJSON a) => ToJSON (t a) where
+instance
+#if __GLASGOW_HASKELL__ >= 710
+  {-# OVERLAPPABLE #-}
+#endif
+  (Foldable t, ToJSON a) => ToJSON (t a) where
     toJSON = toJSON . toList
     {-# INLINE toJSON #-}
 
