@@ -135,7 +135,12 @@ genericParseJSON opts = fmap to . gParseJSON opts
 class ToJSON a where
     -- | Convert a Haskell value to a JSON-friendly intermediate type.
     toJSON     :: a -> Value
-    {-# MINIMAL toJSON #-}
+
+    -- TODO: We would like to set the MINIMAL pragma for toJSON but then
+    -- instances which are using the default Generic implementation will
+    -- complain that toJSON is not defined.
+    -- See GHC bug: https://ghc.haskell.org/trac/ghc/ticket/10959
+    -- {-# MINIMAL toJSON -- #-}
 
     default toJSON :: (Generic a, GToJSON (Rep a)) => a -> Value
     toJSON = genericToJSON defaultOptions
