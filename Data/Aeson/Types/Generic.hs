@@ -5,9 +5,7 @@
     RecordWildCards #-}
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 
-#if __GLASGOW_HASKELL__ < 710
-{-# LANGUAGE OverlappingInstances #-}
-#endif
+#include "overlapping-compat.h"
 
 -- |
 -- Module:      Data.Aeson.Types.Generic
@@ -49,11 +47,7 @@ import Data.Monoid (mempty)
 --------------------------------------------------------------------------------
 -- Generic toJSON
 
-instance
-#if __GLASGOW_HASKELL__ >= 710
-  {-# OVERLAPPABLE #-}
-#endif
-  (GToJSON a) => GToJSON (M1 i c a) where
+instance OVERLAPPABLE_ (GToJSON a) => GToJSON (M1 i c a) where
     -- Meta-information, which is not handled elsewhere, is ignored:
     gToJSON opts = gToJSON opts . unM1
     {-# INLINE gToJSON #-}
@@ -346,11 +340,8 @@ instance (Selector s, GToJSON a) => RecordTo (S1 s a) where
     recordToEncoding = fieldToEncoding
     {-# INLINE recordToEncoding #-}
 
-instance
-#if __GLASGOW_HASKELL__ >= 710
-  {-# OVERLAPPING #-}
-#endif
-  (Selector s, ToJSON a) => RecordTo (S1 s (K1 i (Maybe a))) where
+instance OVERLAPPING_ (Selector s, ToJSON a) =>
+  RecordTo (S1 s (K1 i (Maybe a))) where
     recordToPairs opts (M1 k1) | omitNothingFields opts
                                , K1 Nothing <- k1 = empty
     recordToPairs opts m1 = fieldToPair opts m1
@@ -401,11 +392,7 @@ instance ( WriteProduct a
                                    encodeProduct opts b
     {-# INLINE encodeProduct #-}
 
-instance
-#if __GLASGOW_HASKELL__ >= 710
-  {-# OVERLAPPABLE #-}
-#endif
-  (GToJSON a) => WriteProduct a where
+instance OVERLAPPABLE_ (GToJSON a) => WriteProduct a where
     writeProduct opts mv ix _ = VM.unsafeWrite mv ix . gToJSON opts
     {-# INLINE writeProduct #-}
 
@@ -451,11 +438,7 @@ gbuilder opts = fromEncoding . gToEncoding opts
 --------------------------------------------------------------------------------
 -- Generic parseJSON
 
-instance
-#if __GLASGOW_HASKELL__ >= 710
-  {-# OVERLAPPABLE #-}
-#endif
-  (GFromJSON a) => GFromJSON (M1 i c a) where
+instance OVERLAPPABLE_ (GFromJSON a) => GFromJSON (M1 i c a) where
     -- Meta-information, which is not handled elsewhere, is just added to the
     -- parsed value:
     gParseJSON opts = fmap M1 . gParseJSON opts
@@ -680,11 +663,8 @@ instance (Selector s, GFromJSON a) => FromRecord (S1 s a) where
           label = fieldLabelModifier opts $ selName (undefined :: t s a p)
     {-# INLINE parseRecord #-}
 
-instance
-#if __GLASGOW_HASKELL__ >= 710
-  {-# OVERLAPPING #-}
-#endif
-  (Selector s, FromJSON a) => FromRecord (S1 s (K1 i (Maybe a))) where
+instance OVERLAPPING_ (Selector s, FromJSON a) =>
+  FromRecord (S1 s (K1 i (Maybe a))) where
     parseRecord _ (Just lab) obj = (M1 . K1) . join <$> obj .:? lab
     parseRecord opts Nothing obj = (M1 . K1) . join <$> obj .:? pack label
         where
@@ -753,11 +733,7 @@ class IsRecord (f :: * -> *) isRecord | f -> isRecord
 
 instance (IsRecord f isRecord) => IsRecord (f :*: g) isRecord
   where isUnary = const False
-instance
-#if __GLASGOW_HASKELL__ >= 710
-  {-# OVERLAPPING #-}
-#endif
-  IsRecord (M1 S NoSelector f) False
+instance OVERLAPPING_ IsRecord (M1 S NoSelector f) False
 instance (IsRecord f isRecord) => IsRecord (M1 S c f) isRecord
 instance IsRecord (K1 i c) True
 instance IsRecord U1 False

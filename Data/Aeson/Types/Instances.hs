@@ -4,9 +4,7 @@
     ViewPatterns #-}
 {-# LANGUAGE DefaultSignatures #-}
 
-#if __GLASGOW_HASKELL__ < 710
-{-# LANGUAGE OverlappingInstances #-}
-#endif
+#include "overlapping-compat.h"
 
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 
@@ -453,31 +451,19 @@ instance FromJSON LT.Text where
     parseJSON = withText "Lazy Text" $ pure . LT.fromStrict
     {-# INLINE parseJSON #-}
 
-instance
-#if __GLASGOW_HASKELL__ >= 710
-  {-# OVERLAPPABLE #-}
-#endif
-  (ToJSON a) => ToJSON [a] where
+instance OVERLAPPABLE_ (ToJSON a) => ToJSON [a] where
     toJSON = Array . V.fromList . map toJSON
     {-# INLINE toJSON #-}
 
     toEncoding xs = list xs
     {-# INLINE toEncoding #-}
 
-instance
-#if __GLASGOW_HASKELL__ >= 710
-  {-# OVERLAPPABLE #-}
-#endif
-  (FromJSON a) => FromJSON [a] where
+instance OVERLAPPABLE_ (FromJSON a) => FromJSON [a] where
     parseJSON = withArray "[a]" $ Tr.sequence .
                 zipWith parseIndexedJSON [0..] . V.toList
     {-# INLINE parseJSON #-}
 
-instance
-#if __GLASGOW_HASKELL__ >= 710
-  {-# OVERLAPPABLE #-}
-#endif
-  (Foldable t, ToJSON a) => ToJSON (t a) where
+instance OVERLAPPABLE_ (Foldable t, ToJSON a) => ToJSON (t a) where
     toJSON = toJSON . toList
     {-# INLINE toJSON #-}
 
