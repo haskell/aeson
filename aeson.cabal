@@ -46,6 +46,7 @@ extra-source-files:
     benchmarks/Makefile
     benchmarks/Typed/*.hs
     benchmarks/json-data/*.json
+    include/overlapping-compat.h
     changelog.md
     examples/*.cabal
     examples/*.hs
