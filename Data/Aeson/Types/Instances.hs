@@ -79,6 +79,8 @@ import Data.Time.Format (FormatTime, formatTime, parseTime)
 import Data.Traversable as Tr (sequence)
 import Data.Vector (Vector)
 import Data.Word (Word8, Word16, Word32, Word64)
+import Data.Version (Version, showVersion, parseVersion)
+import Text.ParserCombinators.ReadP (readP_to_S)
 import Foreign.Storable (Storable)
 import Prelude hiding (foldr)
 import qualified Data.Aeson.Encode.Builder as E
@@ -1465,6 +1467,18 @@ instance ToJSON a => ToJSON (Last a) where
 instance FromJSON a => FromJSON (Last a) where
     parseJSON = fmap Last . parseJSON
     {-# INLINE parseJSON #-}
+
+instance ToJSON Version where
+    toJSON = toJSON . showVersion
+    {-# INLINE toJSON #-}
+
+instance FromJSON Version where
+    {-# INLINE parseJSON #-}
+    parseJSON = withText "Version" $ go . readP_to_S parseVersion . unpack
+      where
+        go [(v,_)]  = return v
+        go (_ : xs) = go xs
+        go _        = fail $ "could not parse Version"
 
 -- | @withObject expected f value@ applies @f@ to the 'Object' when @value@ is an @Object@
 --   and fails using @'typeMismatch' expected@ otherwise.
