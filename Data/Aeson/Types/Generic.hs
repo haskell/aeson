@@ -206,6 +206,9 @@ instance ( IsRecord           a isRecord
 class TaggedObjectPairs' f isRecord where
     taggedObjectPairs' :: Options -> String -> f a -> Tagged isRecord [Pair]
 
+instance OVERLAPPING_ TaggedObjectPairs' U1 False where
+    taggedObjectPairs' _ _ _ = Tagged []
+
 instance (RecordToPairs f) => TaggedObjectPairs' f True where
     taggedObjectPairs' opts _ = Tagged . toList . recordToPairs opts
 
@@ -233,7 +236,6 @@ instance ( IsRecord         a isRecord
         (builder tagFieldName <>
          B.char7 ':' <>
          builder (constructorTagModifier opts (conName (undefined :: t c a p)))) <>
-        B.char7 ',' <>
         ((unTagged :: Tagged isRecord B.Builder -> B.Builder) .
          taggedObjectEnc' opts contentsFieldName . unM1 $ v) <>
         B.char7 '}'
@@ -241,12 +243,15 @@ instance ( IsRecord         a isRecord
 class TaggedObjectEnc' f isRecord where
     taggedObjectEnc' :: Options -> String -> f a -> Tagged isRecord B.Builder
 
+instance OVERLAPPING_ TaggedObjectEnc' U1 False where
+    taggedObjectEnc' _ _ _ = Tagged mempty
+
 instance (RecordToEncoding f) => TaggedObjectEnc' f True where
-    taggedObjectEnc' opts _ = Tagged . recordToEncoding opts
+    taggedObjectEnc' opts _ = Tagged . (\z -> B.char7 ',' <> recordToEncoding opts z)
 
 instance (GToEncoding f) => TaggedObjectEnc' f False where
     taggedObjectEnc' opts contentsFieldName =
-        Tagged . (\z -> builder contentsFieldName <> B.char7 ':' <> z) .
+        Tagged . (\z -> B.char7 ',' <> builder contentsFieldName <> B.char7 ':' <> z) .
         gbuilder opts
 
 --------------------------------------------------------------------------------
@@ -626,6 +631,9 @@ instance (FromRecord f) => FromTaggedObject'' f True where
 instance (GFromJSON f) => FromTaggedObject'' f False where
     parseFromTaggedObject'' opts contentsFieldName = Tagged .
       (gParseJSON opts <=< (.: pack contentsFieldName))
+
+instance OVERLAPPING_ FromTaggedObject'' U1 False where
+    parseFromTaggedObject'' _ _ _ = Tagged (pure U1)
 
 --------------------------------------------------------------------------------
 

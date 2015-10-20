@@ -312,6 +312,15 @@ sumToValue opts multiCons conName exp
 
     | otherwise = exp
 
+nullarySumToValue :: Options -> Bool -> Name -> Q Exp
+nullarySumToValue opts multiCons conName =
+    case sumEncoding opts of
+      TaggedObject{tagFieldName} ->
+          [|A.object|] `appE` listE
+            [ infixApp [|T.pack tagFieldName|] [|(.=)|] (conStr opts conName)
+            ]
+      _ -> sumToValue opts multiCons conName [e|toJSON ([] :: [()])|]
+
 -- | Generates code to generate the JSON encoding of a single constructor.
 argsToValue :: Options -> Bool -> Con -> Q Match
 -- Nullary constructors. Generates code that explicitly matches against the
@@ -319,7 +328,7 @@ argsToValue :: Options -> Bool -> Con -> Q Match
 -- type errors.
 argsToValue  opts multiCons (NormalC conName []) =
     match (conP conName [])
-          (normalB (sumToValue opts multiCons conName [e|toJSON ([] :: [()])|]))
+          (normalB (nullarySumToValue opts multiCons conName))
           []
 
 -- Polyadic constructors with special case for unary constructors.
@@ -458,6 +467,14 @@ sumToEncoding opts multiCons conName exp
 
     | otherwise = exp
 
+nullarySumToEncoding :: Options -> Bool -> Name -> Q Exp
+nullarySumToEncoding opts multiCons conName =
+    case sumEncoding opts of
+      TaggedObject{tagFieldName} ->
+          object $
+          ([|E.text (T.pack tagFieldName)|] <:> encStr opts conName)
+      _ -> sumToEncoding opts multiCons conName [e|toEncoding ([] :: [()])|]
+
 -- | Generates code to generate the JSON encoding of a single constructor.
 argsToEncoding :: Options -> Bool -> Con -> Q Match
 -- Nullary constructors. Generates code that explicitly matches against the
@@ -465,7 +482,7 @@ argsToEncoding :: Options -> Bool -> Con -> Q Match
 -- type errors.
 argsToEncoding  opts multiCons (NormalC conName []) =
     match (conP conName [])
-          (normalB (sumToEncoding opts multiCons conName [e|toEncoding ([] :: [()])|]))
+          (normalB (nullarySumToEncoding opts multiCons conName))
           []
 
 -- Polyadic constructors with special case for unary constructors.
@@ -847,8 +864,8 @@ parseArgs :: Name -- ^ Name of the type to which the constructor belongs.
                                         --   Right valName
           -> Q Exp
 -- Nullary constructors.
-parseArgs tName _ (NormalC conName []) (Left (valFieldName, obj)) =
-  getValField obj valFieldName $ parseNullaryMatches tName conName
+parseArgs _ _ (NormalC conName []) (Left _) =
+  [|pure|] `appE` conE conName
 parseArgs tName _ (NormalC conName []) (Right valName) =
   caseE (varE valName) $ parseNullaryMatches tName conName
 

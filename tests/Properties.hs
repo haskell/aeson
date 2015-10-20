@@ -104,6 +104,9 @@ isTaggedObjectValue (Object obj) = "tag"      `H.member` obj &&
                                    "contents" `H.member` obj
 isTaggedObjectValue _            = False
 
+isNullaryTaggedObject :: Value -> Bool
+isNullaryTaggedObject obj = isTaggedObject obj && isObjectWithSingleField obj
+
 isTaggedObject :: Value -> Bool
 isTaggedObject (Object obj) = "tag" `H.member` obj
 isTaggedObject _            = False
@@ -158,7 +161,7 @@ tests = testGroup "properties" [
         testGroup "Nullary" [
             testProperty "string" (isString . gNullaryToJSONString)
           , testProperty "2ElemArray" (is2ElemArray . gNullaryToJSON2ElemArray)
-          , testProperty "TaggedObject" (isTaggedObject . gNullaryToJSONTaggedObject)
+          , testProperty "TaggedObject" (isNullaryTaggedObject . gNullaryToJSONTaggedObject)
           , testProperty "ObjectWithSingleField" (isObjectWithSingleField . gNullaryToJSONObjectWithSingleField)
           , testGroup "roundTrip" [
               testProperty "string" (toParseJSON gNullaryParseJSONString gNullaryToJSONString)
@@ -206,7 +209,7 @@ tests = testGroup "properties" [
         testGroup "Nullary" [
             testProperty "string" (isString . thNullaryToJSONString)
           , testProperty "2ElemArray" (is2ElemArray . thNullaryToJSON2ElemArray)
-          , testProperty "TaggedObject" (isTaggedObjectValue . thNullaryToJSONTaggedObject)
+          , testProperty "TaggedObject" (isNullaryTaggedObject . thNullaryToJSONTaggedObject)
           , testProperty "ObjectWithSingleField" (isObjectWithSingleField . thNullaryToJSONObjectWithSingleField)
 
           , testGroup "roundTrip" [
