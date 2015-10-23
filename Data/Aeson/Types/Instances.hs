@@ -1472,6 +1472,9 @@ instance ToJSON Version where
     toJSON = toJSON . showVersion
     {-# INLINE toJSON #-}
 
+    toEncoding = toEncoding . showVersion
+    {-# INLINE toEncoding #-}
+
 instance FromJSON Version where
     {-# INLINE parseJSON #-}
     parseJSON = withText "Version" $ go . readP_to_S parseVersion . unpack
