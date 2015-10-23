@@ -1,4 +1,4 @@
-{-# Language OverloadedStrings, RecordWildCards, StandaloneDeriving #-}
+{-# Language OverloadedStrings, RecordWildCards, StandaloneDeriving, CPP #-}
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 
 module Instances where
@@ -6,12 +6,16 @@ module Instances where
 import Types
 import Data.Function (on)
 import Control.Monad
-import Test.QuickCheck (Arbitrary(..), Gen, choose, oneof, elements)
+import Test.QuickCheck
+  ( Arbitrary(..), Gen, choose, oneof, elements
+  , resize, listOf1, getNonNegative
+    )
 import Data.Time.Clock (DiffTime, UTCTime(..), picosecondsToDiffTime)
 import Data.Fixed (Pico)
 import Data.Time (ZonedTime(..), LocalTime(..), TimeZone(..),
                   hoursToTimeZone, Day(..), TimeOfDay(..),
                   NominalDiffTime)
+import Data.Version
 import qualified Data.Text as T
 import qualified Data.Map as Map
 import Data.Text (Text)
@@ -153,3 +157,16 @@ instance ApproxEq Char where
 
 instance (ApproxEq a) => ApproxEq [a] where
     a =~ b = length a == length b && all (uncurry (=~)) (zip a b)
+
+instance Arbitrary Version where
+    arbitrary = makeVersion . fmap getNonNegative <$> resize 4 (listOf1 arbitrary)
+
+-- Version tags are deprecated, so we avoid using them in the Arbitrary
+-- instance. However, the recommended constructor 'makeVersion' is not
+-- exported by "Data.Version" until base-4.8.0.0. For previous versions,
+-- a definition is given below.
+
+#if !MIN_VERSION_base(4,8,0)
+makeVersion :: [Int] -> Version
+makeVersion b = Version b []
+#endif
