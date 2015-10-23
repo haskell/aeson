@@ -1479,7 +1479,7 @@ instance FromJSON Version where
     {-# INLINE parseJSON #-}
     parseJSON = withText "Version" $ go . readP_to_S parseVersion . unpack
       where
-        go [(v,_)]  = return v
+        go [(v,[])] = return v
         go (_ : xs) = go xs
         go _        = fail $ "could not parse Version"
 
