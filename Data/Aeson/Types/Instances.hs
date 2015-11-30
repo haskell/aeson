@@ -189,13 +189,12 @@ instance ToJSON Ordering where
     GT -> "GT"
 
 instance FromJSON Ordering where
-  parseJSON v = case v of
-    String s -> case s of
+  parseJSON = withText "Ordering" $ \s ->
+    case s of
       "LT" -> return LT
       "EQ" -> return EQ
       "GT" -> return GT
       _ -> fail "Parsing Ordering value failed: expected \"LT\", \"EQ\", or \"GT\""
-    _ -> typeMismatch "Ordering" v
 
 instance ToJSON () where
     toJSON _ = emptyArray
