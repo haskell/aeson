@@ -1,10 +1,17 @@
-# 0.10.0.1
+# 0.10.1.0
 
-* Add quotes to surround time encodings.
+* Fix missing quotes surrounding time encodings.
 
-* Fix toEncoding method for Either
+* Fix toEncoding method for Either.
 
 * Fix #293: Bug in TH when omitNothingFields = True.
+
+* Allow HH:MM format for ZonedTime and UTCTime.
+  This is one of the formats allowed by
+  [ISO 8601](https://en.wikipedia.org/wiki/ISO_8601#Times).
+
+* Added ToJSON and FromJSON instances for the Version type.
+
 
 # 0.10.0.0
 
