@@ -123,6 +123,18 @@ utcTimeGood = do
   -- ts8 wraps around to the next day in UTC
   assertEqual "utctime" (parseWithRead "%FT%T%QZ" "2015-01-02T01:00:00Z") t8
   assertEqual "utctime" (parseWithRead "%FT%T%QZ" "2015-01-02T02:30:00Z") t9
+
+  -- Seconds in Time can be omitted
+  let ts10 = "2015-01-03T12:13Z" :: LT.Text
+  let ts11 = "2015-01-03 12:13Z" :: LT.Text
+  let ts12 = "2015-01-01T12:30-02" :: LT.Text
+  let (Just (t10 ::  UTCTime)) = parseWithAeson ts10
+  let (Just (t11 ::  UTCTime)) = parseWithAeson ts11
+  let (Just (t12 ::  UTCTime)) = parseWithAeson ts12
+  assertEqual "utctime" (parseWithRead "%FT%H:%MZ" ts10) t10
+  assertEqual "utctime" (parseWithRead "%F %H:%MZ" ts11) t11
+  assertEqual "utctime" (parseWithRead "%FT%T%QZ" "2015-01-01T14:30:00Z") t12
+
   where
     parseWithRead :: String -> LT.Text -> UTCTime
     parseWithRead f s =
@@ -143,6 +155,7 @@ utcTimeBad = do
   verifyFailParse "2015-01-01T12:30:00.00+00Z" -- no Zulu if offset given
   verifyFailParse "2015-01-01T12:30:00.00+00:00Z" -- no Zulu if offset given
   verifyFailParse "2015-01-03 12:13:00.Z" -- decimal at the end but no digits
+  verifyFailParse "2015-01-03 12:13.000Z" -- decimal at the end, but no seconds
   where
     verifyFailParse (s :: LT.Text) =
       let (dec :: Maybe UTCTime) = decode . LT.encodeUtf8 $ (LT.concat ["\"", s, "\""]) in
