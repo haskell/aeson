@@ -184,6 +184,20 @@ instance FromJSON Bool where
     parseJSON = withBool "Bool" pure
     {-# INLINE parseJSON #-}
 
+instance ToJSON Ordering where
+  toJSON o = String $ case o of
+    LT -> "LT"
+    EQ -> "EQ"
+    GT -> "GT"
+
+instance FromJSON Ordering where
+  parseJSON = withText "Ordering" $ \s ->
+    case s of
+      "LT" -> return LT
+      "EQ" -> return EQ
+      "GT" -> return GT
+      _ -> fail "Parsing Ordering value failed: expected \"LT\", \"EQ\", or \"GT\""
+
 instance ToJSON () where
     toJSON _ = emptyArray
     {-# INLINE toJSON #-}
