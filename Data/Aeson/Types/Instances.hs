@@ -185,10 +185,14 @@ instance FromJSON Bool where
     {-# INLINE parseJSON #-}
 
 instance ToJSON Ordering where
-  toJSON o = String $ case o of
-    LT -> "LT"
-    EQ -> "EQ"
-    GT -> "GT"
+  toJSON     = toJSON     . orderingToText
+  toEncoding = toEncoding . orderingToText
+
+orderingToText :: Ordering -> T.Text
+orderingToText o = case o of
+                     LT -> "LT"
+                     EQ -> "EQ"
+                     GT -> "GT"
 
 instance FromJSON Ordering where
   parseJSON = withText "Ordering" $ \s ->

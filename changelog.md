@@ -12,6 +12,8 @@
 
 * Added ToJSON and FromJSON instances for the Version type.
 
+* Added ToJSON and FromJSON instances for the Ordering type.
+
 
 # 0.10.0.0
 
