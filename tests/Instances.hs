@@ -30,10 +30,10 @@ instance (Ord k, Arbitrary k, Arbitrary v) => Arbitrary (Map.Map k v) where
 
 instance Arbitrary TimeOfDay where
     arbitrary = do
-      Positive h <- arbitrary
-      Positive m <- arbitrary
-      Positive s <- arbitrary
-      return $ fromMaybe (TimeOfDay 0 0 0 ) (makeTimeOfDayValid h m s)
+      h <- choose (0, 23)
+      m <- choose (0, 59)
+      s <- fromRational . toRational <$> choose (0, 59 :: Double)
+      return $ TimeOfDay h m s
 
 instance Arbitrary LocalTime where
     arbitrary = LocalTime <$> arbitrary <*> arbitrary
