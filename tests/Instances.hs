@@ -11,7 +11,7 @@ import Data.Time.Clock (DiffTime, UTCTime(..), picosecondsToDiffTime)
 import Data.Fixed (Pico)
 import Data.Time (ZonedTime(..), LocalTime(..), TimeZone(..),
                   hoursToTimeZone, Day(..), TimeOfDay(..),
-                  NominalDiffTime, makeTimeOfDayValid)
+                  NominalDiffTime)
 import qualified Data.Text as T
 import qualified Data.Map as Map
 import Data.Text (Text)
