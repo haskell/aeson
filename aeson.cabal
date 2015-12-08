@@ -50,6 +50,7 @@ extra-source-files:
     examples/*.cabal
     examples/*.hs
     examples/Twitter/*.hs
+    include/*.h
 
 flag developer
   description: operate in developer mode
