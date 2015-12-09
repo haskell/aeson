@@ -359,7 +359,10 @@ instance ToJSON Natural where
     {-# INLINE toEncoding #-}
 
 instance FromJSON Natural where
-    parseJSON = withScientific "Integral" $ pure . truncate
+    parseJSON = withScientific "Natural" $ \s ->
+      if Scientific.coefficient s < 0
+        then fail $ "Expected a Natural number but got the negative number: " <> show s
+        else pure $ truncate s
 #endif
 
 instance ToJSON Int8 where
