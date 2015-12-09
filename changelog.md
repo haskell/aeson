@@ -10,9 +10,8 @@
   This is one of the formats allowed by
   [ISO 8601](https://en.wikipedia.org/wiki/ISO_8601#Times).
 
-* Added ToJSON and FromJSON instances for the Version type.
-
-* Added ToJSON and FromJSON instances for the Ordering type.
+* Added ToJSON and FromJSON instances for the
+  Version, Ordering and Natural type.
 
 
 # 0.10.0.0
