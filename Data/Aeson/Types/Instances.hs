@@ -106,7 +106,9 @@ import qualified Data.Vector.Primitive as VP
 import qualified Data.Vector.Storable as VS
 import qualified Data.Vector.Unboxed as VU
 
-#if !MIN_VERSION_base(4,8,0)
+#if MIN_VERSION_base(4,8,0)
+import Numeric.Natural
+#else
 import Control.Applicative ((<$>), (<*>), pure)
 import Data.Foldable (Foldable)
 import Data.Monoid (mempty)
@@ -347,6 +349,18 @@ instance ToJSON Integer where
 instance FromJSON Integer where
     parseJSON = withScientific "Integral" $ pure . truncate
     {-# INLINE parseJSON #-}
+
+#if MIN_VERSION_base(4,8,0)
+instance ToJSON Natural where
+    toJSON = toJSON . toInteger
+    {-# INLINE toJSON #-}
+
+    toEncoding = toEncoding . toInteger
+    {-# INLINE toEncoding #-}
+
+instance FromJSON Natural where
+    parseJSON = withScientific "Integral" $ pure . truncate
+#endif
 
 instance ToJSON Int8 where
     toJSON = Number . fromIntegral
