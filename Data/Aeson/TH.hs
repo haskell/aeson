@@ -1038,8 +1038,13 @@ withType name f = do
     case info of
       TyConI dec ->
         case dec of
-          DataD    _ _ tvbs cons _ -> f name tvbs cons Nothing
-          NewtypeD _ _ tvbs con  _ -> f name tvbs [con] Nothing
+#if MIN_VERSION_template_haskell(2,11,0)
+          DataD    _ _ tvbs _ cons _ -> f name tvbs cons Nothing
+          NewtypeD _ _ tvbs _ con  _ -> f name tvbs [con] Nothing
+#else
+          DataD    _ _ tvbs   cons _ -> f name tvbs cons Nothing
+          NewtypeD _ _ tvbs   con  _ -> f name tvbs [con] Nothing
+#endif
           other -> error $ ns ++ "Unsupported type: " ++ show other
 #if MIN_VERSION_template_haskell(2,11,0)
       DataConI _ _ parentName   -> do
@@ -1054,14 +1059,22 @@ withType name f = do
           FamilyI (FamilyD DataFam _ tvbs _) decs ->
 #endif
             let instDec = flip find decs $ \dec -> case dec of
-                  DataInstD    _ _ _ cons _ -> any ((name ==) . getConName) cons
-                  NewtypeInstD _ _ _ con  _ -> name == getConName con
+#if MIN_VERSION_template_haskell(2,11,0)
+                  DataInstD    _ _ _ _ cons _ -> any ((name ==) . getConName) cons
+                  NewtypeInstD _ _ _ _ con  _ -> name == getConName con
+#else
+                  DataInstD    _ _ _   cons _ -> any ((name ==) . getConName) cons
+                  NewtypeInstD _ _ _   con  _ -> name == getConName con
+#endif
                   _ -> error $ ns ++ "Must be a data or newtype instance."
              in case instDec of
-                  Just (DataInstD    _ _ instTys cons _)
-                    -> f parentName tvbs cons $ Just instTys
-                  Just (NewtypeInstD _ _ instTys con  _)
-                    -> f parentName tvbs [con] $ Just instTys
+#if MIN_VERSION_template_haskell(2,11,0)
+                  Just (DataInstD    _ _ instTys _ cons _) -> f parentName tvbs cons $ Just instTys
+                  Just (NewtypeInstD _ _ instTys _ con  _) -> f parentName tvbs [con] $ Just instTys
+#else
+                  Just (DataInstD    _ _ instTys   cons _) -> f parentName tvbs cons $ Just instTys
+                  Just (NewtypeInstD _ _ instTys   con  _) -> f parentName tvbs [con] $ Just instTys
+#endif
                   _ -> error $ ns ++
                     "Could not find data or newtype instance constructor."
           _ -> error $ ns ++ "Data constructor " ++ show name ++
