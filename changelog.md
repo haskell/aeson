@@ -83,6 +83,9 @@ into upgrade problems, please file an issue with details.
 * New `ToJSON` and `FromJSON` instances for the following time-related
   types: `Day`, `LocalTime`.
 
+* `FromJSON` `UTCTime` parser accepts the same values as for `ZonedTime`,
+  but converts any time zone offset into a UTC time.
+
 * The `Result` type is now an instance of `Foldable` and `Traversable`.
 
 * The `Data.Aeson.Generic` module has been removed. It was deprecated in
@@ -93,7 +96,12 @@ into upgrade problems, please file an issue with details.
 * The instance of `Monad` for the `Result` type lacked an implementation
   of `fail` (oops).  This has been corrected.
 
+* Semantics of `(.:?)` operator are changed. It's doesn't anymore accept
+  present `Null` value.
 
+* Added `(Foldable t, ToJSON a) => ToJSON (t a)` overlappable instance.
+  You might see `No instance for (Foldable YourPolymorphicType) arising from a
+  use of ‘.=’` -errors due this change.
 
 # 0.9.0.1
 
