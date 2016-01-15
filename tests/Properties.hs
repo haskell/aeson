@@ -9,7 +9,8 @@ import Data.Aeson.Parser (value)
 import Data.Aeson.Types
 import Data.ByteString.Builder (toLazyByteString)
 import Data.Int (Int8)
-import Data.Time (Day, LocalTime, NominalDiffTime, UTCTime, ZonedTime, TimeOfDay)
+import Data.Time (Day, LocalTime, NominalDiffTime, TimeOfDay, UTCTime,
+                  ZonedTime)
 import Data.Version (Version)
 import Encoders
 import Instances ()

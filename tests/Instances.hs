@@ -6,11 +6,8 @@ module Instances where
 import Types
 import Data.Function (on)
 import Control.Monad
-import Test.QuickCheck (Arbitrary(..), Gen, choose, oneof, elements, Positive(..))
-import Test.QuickCheck
-  ( Arbitrary(..), Gen, choose, oneof, elements
-  , resize, listOf1, getNonNegative
-    )
+import Test.QuickCheck (Arbitrary(..), Gen, choose, getNonNegative, elements,
+                        listOf1, oneof, resize)
 import Data.Time.Clock (DiffTime, UTCTime(..), picosecondsToDiffTime)
 import Data.Fixed (Pico)
 import Data.Time (ZonedTime(..), LocalTime(..), TimeZone(..),
@@ -20,7 +17,6 @@ import Data.Version
 import qualified Data.Text as T
 import qualified Data.Map as Map
 import Data.Text (Text)
-import Data.Maybe
 import Data.Aeson.Types
 import Control.Applicative
 import Functions
