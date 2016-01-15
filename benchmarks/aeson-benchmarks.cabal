@@ -55,6 +55,8 @@ library
   else
     build-depends: time >= 1.5
 
+  include-dirs: ../include
+
   ghc-options: -O2 -Wall
   cpp-options: -DGENERICS
 
