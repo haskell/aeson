@@ -52,6 +52,7 @@ module Data.Aeson.Types.Instances
     , ifromJSON
     , (.:)
     , (.:?)
+    , (.:!)
     , (.!=)
     , tuple
     , (>*<)
@@ -1593,7 +1594,7 @@ ifromJSON = iparse parseJSON
 --
 -- This accessor is appropriate if the key and value /must/ be present
 -- in an object for it to be valid.  If the key and value are
--- optional, use '(.:?)' instead.
+-- optional, use '.:?' instead.
 (.:) :: (FromJSON a) => Object -> Text -> Parser a
 obj .: key = case H.lookup key obj of
                Nothing -> fail $ "key " ++ show key ++ " not present"
@@ -1609,15 +1610,26 @@ obj .: key = case H.lookup key obj of
 --
 -- This accessor is most useful if the key and value can be absent
 -- from an object without affecting its validity.  If the key and
--- value are mandatory, use '(.:)' instead.
+-- value are mandatory, use '.:' instead.
 (.:?) :: (FromJSON a) => Object -> Text -> Parser (Maybe a)
 obj .:? key = case H.lookup key obj of
+               Nothing -> pure Nothing
+               Just v  -> modifyFailure addKeyName
+                        $ parseJSON v <?> Key key
+  where
+    addKeyName = (("failed to parse field " <> unpack key <> ": ") <>)
+{-# INLINE (.:?) #-}
+
+-- | Like '.:?', but the resulting parser will fail,
+-- if the key is present but is 'Null'.
+(.:!) :: (FromJSON a) => Object -> Text -> Parser (Maybe a)
+obj .:! key = case H.lookup key obj of
                Nothing -> pure Nothing
                Just v  -> modifyFailure addKeyName
                         $ Just <$> parseJSON v <?> Key key
   where
     addKeyName = (("failed to parse field " <> unpack key <> ": ") <>)
-{-# INLINE (.:?) #-}
+{-# INLINE (.:!) #-}
 
 -- | Helper for use in combination with '.:?' to provide default
 -- values for optional JSON object fields.
@@ -1625,7 +1637,7 @@ obj .:? key = case H.lookup key obj of
 -- This combinator is most useful if the key and value can be absent
 -- from an object without affecting its validity and we know a default
 -- value to assign in that case.  If the key and value are mandatory,
--- use '(.:)' instead.
+-- use '.:' instead.
 --
 -- Example usage:
 --
