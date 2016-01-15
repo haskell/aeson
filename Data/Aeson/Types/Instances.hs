@@ -74,7 +74,7 @@ import Data.Monoid (Dual(..), First(..), Last(..))
 import Data.Ratio (Ratio, (%), numerator, denominator)
 import Data.Scientific (Scientific)
 import Data.Text (Text, pack, unpack)
-import Data.Time (Day, LocalTime, NominalDiffTime, UTCTime, ZonedTime)
+import Data.Time (Day, LocalTime, NominalDiffTime, UTCTime, ZonedTime, TimeOfDay)
 import Data.Time.Format (FormatTime, formatTime, parseTime)
 import Data.Traversable as Tr (sequence)
 import Data.Vector (Vector)
@@ -764,6 +764,13 @@ instance ToJSON Day where
 
 instance FromJSON Day where
     parseJSON = withText "Day" (Time.run Time.day)
+
+instance ToJSON TimeOfDay where
+    toJSON       = stringEncoding
+    toEncoding z = Encoding (E.quote $ E.timeOfDay z)
+
+instance FromJSON TimeOfDay where
+    parseJSON = withText "TimeOfDay" (Time.run Time.timeOfDay)
 
 instance ToJSON LocalTime where
     toJSON       = stringEncoding

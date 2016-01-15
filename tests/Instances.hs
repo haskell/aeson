@@ -6,6 +6,7 @@ module Instances where
 import Types
 import Data.Function (on)
 import Control.Monad
+import Test.QuickCheck (Arbitrary(..), Gen, choose, oneof, elements, Positive(..))
 import Test.QuickCheck
   ( Arbitrary(..), Gen, choose, oneof, elements
   , resize, listOf1, getNonNegative
@@ -19,6 +20,7 @@ import Data.Version
 import qualified Data.Text as T
 import qualified Data.Map as Map
 import Data.Text (Text)
+import Data.Maybe
 import Data.Aeson.Types
 import Control.Applicative
 import Functions
@@ -31,8 +33,15 @@ instance Arbitrary Text where
 instance (Ord k, Arbitrary k, Arbitrary v) => Arbitrary (Map.Map k v) where
     arbitrary = Map.fromList <$> arbitrary
 
+instance Arbitrary TimeOfDay where
+    arbitrary = do
+      h <- choose (0, 23)
+      m <- choose (0, 59)
+      s <- fromRational . toRational <$> choose (0, 59 :: Double)
+      return $ TimeOfDay h m s
+
 instance Arbitrary LocalTime where
-    arbitrary = return $ LocalTime (ModifiedJulianDay 1) (TimeOfDay 1 2 3)
+    arbitrary = LocalTime <$> arbitrary <*> arbitrary
 
 instance Arbitrary TimeZone where
     arbitrary = do
