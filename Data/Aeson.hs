@@ -60,6 +60,7 @@ module Data.Aeson
     -- ** Generic JSON classes and options
     , GFromJSON(..)
     , GToJSON(..)
+    , GToEncoding(..)
     , genericToJSON
     , genericToEncoding
     , genericParseJSON

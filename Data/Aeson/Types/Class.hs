@@ -19,6 +19,7 @@ module Data.Aeson.Types.Class
     -- * Generic JSON classes
     , GFromJSON(..)
     , GToJSON(..)
+    , GToEncoding(..)
     , genericToJSON
     , genericToEncoding
     , genericParseJSON
@@ -40,6 +41,9 @@ class GToJSON f where
     -- default generic implementation of 'toJSON'.
     gToJSON :: Options -> f a -> Value
 
+-- | Class of generic representation types ('Rep') that can be converted to
+-- a JSON 'Encoding'.
+class GToEncoding f where
     -- | This method (applied to 'defaultOptions') can be used as the
     -- default generic implementation of 'toEncoding'.
     gToEncoding :: Options -> f a -> Encoding
@@ -59,7 +63,7 @@ genericToJSON opts = gToJSON opts . from
 -- | A configurable generic JSON encoder. This function applied to
 -- 'defaultOptions' is used as the default for 'toEncoding' when the type
 -- is an instance of 'Generic'.
-genericToEncoding :: (Generic a, GToJSON (Rep a)) => Options -> a -> Encoding
+genericToEncoding :: (Generic a, GToEncoding (Rep a)) => Options -> a -> Encoding
 genericToEncoding opts = gToEncoding opts . from
 
 -- | A configurable generic JSON decoder. This function applied to
