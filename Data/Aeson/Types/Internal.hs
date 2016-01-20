@@ -421,19 +421,20 @@ object = Object . H.fromList
 
 -- | Add JSON Path context to a parser
 --
--- When parsing complex structure it helps to annotate (sub)parsers
--- with context so that if error occurs you can find it's location.
+-- When parsing a complex structure, it helps to annotate (sub)parsers
+-- with context, so that if an error occurs, you can find its location.
 --
 -- > withObject "Person" $ \o ->
 -- >   Person
 -- >     <$> o .: "name" <?> Key "name"
 -- >     <*> o .: "age"  <?> Key "age"
 --
--- (except for standard methods like '(.:)' already do that)
+-- (Standard methods like '(.:)' already do this.)
 --
--- After that in case of error you will get a JSON Path location of that error.
+-- With such annotations, if an error occurs, you will get a JSON Path
+-- location of that error.
 --
--- Since 0.9
+-- Since 0.10
 (<?>) :: Parser a -> JSONPathElement -> Parser a
 p <?> pathElem = Parser $ \path kf ks -> runParser p (pathElem:path) kf ks
 
