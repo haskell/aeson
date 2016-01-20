@@ -8,7 +8,7 @@
 Module:      Data.Aeson.TH
 Copyright:   (c) 2011-2015 Bryan O'Sullivan
              (c) 2011 MailRank, Inc.
-License:     Apache
+License:     BSD3
 Stability:   experimental
 Portability: portable
 

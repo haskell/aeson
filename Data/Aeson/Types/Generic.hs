@@ -12,7 +12,7 @@
 -- Copyright:   (c) 2012-2015 Bryan O'Sullivan
 --              (c) 2011, 2012 Bas Van Dijk
 --              (c) 2011 MailRank, Inc.
--- License:     Apache
+-- License:     BSD3
 -- Maintainer:  Bryan O'Sullivan <bos@serpentine.com>
 -- Stability:   experimental
 -- Portability: portable

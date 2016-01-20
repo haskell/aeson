@@ -1,7 +1,7 @@
 -- |
 -- Module:      Data.Aeson.Internal
 -- Copyright:   (c) 2015 Bryan O'Sullivan
--- License:     Apache
+-- License:     BSD3
 -- Maintainer:  Bryan O'Sullivan <bos@serpentine.com>
 -- Stability:   experimental
 -- Portability: portable

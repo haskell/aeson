@@ -4,7 +4,7 @@
 -- Module:      Data.Aeson.Encode.Builder
 -- Copyright:   (c) 2011 MailRank, Inc.
 --              (c) 2013 Simon Meier <iridcode@gmail.com>
--- License:     Apache
+-- License:     BSD3
 -- Maintainer:  Bryan O'Sullivan <bos@serpentine.com>
 -- Stability:   experimental
 -- Portability: portable
