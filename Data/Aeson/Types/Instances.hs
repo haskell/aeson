@@ -13,7 +13,7 @@
 
 -- |
 -- Module:      Data.Aeson.Types.Instances
--- Copyright:   (c) 2011-2015 Bryan O'Sullivan
+-- Copyright:   (c) 2011-2016 Bryan O'Sullivan
 --              (c) 2011 MailRank, Inc.
 -- License:     BSD3
 -- Maintainer:  Bryan O'Sullivan <bos@serpentine.com>
