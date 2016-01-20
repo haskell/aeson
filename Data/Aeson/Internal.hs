@@ -14,8 +14,9 @@
 module Data.Aeson.Internal
     (
       IResult(..)
-    , JSONPathElement
+    , JSONPathElement(..)
     , JSONPath
+    , (<?>)
     , formatError
     , ifromJSON
     , iparse
