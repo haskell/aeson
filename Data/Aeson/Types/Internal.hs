@@ -62,7 +62,7 @@ import Data.Char (isLower, isUpper, toLower)
 import Data.Data (Data)
 import Data.HashMap.Strict (HashMap)
 import Data.Hashable (Hashable(..))
-import Data.Monoid ((<>))
+import Data.Semigroup (Semigroup((<>)))
 import Data.Scientific (Scientific)
 import Data.String (IsString(..))
 import Data.Text (Text, pack, unpack)
@@ -190,16 +190,24 @@ instance Alternative Result where
     (<|>) = mplus
     {-# INLINE (<|>) #-}
 
+instance Semigroup (IResult a) where
+    (<>) = mplus
+    {-# INLINE (<>) #-}
+
 instance Monoid (IResult a) where
     mempty  = fail "mempty"
     {-# INLINE mempty #-}
-    mappend = mplus
+    mappend = (<>)
     {-# INLINE mappend #-}
+
+instance Semigroup (Result a) where
+    (<>) = mplus
+    {-# INLINE (<>) #-}
 
 instance Monoid (Result a) where
     mempty  = fail "mempty"
     {-# INLINE mempty #-}
-    mappend = mplus
+    mappend = (<>)
     {-# INLINE mappend #-}
 
 instance Foldable IResult where
@@ -281,10 +289,14 @@ instance MonadPlus Parser where
                                          in runParser a path kf' ks
     {-# INLINE mplus #-}
 
+instance Semigroup (Parser a) where
+    (<>) = mplus
+    {-# INLINE (<>) #-}
+
 instance Monoid (Parser a) where
     mempty  = fail "mempty"
     {-# INLINE mempty #-}
-    mappend = mplus
+    mappend = (<>)
     {-# INLINE mappend #-}
 
 apP :: Parser (a -> b) -> Parser a -> Parser b
@@ -313,7 +325,7 @@ data Value = Object !Object
 newtype Encoding = Encoding {
       fromEncoding :: Builder
       -- ^ Acquire the underlying bytestring builder.
-    } deriving (Monoid)
+    } deriving (Semigroup,Monoid)
 
 instance Show Encoding where
     show (Encoding e) = show (toLazyByteString e)
@@ -330,15 +342,17 @@ data Series = Empty
             | Value Encoding
             deriving (Typeable)
 
-instance Monoid Series where
-    mempty              = Empty
-
-    mappend Empty a     = a
-    mappend (Value a) b =
+instance Semigroup Series where
+    Empty   <> a = a
+    Value a <> b =
         Value $
         a <> case b of
                Empty   -> mempty
                Value c -> Encoding (char7 ',') <> c
+
+instance Monoid Series where
+    mempty  = Empty
+    mappend = (<>)
 
 -- | A newtype wrapper for 'UTCTime' that uses the same non-standard
 -- serialization format as Microsoft .NET, whose
