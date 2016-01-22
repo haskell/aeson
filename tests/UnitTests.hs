@@ -81,9 +81,12 @@ goodProducer = assertEqual "partial encoding should not explode on undefined"
                            '{' (L.head (encode wibble))
   where
     wibble = Wibble {
-                 wibbleString = replicate 4030 'a'
-               , wibbleInt = undefined
+                 wibbleString = replicate k 'a'
+               , wibbleInt = 1
                }
+    k | arch32bit = 4047
+      | otherwise = 4030
+    arch32bit     = (maxBound :: Int) == 2147483647
 
 -- Test decoding various UTC time formats
 --
