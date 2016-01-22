@@ -1614,9 +1614,10 @@ obj .: key = case H.lookup key obj of
 -- value are mandatory, use '.:' instead.
 (.:?) :: (FromJSON a) => Object -> Text -> Parser (Maybe a)
 obj .:? key = case H.lookup key obj of
-               Nothing -> pure Nothing
-               Just v  -> modifyFailure addKeyName
-                        $ parseJSON v <?> Key key
+               Nothing   -> pure Nothing
+               Just Null -> pure Nothing
+               Just v    -> modifyFailure addKeyName
+                         $ Just <$> parseJSON v <?> Key key
   where
     addKeyName = (("failed to parse field " <> unpack key <> ": ") <>)
 {-# INLINE (.:?) #-}
