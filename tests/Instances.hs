@@ -15,19 +15,22 @@ import Data.Time (ZonedTime(..), LocalTime(..), TimeZone(..),
                   NominalDiffTime)
 import Data.Version
 import qualified Data.Text as T
-import qualified Data.Map as Map
 import Data.Text (Text)
 import Data.Aeson.Types
 import Control.Applicative
 import Functions
 
+#if !MIN_VERSION_QuickCheck(2,8,2)
+import qualified Data.Map as Map
+
+instance (Ord k, Arbitrary k, Arbitrary v) => Arbitrary (Map.Map k v) where
+    arbitrary = Map.fromList <$> arbitrary
+#endif
+
 -- "System" types.
 
 instance Arbitrary Text where
     arbitrary = T.pack <$> arbitrary
-
-instance (Ord k, Arbitrary k, Arbitrary v) => Arbitrary (Map.Map k v) where
-    arbitrary = Map.fromList <$> arbitrary
 
 instance Arbitrary TimeOfDay where
     arbitrary = do
