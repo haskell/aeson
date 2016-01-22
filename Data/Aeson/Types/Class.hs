@@ -16,6 +16,9 @@ module Data.Aeson.Types.Class
     -- * Core JSON classes
       FromJSON(..)
     , ToJSON(..)
+    -- * Map classes
+    , FromJSONKey(..)
+    , ToJSONKey(..)
     -- * Generic JSON classes
     , GFromJSON(..)
     , GToJSON(..)
@@ -244,6 +247,18 @@ class FromJSON a where
 
     default parseJSON :: (Generic a, GFromJSON (Rep a)) => Value -> Parser a
     parseJSON = genericParseJSON defaultOptions
+
+-- | Helper typeclass to implement 'FromJSON' for map-like structures.
+class FromJSONKey a where
+    fromJSONKey :: Text -> a
+
+-- | Helper typeclass to implement 'ToJSON' for map-like structures.
+class ToJSONKey a where
+    toJSONKey :: a -> Text
+
+    toKeyEncoding :: a -> Encoding
+    toKeyEncoding = Encoding . E.text . toJSONKey
+    {-# INLINE toKeyEncoding #-}
 
 -- | A key-value pair for encoding a JSON object.
 class KeyValue kv where
