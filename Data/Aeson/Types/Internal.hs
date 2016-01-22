@@ -56,6 +56,7 @@ module Data.Aeson.Types.Internal
 import Control.Applicative
 import Control.DeepSeq (NFData(..))
 import Control.Monad (MonadPlus(..), ap)
+import qualified Control.Monad.Fail as Fail
 import Data.ByteString.Builder (Builder, char7, toLazyByteString)
 import Data.Char (isLower, isUpper, toLower)
 import Data.Data (Data)
@@ -122,35 +123,43 @@ instance Functor Result where
     {-# INLINE fmap #-}
 
 instance Monad IResult where
-    return = ISuccess
+    return = pure
     {-# INLINE return #-}
 
     ISuccess a      >>= k = k a
     IError path err >>= _ = IError path err
     {-# INLINE (>>=) #-}
 
+    fail = Fail.fail
+    {-# INLINE fail #-}
+
+instance Fail.MonadFail IResult where
     fail err = IError [] err
     {-# INLINE fail #-}
 
 instance Monad Result where
-    return = Success
+    return = pure
     {-# INLINE return #-}
 
     Success a >>= k = k a
     Error err >>= _ = Error err
     {-# INLINE (>>=) #-}
 
+    fail = Fail.fail
+    {-# INLINE fail #-}
+
+instance Fail.MonadFail Result where
     fail err = Error err
     {-# INLINE fail #-}
 
 instance Applicative IResult where
-    pure  = return
+    pure  = ISuccess
     {-# INLINE pure #-}
     (<*>) = ap
     {-# INLINE (<*>) #-}
 
 instance Applicative Result where
-    pure  = return
+    pure  = Success
     {-# INLINE pure #-}
     (<*>) = ap
     {-# INLINE (<*>) #-}
@@ -239,8 +248,12 @@ instance Monad Parser where
     m >>= g = Parser $ \path kf ks -> let ks' a = runParser (g a) path kf ks
                                        in runParser m path kf ks'
     {-# INLINE (>>=) #-}
-    return a = Parser $ \_path _kf ks -> ks a
+    return = pure
     {-# INLINE return #-}
+    fail = Fail.fail
+    {-# INLINE fail #-}
+
+instance Fail.MonadFail Parser where
     fail msg = Parser $ \path kf _ks -> kf (reverse path) msg
     {-# INLINE fail #-}
 
@@ -250,7 +263,7 @@ instance Functor Parser where
     {-# INLINE fmap #-}
 
 instance Applicative Parser where
-    pure  = return
+    pure a = Parser $ \_path _kf ks -> ks a
     {-# INLINE pure #-}
     (<*>) = apP
     {-# INLINE (<*>) #-}
