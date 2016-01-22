@@ -4,6 +4,7 @@ module Data.Aeson.Encode.Functions
     (
       brackets
     , builder
+    , keyBuilder
     , char7
     , encode
     , foldable
@@ -28,6 +29,9 @@ import Data.Monoid (mempty)
 builder :: ToJSON a => a -> Builder
 builder = fromEncoding . toEncoding
 {-# INLINE builder #-}
+
+keyBuilder :: ToJSONKey a => a -> Builder
+keyBuilder = fromEncoding . toKeyEncoding
 
 -- | Efficiently serialize a JSON value as a lazy 'L.ByteString'.
 --
