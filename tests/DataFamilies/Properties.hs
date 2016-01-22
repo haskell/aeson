@@ -61,11 +61,11 @@ tests = testGroup "data families" [
       , testProperty "ApproxDefault" $
         thApproxToJSONDefault `sameAs` thApproxToEncodingDefault
       , testProperty "SomeType2ElemArray" $
-        thSomeTypeToJSON2ElemArray `sameAsV` thSomeTypeToEncoding2ElemArray
+        thSomeTypeToJSON2ElemArray `sameAs` thSomeTypeToEncoding2ElemArray
       , testProperty "SomeTypeTaggedObject" $
-        thSomeTypeToJSONTaggedObject `sameAsV` thSomeTypeToEncodingTaggedObject
+        thSomeTypeToJSONTaggedObject `sameAs` thSomeTypeToEncodingTaggedObject
       , testProperty "SomeTypeObjectWithSingleField" $
-        thSomeTypeToJSONObjectWithSingleField `sameAsV`
+        thSomeTypeToJSONObjectWithSingleField `sameAs`
         thSomeTypeToEncodingObjectWithSingleField
       ]
     ]
