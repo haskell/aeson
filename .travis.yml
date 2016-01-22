@@ -2,6 +2,10 @@
 language: c
 sudo: false
 
+# Bryan threatens to turn off Travis-CI if he gets any email :-)
+notifications:
+  email: false
+
 cache:
   directories:
     - $HOME/.cabsnap
