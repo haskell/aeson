@@ -56,6 +56,8 @@ module Data.Aeson
     , Result(..)
     , fromJSON
     , FromJSONKey(..)
+    , SJSONKeyMonad(..)
+    , IJSONKeyMonad(..)
     , ToJSON(..)
     , KeyValue(..)
     , ToJSONKey(..)

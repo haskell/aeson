@@ -1,4 +1,4 @@
-{-# LANGUAGE CPP, DefaultSignatures, FlexibleContexts #-}
+{-# LANGUAGE CPP, DefaultSignatures, FlexibleContexts, FunctionalDependencies, GADTs #-}
 
 -- |
 -- Module:      Data.Aeson.Types.Class
@@ -18,6 +18,8 @@ module Data.Aeson.Types.Class
     , ToJSON(..)
     -- * Map classes
     , FromJSONKey(..)
+    , SJSONKeyMonad(..)
+    , IJSONKeyMonad(..)
     , ToJSONKey(..)
     -- * Generic JSON classes
     , GFromJSON(..)
@@ -33,6 +35,7 @@ module Data.Aeson.Types.Class
     ) where
 
 import Data.Aeson.Types.Internal
+import Data.Functor.Identity (Identity(..))
 import Data.Text (Text)
 import GHC.Generics (Generic, Rep, from, to)
 import qualified Data.Aeson.Encode.Builder as E
@@ -249,8 +252,8 @@ class FromJSON a where
     parseJSON = genericParseJSON defaultOptions
 
 -- | Helper typeclass to implement 'FromJSON' for map-like structures.
-class FromJSONKey a where
-    fromJSONKey :: Text -> a
+class FromJSONKey a m | a -> m where
+    fromJSONKey :: Text -> m a
 
 -- | Helper typeclass to implement 'ToJSON' for map-like structures.
 class ToJSONKey a where
@@ -259,6 +262,19 @@ class ToJSONKey a where
     toKeyEncoding :: a -> Encoding
     toKeyEncoding = Encoding . E.text . toJSONKey
     {-# INLINE toKeyEncoding #-}
+
+data SJSONKeyMonad a where
+    SJSONKeyMonadIdentity :: SJSONKeyMonad Identity
+    SJSONKeyMonadParser   :: SJSONKeyMonad Parser
+
+class IJSONKeyMonad m where
+    jsonKeyMonadSing :: proxy m -> SJSONKeyMonad m
+
+instance IJSONKeyMonad Identity where
+    jsonKeyMonadSing _ = SJSONKeyMonadIdentity
+
+instance IJSONKeyMonad Parser where
+    jsonKeyMonadSing _ = SJSONKeyMonadParser
 
 -- | A key-value pair for encoding a JSON object.
 class KeyValue kv where

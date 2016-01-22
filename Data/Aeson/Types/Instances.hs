@@ -1,7 +1,7 @@
 {-# LANGUAGE CPP, BangPatterns, DeriveDataTypeable, FlexibleContexts,
     FlexibleInstances, GeneralizedNewtypeDeriving,
-    OverloadedStrings, UndecidableInstances,
-    ViewPatterns #-}
+    OverloadedStrings, UndecidableInstances, MultiParamTypeClasses, GADTs,
+    ViewPatterns, ScopedTypeVariables, KindSignatures #-}
 {-# LANGUAGE DefaultSignatures #-}
 
 #include "overlapping-compat.h"
@@ -31,6 +31,8 @@ module Data.Aeson.Types.Instances
     , KeyValue(..)
     -- ** Map classes
     , FromJSONKey(..)
+    , SJSONKeyMonad(..)
+    , IJSONKeyMonad(..)
     , ToJSONKey(..)
     -- ** Generic JSON classes
     , GFromJSON(..)
@@ -658,27 +660,33 @@ encodeKV :: (ToJSONKey k, ToJSON v) => k -> v -> B.Builder
 encodeKV k v = keyBuilder k <> B.char7 ':' <> builder v
 {-# INLINE encodeKV #-}
 
-instance FromJSONKey Text where
-    fromJSONKey = id
+instance FromJSONKey Text Identity where
+    fromJSONKey = Identity
 
 instance ToJSONKey Text where
     toJSONKey = id
 
-instance FromJSONKey LT.Text where
-    fromJSONKey = LT.fromStrict
+instance FromJSONKey LT.Text Identity where
+    fromJSONKey = Identity . LT.fromStrict
 
 instance ToJSONKey LT.Text where
     toJSONKey = LT.toStrict
 
-instance FromJSONKey String where
-    fromJSONKey = unpack
+instance FromJSONKey String Identity where
+    fromJSONKey = Identity . unpack
 
 instance ToJSONKey String where
     toJSONKey = pack
 
-instance (FromJSON v, FromJSONKey k, Ord k) => FromJSON (M.Map k v) where
-    parseJSON = withObject "Map k v" $
-                  fmap (H.foldrWithKey (M.insert . fromJSONKey) M.empty) . H.traverseWithKey (\k v -> parseJSON v <?> Key k)
+data P1 (m :: * -> *) = P1
+
+instance (FromJSON v, FromJSONKey k m, IJSONKeyMonad m, Ord k) => FromJSON (M.Map k v) where
+    parseJSON = case jsonKeyMonadSing (P1 :: P1 m) of
+        SJSONKeyMonadIdentity -> withObject "Map k v" $
+            fmap (H.foldrWithKey (M.insert . runIdentity . fromJSONKey) M.empty) . H.traverseWithKey (\k v -> parseJSON v <?> Key k)
+        SJSONKeyMonadParser -> withObject "Map k v" $
+            H.foldrWithKey (\k v m -> M.insert <$> fromJSONKey k <*> (parseJSON v <?> Key k) <*> m) (pure M.empty)
+    {-# INLINE parseJSON #-}
 
 instance (ToJSON v, ToJSONKey k) => ToJSON (M.Map k v) where
     toJSON = Object . mapHashKeyVal toJSONKey toJSON
@@ -694,8 +702,12 @@ instance (ToJSON v, ToJSONKey k) => ToJSON (H.HashMap k v) where
     toEncoding = encodeWithKey H.foldrWithKey
     {-# INLINE toEncoding #-}
 
-instance (FromJSON v, FromJSONKey k, Eq k, Hashable k) => FromJSON (H.HashMap k v) where
-    parseJSON = withObject "HashMap k v" $ fmap (mapKey fromJSONKey) . H.traverseWithKey (\k v -> parseJSON v <?> Key k)
+instance (FromJSON v, FromJSONKey k m, IJSONKeyMonad m, Eq k, Hashable k) => FromJSON (H.HashMap k v) where
+    parseJSON = case jsonKeyMonadSing (P1 :: P1 m) of
+        SJSONKeyMonadIdentity -> withObject "HashMap k v" $
+            fmap (mapKey (runIdentity . fromJSONKey)) . H.traverseWithKey (\k v -> parseJSON v <?> Key k)
+        SJSONKeyMonadParser -> withObject "HashMap k v" $
+            H.foldrWithKey (\k v m -> H.insert <$> fromJSONKey k <*> (parseJSON v <?> Key k) <*> m) (pure H.empty)
     {-# INLINE parseJSON #-}
 
 instance (ToJSON v) => ToJSON (Tree.Tree v) where

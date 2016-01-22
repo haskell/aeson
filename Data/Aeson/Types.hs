@@ -30,6 +30,8 @@ module Data.Aeson.Types
     , FromJSON(..)
     , fromJSON
     , FromJSONKey(..)
+    , SJSONKeyMonad(..)
+    , IJSONKeyMonad(..)
     , parse
     , parseEither
     , parseMaybe
