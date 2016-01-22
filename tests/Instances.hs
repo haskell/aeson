@@ -6,67 +6,27 @@ module Instances where
 import Types
 import Data.Function (on)
 import Control.Monad
-import Test.QuickCheck (Arbitrary(..), Gen, choose, getNonNegative, elements,
+import Test.QuickCheck (Arbitrary(..), getNonNegative, elements,
                         listOf1, oneof, resize)
-import Data.Time.Clock (DiffTime, UTCTime(..), picosecondsToDiffTime)
-import Data.Fixed (Pico)
-import Data.Time (ZonedTime(..), LocalTime(..), TimeZone(..),
-                  hoursToTimeZone, Day(..), TimeOfDay(..),
-                  NominalDiffTime)
+import Data.Time.Clock (UTCTime(..))
+import Data.Time (ZonedTime(..), TimeZone(..))
 import Data.Version
-import qualified Data.Text as T
-import Data.Text (Text)
 import Data.Aeson.Types
 import Control.Applicative
 import Functions
 
-#if !MIN_VERSION_QuickCheck(2,8,2)
-import qualified Data.Map as Map
-
-instance (Ord k, Arbitrary k, Arbitrary v) => Arbitrary (Map.Map k v) where
-    arbitrary = Map.fromList <$> arbitrary
-#endif
+import Test.QuickCheck.Instances ()
 
 -- "System" types.
 
-instance Arbitrary Text where
-    arbitrary = T.pack <$> arbitrary
-
-instance Arbitrary TimeOfDay where
-    arbitrary = do
-      h <- choose (0, 23)
-      m <- choose (0, 59)
-      s <- fromRational . toRational <$> choose (0, 59 :: Double)
-      return $ TimeOfDay h m s
-
-instance Arbitrary LocalTime where
-    arbitrary = LocalTime <$> arbitrary <*> arbitrary
-
-instance Arbitrary TimeZone where
-    arbitrary = do
-      offset <- choose (0,2) :: Gen Int
-      return $ hoursToTimeZone offset
-
-instance Arbitrary Day where
-    arbitrary = ModifiedJulianDay `liftM` arbitrary
-
-instance Arbitrary DiffTime where
-    arbitrary = (picosecondsToDiffTime . (* 1000000000)) <$>
-                choose (0, 86400000)
-
-instance Arbitrary UTCTime where
-    arbitrary = liftM2 UTCTime arbitrary arbitrary
-
 instance Arbitrary DotNetTime where
     arbitrary = DotNetTime `liftM` arbitrary
+    shrink = map DotNetTime . shrink . fromDotNetTime
 
-instance Arbitrary ZonedTime where
-    arbitrary = liftM2 ZonedTime arbitrary arbitrary
-
-instance Arbitrary NominalDiffTime where
-    arbitrary = realToFrac <$> (arbitrary :: Gen Pico)
-
-deriving instance Eq ZonedTime
+-- | Compare timezone part only on 'timeZoneMinutes'
+instance Eq ZonedTime where
+  ZonedTime a (TimeZone a' _ _) == ZonedTime b (TimeZone b' _ _) =
+    a == b && a' == b'
 
 -- Compare equality to within a millisecond, allowing for rounding
 -- error (ECMA 262 requires milliseconds to rounded to zero, not

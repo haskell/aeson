@@ -156,7 +156,8 @@ test-suite tests
     text,
     time,
     unordered-containers,
-    vector
+    vector,
+    quickcheck-instances >=0.3.12
 
   if flag(old-locale)
     build-depends: time < 1.5, old-locale
