@@ -106,6 +106,9 @@ library
     unordered-containers >= 0.2.5.0,
     vector >= 0.7.1
 
+  if impl(ghc >=7.8)
+    cpp-options: -DHAS_COERCIBLE
+
   if !impl(ghc >= 8.0)
     -- `Data.Semigroup` is available in base only since GHC 8.0
     build-depends: semigroups >= 0.16.1

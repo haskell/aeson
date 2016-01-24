@@ -1,3 +1,4 @@
+{-# LANGUAGE CPP #-}
 -- |
 -- Module:      Data.Aeson.Types
 -- Copyright:   (c) 2011-2016 Bryan O'Sullivan
@@ -29,16 +30,22 @@ module Data.Aeson.Types
     , Result(..)
     , FromJSON(..)
     , fromJSON
-    , FromJSONKey(..)
-    , SJSONKeyMonad(..)
-    , IJSONKeyMonad(..)
     , parse
     , parseEither
     , parseMaybe
     , ToJSON(..)
     , KeyValue(..)
-    , ToJSONKey(..)
     , modifyFailure
+
+    -- ** Key conversion
+    , FromJSONKey(..)
+    , SJSONKeyMonad(..)
+    , IJSONKeyMonad(..)
+    , JSONKeyCoerce(..)
+#ifdef HAS_COERCIBLE
+    , JSONKeyCoercible
+#endif
+    , ToJSONKey(..)
 
     -- ** Generic JSON classes
     , GFromJSON(..)

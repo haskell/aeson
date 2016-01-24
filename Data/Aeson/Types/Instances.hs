@@ -33,6 +33,10 @@ module Data.Aeson.Types.Instances
     , FromJSONKey(..)
     , SJSONKeyMonad(..)
     , IJSONKeyMonad(..)
+    , JSONKeyCoerce(..)
+#ifdef HAS_COERCIBLE
+    , JSONKeyCoercible
+#endif
     , ToJSONKey(..)
     -- ** Generic JSON classes
     , GFromJSON(..)
@@ -124,11 +128,17 @@ import Data.Traversable as Tr (traverse)
 import Data.Word (Word)
 #endif
 
+#if MIN_VERSION_base(4,7,0)
+import Data.Coerce (coerce)
+#endif
+
 #if MIN_VERSION_time(1,5,0)
 import Data.Time.Format (defaultTimeLocale)
 #else
 import System.Locale (defaultTimeLocale)
 #endif
+
+import Unsafe.Coerce (unsafeCoerce)
 
 parseIndexedJSON :: FromJSON a => Int -> Value -> Parser a
 parseIndexedJSON idx value = parseJSON value <?> Index idx
@@ -660,8 +670,8 @@ encodeKV :: (ToJSONKey k, ToJSON v) => k -> v -> B.Builder
 encodeKV k v = keyBuilder k <> B.char7 ':' <> builder v
 {-# INLINE encodeKV #-}
 
-instance FromJSONKey Text Identity where
-    fromJSONKey = Identity
+instance FromJSONKey Text JSONKeyCoerce where
+    fromJSONKey _ = JSONKeyCoerce
 
 instance ToJSONKey Text where
     toJSONKey = id
@@ -682,6 +692,13 @@ data P1 (m :: * -> *) = P1
 
 instance (FromJSON v, FromJSONKey k m, IJSONKeyMonad m, Ord k) => FromJSON (M.Map k v) where
     parseJSON = case jsonKeyMonadSing (P1 :: P1 m) of
+        SJSONKeyMonadCoerce -> withObject "Map k v" $
+#if MIN_VERSION_base(4,7,0)
+            fmap (H.foldrWithKey (M.insert . (coerce :: Text -> k)) M.empty)
+#else
+            fmap (H.foldrWithKey (M.insert . (unsafeCoerce :: Text -> k)) M.empty)
+#endif
+                . H.traverseWithKey (\k v -> parseJSON v <?> Key k)
         SJSONKeyMonadIdentity -> withObject "Map k v" $
             fmap (H.foldrWithKey (M.insert . runIdentity . fromJSONKey) M.empty) . H.traverseWithKey (\k v -> parseJSON v <?> Key k)
         SJSONKeyMonadParser -> withObject "Map k v" $
@@ -704,6 +721,8 @@ instance (ToJSON v, ToJSONKey k) => ToJSON (H.HashMap k v) where
 
 instance (FromJSON v, FromJSONKey k m, IJSONKeyMonad m, Eq k, Hashable k) => FromJSON (H.HashMap k v) where
     parseJSON = case jsonKeyMonadSing (P1 :: P1 m) of
+        SJSONKeyMonadCoerce -> withObject "HashMap k v" $
+            fmap (unsafeCoerce :: H.HashMap Text v -> H.HashMap k v) . H.traverseWithKey (\k v -> parseJSON v <?> Key k)
         SJSONKeyMonadIdentity -> withObject "HashMap k v" $
             fmap (mapKey (runIdentity . fromJSONKey)) . H.traverseWithKey (\k v -> parseJSON v <?> Key k)
         SJSONKeyMonadParser -> withObject "HashMap k v" $
