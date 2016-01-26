@@ -1358,7 +1358,11 @@ stealKindForType _   t        = t
 
 -- | Extracts the kind from a type variable binder.
 tvbKind :: TyVarBndr -> Kind
-tvbKind (PlainTV  _  ) = starK
+#if MIN_VERSION_template_haskell(2,8,0)
+tvbKind (PlainTV  _  ) = StarT
+#else
+tvbKind (PlainTV  _  ) = StarK
+#endif
 tvbKind (KindedTV _ k) = k
 
 tvbToType :: TyVarBndr -> Type
