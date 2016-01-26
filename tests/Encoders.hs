@@ -1,4 +1,5 @@
-{-# Language TemplateHaskell #-}
+{-# LANGUAGE GADTs #-}
+{-# LANGUAGE TemplateHaskell #-}
 
 module Encoders where
 
@@ -173,3 +174,26 @@ gApproxToJSONDefault = genericToJSON defaultOptions
 
 gApproxParseJSONDefault :: Value -> Parser (Approx String)
 gApproxParseJSONDefault = genericParseJSON defaultOptions
+
+--------------------------------------------------------------------------------
+-- GADT encoders/decoders
+--------------------------------------------------------------------------------
+
+thGADTToJSONUnwrap :: GADT String -> Value
+thGADTToJSONUnwrap = $(mkToJSON optsUnwrapUnaryRecords ''GADT)
+
+thGADTToEncodingUnwrap :: GADT String -> Encoding
+thGADTToEncodingUnwrap = $(mkToEncoding optsUnwrapUnaryRecords ''GADT)
+
+thGADTParseJSONUnwrap :: Value -> Parser (GADT String)
+thGADTParseJSONUnwrap = $(mkParseJSON optsUnwrapUnaryRecords ''GADT)
+
+
+thGADTToJSONDefault :: GADT String -> Value
+thGADTToJSONDefault = $(mkToJSON defaultOptions ''GADT)
+
+thGADTToEncodingDefault :: GADT String -> Encoding
+thGADTToEncodingDefault = $(mkToEncoding defaultOptions ''GADT)
+
+thGADTParseJSONDefault :: Value -> Parser (GADT String)
+thGADTParseJSONDefault = $(mkParseJSON defaultOptions ''GADT)

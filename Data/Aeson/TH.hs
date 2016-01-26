@@ -108,19 +108,27 @@ import Data.Eq             ( (==) )
 import Data.Function       ( ($), (.), flip )
 import Data.Functor        ( fmap )
 import Data.Int            ( Int )
-import Data.List           ( (++), all, any, filter, find, foldl, foldl'
+import Data.List           ( (++), all, any, find, foldl, foldl'
                            , genericLength , intercalate , intersperse, length, map
                            , partition, zip
                            )
+import Data.Map            ( Map )
 import Data.Maybe          ( Maybe(Nothing, Just), catMaybes )
 import Data.Monoid         ( (<>), mconcat )
 import Language.Haskell.TH
 import Language.Haskell.TH.Syntax ( VarStrictType )
 import Prelude             ( String, (-), Integer, error, foldr1, fromIntegral
-                           , snd, uncurry
+                           , splitAt, zipWith
                            )
-#if MIN_VERSION_template_haskell(2,8,0) && __GLASGOW_HASKELL__ < 710
-import Prelude             ( drop )
+#if MIN_VERSION_template_haskell(2,8,0) && !(MIN_VERSION_template_haskell(2,10,0))
+import Data.Foldable              ( foldr' )
+import qualified Data.Map as M    ( singleton )
+import Data.List                  ( nub )
+import Language.Haskell.TH.Syntax ( mkNameG_tc )
+import Prelude                    ( concatMap, uncurry )
+#endif
+#if MIN_VERSION_template_haskell(2,11,0)
+import Prelude             ( head )
 #endif
 import Text.Printf         ( printf )
 import Text.Show           ( show )
@@ -128,9 +136,7 @@ import qualified Data.Aeson as A
 import qualified Data.Aeson.Encode.Builder as E
 import qualified Data.Aeson.Encode.Functions as E
 import qualified Data.HashMap.Strict as H ( lookup, toList )
-#if MIN_VERSION_template_haskell(2,8,0) && __GLASGOW_HASKELL__ < 710
-import qualified Data.Set as Set ( Set, empty, singleton, size, union, unions )
-#endif
+import qualified Data.Map as M ( fromList, findWithDefault )
 import qualified Data.Text as T ( Text, pack, unpack )
 import qualified Data.Vector as V ( unsafeIndex, null, length, create, fromList )
 import qualified Data.Vector.Mutable as VM ( unsafeNew, unsafeWrite )
@@ -182,9 +188,10 @@ deriveToJSON opts name =
     withType name $ \name' tvbs cons mbTys -> fmap (:[]) $ fromCons name' tvbs cons mbTys
   where
     fromCons :: Name -> [TyVarBndr] -> [Con] -> Maybe [Type] -> Q Dec
-    fromCons name' tvbs cons mbTys =
-        instanceD instanceCxt
-                  instanceType
+    fromCons name' tvbs cons mbTys = do
+        (instanceCxt, instanceType) <- buildTypeInstance name' ''ToJSON tvbs mbTys
+        instanceD (return instanceCxt)
+                  (return instanceType)
                   [ funD 'toJSON
                          [ clause []
                                   (normalB $ consToValue opts cons)
@@ -196,9 +203,6 @@ deriveToJSON opts name =
                                   []
                          ]
                   ]
-      where
-        (instanceCxt, instanceType) =
-            buildTypeInstance name' ''ToJSON tvbs mbTys
 
 -- | Generates a lambda expression which encodes the given data type or
 -- data family instance constructor as a 'Value'.
@@ -420,6 +424,15 @@ argsToValue opts multiCons (InfixC _ conName _) = do
 argsToValue opts multiCons (ForallC _ _ con) =
     argsToValue opts multiCons con
 
+#if MIN_VERSION_template_haskell(2,11,0)
+-- GADTs.
+argsToValue opts multiCons (GadtC conNames ts _) =
+    argsToValue opts multiCons $ NormalC (head conNames) ts
+
+argsToValue opts multiCons (RecGadtC conNames ts _) =
+    argsToValue opts multiCons $ RecC (head conNames) ts
+#endif
+
 isMaybe :: (a, (b, c, Type)) -> Bool
 isMaybe (_, (_, _, AppT (ConT t) _)) = t == ''Maybe
 isMaybe _                            = False
@@ -554,6 +567,14 @@ argsToEncoding opts multiCons (InfixC _ conName _) = do
 argsToEncoding opts multiCons (ForallC _ _ con) =
     argsToEncoding opts multiCons con
 
+#if MIN_VERSION_template_haskell(2,11,0)
+-- GADTs.
+argsToEncoding opts multiCons (GadtC conNames ts _) =
+    argsToEncoding opts multiCons $ NormalC (head conNames) ts
+
+argsToEncoding opts multiCons (RecGadtC conNames ts _) =
+    argsToEncoding opts multiCons $ RecC (head conNames) ts
+#endif
 
 --------------------------------------------------------------------------------
 -- FromJSON
@@ -571,18 +592,16 @@ deriveFromJSON opts name =
     withType name $ \name' tvbs cons mbTys -> fmap (:[]) $ fromCons name' tvbs cons mbTys
   where
     fromCons :: Name -> [TyVarBndr] -> [Con] -> Maybe [Type] -> Q Dec
-    fromCons name' tvbs cons mbTys =
-        instanceD instanceCxt
-                  instanceType
+    fromCons name' tvbs cons mbTys = do
+        (instanceCxt, instanceType) <- buildTypeInstance name' ''FromJSON tvbs mbTys
+        instanceD (return instanceCxt)
+                  (return instanceType)
                   [ funD 'parseJSON
                          [ clause []
                                   (normalB $ consFromJSON name' opts cons)
                                   []
                          ]
                   ]
-      where
-        (instanceCxt, instanceType) =
-            buildTypeInstance name' ''FromJSON tvbs mbTys
 
 -- | Generates a lambda expression which parses the JSON encoding of the given
 -- data type or data family instance constructor.
@@ -888,6 +907,16 @@ parseArgs tName _ (InfixC _ conName _) (Right valName) =
 parseArgs tName opts (ForallC _ _ con) contents =
     parseArgs tName opts con contents
 
+#if MIN_VERSION_template_haskell(2,11,0)
+-- GADTs. We ignore the refined return type and proceed as if it were a
+-- NormalC or RecC.
+parseArgs tName opts (GadtC conNames ts _) contents =
+    parseArgs tName opts (NormalC (head conNames) ts) contents
+
+parseArgs tName opts (RecGadtC conNames ts _) contents =
+    parseArgs tName opts (RecC (head conNames) ts) contents
+#endif
+
 -- | Generates code to parse the JSON encoding of an n-ary
 -- constructor.
 parseProduct :: Name -- ^ Name of the type to which the constructor belongs.
@@ -1102,87 +1131,260 @@ buildTypeInstance :: Name
                   -> Maybe [Type]
                   -- ^ 'Just' the types used to instantiate a data family instance,
                   -- or 'Nothing' if it's a plain data type
-                  -> (Q Cxt, Q Type)
+                  -> Q (Cxt, Type)
                   -- ^ The resulting 'Cxt' and 'Type' to use in a class instance
 -- Plain data type/newtype case
 buildTypeInstance tyConName constraint tvbs Nothing =
-    (applyCon constraint typeNames, conT constraint `appT` instanceType)
-  where
-    typeNames :: [Name]
-    typeNames = map tvbName tvbs
-
-    instanceType :: Q Type
-    instanceType = applyTyCon tyConName $ map varT typeNames
+    let varTys :: [Type]
+        varTys = map tvbToType tvbs
+    in buildTypeInstanceFromTys tyConName constraint varTys False
 -- Data family instance case
-buildTypeInstance dataFamName constraint tvbs (Just instTysAndKinds) =
-    (applyCon constraint lhsTvbNames, conT constraint `appT` instanceType)
-  where
-    -- We need to make sure that type variables in the instance head which have
-    -- constraints aren't poly-kinded, e.g.,
-    --
-    -- @
-    -- instance ToJSON a => ToJSON (Foo (a :: k)) where
-    -- @
-    --
-    -- To do this, we remove every kind ascription (i.e., strip off every 'SigT').
-    instanceType :: Q Type
-    instanceType = applyTyCon dataFamName $ map (return . unSigT) rhsTypes
-
-    -- We need to mindful of an old GHC bug which causes kind variables appear in
-    -- @instTysAndKinds@ (as the name suggests) if (1) @PolyKinds@ is enabled, and
-    -- (2) either GHC 7.6 or 7.8 is being used (for more info, see
-    -- https://ghc.haskell.org/trac/ghc/ticket/9692).
-    --
-    -- Since Template Haskell doesn't seem to have a mechanism for detecting which
-    -- language extensions are enabled, we do the next-best thing by counting
-    -- the number of distinct kind variables in the data family declaration, and
-    -- then dropping that number of entries from @instTysAndKinds@
-    instTypes :: [Type]
-    instTypes =
-#if __GLASGOW_HASKELL__ >= 710 || !(MIN_VERSION_template_haskell(2,8,0))
-        instTysAndKinds
+--
+-- The CPP is present to work around a couple of annoying old GHC bugs.
+-- See Note [Polykinded data families in Template Haskell]
+buildTypeInstance dataFamName constraint tvbs (Just instTysAndKinds) = do
+#if !(MIN_VERSION_template_haskell(2,8,0)) || MIN_VERSION_template_haskell(2,10,0)
+    let instTys :: [Type]
+        instTys = zipWith stealKindForType tvbs instTysAndKinds
 #else
-        drop (Set.size . Set.unions $ map (distinctKindVars . tvbKind) tvbs)
-             instTysAndKinds
+    let kindVarNames :: [Name]
+        kindVarNames = nub $ concatMap (tyVarNamesOfType . tvbKind) tvbs
+
+        -- Gets all of the type/kind variable names mentioned somewhere in a Type.
+        tyVarNamesOfType :: Type -> [Name]
+        tyVarNamesOfType = go
+          where
+            go :: Type -> [Name]
+            go (AppT t1 t2) = go t1 ++ go t2
+            go (SigT t k)   = go t  ++ go k
+            go (VarT n)     = [n]
+            go _            = []
+
+        numKindVars :: Int
+        numKindVars = length kindVarNames
+
+        givenKinds, givenKinds' :: [Kind]
+        givenTys                :: [Type]
+        (givenKinds, givenTys) = splitAt numKindVars instTysAndKinds
+        givenKinds' = map sanitizeStars givenKinds
+
+        -- A GHC 7.6-specific bug requires us to replace all occurrences of
+        -- (ConT GHC.Prim.*) with StarT, or else Template Haskell will reject it.
+        -- Luckily, (ConT GHC.Prim.*) only seems to occur in this one spot.
+        sanitizeStars :: Kind -> Kind
+        sanitizeStars = go
+          where
+            go :: Kind -> Kind
+            go (AppT t1 t2)                 = AppT (go t1) (go t2)
+            go (SigT t k)                   = SigT (go t) (go k)
+            go (ConT n) | n == starKindName = StarT
+            go t                            = t
+
+            -- It's quite awkward to import * from GHC.Prim, so we'll just
+            -- hack our way around it.
+            starKindName :: Name
+            starKindName = mkNameG_tc "ghc-prim" "GHC.Prim" "*"
+
+        -- Generate a list of fresh names with a common prefix, and numbered suffixes.
+        newNameList :: String -> Int -> Q [Name]
+        newNameList prefix n = mapM (newName . (prefix ++) . show) [1..n]
+
+    -- If we run this code with GHC 7.8, we might have to generate extra type
+    -- variables to compensate for any type variables that Template Haskell
+    -- eta-reduced away.
+    -- See Note [Polykinded data families in Template Haskell]
+    xTypeNames <- newNameList "tExtra" (length tvbs - length givenTys)
+
+    let xTys   :: [Type]
+        xTys = map VarT xTypeNames
+        -- ^ Because these type variables were eta-reduced away, we can only
+        --   determine their kind by using stealKindForType. Therefore, we mark
+        --   them as VarT to ensure they will be given an explicit kind annotation
+        --   (and so the kind inference machinery has the right information).
+
+        substNameWithKind :: Name -> Kind -> Type -> Type
+        substNameWithKind n k = substType (M.singleton n k)
+
+        substNamesWithKinds :: [(Name, Kind)] -> Type -> Type
+        substNamesWithKinds nks t = foldr' (uncurry substNameWithKind) t nks
+
+        -- The types from the data family instance might not have explicit kind
+        -- annotations, which the kind machinery needs to work correctly. To
+        -- compensate, we use stealKindForType to explicitly annotate any
+        -- types without kind annotations.
+        instTys :: [Type]
+        instTys = map (substNamesWithKinds (zip kindVarNames givenKinds'))
+                  -- ^ Note that due to a GHC 7.8-specific bug
+                  --   (see Note [Polykinded data families in Template Haskell]),
+                  --   there may be more kind variable names than there are kinds
+                  --   to substitute. But this is OK! If a kind is eta-reduced, it
+                  --   means that is was not instantiated to something more specific,
+                  --   so we need not substitute it. Using stealKindForType will
+                  --   grab the correct kind.
+                $ zipWith stealKindForType tvbs (givenTys ++ xTys)
 #endif
+    buildTypeInstanceFromTys dataFamName constraint instTys True
 
-    lhsTvbNames :: [Name]
-    lhsTvbNames = map (tvbName . uncurry replaceTyVarName)
-                . filter (isTyVar . snd)
-                $ zip tvbs rhsTypes
+-- For the given Types, generate an instance context and head.
+buildTypeInstanceFromTys :: Name
+                         -- ^ The type constructor or data family name
+                         -> Name
+                         -- ^ The typeclass name ('ToJSON' or 'FromJSON')
+                         -> [Type]
+                         -- ^ The types to instantiate the instance with
+                         -> Bool
+                         -- ^ True if it's a data family, False otherwise
+                         -> Q (Cxt, Type)
+buildTypeInstanceFromTys tyConName constraint varTysOrig isDataFamily = do
+    -- Make sure to expand through type/kind synonyms! Otherwise, we won't
+    -- be able to infer constraints as accurately.
+    varTysExp <- mapM expandSyn varTysOrig
 
-    -- In GHC 7.8, only the @Type@s up to the rightmost non-eta-reduced type variable
-    -- in @instTypes@ are provided (as a result of this bug:
-    -- https://ghc.haskell.org/trac/ghc/ticket/9692). To work around this, we borrow
-    -- some type variables from the data family instance declaration.
-    rhsTypes :: [Type]
-    rhsTypes =
-#if __GLASGOW_HASKELL__ >= 708 && __GLASGOW_HASKELL__ < 710
-            instTypes ++ map tvbToType
-                             (drop (length instTypes)
-                                   tvbs)
-#else
-            instTypes
-#endif
+    let preds    :: [Maybe Pred]
+        -- Derive instance constraints for type variables of kind *
+        preds = map (deriveConstraint constraint) varTysExp
 
-#if MIN_VERSION_template_haskell(2,8,0) && __GLASGOW_HASKELL__ < 710
-distinctKindVars :: Kind -> Set.Set Name
-distinctKindVars (AppT k1 k2) = distinctKindVars k1 `Set.union` distinctKindVars k2
-distinctKindVars (SigT k _)   = distinctKindVars k
-distinctKindVars (VarT k)     = Set.singleton k
-distinctKindVars _            = Set.empty
+        varTys :: [Type]
+        -- See Note [Kind signatures in derived instances] for an explanation
+        -- of the isDataFamily check.
+        varTys =
+          if isDataFamily
+             then varTysOrig
+             else map unSigT varTysOrig
+
+        instanceCxt :: Cxt
+        instanceCxt = catMaybes preds
+
+        instanceType :: Type
+        instanceType = AppT (ConT constraint)
+                     $ applyTyCon tyConName varTys
+
+    return (instanceCxt, instanceType)
+
+-- | Attempt to derive a constraint on a Type. If it's of kind *,
+-- we give it Just a ToJSON/FromJSON constraint. Otherwise, return Nothing.
+deriveConstraint :: Name -> Type -> Maybe Pred
+deriveConstraint constraint t
+  | isTyVar t && hasKindStar t = Just $ applyCon constraint $ varTToName t
+  | otherwise                  = Nothing
+
+{-
+Note [Polykinded data families in Template Haskell]
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+In order to come up with the correct instance context and head for an instance, e.g.,
+
+  instance C a => C (Data a) where ...
+
+We need to know the exact types and kinds used to instantiate the instance. For
+plain old datatypes, this is simple: every type must be a type variable, and
+Template Haskell reliably tells us the type variables and their kinds.
+
+Doing the same for data families proves to be much harder for three reasons:
+
+1. On any version of Template Haskell, it may not tell you what an instantiated
+   type's kind is. For instance, in the following data family instance:
+
+     data family Fam (f :: * -> *) (a :: *)
+     data instance Fam f a
+
+   Then if we use TH's reify function, it would tell us the TyVarBndrs of the
+   data family declaration are:
+
+     [KindedTV f (AppT (AppT ArrowT StarT) StarT),KindedTV a StarT]
+
+   and the instantiated types of the data family instance are:
+
+     [VarT f1,VarT a1]
+
+   We can't just pass [VarT f1,VarT a1] to buildTypeInstanceFromTys, since we
+   have no way of knowing their kinds. Luckily, the TyVarBndrs tell us what the
+   kind is in case an instantiated type isn't a SigT, so we use the stealKindForType
+   function to ensure all of the instantiated types are SigTs before passing them
+   to buildTypeInstanceFromTys.
+2. On GHC 7.6 and 7.8, a bug is present in which Template Haskell lists all of
+   the specified kinds of a data family instance efore any of the instantiated
+   types. Fortunately, this is easy to deal with: you simply count the number of
+   distinct kind variables in the data family declaration, take that many elements
+   from the front of the  Types list of the data family instance, substitute the
+   kind variables with their respective instantiated kinds (which you took earlier),
+   and proceed as normal.
+3. On GHC 7.8, an even uglier bug is present (GHC Trac #9692) in which Template
+   Haskell might not even list all of the Types of a data family instance, since
+   they are eta-reduced away! And yes, kinds can be eta-reduced too.
+
+   The simplest workaround is to count how many instantiated types are missing from
+   the list and generate extra type variables to use in their place. Luckily, we
+   needn't worry much if its kind was eta-reduced away, since using stealKindForType
+   will get it back.
+
+Note [Kind signatures in derived instances]
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+It is possible to put explicit kind signatures into the derived instances, e.g.,
+
+  instance C a => C (Data (f :: * -> *)) where ...
+
+But it is preferable to avoid this if possible. If we come up with an incorrect
+kind signature (which is entirely possible, since Template Haskell doesn't always
+have the best track record with reifying kind signatures), then GHC will flat-out
+reject the instance, which is quite unfortunate.
+
+Plain old datatypes have the advantage that you can avoid using any kind signatures
+at all in their instances. This is because a datatype declaration uses all type
+variables, so the types that we use in a derived instance uniquely determine their
+kinds. As long as we plug in the right types, the kind inferencer can do the rest
+of the work. For this reason, we use unSigT to remove all kind signatures before
+splicing in the instance context and head.
+
+Data family instances are trickier, since a data family can have two instances that
+are distinguished by kind alone, e.g.,
+
+  data family Fam (a :: k)
+  data instance Fam (a :: * -> *)
+  data instance Fam (a :: *)
+
+If we dropped the kind signatures for C (Fam a), then GHC will have no way of
+knowing which instance we are talking about. To avoid this scenario, we always
+include explicit kind signatures in data family instances. There is a chance that
+the inferred kind signatures will be incorrect, but if so, we can always fall back
+on the mk- functions.
+-}
+
+-- | If a VarT is missing an explicit kind signature, steal it from a TyVarBndr.
+stealKindForType :: TyVarBndr -> Type -> Type
+stealKindForType tvb t@VarT{} = SigT t (tvbKind tvb)
+stealKindForType _   t        = t
 
 -- | Extracts the kind from a type variable binder.
 tvbKind :: TyVarBndr -> Kind
-tvbKind (PlainTV  _  ) = starK
-tvbKind (KindedTV _ k) = k
+#if MIN_VERSION_template_haskell(2,8,0)
+tvbKind (PlainTV  _  ) = StarT
+#else
+tvbKind (PlainTV  _  ) = StarK
 #endif
+tvbKind (KindedTV _ k) = k
 
-#if __GLASGOW_HASKELL__ >= 708 && __GLASGOW_HASKELL__ < 710
 tvbToType :: TyVarBndr -> Type
 tvbToType (PlainTV n)    = VarT n
 tvbToType (KindedTV n k) = SigT (VarT n) k
+
+-- | Returns True if a Type has kind *.
+hasKindStar :: Type -> Bool
+hasKindStar VarT{}         = True
+#if MIN_VERSION_template_haskell(2,8,0)
+hasKindStar (SigT _ StarT) = True
+#else
+hasKindStar (SigT _ StarK) = True
 #endif
+hasKindStar _              = False
+
+-- | Extract the Name from a type variable. If the argument Type is not a
+-- type variable, throw an error.
+varTToName :: Type -> Name
+varTToName (VarT n)   = n
+varTToName (SigT t _) = varTToName t
+varTToName _          = error "Not a type variable!"
 
 -- | Extracts the name from a constructor.
 getConName :: Con -> Name
@@ -1190,22 +1392,14 @@ getConName (NormalC name _)  = name
 getConName (RecC name _)     = name
 getConName (InfixC _ name _) = name
 getConName (ForallC _ _ con) = getConName con
-
--- | Extracts the name from a type variable binder.
-tvbName :: TyVarBndr -> Name
-tvbName (PlainTV  name  ) = name
-tvbName (KindedTV name _) = name
-
--- | Replace the Name of a TyVarBndr with one from a Type (if the Type has a Name).
-replaceTyVarName :: TyVarBndr -> Type -> TyVarBndr
-replaceTyVarName tvb            (SigT t _) = replaceTyVarName tvb t
-replaceTyVarName (PlainTV  _)   (VarT n)   = PlainTV  n
-replaceTyVarName (KindedTV _ k) (VarT n)   = KindedTV n k
-replaceTyVarName tvb            _          = tvb
+#if MIN_VERSION_template_haskell(2,11,0)
+getConName (GadtC    names _ _) = head names
+getConName (RecGadtC names _ _) = head names
+#endif
 
 -- | Fully applies a type constructor to its type variables.
-applyTyCon :: Name -> [Q Type] -> Q Type
-applyTyCon = foldl' appT . conT
+applyTyCon :: Name -> [Type] -> Type
+applyTyCon = foldl' AppT . ConT
 
 -- | Is the given type a variable?
 isTyVar :: Type -> Bool
@@ -1241,11 +1435,71 @@ valueConName (Number _) = "Number"
 valueConName (Bool   _) = "Boolean"
 valueConName Null       = "Null"
 
-applyCon :: Name -> [Name] -> Q [Pred]
-applyCon con typeNames = return (map apply typeNames)
-  where apply t =
+applyCon :: Name -> Name -> Pred
+applyCon con t =
 #if MIN_VERSION_template_haskell(2,10,0)
           AppT (ConT con) (VarT t)
 #else
           ClassP con [VarT t]
 #endif
+
+-------------------------------------------------------------------------------
+-- Expanding type synonyms
+-------------------------------------------------------------------------------
+
+-- | Expands all type synonyms in a type. Written by Dan Rosén in the
+-- @genifunctors@ package (licensed under BSD3).
+expandSyn :: Type -> Q Type
+expandSyn (ForallT tvs ctx t) = fmap (ForallT tvs ctx) $ expandSyn t
+expandSyn t@AppT{}            = expandSynApp t []
+expandSyn t@ConT{}            = expandSynApp t []
+expandSyn (SigT t k)          = do t' <- expandSyn t
+                                   k' <- expandSynKind k
+                                   return (SigT t' k')
+expandSyn t                   = return t
+
+expandSynKind :: Kind -> Q Kind
+#if MIN_VERSION_template_haskell(2,8,0)
+expandSynKind = expandSyn
+#else
+expandSynKind = return -- There are no kind synonyms to deal with
+#endif
+
+expandSynApp :: Type -> [Type] -> Q Type
+expandSynApp (AppT t1 t2) ts = do
+    t2' <- expandSyn t2
+    expandSynApp t1 (t2':ts)
+expandSynApp (ConT n) ts | nameBase n == "[]" = return $ foldl' AppT ListT ts
+expandSynApp t@(ConT n) ts = do
+    info <- reify n
+    case info of
+        TyConI (TySynD _ tvs rhs) ->
+            let (ts', ts'') = splitAt (length tvs) ts
+                subs = mkSubst tvs ts'
+                rhs' = substType subs rhs
+             in expandSynApp rhs' ts''
+        _ -> return $ foldl' AppT t ts
+expandSynApp t ts = do
+    t' <- expandSyn t
+    return $ foldl' AppT t' ts
+
+type TypeSubst = Map Name Type
+
+mkSubst :: [TyVarBndr] -> [Type] -> TypeSubst
+mkSubst vs ts =
+   let vs' = map un vs
+       un (PlainTV v)    = v
+       un (KindedTV v _) = v
+   in M.fromList $ zip vs' ts
+
+substType :: TypeSubst -> Type -> Type
+substType subs (ForallT v c t) = ForallT v c $ substType subs t
+substType subs t@(VarT n)      = M.findWithDefault t n subs
+substType subs (AppT t1 t2)    = AppT (substType subs t1) (substType subs t2)
+substType subs (SigT t k)      = SigT (substType subs t)
+#if MIN_VERSION_template_haskell(2,8,0)
+                                      (substType subs k)
+#else
+                                      k
+#endif
+substType _ t                  = t

@@ -1,4 +1,8 @@
-{-# LANGUAGE FlexibleInstances, GeneralizedNewtypeDeriving, TypeFamilies #-}
+{-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE GADTs #-}
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE StandaloneDeriving #-}
+{-# LANGUAGE TypeFamilies #-}
 
 module DataFamilies.Types where
 
@@ -23,3 +27,10 @@ newtype instance Approx a = Approx { fromApprox :: a }
 
 instance (ApproxEq a) => Eq (Approx a) where
     Approx a == Approx b = a =~ b
+
+data family GADT a
+data instance GADT a where
+    GADT :: { gadt :: String } -> GADT String
+
+deriving instance Eq   (GADT a)
+deriving instance Show (GADT a)
