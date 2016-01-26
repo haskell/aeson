@@ -16,7 +16,7 @@ import Encoders
 import Instances ()
 import Test.Framework (Test, testGroup)
 import Test.Framework.Providers.QuickCheck2 (testProperty)
-import Test.QuickCheck (Arbitrary(..), Property, (===), (.&&.))
+import Test.QuickCheck (Arbitrary(..), Property, (===), (.&&.), counterexample)
 import Types
 import qualified Data.Attoparsec.Lazy as L
 import qualified Data.ByteString.Lazy.Char8 as L
@@ -58,6 +58,14 @@ roundTripNoEnc eq _ i =
 
 roundTripEq :: (Eq a, FromJSON a, ToJSON a, Show a) => a -> a -> Property
 roundTripEq x y = roundTripEnc (===) x y .&&. roundTripNoEnc (===) x y
+
+infix 4 ==~
+(==~) :: (ApproxEq a, Show a) => a -> a -> Property
+x ==~ y =
+  counterexample (show x ++ " /= " ++ show y) (x =~ y)
+
+roundTripApproxEq :: (ApproxEq a, FromJSON a, ToJSON a, Show a) => a -> a -> Property
+roundTripApproxEq x y = roundTripEnc (==~) x y .&&. roundTripNoEnc (==~) x y
 
 toFromJSON :: (Arbitrary a, Eq a, FromJSON a, ToJSON a, Show a) => a -> Property
 toFromJSON x = case ifromJSON (toJSON x) of
@@ -124,7 +132,7 @@ tests = testGroup "properties" [
     , testProperty "Text" $ roundTripEq T.empty
     , testProperty "Foo" $ roundTripEq (undefined :: Foo)
     , testProperty "Day" $ roundTripEq (undefined :: Day)
-    , testProperty "DotNetTime" $ roundTripEq (undefined :: DotNetTime)
+    , testProperty "DotNetTime" $ roundTripApproxEq (undefined :: DotNetTime)
     , testProperty "LocalTime" $ roundTripEq (undefined :: LocalTime)
     , testProperty "TimeOfDay" $ roundTripEq (undefined :: TimeOfDay)
     , testProperty "UTCTime" $ roundTripEq (undefined :: UTCTime)
