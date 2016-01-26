@@ -1,5 +1,9 @@
-{-# LANGUAGE DeriveDataTypeable, GeneralizedNewtypeDeriving #-}
-{-# LANGUAGE DeriveGeneric, StandaloneDeriving #-}
+{-# LANGUAGE DeriveDataTypeable #-}
+{-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE GADTs #-}
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE StandaloneDeriving #-}
 
 module Types where
 
@@ -53,6 +57,14 @@ data SomeType a = Nullary
                          , testTwo   :: Maybe Bool
                          , testThree :: Maybe a
                          } deriving (Eq, Show)
+
+data GADT a where
+    GADT :: { gadt :: String } -> GADT String
+  deriving Typeable
+
+deriving instance Data (GADT String)
+deriving instance Eq   (GADT a)
+deriving instance Show (GADT a)
 
 deriving instance Generic Foo
 deriving instance Generic UFoo

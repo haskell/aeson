@@ -1,10 +1,13 @@
-{-# LANGUAGE FlexibleInstances, TemplateHaskell, TypeFamilies #-}
+{-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE TemplateHaskell #-}
+{-# LANGUAGE TypeFamilies #-}
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 
 module DataFamilies.Instances where
 
 import Control.Applicative
 import Data.Aeson.TH
+import Data.Aeson.Types (FromJSON(..))
 import DataFamilies.Types
 import Test.QuickCheck (Arbitrary(..), elements, oneof)
 import Prelude
@@ -22,6 +25,15 @@ instance Arbitrary a => Arbitrary (SomeType c () a) where
                       , Record  <$> arbitrary <*> arbitrary <*> arbitrary
                       ]
 
+instance Arbitrary (GADT String) where
+    arbitrary = GADT <$> arbitrary
+
 deriveJSON defaultOptions 'C1
 deriveJSON defaultOptions 'Nullary
 deriveJSON defaultOptions 'Approx
+
+deriveToJSON defaultOptions 'GADT
+-- We must write the FromJSON instance head ourselves
+-- due to the refined GADT return type
+instance FromJSON (GADT String) where
+    parseJSON = $(mkParseJSON defaultOptions 'GADT)

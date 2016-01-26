@@ -180,6 +180,14 @@ tests = testGroup "properties" [
               , testProperty "ObjectWithSingleField" (toParseJSON thApproxParseJSONDefault thApproxToJSONDefault)
             ]
           ]
+        , testGroup "GADT" [
+            testProperty "string"                (isString                . thGADTToJSONUnwrap)
+          , testProperty "ObjectWithSingleField" (isObjectWithSingleField . thGADTToJSONDefault)
+          , testGroup "roundTrip" [
+                testProperty "string"                (toParseJSON thGADTParseJSONUnwrap  thGADTToJSONUnwrap)
+              , testProperty "ObjectWithSingleField" (toParseJSON thGADTParseJSONDefault thGADTToJSONDefault)
+            ]
+          ]
         ]
       ]
     , testGroup "toEncoding" [

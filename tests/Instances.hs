@@ -1,4 +1,8 @@
-{-# Language OverloadedStrings, RecordWildCards, StandaloneDeriving, CPP #-}
+{-# LANGUAGE CPP #-}
+{-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE RecordWildCards #-}
+{-# LANGUAGE StandaloneDeriving #-}
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 
 module Instances where
@@ -159,6 +163,9 @@ instance Arbitrary a => Arbitrary (SomeType a) where
                       , Product <$> arbitrary <*> arbitrary <*> arbitrary
                       , Record  <$> arbitrary <*> arbitrary <*> arbitrary
                       ]
+
+instance Arbitrary (GADT String) where
+    arbitrary = GADT <$> arbitrary
 
 instance ApproxEq Char where
     (=~) = (==)

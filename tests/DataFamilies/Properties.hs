@@ -36,12 +36,20 @@ tests = testGroup "data families" [
           , testProperty "TaggedObject" (toParseJSON thSomeTypeParseJSONTaggedObject thSomeTypeToJSONTaggedObject)
           , testProperty "ObjectWithSingleField" (toParseJSON thSomeTypeParseJSONObjectWithSingleField thSomeTypeToJSONObjectWithSingleField)
           ]
-       , testGroup "Approx" [
-            testProperty "string"                (isString                . thApproxToJSONUnwrap)
-          , testProperty "ObjectWithSingleField" (isObjectWithSingleField . thApproxToJSONDefault)
-          , testGroup "roundTrip" [
-                testProperty "string"                (toParseJSON thApproxParseJSONUnwrap  thApproxToJSONUnwrap)
-              , testProperty "ObjectWithSingleField" (toParseJSON thApproxParseJSONDefault thApproxToJSONDefault)
+      , testGroup "Approx" [
+           testProperty "string"                (isString                . thApproxToJSONUnwrap)
+         , testProperty "ObjectWithSingleField" (isObjectWithSingleField . thApproxToJSONDefault)
+         , testGroup "roundTrip" [
+               testProperty "string"                (toParseJSON thApproxParseJSONUnwrap  thApproxToJSONUnwrap)
+             , testProperty "ObjectWithSingleField" (toParseJSON thApproxParseJSONDefault thApproxToJSONDefault)
+           ]
+         ]
+      , testGroup "GADT" [
+          testProperty "string"                (isString                . thGADTToJSONUnwrap)
+        , testProperty "ObjectWithSingleField" (isObjectWithSingleField . thGADTToJSONDefault)
+        , testGroup "roundTrip" [
+              testProperty "string"                (toParseJSON thGADTParseJSONUnwrap  thGADTToJSONUnwrap)
+            , testProperty "ObjectWithSingleField" (toParseJSON thGADTParseJSONDefault thGADTToJSONDefault)
             ]
           ]
         ]
