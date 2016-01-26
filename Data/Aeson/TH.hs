@@ -870,11 +870,11 @@ parseArgs tName opts (RecC conName ts) (Left (_, obj)) =
 parseArgs tName opts (RecC conName ts) (Right valName) = case (unwrapUnaryRecords opts,ts) of
   (True,[(_,st,ty)])-> parseArgs tName opts (NormalC conName [(st,ty)]) (Right valName)
   _ -> do
-  obj <- newName "recObj"
-  caseE (varE valName)
-    [ match (conP 'Object [varP obj]) (normalB $ parseRecord opts tName conName ts obj) []
-    , matchFailed tName conName "Object"
-    ]
+    obj <- newName "recObj"
+    caseE (varE valName)
+      [ match (conP 'Object [varP obj]) (normalB $ parseRecord opts tName conName ts obj) []
+      , matchFailed tName conName "Object"
+      ]
 
 -- Infix constructors. Apart from syntax these are the same as
 -- polyadic constructors.
