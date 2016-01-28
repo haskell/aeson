@@ -1,5 +1,13 @@
 {-# LANGUAGE CPP, DeriveDataTypeable, GeneralizedNewtypeDeriving, Rank2Types,
-    RecordWildCards, TemplateHaskell #-}
+    RecordWildCards #-}
+#if __GLASGOW_HASKELL >= 800
+-- a) THQ works on cross-compilers and unregisterised GHCs
+-- b) may make compilation faster as no dynamic loading is ever needed (not sure about this)
+-- c) removes one hindrance to have code inferred as SafeHaskell safe
+{-# LANGUAGE TemplateHaskellQuotes #-}
+#else
+{-# LANGUAGE TemplateHaskell #-}
+#endif
 
 -- |
 -- Module:      Data.Aeson.Types.Internal
