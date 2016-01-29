@@ -1,5 +1,13 @@
 {-# LANGUAGE CPP, DeriveDataTypeable, GeneralizedNewtypeDeriving, Rank2Types,
     RecordWildCards #-}
+#if __GLASGOW_HASKELL >= 800
+-- a) THQ works on cross-compilers and unregisterised GHCs
+-- b) may make compilation faster as no dynamic loading is ever needed (not sure about this)
+-- c) removes one hindrance to have code inferred as SafeHaskell safe
+{-# LANGUAGE TemplateHaskellQuotes #-}
+#else
+{-# LANGUAGE TemplateHaskell #-}
+#endif
 
 -- |
 -- Module:      Data.Aeson.Types.Internal
@@ -53,6 +61,7 @@ module Data.Aeson.Types.Internal
     , DotNetTime(..)
     ) where
 
+import Control.Arrow (first)
 import Control.Applicative
 import Control.DeepSeq (NFData(..))
 import Control.Monad (MonadPlus(..), ap)
@@ -71,7 +80,9 @@ import Data.Time.Format (FormatTime)
 import Data.Typeable (Typeable)
 import Data.Vector (Vector)
 import qualified Data.HashMap.Strict as H
+import qualified Data.Scientific as S
 import qualified Data.Vector as V
+import qualified Language.Haskell.TH.Syntax as TH
 
 #if !MIN_VERSION_base(4,8,0)
 import Data.Foldable (Foldable(..))
@@ -391,6 +402,21 @@ hashValue s Null         = s `hashWithSalt` (5::Int)
 
 instance Hashable Value where
     hashWithSalt = hashValue
+
+-- @since 0.11.0.0
+instance TH.Lift Value where
+    lift Null = [| Null |]
+    lift (Bool b) = [| Bool b |]
+    lift (Number n) = [| Number (S.scientific c e) |]
+      where
+        c = S.coefficient n
+        e = S.base10Exponent n
+    lift (String t) = [| String (pack s) |]
+      where s = unpack t
+    lift (Array a) = [| Array (V.fromList a') |]
+      where a' = V.toList a
+    lift (Object o) = [| Object (H.fromList . map (first pack) $ o') |]
+      where o' = map (first unpack) . H.toList $ o
 
 -- | The empty array.
 emptyArray :: Value
