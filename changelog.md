@@ -1,8 +1,17 @@
-# 0.10.1.0
+# 0.11.0.0
+
+This release should be close to backwards compatible with aeson 0.9
+
+* Various updates for GHC 8 compatibility.
+
+* Revert `.:?` to behave like it did in 0.9.
+
+* Introduce `.:!` that behaves like `.:?` did in 0.10.
 
 * Fix missing quotes surrounding time encodings.
 
-* Fix toEncoding method for Either.
+* Revert JSON format of `Either` to 0.9, `Left` and `Right` are now
+  serialized with an initial uppercase letter.
 
 * Fix #293: Bug in TH when omitNothingFields = True.
 
