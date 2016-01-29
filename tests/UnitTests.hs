@@ -50,6 +50,8 @@ tests = testGroup "unit" [
     , testCase "bad"  $ utcTimeBad
     ]
   , testGroup ".:, .:?, .:!" $ fmap (testCase "-") dotColonMark
+  , testGroup "To JSON representation" $ fmap (testCase "-") jsonEncoding
+  , testGroup "From JSON representation" $ fmap (testCase "-") jsonDecoding
   ]
 
 roundTripCamel :: String -> Assertion
@@ -195,6 +197,26 @@ dotColonMark = [
         ex2 = "{\"value\": 42 }"
         ex3 = "{\"value\": null }"
 
+------------------------------------------------------------------------------
+-- These tests assert that the JSON serialization doesn't change by accident.
+-----------------------------------------------------------------------------
+
+jsonEncoding :: [Assertion]
+jsonEncoding = [
+    assertEqual "Either Left" "{\"Left\":1}" $ encode (Left 1 :: Either Int Int)
+  , assertEqual "Either Right" "{\"Right\":1}" $ encode (Right 1 :: Either Int Int)
+  , assertEqual "Nothing"  "null" $ encode (Nothing :: Maybe Int)
+  , assertEqual "Just"  "1" $ encode (Just 1 :: Maybe Int)
+  , assertEqual "Just Nothing" "null" $ encode (Just Nothing :: Maybe (Maybe Int))
+  , assertEqual "Tuple" "[1,2]" $ encode ((1, 2) :: (Int, Int))
+  ]
+
+jsonDecoding :: [Assertion]
+jsonDecoding = [
+    assertEqual "Nothing" (Nothing :: Maybe Int) (decode "null")
+  , assertEqual "Just"    (Just 1 :: Maybe Int) (decode "1")
+  , assertEqual "Just Nothing" (Just Nothing :: Maybe (Maybe Int)) (decode "null")
+  ]
 
 ------------------------------------------------------------------------------
 -- Comparison between bytestring and text encoders
