@@ -29,6 +29,9 @@ module Data.Aeson.Types.Instances
       FromJSON(..)
     , ToJSON(..)
     , KeyValue(..)
+    -- ** Map classes
+    , FromJSONKey(..)
+    , ToJSONKey(..)
     -- ** Generic JSON classes
     , GFromJSON(..)
     , GToJSON(..)
@@ -60,8 +63,8 @@ module Data.Aeson.Types.Instances
     , typeMismatch
     ) where
 
-import Data.Aeson.Encode.Functions (brackets, builder, encode, foldable, list)
-import Data.Aeson.Functions (hashMapKey, mapHashKeyVal, mapKey, mapKeyVal)
+import Data.Aeson.Encode.Functions (brackets, builder, keyBuilder, encode, foldable, list)
+import Data.Aeson.Functions (mapHashKeyVal, mapKey, mapKeyVal)
 import Data.Aeson.Types.Class
 import Data.Aeson.Types.Internal
 import Data.Attoparsec.Number (Number(..))
@@ -631,14 +634,7 @@ instance FromJSON a => FromJSON (IntMap.IntMap a) where
     parseJSON = fmap IntMap.fromList . parseJSON
     {-# INLINE parseJSON #-}
 
-instance (ToJSON v) => ToJSON (M.Map Text v) where
-    toJSON = Object . M.foldrWithKey (\k -> H.insert k . toJSON) H.empty
-    {-# INLINE toJSON #-}
-
-    toEncoding = encodeMap M.minViewWithKey M.foldrWithKey
-    {-# INLINE toEncoding #-}
-
-encodeMap :: (ToJSON k, ToJSON v) =>
+encodeMap :: (ToJSONKey k, ToJSON v) =>
              (m -> Maybe ((k,v), m))
           -> ((k -> v -> B.Builder -> B.Builder) -> B.Builder -> m -> B.Builder)
           -> m -> Encoding
@@ -651,74 +647,55 @@ encodeMap minViewWithKey foldrWithKey xs =
   where go k v b = B.char7 ',' <> encodeKV k v <> b
 {-# INLINE encodeMap #-}
 
-encodeWithKey :: (ToJSON k, ToJSON v) =>
+encodeWithKey :: (ToJSONKey k, ToJSON v) =>
                  ((k -> v -> Series -> Series) -> Series -> m -> Series)
               -> m -> Encoding
 encodeWithKey foldrWithKey = brackets '{' '}' . foldrWithKey go mempty
   where go k v c = Value (Encoding $ encodeKV k v) <> c
 {-# INLINE encodeWithKey #-}
 
-encodeKV :: (ToJSON k, ToJSON v) => k -> v -> B.Builder
-encodeKV k v = builder k <> B.char7 ':' <> builder v
+encodeKV :: (ToJSONKey k, ToJSON v) => k -> v -> B.Builder
+encodeKV k v = keyBuilder k <> B.char7 ':' <> builder v
 {-# INLINE encodeKV #-}
 
-instance (FromJSON v) => FromJSON (M.Map Text v) where
-    parseJSON = withObject "Map Text a" $
-                  fmap (H.foldrWithKey M.insert M.empty) . H.traverseWithKey (\k v -> parseJSON v <?> Key k)
+instance FromJSONKey Text where
+    fromJSONKey = id
 
-instance (ToJSON v) => ToJSON (M.Map LT.Text v) where
-    toJSON = Object . mapHashKeyVal LT.toStrict toJSON
+instance ToJSONKey Text where
+    toJSONKey = id
+
+instance FromJSONKey LT.Text where
+    fromJSONKey = LT.fromStrict
+
+instance ToJSONKey LT.Text where
+    toJSONKey = LT.toStrict
+
+instance FromJSONKey String where
+    fromJSONKey = unpack
+
+instance ToJSONKey String where
+    toJSONKey = pack
+
+instance (FromJSON v, FromJSONKey k, Ord k) => FromJSON (M.Map k v) where
+    parseJSON = withObject "Map k v" $
+                  fmap (H.foldrWithKey (M.insert . fromJSONKey) M.empty) . H.traverseWithKey (\k v -> parseJSON v <?> Key k)
+
+instance (ToJSON v, ToJSONKey k) => ToJSON (M.Map k v) where
+    toJSON = Object . mapHashKeyVal toJSONKey toJSON
     {-# INLINE toJSON #-}
 
     toEncoding = encodeMap M.minViewWithKey M.foldrWithKey
     {-# INLINE toEncoding #-}
 
-instance (FromJSON v) => FromJSON (M.Map LT.Text v) where
-    parseJSON = fmap (hashMapKey LT.fromStrict) . parseJSON
-    {-# INLINE parseJSON #-}
-
-instance (ToJSON v) => ToJSON (M.Map String v) where
-    toJSON = Object . mapHashKeyVal pack toJSON
-    {-# INLINE toJSON #-}
-
-    toEncoding = encodeMap M.minViewWithKey M.foldrWithKey
-    {-# INLINE toEncoding #-}
-
-instance (FromJSON v) => FromJSON (M.Map String v) where
-    parseJSON = fmap (hashMapKey unpack) . parseJSON
-    {-# INLINE parseJSON #-}
-
-instance (ToJSON v) => ToJSON (H.HashMap Text v) where
-    toJSON = Object . H.map toJSON
+instance (ToJSON v, ToJSONKey k) => ToJSON (H.HashMap k v) where
+    toJSON = Object . mapKeyVal toJSONKey toJSON
     {-# INLINE toJSON #-}
 
     toEncoding = encodeWithKey H.foldrWithKey
     {-# INLINE toEncoding #-}
 
-instance (FromJSON v) => FromJSON (H.HashMap Text v) where
-    parseJSON = withObject "HashMap Text a" $ H.traverseWithKey (\k v -> parseJSON v <?> Key k)
-    {-# INLINE parseJSON #-}
-
-instance (ToJSON v) => ToJSON (H.HashMap LT.Text v) where
-    toJSON = Object . mapKeyVal LT.toStrict toJSON
-    {-# INLINE toJSON #-}
-
-    toEncoding = encodeWithKey H.foldrWithKey
-    {-# INLINE toEncoding #-}
-
-instance (FromJSON v) => FromJSON (H.HashMap LT.Text v) where
-    parseJSON = fmap (mapKey LT.fromStrict) . parseJSON
-    {-# INLINE parseJSON #-}
-
-instance (ToJSON v) => ToJSON (H.HashMap String v) where
-    toJSON = Object . mapKeyVal pack toJSON
-    {-# INLINE toJSON #-}
-
-    toEncoding = encodeWithKey H.foldrWithKey
-    {-# INLINE toEncoding #-}
-
-instance (FromJSON v) => FromJSON (H.HashMap String v) where
-    parseJSON = fmap (mapKey unpack) . parseJSON
+instance (FromJSON v, FromJSONKey k, Eq k, Hashable k) => FromJSON (H.HashMap k v) where
+    parseJSON = withObject "HashMap k v" $ fmap (mapKey fromJSONKey) . H.traverseWithKey (\k v -> parseJSON v <?> Key k)
     {-# INLINE parseJSON #-}
 
 instance (ToJSON v) => ToJSON (Tree.Tree v) where

@@ -29,11 +29,13 @@ module Data.Aeson.Types
     , Result(..)
     , FromJSON(..)
     , fromJSON
+    , FromJSONKey(..)
     , parse
     , parseEither
     , parseMaybe
     , ToJSON(..)
     , KeyValue(..)
+    , ToJSONKey(..)
     , modifyFailure
 
     -- ** Generic JSON classes
