@@ -1,4 +1,4 @@
-# Welcome to aeson
+# Welcome to `aeson` [![Hackage](https://img.shields.io/hackage/v/aeson.svg)](https://hackage.haskell.org/package/aeson) [![Build Status](https://travis-ci.org/bos/aeson.svg)](https://travis-ci.org/bos/aeson)
 
 aeson is a fast Haskell library for working with JSON data.
 
