@@ -690,7 +690,7 @@ instance ToJSONKey String where
 
 data P1 (m :: * -> *) = P1
 
-instance (FromJSON v, FromJSONKey k m, IJSONKeyMonad m, Ord k) => FromJSON (M.Map k v) where
+instance OVERLAPPABLE_ (FromJSON v, FromJSONKey k m, IJSONKeyMonad m, Ord k) => FromJSON (M.Map k v) where
     parseJSON = case jsonKeyMonadSing (P1 :: P1 m) of
         SJSONKeyMonadCoerce -> withObject "Map k v" $
 #if MIN_VERSION_base(4,7,0)
@@ -705,21 +705,21 @@ instance (FromJSON v, FromJSONKey k m, IJSONKeyMonad m, Ord k) => FromJSON (M.Ma
             H.foldrWithKey (\k v m -> M.insert <$> fromJSONKey k <*> (parseJSON v <?> Key k) <*> m) (pure M.empty)
     {-# INLINE parseJSON #-}
 
-instance (ToJSON v, ToJSONKey k) => ToJSON (M.Map k v) where
+instance OVERLAPPABLE_ (ToJSON v, ToJSONKey k) => ToJSON (M.Map k v) where
     toJSON = Object . mapHashKeyVal toJSONKey toJSON
     {-# INLINE toJSON #-}
 
     toEncoding = encodeMap M.minViewWithKey M.foldrWithKey
     {-# INLINE toEncoding #-}
 
-instance (ToJSON v, ToJSONKey k) => ToJSON (H.HashMap k v) where
+instance OVERLAPPABLE_ (ToJSON v, ToJSONKey k) => ToJSON (H.HashMap k v) where
     toJSON = Object . mapKeyVal toJSONKey toJSON
     {-# INLINE toJSON #-}
 
     toEncoding = encodeWithKey H.foldrWithKey
     {-# INLINE toEncoding #-}
 
-instance (FromJSON v, FromJSONKey k m, IJSONKeyMonad m, Eq k, Hashable k) => FromJSON (H.HashMap k v) where
+instance OVERLAPPABLE_ (FromJSON v, FromJSONKey k m, IJSONKeyMonad m, Eq k, Hashable k) => FromJSON (H.HashMap k v) where
     parseJSON = case jsonKeyMonadSing (P1 :: P1 m) of
         SJSONKeyMonadCoerce -> withObject "HashMap k v" $
             fmap (unsafeCoerce :: H.HashMap Text v -> H.HashMap k v) . H.traverseWithKey (\k v -> parseJSON v <?> Key k)
