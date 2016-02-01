@@ -113,7 +113,6 @@ import qualified Data.Vector.Unboxed as VU
 import Numeric.Natural
 #else
 import Control.Applicative ((<$>), (<*>), pure)
-import Data.Foldable (Foldable)
 import Data.Monoid (mempty)
 import Data.Traversable as Tr (traverse)
 import Data.Word (Word)
@@ -503,7 +502,7 @@ instance OVERLAPPABLE_ (FromJSON a) => FromJSON [a] where
                 zipWith parseIndexedJSON [0..] . V.toList
     {-# INLINE parseJSON #-}
 
-instance OVERLAPPABLE_ (Foldable t, ToJSON a) => ToJSON (t a) where
+instance (ToJSON a) => ToJSON (Seq.Seq a) where
     toJSON = toJSON . toList
     {-# INLINE toJSON #-}
 
