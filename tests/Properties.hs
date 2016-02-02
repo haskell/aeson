@@ -1,13 +1,23 @@
-{-# LANGUAGE OverloadedStrings, RecordWildCards, ScopedTypeVariables #-}
+{-# LANGUAGE OverloadedStrings, RecordWildCards, ScopedTypeVariables, DataKinds, MultiParamTypeClasses #-}
 
-module Properties where
+module Properties (
+    tests
+  , is2ElemArray
+  , isObjectWithSingleField
+  , isString
+  , isTaggedObject
+  , isTaggedObjectValue
+  , sameAs
+  , toParseJSON
+  ) where
 
 import Data.Aeson (eitherDecode)
-import Data.Aeson.Encode (encode, encodeToBuilder)
+import Data.Aeson.Encode (encode)
 import Data.Aeson.Internal (IResult(..), formatError, ifromJSON, iparse)
 import Data.Aeson.Parser (value)
 import Data.Aeson.Types
 import Data.ByteString.Builder (toLazyByteString)
+import Data.Hashable (Hashable(..))
 import Data.Int (Int8)
 import Data.Time (Day, LocalTime, NominalDiffTime, TimeOfDay, UTCTime,
                   ZonedTime)
@@ -116,6 +126,46 @@ isObjectWithSingleField (Object obj) = H.size obj == 1
 isObjectWithSingleField _            = False
 
 --------------------------------------------------------------------------------
+-- Map key variants
+--------------------------------------------------------------------------------
+
+newtype T1 = T1 T.Text
+  deriving (Show, Eq, Ord)
+
+instance Hashable T1 where
+  hashWithSalt salt (T1 t) = hashWithSalt salt t
+instance Arbitrary T1 where
+  arbitrary = fmap T1 arbitrary
+instance FromJSONKey T1 'JSONKeyIdentity where
+  fromJSONKey _ = T1
+instance ToJSONKey T1 'JSONKeyIdentity where
+  toJSONKey _ (T1 t) = t
+
+newtype T2 = T2 T.Text
+  deriving (Show, Eq, Ord)
+
+instance Hashable T2 where
+  hashWithSalt salt (T2 t) = hashWithSalt salt t
+instance Arbitrary T2 where
+  arbitrary = fmap T2 arbitrary
+instance FromJSONKey T2 'JSONKeyCoerce where
+  fromJSONKey _ = ()
+instance ToJSONKey T2 'JSONKeyCoerce where
+  toJSONKey _ = ()
+
+newtype T3 = T3 T.Text
+  deriving (Show, Eq, Ord)
+
+instance Hashable T3 where
+  hashWithSalt salt (T3 t) = hashWithSalt salt t
+instance Arbitrary T3 where
+  arbitrary = fmap T3 arbitrary
+instance FromJSONKey T3 'JSONKeyTextParser where
+  fromJSONKey _ = return . T3
+instance ToJSONKey T3 'JSONKeyTextParser where
+  toJSONKey _ (T3 t) = t
+
+--------------------------------------------------------------------------------
 
 tests :: Test
 tests = testGroup "properties" [
@@ -146,6 +196,22 @@ tests = testGroup "properties" [
       , testProperty "Sum4" $ roundTripEq (undefined :: S4)
       ]
     ]
+    , testGroup "Map" [
+        testProperty "T1" $ roundTripEq (undefined :: Map.Map T1 Int)
+      , testProperty "T2" $ roundTripEq (undefined :: Map.Map T2 Int)
+      , testProperty "T3" $ roundTripEq (undefined :: Map.Map T3 Int)
+      , testProperty "Text" $ roundTripEq (undefined :: Map.Map T.Text Int)
+      , testProperty "String" $ roundTripEq (undefined :: Map.Map String Int)
+      , testProperty "(Char, Char)" $ roundTripEq (undefined :: Map.Map (Char, Char) Int)
+      ]
+    , testGroup "HashMap" [
+        testProperty "T1" $ roundTripEq (undefined :: H.HashMap T1 Int)
+      , testProperty "T2" $ roundTripEq (undefined :: H.HashMap T2 Int)
+      , testProperty "T3" $ roundTripEq (undefined :: H.HashMap T3 Int)
+      , testProperty "Text" $ roundTripEq (undefined :: H.HashMap T.Text Int)
+      , testProperty "String" $ roundTripEq (undefined :: H.HashMap String Int)
+      , testProperty "(Char, Char)" $ roundTripEq (undefined :: H.HashMap (Char, Char) Int)
+      ]
   , testGroup "toFromJSON" [
       testProperty "Integer" (toFromJSON :: Integer -> Property)
     , testProperty "Double" (toFromJSON :: Double -> Property)

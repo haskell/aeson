@@ -39,13 +39,13 @@ module Data.Aeson.Types
 
     -- ** Key conversion
     , FromJSONKey(..)
-    , SJSONKeyMonad(..)
-    , IJSONKeyMonad(..)
-    , JSONKeyCoerce(..)
-#ifdef HAS_COERCIBLE
-    , JSONKeyCoercible
-#endif
+    , FromJSONKeyType
     , ToJSONKey(..)
+    , ToJSONKeyType
+    , JSONKeyCoercible
+    , JSONKeyMethod(..)
+    , SJSONKeyMethod(..)
+    , IJSONKeyMethod(..)
 
     -- ** Generic JSON classes
     , GFromJSON(..)

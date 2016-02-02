@@ -1,15 +1,14 @@
-{-# LANGUAGE BangPatterns, OverloadedStrings, FlexibleInstances, MultiParamTypeClasses #-}
+{-# LANGUAGE BangPatterns, OverloadedStrings, FlexibleInstances, MultiParamTypeClasses, DataKinds #-}
 
 import Control.DeepSeq
 import Criterion.Main
 import Data.Aeson
-import Data.Aeson.Types (JSONKeyCoerce(..), Parser)
+import Data.Aeson.Types (Parser)
 import Data.Hashable
 import qualified Data.ByteString.Lazy as LBS
 import qualified Data.Text as T
 import qualified Data.Map as M
 import qualified Data.HashMap.Strict as HM
-import Data.Functor.Identity
 
 value :: Int -> HM.HashMap T.Text T.Text
 value n = HM.fromList $ map f [1..n]
@@ -23,8 +22,8 @@ instance NFData T1 where
   rnf (T1 t) = rnf t
 instance Hashable T1 where
   hashWithSalt salt (T1 t) = hashWithSalt salt t
-instance FromJSONKey T1 Identity where
-    fromJSONKey = Identity . T1
+instance FromJSONKey T1 'JSONKeyIdentity where
+    fromJSONKey _ = T1
 
 newtype T2 = T2 T.Text
   deriving (Eq, Ord)
@@ -33,8 +32,8 @@ instance NFData T2 where
   rnf (T2 t) = rnf t
 instance Hashable T2 where
   hashWithSalt salt (T2 t) = hashWithSalt salt t
-instance FromJSONKey T2 JSONKeyCoerce where
-    fromJSONKey _ = JSONKeyCoerce
+instance FromJSONKey T2 'JSONKeyCoerce where
+    fromJSONKey _ = ()
 
 newtype T3 = T3 T.Text
   deriving (Eq, Ord)
@@ -43,8 +42,8 @@ instance NFData T3 where
   rnf (T3 t) = rnf t
 instance Hashable T3 where
   hashWithSalt salt (T3 t) = hashWithSalt salt t
-instance FromJSONKey T3 Parser where
-    fromJSONKey = return . T3
+instance FromJSONKey T3 'JSONKeyTextParser where
+    fromJSONKey _ = return . T3
 
 encodedValue10 :: LBS.ByteString
 encodedValue10 = encode $ value 10

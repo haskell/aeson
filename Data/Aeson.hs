@@ -59,9 +59,12 @@ module Data.Aeson
     , KeyValue(..)
     -- * Key conversion
     , FromJSONKey(..)
-    , SJSONKeyMonad(..)
-    , IJSONKeyMonad(..)
+    , FromJSONKeyType
     , ToJSONKey(..)
+    , ToJSONKeyType
+    , JSONKeyMethod(..)
+    , SJSONKeyMethod(..)
+    , IJSONKeyMethod(..)
     -- ** Generic JSON classes and options
     , GFromJSON(..)
     , GToJSON(..)

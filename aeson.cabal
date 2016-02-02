@@ -155,6 +155,7 @@ test-suite tests
     bytestring,
     containers,
     ghc-prim >= 0.2,
+    hashable,
     template-haskell,
     test-framework,
     test-framework-hunit,

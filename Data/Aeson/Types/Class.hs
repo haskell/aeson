@@ -1,5 +1,6 @@
 {-# LANGUAGE CPP, DefaultSignatures, FlexibleContexts, FunctionalDependencies, GADTs #-}
-{-# LANGUAGE ConstraintKinds, TypeFamilies, UndecidableInstances #-}
+{-# LANGUAGE ConstraintKinds, TypeFamilies, DataKinds, KindSignatures, UndecidableInstances #-}
+{-# LANGUAGE FlexibleInstances #-}
 #if __GLASGOW_HASKELL__ >= 800
 {-# LANGUAGE UndecidableSuperClasses #-}
 #endif
@@ -21,13 +22,13 @@ module Data.Aeson.Types.Class
     , ToJSON(..)
     -- * Map classes
     , FromJSONKey(..)
-    , SJSONKeyMonad(..)
-    , IJSONKeyMonad(..)
-    , JSONKeyCoerce(..)
-#ifdef HAS_COERCIBLE
-    , JSONKeyCoercible
-#endif
+    , FromJSONKeyType
     , ToJSONKey(..)
+    , ToJSONKeyType
+    , JSONKeyCoercible
+    , JSONKeyMethod(..)
+    , SJSONKeyMethod(..)
+    , IJSONKeyMethod(..)
     -- * Generic JSON classes
     , GFromJSON(..)
     , GToJSON(..)
@@ -42,14 +43,15 @@ module Data.Aeson.Types.Class
     ) where
 
 import Data.Aeson.Types.Internal
-import Data.Functor.Identity (Identity(..))
 import Data.Text (Text)
 import GHC.Generics (Generic, Rep, from, to)
 import qualified Data.Aeson.Encode.Builder as E
 
-#ifdef HAS_COERCIBLE
 import GHC.Exts (Constraint)
-import Data.Coerce (Coercible)
+#ifdef HAS_COERCIBLE
+import Data.Coerce (Coercible, coerce)
+#else
+import Unsafe.Coerce (unsafeCoerce)
 #endif
 
 -- | Class of generic representation types ('Rep') that can be converted to
@@ -263,56 +265,117 @@ class FromJSON a where
     default parseJSON :: (Generic a, GFromJSON (Rep a)) => Value -> Parser a
     parseJSON = genericParseJSON defaultOptions
 
+-- | Type family to reduce errors with 'JSONKeyCoerce'. Useful only with GHC >= 7.8
 #ifdef HAS_COERCIBLE
--- | Type family to reduce errors with 'JSONKeyCoerce'.
-type family JSONKeyCoercible m a :: Constraint where
-    JSONKeyCoercible JSONKeyCoerce a = Coercible Text a
-    JSONKeyCoercible m             a = ()
+type family JSONKeyCoercible (m :: JSONKeyMethod) a :: Constraint where
+    JSONKeyCoercible 'JSONKeyCoerce a = (Coercible Text a, Coercible a Text) -- Symmetry for GHC 7.8
+    JSONKeyCoercible m              a = ()
+#else
+type family JSONKeyCoercible (m :: JSONKeyMethod) a :: Constraint
+type instance JSONKeyCoercible m a = ()
 #endif
 
 -- | Helper typeclass to implement 'FromJSON' for map-like structures.
-class
+--
+-- 'JSONKeyMethod' provides different method to parse the key. There are three methods to parse textual keys:
+--
+-- * 'JSONKeyCoerce' for newtypes over 'Text' (with agreeing 'Hashable').
+--
+-- * 'JSONKeyIdentity' for values which can be always parsed from 'Text', e.g. 'CI' 'Text'.
+--
+-- * 'JSONKeyTextParser' for other textual values.
+--
+-- For types without textual representation use 'JSONKeyValueParser':
+--
+-- @
+-- instance FromJSONKey Coord 'JSONKeyValueParser where
+--    fromJSONKey _ = parseJSON
+-- @
+class JSONKeyCoercible m a => FromJSONKey a (m :: JSONKeyMethod) | a -> m where
+    fromJSONKey :: proxy m -> FromJSONKeyType m a
+
+-- | Helper typeclass to implement 'ToJSON' for map-like structures. See 'FromJSONKey'.
+--
+-- For types without textual representation use 'JSONKeyValueParser':
+--
+-- @
+-- instance ToJSONKey Coord 'JSONKeyValueParser where
+--    toJSONKey     _ = toJSON
+--    toKeyEncoding _ = toEncoding
+-- @
+class JSONKeyCoercible m a => ToJSONKey a (m :: JSONKeyMethod) | a -> m  where
+    toJSONKey :: proxy m -> ToJSONKeyType m a
+
+    -- | For 'JSONKeyValueParser' should produce valid 'Value' encoding.
+    --
+    -- For other methods 'toKeyEncoding' should produce valid 'Text' encoding.
+    toKeyEncoding :: proxy m -> a -> Encoding
+    default toKeyEncoding :: DefaultToKeyEncoding m a => proxy m -> a -> Encoding
+    toKeyEncoding = defaultToKeyEncoding
+    -- {-# INLINE toKeyEncoding #-}
+
+class DefaultToKeyEncoding (m :: JSONKeyMethod) a where
+    defaultToKeyEncoding :: proxy m -> a -> Encoding
+
+instance JSONKeyCoercible 'JSONKeyCoerce a => DefaultToKeyEncoding 'JSONKeyCoerce a where
 #ifdef HAS_COERCIBLE
-  JSONKeyCoercible m a =>
+    defaultToKeyEncoding _ = Encoding . E.text . coerce
+#else
+    defaultToKeyEncoding _ = Encoding . E.text . unsafeCoerce
 #endif
-  FromJSONKey a m | a -> m where
-    fromJSONKey :: Text -> m a
 
--- | Helper typeclass to implement 'ToJSON' for map-like structures.
-class ToJSONKey a where
-    toJSONKey :: a -> Text
+instance ToJSONKey a 'JSONKeyIdentity => DefaultToKeyEncoding 'JSONKeyIdentity a where
+    defaultToKeyEncoding p = Encoding . E.text . toJSONKey p
 
-    toKeyEncoding :: a -> Encoding
-    toKeyEncoding = Encoding . E.text . toJSONKey
-    {-# INLINE toKeyEncoding #-}
+instance ToJSONKey a 'JSONKeyTextParser => DefaultToKeyEncoding 'JSONKeyTextParser a where
+    defaultToKeyEncoding p = Encoding . E.text . toJSONKey p
 
--- | Singleton value for different JSON key parsing contexts
---
--- * 'SJSONKeyMonadCoerce': /Unsafe:/ For keys which are newtypes and 'Hashable' instances agree with base type.
---
--- * 'SJSONKeyMonadIdentity': Key parsers which cannot fail.
---
--- * 'SJSONKeyMonadParser': Arbitrary key parsers.
-data SJSONKeyMonad a where
-    SJSONKeyMonadCoerce   :: SJSONKeyMonad JSONKeyCoerce
-    SJSONKeyMonadIdentity :: SJSONKeyMonad Identity
-    SJSONKeyMonadParser   :: SJSONKeyMonad Parser
+instance ToJSONKey a 'JSONKeyValueParser => DefaultToKeyEncoding 'JSONKeyValueParser a where
+    defaultToKeyEncoding p = Encoding . E.encodeToBuilder . toJSONKey p
 
--- | A class for providing 'SJONKeyMonad' values.
-class IJSONKeyMonad m where
-    jsonKeyMonadSing :: proxy m -> SJSONKeyMonad m
+-- | Different methods to handle map structure keys
+data JSONKeyMethod = JSONKeyCoerce      -- ^ /Unsafe:/ For keys which are newtypes and 'Hashable' instances agree with base type.
+                   | JSONKeyIdentity    -- ^ Key parsers which cannot fail.
+                   | JSONKeyTextParser  -- ^ Arbitrary key parsers.
+                   | JSONKeyValueParser -- ^ Maps serialised as list of key-value pairs.
+    deriving (Eq, Ord, Enum, Bounded)
 
-instance IJSONKeyMonad JSONKeyCoerce where
-    jsonKeyMonadSing _ = SJSONKeyMonadCoerce
+-- | Type of 'fromJSONKey'.
+type family FromJSONKeyType (m :: JSONKeyMethod) a
+type instance FromJSONKeyType 'JSONKeyCoerce      a = ()
+type instance FromJSONKeyType 'JSONKeyIdentity    a = Text -> a
+type instance FromJSONKeyType 'JSONKeyTextParser  a = Text -> Parser a
+type instance FromJSONKeyType 'JSONKeyValueParser a = Value -> Parser a
 
-instance IJSONKeyMonad Identity where
-    jsonKeyMonadSing _ = SJSONKeyMonadIdentity
+-- | Type of 'toJSONKey'.
+type family ToJSONKeyType (m :: JSONKeyMethod) a
+type instance ToJSONKeyType 'JSONKeyCoerce      a = ()
+type instance ToJSONKeyType 'JSONKeyIdentity    a = a -> Text
+type instance ToJSONKeyType 'JSONKeyTextParser  a = a -> Text
+type instance ToJSONKeyType 'JSONKeyValueParser a = a -> Value
 
-instance IJSONKeyMonad Parser where
-    jsonKeyMonadSing _ = SJSONKeyMonadParser
+-- | Singleton of 'JSONKeyMethod'.
+data SJSONKeyMethod (m :: JSONKeyMethod) where
+    SJSONKeyCoerce       :: SJSONKeyMethod 'JSONKeyCoerce
+    SJSONKeyIdentity     :: SJSONKeyMethod 'JSONKeyIdentity
+    SJSONKeyTextParser   :: SJSONKeyMethod 'JSONKeyTextParser
+    SJSONKeyValueParser  :: SJSONKeyMethod 'JSONKeyValueParser
 
--- | Virtually a 'Proxy' for @'Coercible' 'Text' a@ types.
-data JSONKeyCoerce a = JSONKeyCoerce
+-- | A class for providing 'SJSONKeyMethod' values.
+class IJSONKeyMethod (m :: JSONKeyMethod) where
+    jsonKeyMethodSing :: proxy m -> SJSONKeyMethod m
+
+instance IJSONKeyMethod 'JSONKeyCoerce where
+    jsonKeyMethodSing _ = SJSONKeyCoerce
+
+instance IJSONKeyMethod 'JSONKeyIdentity where
+    jsonKeyMethodSing _ = SJSONKeyIdentity
+
+instance IJSONKeyMethod 'JSONKeyTextParser where
+    jsonKeyMethodSing _ = SJSONKeyTextParser
+
+instance IJSONKeyMethod 'JSONKeyValueParser where
+    jsonKeyMethodSing _ = SJSONKeyValueParser
 
 -- | A key-value pair for encoding a JSON object.
 class KeyValue kv where

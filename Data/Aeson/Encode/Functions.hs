@@ -4,11 +4,11 @@ module Data.Aeson.Encode.Functions
     (
       brackets
     , builder
-    , keyBuilder
     , char7
     , encode
     , foldable
     , list
+    , list'
     , pairs
     ) where
 
@@ -30,9 +30,6 @@ builder :: ToJSON a => a -> Builder
 builder = fromEncoding . toEncoding
 {-# INLINE builder #-}
 
-keyBuilder :: ToJSONKey a => a -> Builder
-keyBuilder = fromEncoding . toKeyEncoding
-
 -- | Efficiently serialize a JSON value as a lazy 'L.ByteString'.
 --
 -- This is implemented in terms of the 'ToJSON' class's 'toEncoding' method.
@@ -51,6 +48,13 @@ list (x:xs) = Encoding $
               char7 '[' <> builder x <> commas xs <> char7 ']'
       where commas = foldr (\v vs -> char7 ',' <> builder v <> vs) mempty
 {-# INLINE list #-}
+
+list' :: (a -> Encoding) -> [a] -> Encoding
+list' _ []     = emptyArray_
+list' e (x:xs) = Encoding $
+              char7 '[' <> fromEncoding (e x) <> commas xs <> char7 ']'
+      where commas = foldr (\v vs -> char7 ',' <> fromEncoding (e v) <> vs) mempty
+{-# INLINE list' #-}
 
 brackets :: Char -> Char -> Series -> Encoding
 brackets begin end (Value v) = Encoding $
