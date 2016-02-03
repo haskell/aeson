@@ -4,6 +4,7 @@
     ViewPatterns #-}
 {-# LANGUAGE DefaultSignatures #-}
 
+#define NEEDS_INCOHERENT
 #include "overlapping-compat.h"
 
 {-# OPTIONS_GHC -fno-warn-orphans #-}
@@ -221,14 +222,14 @@ instance FromJSON () where
                     else fail "Expected an empty array"
     {-# INLINE parseJSON #-}
 
-instance ToJSON [Char] where
+instance INCOHERENT_ ToJSON [Char] where
     toJSON = String . T.pack
     {-# INLINE toJSON #-}
 
     toEncoding = Encoding . E.string
     {-# INLINE toEncoding #-}
 
-instance FromJSON [Char] where
+instance INCOHERENT_ FromJSON [Char] where
     parseJSON = withText "String" $ pure . T.unpack
     {-# INLINE parseJSON #-}
 

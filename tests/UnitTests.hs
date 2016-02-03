@@ -10,6 +10,7 @@ import Data.Aeson.Encode (encodeToTextBuilder)
 import Data.Aeson.TH (deriveJSON)
 import Data.Aeson.Types (ToJSON(..), Value, camelTo, camelTo2, defaultOptions, omitNothingFields)
 import Data.Char (toUpper)
+import Data.Maybe (fromMaybe)
 import Data.Time (UTCTime)
 import Data.Time.Format (parseTime)
 import GHC.Generics (Generic)
@@ -52,6 +53,7 @@ tests = testGroup "unit" [
   , testGroup ".:, .:?, .:!" $ fmap (testCase "-") dotColonMark
   , testGroup "To JSON representation" $ fmap (testCase "-") jsonEncoding
   , testGroup "From JSON representation" $ fmap (testCase "-") jsonDecoding
+  , testGroup "Issue #351" $ fmap (testCase "-") issue351
   ]
 
 roundTripCamel :: String -> Assertion
@@ -216,6 +218,21 @@ jsonDecoding = [
     assertEqual "Nothing" (Nothing :: Maybe Int) (decode "null")
   , assertEqual "Just"    (Just 1 :: Maybe Int) (decode "1")
   , assertEqual "Just Nothing" (Just Nothing :: Maybe (Maybe Int)) (decode "null")
+  ]
+
+------------------------------------------------------------------------------
+-- Regressions
+------------------------------------------------------------------------------
+
+-- A regression test for: https://github.com/bos/aeson/issues/351
+overlappingRegression :: FromJSON a => L.ByteString -> [a]
+overlappingRegression bs = fromMaybe [] $ decode bs
+
+issue351 :: [Assertion]
+issue351 = [
+    assertEqual "Int"  ([1, 2, 3] :: [Int])  $ overlappingRegression "[1, 2, 3]"
+  , assertEqual "Char" (""        :: String) $ overlappingRegression "\"abc\""
+  , assertEqual "Char" ("abc"     :: String) $ overlappingRegression "[\"a\", \"b\", \"c\"]"
   ]
 
 ------------------------------------------------------------------------------
