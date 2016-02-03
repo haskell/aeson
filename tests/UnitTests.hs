@@ -7,6 +7,7 @@ module UnitTests (ioTests, tests) where
 import Control.Monad (forM)
 import Data.Aeson (decode, eitherDecode, encode, genericToJSON, genericToEncoding, FromJSON(..), withObject, (.:), (.:?), (.:!))
 import Data.Aeson.Encode (encodeToTextBuilder)
+import Data.Aeson.Internal (JSONPathElement(..), formatError)
 import Data.Aeson.TH (deriveJSON)
 import Data.Aeson.Types (ToJSON(..), Value, camelTo, camelTo2, defaultOptions, omitNothingFields)
 import Data.Char (toUpper)
@@ -48,6 +49,9 @@ tests = testGroup "unit" [
   , testGroup "utctime" [
       testCase "good" $ utcTimeGood
     , testCase "bad"  $ utcTimeBad
+    ]
+  , testGroup "formatError" [
+      testCase "example 1" $ formatErrorExample
     ]
   , testGroup ".:, .:?, .:!" $ fmap (testCase "-") dotColonMark
   , testGroup "To JSON representation" $ fmap (testCase "-") jsonEncoding
@@ -166,6 +170,13 @@ utcTimeBad = do
     verifyFailParse (s :: LT.Text) =
       let (dec :: Maybe UTCTime) = decode . LT.encodeUtf8 $ (LT.concat ["\"", s, "\""]) in
       assertEqual "verify failure" Nothing dec
+
+-- Non identifier keys should be escaped & enclosed in brackets
+formatErrorExample :: Assertion
+formatErrorExample =
+  let rhs = formatError [Index 0, Key "foo", Key "bar", Key "a.b.c", Key "", Key "'\\", Key "end"] "error msg"
+      lhs = "Error in $[0].foo.bar['a.b.c']['']['\\'\\\\'].end: error msg"
+  in assertEqual "formatError example" lhs rhs
 
 ------------------------------------------------------------------------------
 -- Comparison (.:?) and (.:!)
