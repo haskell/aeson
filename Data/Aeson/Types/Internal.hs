@@ -67,7 +67,7 @@ import Control.DeepSeq (NFData(..))
 import Control.Monad (MonadPlus(..), ap)
 import qualified Control.Monad.Fail as Fail
 import Data.ByteString.Builder (Builder, char7, toLazyByteString)
-import Data.Char (isLower, isUpper, toLower)
+import Data.Char (isLower, isUpper, toLower, isAlpha, isAlphaNum)
 import Data.Data (Data)
 import Data.HashMap.Strict (HashMap)
 import Data.Hashable (Hashable(..))
@@ -459,9 +459,28 @@ parseEither m v = runParser (m v) [] onError Right
 formatError :: JSONPath -> String -> String
 formatError path msg = "Error in " ++ (format "$" path) ++ ": " ++ msg
   where
+    format :: String -> JSONPath -> String
     format pfx []                = pfx
     format pfx (Index idx:parts) = format (pfx ++ "[" ++ show idx ++ "]") parts
-    format pfx (Key key:parts)   = format (pfx ++ "." ++ unpack key) parts
+    format pfx (Key key:parts)   = format (pfx ++ formatKey key) parts
+
+    formatKey :: Text -> String
+    formatKey key
+       | isIdentifierKey strKey = "." ++ strKey
+       | otherwise              = "['" ++ escapeKey strKey ++ "']"
+      where strKey = unpack key
+
+    isIdentifierKey :: String -> Bool
+    isIdentifierKey []     = False
+    isIdentifierKey (x:xs) = isAlpha x && all isAlphaNum xs
+
+    escapeKey :: String -> String
+    escapeKey = concatMap escapeChar
+
+    escapeChar :: Char -> String
+    escapeChar '\'' = "\\'"
+    escapeChar '\\' = "\\\\"
+    escapeChar c    = [c]
 
 -- | A key\/value pair for an 'Object'.
 type Pair = (Text, Value)
