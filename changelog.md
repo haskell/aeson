@@ -1,26 +1,46 @@
 # 0.11.0.0
 
-This release should be close to backwards compatible with aeson 0.9
+This release should be close to backwards compatible with aeson 0.9.
 
-* Various updates for GHC 8 compatibility.
+Breaking changes:
 
-* Revert `.:?` to behave like it did in 0.9.
+* Revert `.:?` to behave like it did in 0.9. If you want the 0.10
+  behavior use `.:!` instead.
+
+* Revert JSON format of `Either` to 0.9, `Left` and `Right` are now
+  serialized with an initial uppercase letter. If you want the names
+  in lowercase you can add a newtype with an instance.
+
+* All `ToJSON` and `FromJSON` instances except for `[a]` are no longer
+  `OVERLAPPABLE`. Mark your instance as `OVERLAPPING` if it overlaps
+  any of the other aeson instances.
+
+* All `ToJSON` and `FromJSON` instances except for `[Char]` are no
+  longer incoherent, this means you may need to replace your
+  incoherent instances with a newtyped instance.
+
+Additions:
 
 * Introduce `.:!` that behaves like `.:?` did in 0.10.
 
-* Fix missing quotes surrounding time encodings.
-
-* Revert JSON format of `Either` to 0.9, `Left` and `Right` are now
-  serialized with an initial uppercase letter.
-
-* Fix #293: Bug in TH when omitNothingFields = True.
-
-* Allow HH:MM format for ZonedTime and UTCTime.
+* Allow `HH:MM` format for `ZonedTime` and `UTCTime`.
   This is one of the formats allowed by
   [ISO 8601](https://en.wikipedia.org/wiki/ISO_8601#Times).
 
-* Added ToJSON and FromJSON instances for the
-  Version, Ordering and Natural type.
+* Added `ToJSON` and `FromJSON` instances for the
+  `Version`, `Ordering`, and `Natural` types.
+
+Bug fixes:
+
+* JSONPath identifiers are now escaped if they contain invalid characters.
+
+* Fix missing quotes surrounding time encodings.
+
+* Fix #293: Type error in TH when using `omitNothingFields = True`.
+
+Compatibility:
+
+* Various updates for GHC 8.
 
 
 # 0.10.0.0
