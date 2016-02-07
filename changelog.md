@@ -34,6 +34,8 @@ Bug fixes:
 
 * JSONPath identifiers are now escaped if they contain invalid characters.
 
+* Fixed JSONPath messages for Seq to include indices.
+
 * Fix missing quotes surrounding time encodings.
 
 * Fix #293: Type error in TH when using `omitNothingFields = True`.
