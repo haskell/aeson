@@ -511,7 +511,9 @@ instance (ToJSON a) => ToJSON (Seq.Seq a) where
     {-# INLINE toEncoding #-}
 
 instance (FromJSON a) => FromJSON (Seq.Seq a) where
-    parseJSON = withArray "Seq a" $ traverse parseJSON . Seq.fromList . V.toList
+    parseJSON = withArray "Seq a" $
+      fmap Seq.fromList .
+      Tr.sequence . zipWith parseIndexedJSON [0..] . V.toList
     {-# INLINE parseJSON #-}
 
 instance (ToJSON a) => ToJSON (Vector a) where

@@ -14,6 +14,7 @@ import Data.Char (toUpper)
 import Data.Maybe (fromMaybe)
 import Data.Time (UTCTime)
 import Data.Time.Format (parseTime)
+import Data.Sequence (Seq)
 import GHC.Generics (Generic)
 import Test.Framework (Test, testGroup)
 import Test.Framework.Providers.HUnit (testCase)
@@ -57,6 +58,7 @@ tests = testGroup "unit" [
   , testGroup ".:, .:?, .:!" $ fmap (testCase "-") dotColonMark
   , testGroup "To JSON representation" $ fmap (testCase "-") jsonEncoding
   , testGroup "From JSON representation" $ fmap (testCase "-") jsonDecoding
+  , testGroup "JSONPath" $ fmap (testCase "-") jsonPath
   , testGroup "Issue #351" $ fmap (testCase "-") issue351
   ]
 
@@ -229,6 +231,18 @@ jsonDecoding = [
     assertEqual "Nothing" (Nothing :: Maybe Int) (decode "null")
   , assertEqual "Just"    (Just 1 :: Maybe Int) (decode "1")
   , assertEqual "Just Nothing" (Just Nothing :: Maybe (Maybe Int)) (decode "null")
+  ]
+
+------------------------------------------------------------------------------
+-- These tests check that JSONPath is tracked correctly
+-----------------------------------------------------------------------------
+
+jsonPath :: [Assertion]
+jsonPath = [
+    -- issue #358
+    assertEqual "Seq a"
+      (Left "Error in $[2]: expected Int, encountered Boolean")
+      (eitherDecode "[0,1,true]" :: Either String (Seq Int))
   ]
 
 ------------------------------------------------------------------------------
