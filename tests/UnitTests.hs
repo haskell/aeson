@@ -239,8 +239,13 @@ jsonDecoding = [
 
 jsonPath :: [Assertion]
 jsonPath = [
+    -- issue #356
+    assertEqual "Either"
+      (Left "Error in $[1].Left[1]: expected Bool, encountered Number")
+      (eitherDecode "[1,{\"Left\":[2,3]}]"
+         :: Either String (Int, Either (Int, Bool) ()))
     -- issue #358
-    assertEqual "Seq a"
+  , assertEqual "Seq a"
       (Left "Error in $[2]: expected Int, encountered Boolean")
       (eitherDecode "[0,1,true]" :: Either String (Seq Int))
   ]

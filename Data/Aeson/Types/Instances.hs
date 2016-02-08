@@ -166,8 +166,8 @@ instance (ToJSON a, ToJSON b) => ToJSON (Either a b) where
 
 instance (FromJSON a, FromJSON b) => FromJSON (Either a b) where
     parseJSON (Object (H.toList -> [(key, value)]))
-        | key == left  = Left  <$> parseJSON value
-        | key == right = Right <$> parseJSON value
+        | key == left  = Left  <$> parseJSON value <?> Key left
+        | key == right = Right <$> parseJSON value <?> Key right
     parseJSON _        = fail $
         "expected an object with a single property " ++
         "where the property key should be either " ++
