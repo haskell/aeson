@@ -1,3 +1,5 @@
+For the latest version of this document, please see [https://github.com/bos/aeson/blob/master/changelog.md](https://github.com/bos/aeson/blob/master/changelog.md).
+
 # 0.11.0.0
 
 This release should be close to backwards compatible with aeson 0.9.
