@@ -2,7 +2,10 @@
 
 This release should be close to backwards compatible with aeson 0.9.
 
-Breaking changes:
+If you are upgrading from aeson 0.10 it might be easier to go back in
+history to the point you were still using 0.9.
+
+**Breaking changes**:
 
 * Revert `.:?` to behave like it did in 0.9. If you want the 0.10
   behavior use `.:!` instead.
@@ -19,7 +22,7 @@ Breaking changes:
   longer incoherent, this means you may need to replace your
   incoherent instances with a newtyped instance.
 
-Additions:
+**Additions**:
 
 * Introduce `.:!` that behaves like `.:?` did in 0.10.
 
@@ -30,7 +33,7 @@ Additions:
 * Added `ToJSON` and `FromJSON` instances for the
   `Version`, `Ordering`, and `Natural` types.
 
-Bug fixes:
+**Bug fixes**:
 
 * JSONPath identifiers are now escaped if they contain invalid characters.
 
@@ -42,9 +45,9 @@ Bug fixes:
 
 * Fix #293: Type error in TH when using `omitNothingFields = True`.
 
-Compatibility:
+**Compatibility**:
 
-* Various updates for GHC 8.
+* Various updates to support GHC 8.
 
 
 # 0.10.0.0
