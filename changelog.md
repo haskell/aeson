@@ -36,6 +36,8 @@ Bug fixes:
 
 * Fixed JSONPath messages for Seq to include indices.
 
+* Fixed JSONPath messages for Either to include `left`/`right`.
+
 * Fix missing quotes surrounding time encodings.
 
 * Fix #293: Type error in TH when using `omitNothingFields = True`.
