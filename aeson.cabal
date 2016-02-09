@@ -108,7 +108,7 @@ library
 
   if !impl(ghc >= 8.0)
     -- `Data.Semigroup` is available in base only since GHC 8.0
-    build-depends: semigroups >= 0.16.1
+    build-depends: semigroups >= 0.16.1 && < 0.17
 
   if flag(old-locale)
     build-depends: time < 1.5, old-locale
@@ -163,7 +163,7 @@ test-suite tests
     quickcheck-instances >=0.3.12
 
   if !impl(ghc >= 8.0)
-    build-depends: semigroups >= 0.16.1
+    build-depends: semigroups >= 0.16.1 && < 0.17
 
   if flag(old-locale)
     build-depends: time < 1.5, old-locale
