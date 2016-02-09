@@ -9,6 +9,7 @@ import Data.Aeson.Parser (value)
 import Data.Aeson.Types
 import Data.ByteString.Builder (toLazyByteString)
 import Data.Int (Int8)
+import Data.List.NonEmpty (NonEmpty)
 import Data.Time (Day, LocalTime, NominalDiffTime, TimeOfDay, UTCTime,
                   ZonedTime)
 import Data.Version (Version)
@@ -127,6 +128,7 @@ tests = testGroup "properties" [
       testProperty "Bool" $ roundTripEq True
     , testProperty "Double" $ roundTripEq (1 :: Approx Double)
     , testProperty "Int" $ roundTripEq (1 :: Int)
+    , testProperty "NonEmpty Char" $ roundTripEq (undefined :: NonEmpty Char)
     , testProperty "Integer" $ roundTripEq (1 :: Integer)
     , testProperty "String" $ roundTripEq ("" :: String)
     , testProperty "Text" $ roundTripEq T.empty

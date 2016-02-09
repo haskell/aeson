@@ -14,6 +14,7 @@ import Test.QuickCheck (Arbitrary(..), getNonNegative, elements,
                         listOf1, oneof, resize)
 import Data.Time.Clock (UTCTime(..))
 import Data.Time (ZonedTime(..), TimeZone(..))
+import Data.List.NonEmpty (NonEmpty(..))
 import Data.Version
 import Data.Aeson.Types
 import Control.Applicative
@@ -135,6 +136,9 @@ instance (ApproxEq a) => ApproxEq [a] where
 
 instance Arbitrary Version where
     arbitrary = makeVersion . fmap getNonNegative <$> resize 4 (listOf1 arbitrary)
+
+instance Arbitrary a => Arbitrary (NonEmpty a) where
+    arbitrary = (:|) <$> arbitrary <*> arbitrary
 
 -- Version tags are deprecated, so we avoid using them in the Arbitrary
 -- instance. However, the recommended constructor 'makeVersion' is not
