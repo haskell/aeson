@@ -3,7 +3,7 @@
 module Properties where
 
 import Data.Aeson (eitherDecode)
-import Data.Aeson.Encode (encode, encodeToBuilder)
+import Data.Aeson.Encode (encode)
 import Data.Aeson.Internal (IResult(..), formatError, ifromJSON, iparse)
 import Data.Aeson.Parser (value)
 import Data.Aeson.Types
