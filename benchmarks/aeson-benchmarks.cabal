@@ -51,6 +51,9 @@ library
     unordered-containers >= 0.2.3.0,
     vector >= 0.7.1
 
+  if impl(ghc >=7.8)
+    cpp-options: -DHAS_COERCIBLE
+
   if !impl(ghc >= 8.0)
     -- `Data.Semigroup` is available in base only since GHC 8.0
     build-depends: semigroups >= 0.16.1
@@ -161,3 +164,19 @@ executable aeson-benchmark-dates
     aeson-benchmarks,
     text,
     time
+
+executable aeson-benchmark-map
+  main-is: AesonMap.hs
+  ghc-options: -Wall -O2 -rtsopts
+  build-depends:
+    aeson-benchmarks,
+    base,
+    criterion >= 1.0,
+    bytestring,
+    containers,
+    deepseq,
+    hashable,
+    text,
+    transformers,
+    transformers-compat,
+    unordered-containers

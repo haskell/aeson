@@ -1,7 +1,7 @@
 {-# LANGUAGE CPP, BangPatterns, DeriveDataTypeable, FlexibleContexts,
     FlexibleInstances, GeneralizedNewtypeDeriving,
-    OverloadedStrings, UndecidableInstances,
-    ViewPatterns #-}
+    OverloadedStrings, UndecidableInstances, MultiParamTypeClasses, GADTs,
+    ViewPatterns, ScopedTypeVariables, KindSignatures, DataKinds #-}
 {-# LANGUAGE DefaultSignatures #-}
 
 #define NEEDS_INCOHERENT
@@ -30,6 +30,15 @@ module Data.Aeson.Types.Instances
       FromJSON(..)
     , ToJSON(..)
     , KeyValue(..)
+    -- ** Map classes
+    , FromJSONKey(..)
+    , FromJSONKeyType
+    , ToJSONKey(..)
+    , ToJSONKeyType
+    , JSONKeyCoercible
+    , JSONKeyMethod(..)
+    , SJSONKeyMethod(..)
+    , IJSONKeyMethod(..)
     -- ** Generic JSON classes
     , GFromJSON(..)
     , GToJSON(..)
@@ -61,8 +70,8 @@ module Data.Aeson.Types.Instances
     , typeMismatch
     ) where
 
-import Data.Aeson.Encode.Functions (brackets, builder, encode, foldable, list)
-import Data.Aeson.Functions (hashMapKey, mapHashKeyVal, mapKey, mapKeyVal)
+import Data.Aeson.Encode.Functions (brackets, builder, encode, foldable, list, list')
+import Data.Aeson.Functions (mapHashKeyVal, mapKey, mapKeyVal)
 import Data.Aeson.Types.Class
 import Data.Aeson.Types.Internal
 import Data.Attoparsec.Number (Number(..))
@@ -119,14 +128,38 @@ import Data.Traversable as Tr (traverse)
 import Data.Word (Word)
 #endif
 
+#if HAS_COERCIBLE
+import Data.Coerce (coerce)
+#endif
+
 #if MIN_VERSION_time(1,5,0)
 import Data.Time.Format (defaultTimeLocale)
 #else
 import System.Locale (defaultTimeLocale)
 #endif
 
+import Unsafe.Coerce (unsafeCoerce)
+
 parseIndexedJSON :: FromJSON a => Int -> Value -> Parser a
 parseIndexedJSON idx value = parseJSON value <?> Index idx
+
+parseIndexedJSONPair :: FromJSON b => (Value -> Parser a) -> Int -> Value -> Parser (a, b)
+parseIndexedJSONPair keyParser idx value = p value <?> Index idx
+  where
+    p = withArray "(k,v)" $ \ab ->
+        let n = V.length ab
+        in if n == 2
+             then (,) <$> parseJSONElemAtIndex' keyParser 0 ab
+                      <*> parseJSONElemAtIndex 1 ab
+             else fail $ "cannot unpack array of length " ++
+                         show n ++ " into a pair"
+
+toJSONPair :: ToJSON b => (a -> Value) -> (a, b) -> Value
+toJSONPair keySerialiser (a, b) = Array $ V.create $ do
+     mv <- VM.unsafeNew 2
+     VM.unsafeWrite mv 0 (keySerialiser a)
+     VM.unsafeWrite mv 1 (toJSON b)
+     return mv
 
 instance (ToJSON a) => ToJSON (Identity a) where
     toJSON (Identity a) = toJSON a
@@ -633,94 +666,136 @@ instance FromJSON a => FromJSON (IntMap.IntMap a) where
     parseJSON = fmap IntMap.fromList . parseJSON
     {-# INLINE parseJSON #-}
 
-instance (ToJSON v) => ToJSON (M.Map Text v) where
-    toJSON = Object . M.foldrWithKey (\k -> H.insert k . toJSON) H.empty
-    {-# INLINE toJSON #-}
-
-    toEncoding = encodeMap M.minViewWithKey M.foldrWithKey
-    {-# INLINE toEncoding #-}
-
-encodeMap :: (ToJSON k, ToJSON v) =>
-             (m -> Maybe ((k,v), m))
+encodeMap :: (ToJSON v)
+          => (k -> Encoding)
+          -> (m -> Maybe ((k,v), m))
           -> ((k -> v -> B.Builder -> B.Builder) -> B.Builder -> m -> B.Builder)
           -> m -> Encoding
-encodeMap minViewWithKey foldrWithKey xs =
+encodeMap encodeKey minViewWithKey foldrWithKey xs =
     case minViewWithKey xs of
       Nothing         -> E.emptyObject_
       Just ((k,v),ys) -> Encoding $
-                         B.char7 '{' <> encodeKV k v <>
+                         B.char7 '{' <> encodeKV encodeKey k v <>
                          foldrWithKey go (B.char7 '}') ys
-  where go k v b = B.char7 ',' <> encodeKV k v <> b
+  where go k v b = B.char7 ',' <> encodeKV encodeKey k v <> b
 {-# INLINE encodeMap #-}
 
-encodeWithKey :: (ToJSON k, ToJSON v) =>
-                 ((k -> v -> Series -> Series) -> Series -> m -> Series)
+encodeWithKey :: (ToJSON v)
+              => (k -> Encoding)
+              -> ((k -> v -> Series -> Series) -> Series -> m -> Series)
               -> m -> Encoding
-encodeWithKey foldrWithKey = brackets '{' '}' . foldrWithKey go mempty
-  where go k v c = Value (Encoding $ encodeKV k v) <> c
+encodeWithKey encodeKey foldrWithKey = brackets '{' '}' . foldrWithKey go mempty
+  where go k v c = Value (Encoding $ encodeKV encodeKey k v) <> c
 {-# INLINE encodeWithKey #-}
 
-encodeKV :: (ToJSON k, ToJSON v) => k -> v -> B.Builder
-encodeKV k v = builder k <> B.char7 ':' <> builder v
+encodeKV :: (ToJSON v) => (k -> Encoding) -> k -> v -> B.Builder
+encodeKV encodeKey k v = fromEncoding (encodeKey k) <> B.char7 ':' <> builder v
 {-# INLINE encodeKV #-}
 
-instance (FromJSON v) => FromJSON (M.Map Text v) where
-    parseJSON = withObject "Map Text a" $
-                  fmap (H.foldrWithKey M.insert M.empty) . H.traverseWithKey (\k v -> parseJSON v <?> Key k)
+instance FromJSONKey Text 'JSONKeyCoerce where
+    fromJSONKey _ = ()
 
-instance (ToJSON v) => ToJSON (M.Map LT.Text v) where
-    toJSON = Object . mapHashKeyVal LT.toStrict toJSON
-    {-# INLINE toJSON #-}
+instance ToJSONKey Text 'JSONKeyCoerce where
+    toJSONKey _ = ()
 
-    toEncoding = encodeMap M.minViewWithKey M.foldrWithKey
-    {-# INLINE toEncoding #-}
+instance FromJSONKey LT.Text 'JSONKeyIdentity where
+    fromJSONKey _ = LT.fromStrict
 
-instance (FromJSON v) => FromJSON (M.Map LT.Text v) where
-    parseJSON = fmap (hashMapKey LT.fromStrict) . parseJSON
+instance ToJSONKey LT.Text 'JSONKeyIdentity where
+    toJSONKey _ = LT.toStrict
+
+instance FromJSONKey String 'JSONKeyIdentity where
+    fromJSONKey _ = unpack
+
+instance ToJSONKey String 'JSONKeyIdentity where
+    toJSONKey _ = pack
+
+instance (FromJSON a, FromJSON b) => FromJSONKey (a, b) 'JSONKeyValueParser where
+    fromJSONKey _ = parseJSON
+
+instance (ToJSON a, ToJSON b) => ToJSONKey (a, b) 'JSONKeyValueParser where
+    toJSONKey _ = toJSON
+
+-- Proxy for 'JSONKeyMethod'. Not exported.
+data P1 (m :: JSONKeyMethod) = P1
+
+instance OVERLAPPABLE_ (FromJSON v, FromJSONKey k m, IJSONKeyMethod m, Ord k) => FromJSON (M.Map k v) where
+    parseJSON = case jsonKeyMethodSing p of
+        SJSONKeyCoerce -> withObject "Map k v" $
+#if HAS_COERCIBLE
+            fmap (H.foldrWithKey (M.insert . (coerce :: Text -> k)) M.empty)
+#else
+            fmap (H.foldrWithKey (M.insert . (unsafeCoerce :: Text -> k)) M.empty)
+#endif
+                . H.traverseWithKey (\k v -> parseJSON v <?> Key k)
+        SJSONKeyIdentity -> withObject "Map k v" $
+            fmap (H.foldrWithKey (M.insert . fromJSONKey p) M.empty) . H.traverseWithKey (\k v -> parseJSON v <?> Key k)
+        SJSONKeyTextParser -> withObject "Map k v" $
+            H.foldrWithKey (\k v m -> M.insert <$> fromJSONKey p k <*> (parseJSON v <?> Key k) <*> m) (pure M.empty)
+        SJSONKeyValueParser -> withArray "Map k v" $ \arr ->
+            M.fromList <$> (Tr.sequence .
+                zipWith (parseIndexedJSONPair (fromJSONKey p)) [0..] . V.toList $ arr)
+      where p = P1 :: P1 m
     {-# INLINE parseJSON #-}
 
-instance (ToJSON v) => ToJSON (M.Map String v) where
-    toJSON = Object . mapHashKeyVal pack toJSON
+instance OVERLAPPABLE_ (ToJSON v, ToJSONKey k m, IJSONKeyMethod m) => ToJSON (M.Map k v) where
+    toJSON = case jsonKeyMethodSing p of
+#if HAS_COERCIBLE
+        SJSONKeyCoerce      -> Object . mapHashKeyVal coerce toJSON
+#else
+        SJSONKeyCoerce      -> Object . mapHashKeyVal unsafeCoerce toJSON
+#endif
+        SJSONKeyIdentity    -> Object . mapHashKeyVal (toJSONKey p) toJSON
+        SJSONKeyTextParser  -> Object . mapHashKeyVal (toJSONKey p) toJSON
+        SJSONKeyValueParser -> Array . V.fromList . map (toJSONPair (toJSONKey p)) . M.toList
+      where p = P1 :: P1 m
     {-# INLINE toJSON #-}
 
-    toEncoding = encodeMap M.minViewWithKey M.foldrWithKey
+    toEncoding = case jsonKeyMethodSing p of
+        SJSONKeyCoerce      -> encodeMap (toKeyEncoding p) M.minViewWithKey M.foldrWithKey
+        SJSONKeyIdentity    -> encodeMap (toKeyEncoding p) M.minViewWithKey M.foldrWithKey
+        SJSONKeyTextParser  -> encodeMap (toKeyEncoding p) M.minViewWithKey M.foldrWithKey
+        SJSONKeyValueParser -> list' pairEncoding . M.toList
+      where p = P1 :: P1 m
+            pairEncoding :: (k, v) -> Encoding
+            pairEncoding (a, b) = tuple $ fromEncoding (toKeyEncoding p a) >*< builder b
     {-# INLINE toEncoding #-}
 
-instance (FromJSON v) => FromJSON (M.Map String v) where
-    parseJSON = fmap (hashMapKey unpack) . parseJSON
-    {-# INLINE parseJSON #-}
-
-instance (ToJSON v) => ToJSON (H.HashMap Text v) where
-    toJSON = Object . H.map toJSON
+instance OVERLAPPABLE_ (ToJSON v, ToJSONKey k m, IJSONKeyMethod m) => ToJSON (H.HashMap k v) where
+    toJSON = case jsonKeyMethodSing p of
+#if HAS_COERCIBLE
+        SJSONKeyCoerce      -> Object . mapKeyVal coerce toJSON
+#else
+        SJSONKeyCoerce      -> Object . mapKeyVal unsafeCoerce toJSON
+#endif
+        SJSONKeyIdentity    -> Object . mapKeyVal (toJSONKey p) toJSON
+        SJSONKeyTextParser  -> Object . mapKeyVal (toJSONKey p) toJSON
+        SJSONKeyValueParser -> Array . V.fromList . map (toJSONPair (toJSONKey p)) . H.toList
+      where p = P1 :: P1 m
     {-# INLINE toJSON #-}
 
-    toEncoding = encodeWithKey H.foldrWithKey
+    toEncoding = case jsonKeyMethodSing p of
+        SJSONKeyCoerce      -> encodeWithKey (toKeyEncoding p) H.foldrWithKey
+        SJSONKeyIdentity    -> encodeWithKey (toKeyEncoding p) H.foldrWithKey
+        SJSONKeyTextParser  -> encodeWithKey (toKeyEncoding p) H.foldrWithKey
+        SJSONKeyValueParser -> list' pairEncoding . H.toList
+      where p = P1 :: P1 m
+            pairEncoding :: (k, v) -> Encoding
+            pairEncoding (a, b) = tuple $ fromEncoding (toKeyEncoding p a) >*< builder b
     {-# INLINE toEncoding #-}
 
-instance (FromJSON v) => FromJSON (H.HashMap Text v) where
-    parseJSON = withObject "HashMap Text a" $ H.traverseWithKey (\k v -> parseJSON v <?> Key k)
-    {-# INLINE parseJSON #-}
-
-instance (ToJSON v) => ToJSON (H.HashMap LT.Text v) where
-    toJSON = Object . mapKeyVal LT.toStrict toJSON
-    {-# INLINE toJSON #-}
-
-    toEncoding = encodeWithKey H.foldrWithKey
-    {-# INLINE toEncoding #-}
-
-instance (FromJSON v) => FromJSON (H.HashMap LT.Text v) where
-    parseJSON = fmap (mapKey LT.fromStrict) . parseJSON
-    {-# INLINE parseJSON #-}
-
-instance (ToJSON v) => ToJSON (H.HashMap String v) where
-    toJSON = Object . mapKeyVal pack toJSON
-    {-# INLINE toJSON #-}
-
-    toEncoding = encodeWithKey H.foldrWithKey
-    {-# INLINE toEncoding #-}
-
-instance (FromJSON v) => FromJSON (H.HashMap String v) where
-    parseJSON = fmap (mapKey unpack) . parseJSON
+instance OVERLAPPABLE_ (FromJSON v, FromJSONKey k m, IJSONKeyMethod m, Eq k, Hashable k) => FromJSON (H.HashMap k v) where
+    parseJSON = case jsonKeyMethodSing p of
+        SJSONKeyCoerce -> withObject "HashMap k v" $
+            fmap (unsafeCoerce :: H.HashMap Text v -> H.HashMap k v) . H.traverseWithKey (\k v -> parseJSON v <?> Key k)
+        SJSONKeyIdentity -> withObject "HashMap k v" $
+            fmap (mapKey (fromJSONKey p)) . H.traverseWithKey (\k v -> parseJSON v <?> Key k)
+        SJSONKeyTextParser -> withObject "HashMap k v" $
+            H.foldrWithKey (\k v m -> H.insert <$> fromJSONKey p k <*> (parseJSON v <?> Key k) <*> m) (pure H.empty)
+        SJSONKeyValueParser -> withArray "Map k v" $ \arr ->
+            H.fromList <$> (Tr.sequence .
+                zipWith (parseIndexedJSONPair (fromJSONKey p)) [0..] . V.toList $ arr)
+      where p = P1 :: P1 m
     {-# INLINE parseJSON #-}
 
 instance (ToJSON v) => ToJSON (Tree.Tree v) where
@@ -824,7 +899,10 @@ instance FromJSON NominalDiffTime where
     {-# INLINE parseJSON #-}
 
 parseJSONElemAtIndex :: FromJSON a => Int -> Vector Value -> Parser a
-parseJSONElemAtIndex idx ary = parseJSON (V.unsafeIndex ary idx) <?> Index idx
+parseJSONElemAtIndex = parseJSONElemAtIndex' parseJSON
+
+parseJSONElemAtIndex' :: (Value -> Parser a) -> Int -> Vector Value -> Parser a
+parseJSONElemAtIndex' p idx ary = p (V.unsafeIndex ary idx) <?> Index idx
 
 tuple :: B.Builder -> Encoding
 tuple b = Encoding (B.char7 '[' <> b <> B.char7 ']')

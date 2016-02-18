@@ -1,4 +1,4 @@
-{-# LANGUAGE CPP, DeriveGeneric, OverloadedStrings, ScopedTypeVariables, TemplateHaskell #-}
+{-# LANGUAGE CPP, DeriveGeneric, OverloadedStrings, ScopedTypeVariables, TemplateHaskell, FlexibleInstances #-}
 
 {-# OPTIONS_GHC -fno-warn-deprecations #-}
 
@@ -9,7 +9,7 @@ import Data.Aeson (decode, eitherDecode, encode, genericToJSON, genericToEncodin
 import Data.Aeson.Encode (encodeToTextBuilder)
 import Data.Aeson.Internal (JSONPathElement(..), formatError)
 import Data.Aeson.TH (deriveJSON)
-import Data.Aeson.Types (ToJSON(..), Value, camelTo, camelTo2, defaultOptions, omitNothingFields)
+import Data.Aeson.Types (ToJSON(..), Value(..), camelTo, camelTo2, defaultOptions, omitNothingFields)
 import Data.Char (toUpper)
 import Data.Maybe (fromMaybe)
 import Data.Time (UTCTime)
@@ -24,6 +24,7 @@ import qualified Data.Text.Lazy.Builder as TLB
 import qualified Data.Text.Lazy.Encoding as TLE
 import qualified Data.Text.Lazy as LT
 import qualified Data.Text.Lazy.Encoding as LT
+import qualified Data.HashMap.Strict as H
 
 #if MIN_VERSION_time(1,5,0)
 import Data.Time.Format (defaultTimeLocale)
@@ -313,3 +314,22 @@ data MyRecord2 = MyRecord2 {_field3 :: Maybe Int, _field4 :: Maybe Bool}
 
 instance ToJSON   MyRecord2
 instance FromJSON MyRecord2
+
+-- General map de/seralisation: tests & expriments
+
+{- | The 'compileError' fails with good error message:
+
+.../aeson/tests/UnitTests.hs:285:16:
+    No instance for (aeson-0.11.0.0:Data.Aeson.Types.Class.ToJSONKey
+                       L.ByteString)
+      arising from a use of ‘encode’
+    In the expression: encode (H.empty :: H.HashMap L.ByteString Int)
+    In an equation for ‘compileError’:
+        compileError = encode (H.empty :: H.HashMap L.ByteString Int)
+-}
+--compileError :: L.ByteString
+--compileError = encode (H.empty :: H.HashMap L.ByteString Int)
+
+-- | @HashMap k v@ is overlappable, so this compiles ok.
+instance ToJSON a => ToJSON (H.HashMap MyRecord2 a) where
+  toJSON _ = Null

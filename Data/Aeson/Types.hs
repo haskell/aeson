@@ -1,3 +1,4 @@
+{-# LANGUAGE CPP #-}
 -- |
 -- Module:      Data.Aeson.Types
 -- Copyright:   (c) 2011-2016 Bryan O'Sullivan
@@ -35,6 +36,16 @@ module Data.Aeson.Types
     , ToJSON(..)
     , KeyValue(..)
     , modifyFailure
+
+    -- ** Key conversion
+    , FromJSONKey(..)
+    , FromJSONKeyType
+    , ToJSONKey(..)
+    , ToJSONKeyType
+    , JSONKeyCoercible
+    , JSONKeyMethod(..)
+    , SJSONKeyMethod(..)
+    , IJSONKeyMethod(..)
 
     -- ** Generic JSON classes
     , GFromJSON(..)
