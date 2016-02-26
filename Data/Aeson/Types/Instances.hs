@@ -54,6 +54,7 @@ module Data.Aeson.Types.Instances
     , ifromJSON
     , (.:)
     , (.:?)
+    , (.:??)
     , (.:!)
     , (.!=)
     , tuple
@@ -74,6 +75,7 @@ import Data.Int (Int8, Int16, Int32, Int64)
 import Data.Maybe (fromMaybe)
 import Data.Monoid ((<>))
 import Data.Monoid (Dual(..), First(..), Last(..))
+import Data.Possible
 import Data.Ratio (Ratio, (%), numerator, denominator)
 import Data.Scientific (Scientific)
 import Data.Text (Text, pack, unpack)
@@ -151,6 +153,23 @@ instance (ToJSON a) => ToJSON (Maybe a) where
 instance (FromJSON a) => FromJSON (Maybe a) where
     parseJSON Null   = pure Nothing
     parseJSON a      = Just <$> parseJSON a
+    {-# INLINE parseJSON #-}
+
+instance (ToJSON a) => ToJSON (Possible a) where
+    toJSON (HaveData a) = toJSON a
+    toJSON MissingData  = Omitted
+    toJSON HaveNull     = Null
+    {-# INLINE toJSON #-}
+
+    toEncoding (HaveData a) = toEncoding a
+    toEncoding MissingData  = mempty
+    toEncoding HaveNull     = Encoding E.null_
+    {-# INLINE toEncoding #-}
+
+instance (FromJSON a) => FromJSON (Possible a) where
+    parseJSON Null    = pure HaveNull
+    parseJSON Omitted = pure MissingData
+    parseJSON a       = HaveData <$> parseJSON a
     {-# INLINE parseJSON #-}
 
 instance (ToJSON a, ToJSON b) => ToJSON (Either a b) where
@@ -1600,7 +1619,8 @@ ifromJSON = iparse parseJSON
 -- optional, use '.:?' instead.
 (.:) :: (FromJSON a) => Object -> Text -> Parser a
 obj .: key = case H.lookup key obj of
-               Nothing -> fail $ "key " ++ show key ++ " not present"
+               Nothing      -> fail $ "key " ++ show key ++ " not present"
+               Just Omitted -> fail $ "key " ++ show key ++ " not present"
                Just v  -> modifyFailure addKeyName
                         $ parseJSON v <?> Key key
   where
@@ -1616,9 +1636,11 @@ obj .: key = case H.lookup key obj of
 -- value are mandatory, use '.:' instead.
 (.:?) :: (FromJSON a) => Object -> Text -> Parser (Maybe a)
 obj .:? key = case H.lookup key obj of
-               Nothing -> pure Nothing
-               Just v  -> modifyFailure addKeyName
-                        $ parseJSON v <?> Key key
+               Nothing      -> pure Nothing
+               Just Null    -> pure Nothing
+               Just Omitted -> pure Nothing
+               Just v       -> modifyFailure addKeyName
+                         $ Just <$> parseJSON v <?> Key key
   where
     addKeyName = (("failed to parse field " <> unpack key <> ": ") <>)
 {-# INLINE (.:?) #-}
@@ -1633,6 +1655,20 @@ obj .:! key = case H.lookup key obj of
   where
     addKeyName = (("failed to parse field " <> unpack key <> ": ") <>)
 {-# INLINE (.:!) #-}
+
+-- | Retrieve the value associated with the given key of an 'Object'.
+-- This is a bit more sensitive version than '(.:?)' as will tell exactly
+-- if the key was not present or it had a 'null' value.
+(.:??) :: (FromJSON a) => Object -> Text -> Parser (Possible a)
+obj .:?? key = case H.lookup key obj of
+               Nothing      -> pure MissingData
+               Just Omitted -> pure MissingData
+               Just Null    -> pure HaveNull
+               Just v       -> modifyFailure addKeyName
+                        $ HaveData <$> parseJSON v <?> Key key
+  where
+    addKeyName = (("failed to parse field " <> unpack key <> ": ") <>)
+{-# INLINE (.:??) #-}
 
 -- | Helper for use in combination with '.:?' to provide default
 -- values for optional JSON object fields.

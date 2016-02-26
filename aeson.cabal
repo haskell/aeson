@@ -104,7 +104,8 @@ library
     text >= 1.1.1.0,
     transformers,
     unordered-containers >= 0.2.5.0,
-    vector >= 0.7.1
+    vector >= 0.7.1,
+    possible
 
   if !impl(ghc >= 8.0)
     -- `Data.Semigroup` is available in base only since GHC 8.0

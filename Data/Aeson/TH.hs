@@ -97,7 +97,7 @@ module Data.Aeson.TH
     ) where
 
 import Control.Applicative ( pure, (<$>), (<*>) )
-import Data.Aeson ( toJSON, Object, (.=), (.:), (.:?)
+import Data.Aeson ( toJSON, Object, (.=), (.:), (.:?), (.:??)
                   , ToJSON, toEncoding, toJSON
                   , FromJSON, parseJSON
                   )
@@ -108,7 +108,7 @@ import Data.Aeson.Types ( Value(..), Parser
                         , defaultTaggedObject
                         )
 import Data.Aeson.Types.Internal (Encoding(..))
-import Control.Monad       ( liftM2, return, mapM, fail )
+import Control.Monad       ( liftM2, return, mapM, fail, join )
 import Data.Bool           ( Bool(False, True), otherwise, (&&), not )
 import Data.Either         ( Either(Left, Right) )
 import Data.Eq             ( (==) )
@@ -121,6 +121,7 @@ import Data.List           ( (++), all, any, find, foldl, foldl'
                            )
 import Data.Map            ( Map )
 import Data.Maybe          ( Maybe(Nothing, Just), catMaybes )
+import Data.Possible       ( Possible(HaveNull, MissingData,HaveData) )
 import Data.Monoid         ( (<>), mconcat )
 import Language.Haskell.TH
 import Language.Haskell.TH.Syntax ( VarStrictType )
@@ -371,22 +372,31 @@ argsToValue opts multiCons (RecC conName ts) = case (unwrapUnaryRecords opts, no
         pairs | omitNothingFields opts = infixApp maybeFields
                                                   [|(++)|]
                                                   restFields
-              | otherwise = listE $ map toPair argCons
+              | otherwise = infixApp (listE $ map toPair argCons)
+                                     [|(++)|]
+                                     possibleFields
 
-        argCons = zip args ts
+        argCons' = zip args ts
+        (possibles, argCons) = partition isPossible argCons'
 
-        maybeFields = [|catMaybes|] `appE` listE (map maybeToPair maybes)
+        possibleFields = [|catMaybes|]
+                    `appE` listE (map (toMaybePair (appE [|castPossible|] . varE)) possibles)
+
+        maybeFields = [|catMaybes|] `appE` listE (
+              (map (toMaybePair varE) maybes)
+              ++ (map (toMaybePair (appE [|castPossible|] . varE)) possibles)
+              )
 
         restFields = listE $ map toPair rest
 
         (maybes, rest) = partition isMaybe argCons
 
-        maybeToPair (arg, (field, _, _)) =
+        toMaybePair f (arg, (field, _, _)) =
             infixApp (infixE (Just $ toFieldName field)
                              [|(.=)|]
                              Nothing)
                      [|(<$>)|]
-                     (varE arg)
+                     (f arg)
 
         toPair (arg, (field, _, _)) =
             infixApp (toFieldName field)
@@ -443,6 +453,15 @@ argsToValue opts multiCons (RecGadtC conNames ts _) =
 isMaybe :: (a, (b, c, Type)) -> Bool
 isMaybe (_, (_, _, AppT (ConT t) _)) = t == ''Maybe
 isMaybe _                            = False
+
+isPossible :: (a, (b, c, Type)) -> Bool
+isPossible (_, (_, _, AppT (ConT t) _)) = t == ''Possible
+isPossible _                            = False
+
+castPossible :: Possible a -> Maybe (Possible a)
+castPossible (MissingData) = Nothing
+castPossible (HaveNull)    = Just (HaveNull)
+castPossible (HaveData a)  = Just (HaveData a)
 
 (<^>) :: ExpQ -> ExpQ -> ExpQ
 (<^>) a b = infixApp a [|(<>)|] b
@@ -515,17 +534,23 @@ argsToEncoding opts multiCons (RecC conName ts) = case (unwrapUnaryRecords opts,
         pairs | omitNothingFields opts = infixApp maybeFields
                                                   [|(<>)|]
                                                   restFields
-              | otherwise = listE (map toPair argCons)
+              | otherwise = infixApp (listE (map toPair argCons))
+                                     [|(<>)|]
+                                     ([|catMaybes|] `appE` listE maybePossible)
+        (possibles, argCons) = partition isPossible argCons'
 
-        argCons = zip args ts
+        argCons' = zip args ts
 
-        maybeFields = [|catMaybes|] `appE` listE (map maybeToPair maybes)
+        maybeFields = [|catMaybes|] `appE` listE ( (map (toMaybePair varE) maybes)
+            ++ maybePossible )
+
+        maybePossible = map (toMaybePair (appE [|castPossible|] . varE)) possibles
 
         restFields = listE (map toPair rest)
 
         (maybes, rest) = partition isMaybe argCons
 
-        maybeToPair (arg, (field, _, _)) =
+        toMaybePair f (arg, (field, _, _)) =
             infixApp
               (infixApp
                 (infixE
@@ -535,7 +560,7 @@ argsToEncoding opts multiCons (RecC conName ts) = case (unwrapUnaryRecords opts,
                 [|(.)|]
                 [|E.builder|])
               [|(<$>)|]
-              (varE arg)
+              (f arg)
 
         toPair (arg, (field, _, _)) =
           toFieldName field <:> [|E.builder|] `appE` varE arg
@@ -998,6 +1023,9 @@ instance OVERLAPPABLE_ (FromJSON a) => LookupField a where
 instance (FromJSON a) => LookupField (Maybe a) where
     lookupField _ _ = (.:?)
 
+instance (FromJSON a) => LookupField (Possible a) where
+    lookupField _ _ obj key = join <$> obj .:?? key
+
 unknownFieldFail :: String -> String -> String -> Parser fail
 unknownFieldFail tName rec key =
     fail $ printf "When parsing the record %s of type %s the key %s was not present."
@@ -1441,6 +1469,7 @@ valueConName (String _) = "String"
 valueConName (Number _) = "Number"
 valueConName (Bool   _) = "Boolean"
 valueConName Null       = "Null"
+valueConName Omitted    = "Omitted"
 
 applyCon :: Name -> Name -> Pred
 applyCon con t =

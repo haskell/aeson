@@ -22,7 +22,7 @@
 module Data.Aeson.Types.Generic ( ) where
 
 import Control.Applicative ((<|>))
-import Control.Monad ((<=<))
+import Control.Monad ((<=<), join)
 import Control.Monad.ST (ST)
 import Data.Aeson.Encode.Builder (emptyArray_)
 import Data.Aeson.Encode.Functions (builder)
@@ -33,6 +33,7 @@ import Data.ByteString.Builder as B
 import Data.DList (DList, toList, empty)
 import Data.Maybe (fromMaybe)
 import Data.Monoid ((<>))
+import Data.Possible
 import Data.Text (Text, pack, unpack)
 import GHC.Generics
 import qualified Data.HashMap.Strict as H
@@ -362,6 +363,12 @@ instance OVERLAPPING_ (Selector s, ToJSON a) =>
                                , K1 Nothing <- k1 = empty
     recordToPairs opts m1 = fieldToPair opts m1
 
+instance OVERLAPPING_ (Selector s, ToJSON a) =>
+  RecordToPairs (S1 s (K1 i (Possible a))) where
+    recordToPairs opts (M1 k1) | K1 MissingData <- k1 = empty
+    recordToPairs opts m1 = fieldToPair opts m1
+    {-# INLINE recordToPairs #-}
+
 fieldToPair :: (Selector s, GToJSON a) => Options -> S1 s a p -> DList Pair
 fieldToPair opts m1 = pure ( pack $ fieldLabelModifier opts $ selName m1
                            , gToJSON opts (unM1 m1)
@@ -385,6 +392,12 @@ instance OVERLAPPING_ (Selector s, ToJSON a) =>
     recordToEncoding opts (M1 k1) | omitNothingFields opts
                                   , K1 Nothing <- k1 = mempty
     recordToEncoding opts m1 = fieldToEncoding opts m1
+
+instance OVERLAPPING_ (Selector s, ToJSON a) =>
+  RecordToEncoding (S1 s (K1 i (Possible a))) where
+    recordToEncoding opts (M1 k1) | K1 MissingData <- k1 = mempty
+    recordToEncoding opts m1 = fieldToEncoding opts m1
+    {-# INLINE recordToEncoding #-}
 
 fieldToEncoding :: (Selector s, GToEncoding a) => Options -> S1 s a p -> B.Builder
 fieldToEncoding opts m1 =
@@ -682,6 +695,15 @@ instance OVERLAPPING_ (Selector s, FromJSON a) =>
         where
           label = fieldLabelModifier opts $
                     selName (undefined :: t s (K1 i (Maybe a)) p)
+
+instance OVERLAPPING_ (Selector s, FromJSON a) =>
+  FromRecord (S1 s (K1 i (Possible a))) where
+    parseRecord _ (Just lab) obj = (M1 . K1) . join <$> obj .:?? lab
+    parseRecord opts Nothing obj = (M1 . K1) . join <$> obj .:?? pack label
+        where
+          label = fieldLabelModifier opts $
+                    selName (undefined :: t s (K1 i (Possible a)) p)
+    {-# INLINE parseRecord #-}
 
 --------------------------------------------------------------------------------
 

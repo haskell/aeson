@@ -49,6 +49,7 @@ encodeToTextBuilder :: Value -> Builder
 encodeToTextBuilder =
     go
   where
+    go Omitted    = {-# SCC "go/Omitted" #-} ""
     go Null       = {-# SCC "go/Null" #-} "null"
     go (Bool b)   = {-# SCC "go/Bool" #-} if b then "true" else "false"
     go (Number s) = {-# SCC "go/Number" #-} fromScientific s
@@ -61,7 +62,7 @@ encodeToTextBuilder =
                       V.foldr f (singleton ']') (V.unsafeTail v)
       where f a z = singleton ',' <> go a <> z
     go (Object m) = {-# SCC "go/Object" #-}
-        case H.toList m of
+        case (filter ((/=) Omitted . snd) ) (H.toList m) of
           (x:xs) -> singleton '{' <> one x <> foldr f (singleton '}') xs
           _      -> "{}"
       where f a z     = singleton ',' <> one a <> z
