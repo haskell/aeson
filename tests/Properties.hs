@@ -12,6 +12,7 @@ import Data.Int (Int8)
 import Data.Time (Day, LocalTime, NominalDiffTime, TimeOfDay, UTCTime,
                   ZonedTime)
 import Data.Version (Version)
+import Numeric.Natural (Natural)
 import Encoders
 import Instances ()
 import Test.Framework (Test, testGroup)
@@ -139,6 +140,7 @@ tests = testGroup "properties" [
     , testProperty "ZonedTime" $ roundTripEq (undefined :: ZonedTime)
     , testProperty "NominalDiffTime" $ roundTripEq (undefined :: NominalDiffTime)
     , testProperty "Version" $ roundTripEq (undefined :: Version)
+    , testProperty "Natural" $ roundTripEq (undefined :: Natural)
     , testGroup "ghcGenerics" [
         testProperty "OneConstructor" $ roundTripEq OneConstructor
       , testProperty "Product2" $ roundTripEq (undefined :: Product2 Int Bool)

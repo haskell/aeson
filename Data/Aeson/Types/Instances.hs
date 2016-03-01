@@ -86,6 +86,7 @@ import Data.Word (Word8, Word16, Word32, Word64)
 import Data.Version (Version, showVersion, parseVersion)
 import Text.ParserCombinators.ReadP (readP_to_S)
 import Foreign.Storable (Storable)
+import Numeric.Natural (Natural)
 import Prelude hiding (foldr)
 import qualified Data.Aeson.Encode.Builder as E
 import qualified Data.Aeson.Parser.Time as Time
@@ -111,7 +112,6 @@ import qualified Data.Vector.Storable as VS
 import qualified Data.Vector.Unboxed as VU
 
 #if MIN_VERSION_base(4,8,0)
-import Numeric.Natural
 #else
 import Control.Applicative ((<$>), (<*>), pure)
 import Data.Monoid (mempty)
@@ -353,7 +353,6 @@ instance FromJSON Integer where
     parseJSON = withScientific "Integral" $ pure . truncate
     {-# INLINE parseJSON #-}
 
-#if MIN_VERSION_base(4,8,0)
 instance ToJSON Natural where
     toJSON = toJSON . toInteger
     {-# INLINE toJSON #-}
@@ -366,7 +365,6 @@ instance FromJSON Natural where
       if Scientific.coefficient s < 0
         then fail $ "Expected a Natural number but got the negative number: " <> show s
         else pure $ truncate s
-#endif
 
 instance ToJSON Int8 where
     toJSON = Number . fromIntegral

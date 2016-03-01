@@ -107,8 +107,12 @@ library
     vector >= 0.7.1
 
   if !impl(ghc >= 8.0)
-    -- `Data.Semigroup` is available in base only since GHC 8.0
+    -- `Data.Semigroup` is available in base only since GHC 8.0 / base 4.9
     build-depends: semigroups >= 0.16.1
+
+  if !impl(ghc >= 7.10)
+    -- `Numeric.Natural` is available in base only since GHC 7.10 / base 4.8
+    build-depends: nats >=1 && <1.1
 
   if flag(old-locale)
     build-depends: time < 1.5, old-locale
@@ -166,6 +170,9 @@ test-suite tests
     build-depends: time < 1.5, old-locale
   else
     build-depends: time >= 1.5
+
+  if !impl(ghc >= 7.10)
+    build-depends: nats >=1 && <1.1
 
 source-repository head
   type:     git

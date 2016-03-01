@@ -21,6 +21,10 @@ import Functions
 
 import Test.QuickCheck.Instances ()
 
+#if !MIN_VERSION_base(4,8,0) && !MIN_VERSION_QuickCheck(2,8,3)
+import Numeric.Natural
+#endif
+
 -- "System" types.
 
 instance Arbitrary DotNetTime where
@@ -144,4 +148,9 @@ instance Arbitrary Version where
 #if !MIN_VERSION_base(4,8,0)
 makeVersion :: [Int] -> Version
 makeVersion b = Version b []
+#endif
+
+#if !MIN_VERSION_base(4,8,0) && !MIN_VERSION_QuickCheck(2,8,3)
+instance Arbitrary Natural where
+  arbitrary = fromInteger . abs <$> arbitrary
 #endif
