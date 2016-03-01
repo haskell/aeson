@@ -12,6 +12,7 @@ import Data.Aeson.TH (deriveJSON)
 import Data.Aeson.Types (ToJSON(..), Value, camelTo, camelTo2, defaultOptions, omitNothingFields)
 import Data.Char (toUpper)
 import Data.Maybe (fromMaybe)
+import Data.List.NonEmpty (NonEmpty(..))
 import Data.Time (UTCTime)
 import Data.Time.Format (parseTime)
 import Data.Sequence (Seq)
@@ -224,6 +225,8 @@ jsonEncoding = [
   , assertEqual "Just"  "1" $ encode (Just 1 :: Maybe Int)
   , assertEqual "Just Nothing" "null" $ encode (Just Nothing :: Maybe (Maybe Int))
   , assertEqual "Tuple" "[1,2]" $ encode ((1, 2) :: (Int, Int))
+  , assertEqual "NonEmpty" "[1,2,3]" $ encode (1 :| [2, 3] :: NonEmpty Int)
+  , assertEqual "()" "[]" $ encode ()
   ]
 
 jsonDecoding :: [Assertion]
@@ -231,6 +234,8 @@ jsonDecoding = [
     assertEqual "Nothing" (Nothing :: Maybe Int) (decode "null")
   , assertEqual "Just"    (Just 1 :: Maybe Int) (decode "1")
   , assertEqual "Just Nothing" (Just Nothing :: Maybe (Maybe Int)) (decode "null")
+  , assertEqual "NonEmpty" (Just (1 :| [2, 3]) :: Maybe (NonEmpty Int)) (decode "[1,2,3]")
+  , assertEqual "()" (Just ()) (decode "[]")
   ]
 
 ------------------------------------------------------------------------------

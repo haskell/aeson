@@ -108,7 +108,7 @@ library
 
   if !impl(ghc >= 8.0)
     -- `Data.Semigroup` is available in base only since GHC 8.0 / base 4.9
-    build-depends: semigroups >= 0.16.1
+    build-depends: semigroups >= 0.16.1 && < 0.17
 
   if !impl(ghc >= 7.10)
     -- `Numeric.Natural` is available in base only since GHC 7.10 / base 4.8
@@ -149,7 +149,7 @@ test-suite tests
 
   build-depends:
     HUnit,
-    QuickCheck >= 2.7,
+    QuickCheck >= 2.7 && <2.8.3,
     aeson,
     attoparsec,
     base,
@@ -165,6 +165,9 @@ test-suite tests
     unordered-containers,
     vector,
     quickcheck-instances >=0.3.12
+
+  if !impl(ghc >= 8.0)
+    build-depends: semigroups >= 0.16.1 && < 0.17
 
   if flag(old-locale)
     build-depends: time < 1.5, old-locale
