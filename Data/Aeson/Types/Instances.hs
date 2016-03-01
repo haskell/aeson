@@ -71,6 +71,7 @@ import Data.Foldable (toList)
 import Data.Functor.Identity (Identity(..))
 import Data.Hashable (Hashable(..))
 import Data.Int (Int8, Int16, Int32, Int64)
+import Data.List.NonEmpty (NonEmpty(..))
 import Data.Maybe (fromMaybe)
 import Data.Monoid ((<>))
 import Data.Monoid (Dual(..), First(..), Last(..))
@@ -488,6 +489,20 @@ instance ToJSON LT.Text where
 instance FromJSON LT.Text where
     parseJSON = withText "Lazy Text" $ pure . LT.fromStrict
     {-# INLINE parseJSON #-}
+
+instance (ToJSON a) => ToJSON (NonEmpty a) where
+    toJSON = toJSON . toList
+    {-# INLINE toJSON #-}
+
+    toEncoding = toEncoding . toList
+    {-# INLINE toEncoding #-}
+
+instance (FromJSON a) => FromJSON (NonEmpty a) where
+    parseJSON = withArray "NonEmpty a" $
+        (>>= ne) . Tr.sequence . zipWith parseIndexedJSON [0..] . V.toList
+      where
+        ne []     = fail "Expected a NonEmpty but got an empty list"
+        ne (x:xs) = pure (x :| xs)
 
 instance OVERLAPPABLE_ (ToJSON a) => ToJSON [a] where
     toJSON = Array . V.fromList . map toJSON
