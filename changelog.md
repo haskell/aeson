@@ -1,5 +1,23 @@
 For the latest version of this document, please see [https://github.com/bos/aeson/blob/master/changelog.md](https://github.com/bos/aeson/blob/master/changelog.md).
 
+## 0.11.1.0
+
+The only changes are added instances.
+
+These are new:
+* `ToJSON a => ToJSON (NonEmpty a)`
+* `FromJSON a => FromJSON (NonEmpty a)`
+* `ToJSON (Proxy a)`
+* `FromJSON (Proxy a)`
+* `ToJSON b => ToJSON (Tagged a b)`
+* `FromJSON b => FromJSON (Tagged a b)`
+* `ToJSON a => ToJSON (Const a b)`
+* `FromJSON a => FromJSON (Const a b)`
+
+These are now available for older GHCs:
+* `ToJSON Natural`
+* `FromJSON Natural`
+
 # 0.11.0.0
 
 This release should be close to backwards compatible with aeson 0.9.
