@@ -2,6 +2,7 @@
 
 module Properties where
 
+import Control.Applicative (Const)
 import Data.Aeson (eitherDecode)
 import Data.Aeson.Encode (encode)
 import Data.Aeson.Internal (IResult(..), formatError, ifromJSON, iparse)
@@ -12,10 +13,12 @@ import Data.Int (Int8)
 import Data.List.NonEmpty (NonEmpty)
 import Data.Time (Day, LocalTime, NominalDiffTime, TimeOfDay, UTCTime,
                   ZonedTime)
+import Data.Proxy (Proxy)
+import Data.Tagged (Tagged)
 import Data.Version (Version)
-import Numeric.Natural (Natural)
 import Encoders
 import Instances ()
+import Numeric.Natural (Natural)
 import Test.Framework (Test, testGroup)
 import Test.Framework.Providers.QuickCheck2 (testProperty)
 import Test.QuickCheck (Arbitrary(..), Property, (===), (.&&.), counterexample)
@@ -143,6 +146,9 @@ tests = testGroup "properties" [
     , testProperty "NominalDiffTime" $ roundTripEq (undefined :: NominalDiffTime)
     , testProperty "Version" $ roundTripEq (undefined :: Version)
     , testProperty "Natural" $ roundTripEq (undefined :: Natural)
+    , testProperty "Proxy" $ roundTripEq (undefined :: Proxy Int)
+    , testProperty "Tagged" $ roundTripEq (undefined :: Tagged Int Char)
+    , testProperty "Const" $ roundTripEq (undefined :: Const Int Char)
     , testGroup "ghcGenerics" [
         testProperty "OneConstructor" $ roundTripEq OneConstructor
       , testProperty "Product2" $ roundTripEq (undefined :: Product2 Int Bool)

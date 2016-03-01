@@ -17,9 +17,13 @@ import Data.Time (ZonedTime(..), TimeZone(..))
 import Data.List.NonEmpty (NonEmpty(..))
 import Data.Version
 import Data.Aeson.Types
+import Control.Applicative (Const(..))
+import Data.Tagged (Tagged(..))
+import Data.Proxy (Proxy(..))
 import Control.Applicative
 import Functions
 
+import Data.Orphans ()
 import Test.QuickCheck.Instances ()
 
 #if !MIN_VERSION_base(4,8,0) && !MIN_VERSION_QuickCheck(2,8,3)
@@ -158,3 +162,12 @@ makeVersion b = Version b []
 instance Arbitrary Natural where
   arbitrary = fromInteger . abs <$> arbitrary
 #endif
+
+instance Arbitrary (Proxy a) where
+    arbitrary = pure Proxy
+
+instance Arbitrary b => Arbitrary (Tagged a b) where
+    arbitrary = Tagged <$> arbitrary
+
+instance Arbitrary a => Arbitrary (Const a b) where
+    arbitrary = Const <$> arbitrary
