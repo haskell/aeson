@@ -16,9 +16,13 @@ import Data.Time.Clock (UTCTime(..))
 import Data.Time (ZonedTime(..), TimeZone(..))
 import Data.Version
 import Data.Aeson.Types
+import Control.Applicative (Const(..))
+import Data.Tagged (Tagged(..))
+import Data.Proxy (Proxy(..))
 import Control.Applicative
 import Functions
 
+import Data.Orphans ()
 import Test.QuickCheck.Instances ()
 
 -- "System" types.
@@ -145,3 +149,12 @@ instance Arbitrary Version where
 makeVersion :: [Int] -> Version
 makeVersion b = Version b []
 #endif
+
+instance Arbitrary (Proxy a) where
+    arbitrary = pure Proxy
+
+instance Arbitrary b => Arbitrary (Tagged a b) where
+    arbitrary = Tagged <$> arbitrary
+
+instance Arbitrary a => Arbitrary (Const a b) where
+    arbitrary = Const <$> arbitrary

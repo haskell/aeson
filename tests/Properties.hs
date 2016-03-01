@@ -2,6 +2,7 @@
 
 module Properties where
 
+import Control.Applicative (Const)
 import Data.Aeson (eitherDecode)
 import Data.Aeson.Encode (encode)
 import Data.Aeson.Internal (IResult(..), formatError, ifromJSON, iparse)
@@ -12,6 +13,8 @@ import Data.Int (Int8)
 import Data.Time (Day, LocalTime, NominalDiffTime, TimeOfDay, UTCTime,
                   ZonedTime)
 import Data.Version (Version)
+import Data.Tagged (Tagged)
+import Data.Proxy (Proxy)
 import Encoders
 import Instances ()
 import Test.Framework (Test, testGroup)
@@ -139,6 +142,9 @@ tests = testGroup "properties" [
     , testProperty "ZonedTime" $ roundTripEq (undefined :: ZonedTime)
     , testProperty "NominalDiffTime" $ roundTripEq (undefined :: NominalDiffTime)
     , testProperty "Version" $ roundTripEq (undefined :: Version)
+    , testProperty "Proxy" $ roundTripEq (undefined :: Proxy Int)
+    , testProperty "Tagged" $ roundTripEq (undefined :: Tagged Int Char)
+    , testProperty "Const" $ roundTripEq (undefined :: Const Int Char)
     , testGroup "ghcGenerics" [
         testProperty "OneConstructor" $ roundTripEq OneConstructor
       , testProperty "Product2" $ roundTripEq (undefined :: Product2 Int Bool)

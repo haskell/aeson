@@ -4,6 +4,7 @@
 
 module UnitTests (ioTests, tests) where
 
+import Control.Applicative (Const(..))
 import Control.Monad (forM)
 import Data.Aeson (decode, eitherDecode, encode, genericToJSON, genericToEncoding, FromJSON(..), withObject, (.:), (.:?), (.:!))
 import Data.Aeson.Encode (encodeToTextBuilder)
@@ -12,6 +13,8 @@ import Data.Aeson.TH (deriveJSON)
 import Data.Aeson.Types (ToJSON(..), Value, camelTo, camelTo2, defaultOptions, omitNothingFields)
 import Data.Char (toUpper)
 import Data.Maybe (fromMaybe)
+import Data.Tagged (Tagged(..))
+import Data.Proxy (Proxy(..))
 import Data.Time (UTCTime)
 import Data.Time.Format (parseTime)
 import Data.Sequence (Seq)
@@ -223,6 +226,9 @@ jsonEncoding = [
   , assertEqual "Nothing"  "null" $ encode (Nothing :: Maybe Int)
   , assertEqual "Just"  "1" $ encode (Just 1 :: Maybe Int)
   , assertEqual "Just Nothing" "null" $ encode (Just Nothing :: Maybe (Maybe Int))
+  , assertEqual "Proxy Int" "null" $ encode (Proxy :: Proxy Int)
+  , assertEqual "Tagged Char Int" "1" $ encode (Tagged 1 :: Tagged Char Int)
+  , assertEqual "Const Char Int" "\"c\"" $ encode (Const 'c' :: Const Char Int)
   , assertEqual "Tuple" "[1,2]" $ encode ((1, 2) :: (Int, Int))
   ]
 

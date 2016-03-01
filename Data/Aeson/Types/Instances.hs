@@ -61,6 +61,7 @@ module Data.Aeson.Types.Instances
     , typeMismatch
     ) where
 
+import Control.Applicative (Const(..))
 import Data.Aeson.Encode.Functions (brackets, builder, encode, foldable, list)
 import Data.Aeson.Functions (hashMapKey, mapHashKeyVal, mapKey, mapKeyVal)
 import Data.Aeson.Types.Class
@@ -74,8 +75,10 @@ import Data.Int (Int8, Int16, Int32, Int64)
 import Data.Maybe (fromMaybe)
 import Data.Monoid ((<>))
 import Data.Monoid (Dual(..), First(..), Last(..))
+import Data.Proxy (Proxy(..))
 import Data.Ratio (Ratio, (%), numerator, denominator)
 import Data.Scientific (Scientific)
+import Data.Tagged (Tagged(..))
 import Data.Text (Text, pack, unpack)
 import Data.Time (Day, LocalTime, NominalDiffTime, TimeOfDay, UTCTime,
                   ZonedTime)
@@ -115,7 +118,6 @@ import Numeric.Natural
 #else
 import Control.Applicative ((<$>), (<*>), pure)
 import Data.Monoid (mempty)
-import Data.Traversable as Tr (traverse)
 import Data.Word (Word)
 #endif
 
@@ -1529,6 +1531,40 @@ instance FromJSON Version where
         go [(v,[])] = return v
         go (_ : xs) = go xs
         go _        = fail $ "could not parse Version"
+
+instance ToJSON (Proxy a) where
+    toJSON _ = Null
+    {-# INLINE toJSON #-}
+
+    toEncoding _ = Encoding E.null_
+    {-# INLINE toEncoding #-}
+
+instance FromJSON (Proxy a) where
+    {-# INLINE parseJSON #-}
+    parseJSON Null = pure Proxy
+    parseJSON v    = typeMismatch "Proxy" v
+
+instance ToJSON b => ToJSON (Tagged a b) where
+    toJSON (Tagged x) = toJSON x
+    {-# INLINE toJSON #-}
+
+    toEncoding (Tagged x) = toEncoding x
+    {-# INLINE toEncoding #-}
+
+instance FromJSON b => FromJSON (Tagged a b) where
+    {-# INLINE parseJSON #-}
+    parseJSON = fmap Tagged . parseJSON
+
+instance ToJSON a => ToJSON (Const a b) where
+    toJSON (Const x) = toJSON x
+    {-# INLINE toJSON #-}
+
+    toEncoding (Const x) = toEncoding x
+    {-# INLINE toEncoding #-}
+
+instance FromJSON a => FromJSON (Const a b) where
+    {-# INLINE parseJSON #-}
+    parseJSON = fmap Const . parseJSON
 
 -- | @withObject expected f value@ applies @f@ to the 'Object' when @value@ is an @Object@
 --   and fails using @'typeMismatch' expected@ otherwise.
