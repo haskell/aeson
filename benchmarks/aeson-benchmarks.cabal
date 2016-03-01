@@ -44,6 +44,7 @@ library
     mtl,
     scientific >= 0.3.1 && < 0.4,
     syb,
+    tagged >=0.8.3 && <0.9,
     template-haskell >= 2.4,
     text >= 1.1.1.0,
     time,
@@ -52,8 +53,8 @@ library
     vector >= 0.7.1
 
   if !impl(ghc >= 8.0)
-    -- `Data.Semigroup` is available in base only since GHC 8.0
-    build-depends: semigroups >= 0.16.1
+    -- `Data.Semigroup` is available in base only since GHC 8.0 / base 4.9
+    build-depends: semigroups >= 0.16.1 && < 0.19
 
   if flag(old-locale)
     build-depends: time < 1.5, old-locale
