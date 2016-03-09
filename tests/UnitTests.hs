@@ -6,12 +6,13 @@ module UnitTests (ioTests, tests) where
 
 import Control.Applicative (Const(..))
 import Control.Monad (forM)
-import Data.Aeson (decode, eitherDecode, encode, genericToJSON, genericToEncoding, FromJSON(..), withObject, (.:), (.:?), (.:!))
+import Data.Aeson (decode, eitherDecode, encode, genericToJSON, genericToEncoding, object, FromJSON(..), withObject, (.=), (.:), (.:?), (.:!))
 import Data.Aeson.Encode (encodeToTextBuilder)
 import Data.Aeson.Internal (JSONPathElement(..), formatError)
 import Data.Aeson.TH (deriveJSON)
 import Data.Aeson.Types (ToJSON(..), Value, camelTo, camelTo2, defaultOptions, omitNothingFields)
 import Data.Char (toUpper)
+import Data.Hashable (hash)
 import Data.List.NonEmpty (NonEmpty(..))
 import Data.Maybe (fromMaybe)
 import Data.Proxy (Proxy(..))
@@ -63,6 +64,7 @@ tests = testGroup "unit" [
   , testGroup "To JSON representation" $ fmap (testCase "-") jsonEncoding
   , testGroup "From JSON representation" $ fmap (testCase "-") jsonDecoding
   , testGroup "JSONPath" $ fmap (testCase "-") jsonPath
+  , testGroup "Hashable laws" $ fmap (testCase "-") hashableLaws
   , testGroup "Issue #351" $ fmap (testCase "-") issue351
   ]
 
@@ -260,6 +262,18 @@ jsonPath = [
       (Left "Error in $[2]: expected Int, encountered Boolean")
       (eitherDecode "[0,1,true]" :: Either String (Seq Int))
   ]
+
+------------------------------------------------------------------------------
+-- Check that the hashes of two equal Value are the same
+------------------------------------------------------------------------------
+
+hashableLaws :: [Assertion]
+hashableLaws = [
+    assertEqual "Hashable Object" (hash a) (hash b)
+  ]
+  where
+  a = object ["223" .= False, "807882556" .= True]
+  b = object ["807882556" .= True, "223" .= False]
 
 ------------------------------------------------------------------------------
 -- Regressions
