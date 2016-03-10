@@ -158,6 +158,7 @@ test-suite tests
     bytestring,
     containers,
     ghc-prim >= 0.2,
+    hashable >= 1.1.2.0,
     tagged,
     template-haskell,
     test-framework,
