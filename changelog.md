@@ -1,6 +1,10 @@
 For the latest version of this document, please see [https://github.com/bos/aeson/blob/master/changelog.md](https://github.com/bos/aeson/blob/master/changelog.md).
 
-## 0.11.1.0
+#### 0.11.1.1
+
+* Fixes a bug where the hashes of equal values could differ.
+
+### 0.11.1.0
 
 The only changes are added instances.
 
