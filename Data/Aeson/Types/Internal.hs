@@ -607,6 +607,7 @@ data SumEncoding =
 -- , 'allNullaryToStringTag'   = True
 -- , 'omitNothingFields'       = False
 -- , 'sumEncoding'             = 'defaultTaggedObject'
+-- , 'unwrapUnaryRecords'      = False
 -- }
 -- @
 defaultOptions :: Options
