@@ -1,5 +1,10 @@
 For the latest version of this document, please see [https://github.com/bos/aeson/blob/master/changelog.md](https://github.com/bos/aeson/blob/master/changelog.md).
 
+#### 0.11.1.2
+
+* Fix build with `base < 4.8` and `unordered-containers < 0.2.6`.
+* Add missing field in docs for `defaultOptions`.
+
 #### 0.11.1.1
 
 * Fixes a bug where the hashes of equal values could differ.
