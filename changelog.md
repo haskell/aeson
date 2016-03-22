@@ -1,5 +1,9 @@
 For the latest version of this document, please see [https://github.com/bos/aeson/blob/master/changelog.md](https://github.com/bos/aeson/blob/master/changelog.md).
 
+#### 0.11.1.3
+
+* Fix build on TH-less GHCs
+
 #### 0.11.1.2
 
 * Fix build with `base < 4.8` and `unordered-containers < 0.2.6`.
