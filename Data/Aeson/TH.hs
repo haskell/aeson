@@ -1,6 +1,6 @@
 {-# LANGUAGE CPP, FlexibleInstances, NamedFieldPuns,
     NoImplicitPrelude, UndecidableInstances #-}
-#if __GLASGOW_HASKELL >= 800
+#if __GLASGOW_HASKELL__ >= 800
 -- a) THQ works on cross-compilers and unregisterised GHCs
 -- b) may make compilation faster as no dynamic loading is ever needed (not sure about this)
 -- c) removes one hindrance to have code inferred as SafeHaskell safe
