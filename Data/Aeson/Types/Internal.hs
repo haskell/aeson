@@ -91,7 +91,7 @@ import Data.Traversable (Traversable(..))
 #endif
 
 #if !MIN_VERSION_unordered_containers(0,2,6)
-import Data.List (foldl', sort)
+import Data.List (sort)
 #endif
 
 -- | Elements of a JSON path used to describe the location of an
