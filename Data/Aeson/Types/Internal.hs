@@ -69,6 +69,7 @@ import qualified Control.Monad.Fail as Fail
 import Data.ByteString.Builder (Builder, char7, toLazyByteString)
 import Data.Char (isLower, isUpper, toLower, isAlpha, isAlphaNum)
 import Data.Data (Data)
+import Data.Foldable (foldl')
 import Data.HashMap.Strict (HashMap)
 import Data.Hashable (Hashable(..))
 import Data.Semigroup (Semigroup((<>)))
@@ -92,9 +93,6 @@ import Data.Traversable (Traversable(..))
 
 #if !MIN_VERSION_unordered_containers(0,2,6)
 import Data.List (sort)
-#endif
-#if MIN_VERSION_base(4,8,0) && !MIN_VERSION_unordered_containers(0,2,6)
-import Data.Foldable (foldl')
 #endif
 
 -- | Elements of a JSON path used to describe the location of an
@@ -387,7 +385,7 @@ newtype DotNetTime = DotNetTime {
 
 instance NFData Value where
     rnf (Object o) = rnf o
-    rnf (Array a)  = V.foldl' (\x y -> rnf y `seq` x) () a
+    rnf (Array a)  = foldl' (\x y -> rnf y `seq` x) () a
     rnf (String s) = rnf s
     rnf (Number n) = rnf n
     rnf (Bool b)   = rnf b
@@ -406,7 +404,7 @@ hashValue s (Object o)   = foldl' hashWithSalt
   where
     assocHashesSorted = sort [hash k `hashWithSalt` v | (k, v) <- H.toList o]
 #endif
-hashValue s (Array a)    = V.foldl' hashWithSalt
+hashValue s (Array a)    = foldl' hashWithSalt
                               (s `hashWithSalt` (1::Int)) a
 hashValue s (String str) = s `hashWithSalt` (2::Int) `hashWithSalt` str
 hashValue s (Number n)   = s `hashWithSalt` (3::Int) `hashWithSalt` n
