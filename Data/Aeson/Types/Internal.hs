@@ -93,6 +93,9 @@ import Data.Traversable (Traversable(..))
 #if !MIN_VERSION_unordered_containers(0,2,6)
 import Data.List (sort)
 #endif
+#if MIN_VERSION_base(4,8,0) && !MIN_VERSION_unordered_containers(0,2,6)
+import Data.Foldable (foldl')
+#endif
 
 -- | Elements of a JSON path used to describe the location of an
 -- error.
