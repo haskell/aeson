@@ -77,9 +77,14 @@ module Data.Aeson
     , GFromJSON(..)
     , GToJSON(..)
     , GToEncoding(..)
+    , Zero
+    , One
     , genericToJSON
+    , genericLiftToJSON
     , genericToEncoding
+    , genericLiftToEncoding
     , genericParseJSON
+    , genericLiftParseJSON
     , defaultOptions
 
     -- * Inspecting @'Value's@
