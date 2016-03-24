@@ -17,6 +17,17 @@ module Data.Aeson.Types.Class
     -- * Core JSON classes
       FromJSON(..)
     , ToJSON(..)
+    -- * Liftings to unary and binary type constructors
+    , FromJSON1(..)
+    , parseJSON1
+    , FromJSON2(..)
+    , parseJSON2
+    , ToJSON1(..)
+    , toJSON1
+    , toEncoding1
+    , ToJSON2(..)
+    , toJSON2
+    , toEncoding2
     -- * Generic JSON classes
     , GFromJSON(..)
     , GToJSON(..)
@@ -385,3 +396,62 @@ typeMismatch expected actual =
              Number _ -> "Number"
              Bool _   -> "Boolean"
              Null     -> "Null"
+
+-------------------------------------------------------------------------------
+-- Lifings of FromJSON and ToJSON to unary and binary type constructors
+-------------------------------------------------------------------------------
+
+-- | Lifting of the 'FromJSON' class to unary type constructors.
+class FromJSON1 f where
+    liftParseJSON :: (Value -> Parser a) -> Value -> Parser (f a)
+
+-- | Lift the standard 'parseJSON' function through the type constructor.
+parseJSON1 :: (FromJSON1 f, FromJSON a) => Value -> Parser (f a)
+parseJSON1 = liftParseJSON parseJSON
+{-# INLINE parseJSON1 #-}
+
+-- | Lifting of the 'ToJSON' class to unary type constructors.
+class ToJSON1 f where
+    liftToJSON :: (a -> Value) -> f a -> Value
+
+    -- | Unfortunately there cannot be default implementation of 'liftToEncoding'.
+    liftToEncoding :: (a -> Encoding) -> f a -> Encoding
+
+-- | Lift the standard 'toJSON' function through the type constructor.
+toJSON1 :: (ToJSON1 f, ToJSON a) => f a -> Value
+toJSON1 = liftToJSON toJSON
+{-# INLINE toJSON1 #-}
+
+-- | Lift the standard 'toEncoding' function through the type constructor.
+toEncoding1 :: (ToJSON1 f, ToJSON a) => f a -> Encoding
+toEncoding1 = liftToEncoding toEncoding
+{-# INLINE toEncoding1 #-}
+
+
+-- | Lifting of the 'FromJSON' class to binary type constructors.
+class FromJSON2 f where
+    liftParseJSON2
+        :: (Value -> Parser a)
+        -> (Value -> Parser b)
+        -> Value -> Parser (f a b)
+
+-- | Lift the standard 'parseJSON' function through the type constructor.
+parseJSON2 :: (FromJSON2 f, FromJSON a, FromJSON b) => Value -> Parser (f a b)
+parseJSON2 = liftParseJSON2 parseJSON parseJSON
+{-# INLINE parseJSON2 #-}
+
+-- | Lifting of the 'ToJSON' class to binary type constructors.
+class ToJSON2 f where
+    liftToJSON2 :: (a -> Value) -> (b -> Value) -> f a b -> Value
+
+    liftToEncoding2 :: (a -> Encoding) -> (b -> Encoding) -> f a b -> Encoding
+
+-- | Lift the standard 'toJSON' function through the type constructor.
+toJSON2 :: (ToJSON2 f, ToJSON a, ToJSON b) => f a b -> Value
+toJSON2 = liftToJSON2 toJSON toJSON
+{-# INLINE toJSON2 #-}
+
+-- | Lift the standard 'toEncoding' function through the type constructor.
+toEncoding2 :: (ToJSON2 f, ToJSON a, ToJSON b) => f a b -> Encoding
+toEncoding2 = liftToEncoding2 toEncoding toEncoding
+{-# INLINE toEncoding2 #-}

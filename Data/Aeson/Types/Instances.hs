@@ -34,6 +34,17 @@ module Data.Aeson.Types.Instances
     , FromJSONKeyFunction(..)
     , fromJSONKeyCoerce
     , coerceFromJSONKeyFunction
+    -- ** Liftings to unary and binary type constructors
+    , FromJSON1(..)
+    , parseJSON1
+    , FromJSON2(..)
+    , parseJSON2
+    , ToJSON1(..)
+    , toJSON1
+    , toEncoding1
+    , ToJSON2(..)
+    , toJSON2
+    , toEncoding2
     -- ** Generic JSON classes
     , GFromJSON(..)
     , GToJSON(..)
@@ -159,50 +170,102 @@ toJSONPair keySerialiser (a, b) = Array $ V.create $ do
      VM.unsafeWrite mv 1 (toJSON b)
      return mv
 
+instance ToJSON1 Identity where
+    liftToJSON to (Identity a) = to a
+    {-# INLINE liftToJSON #-}
+
+    liftToEncoding to (Identity a) = to a
+    {-# INLINE liftToEncoding #-}
+
 instance (ToJSON a) => ToJSON (Identity a) where
-    toJSON (Identity a) = toJSON a
+    toJSON = toJSON1
     {-# INLINE toJSON #-}
 
-    toEncoding (Identity a) = toEncoding a
+    toEncoding = toEncoding1
     {-# INLINE toEncoding #-}
+
+instance FromJSON1 Identity where
+    liftParseJSON p a = Identity <$> p a
+    {-# INLINE liftParseJSON #-}
 
 instance (FromJSON a) => FromJSON (Identity a) where
-    parseJSON a      = Identity <$> parseJSON a
+    parseJSON = parseJSON1
     {-# INLINE parseJSON #-}
+
+
+instance ToJSON1 Maybe where
+    liftToJSON to (Just a) = to a
+    liftToJSON _  Nothing  = Null
+    {-# INLINE liftToJSON #-}
+
+    liftToEncoding to (Just a) = to a
+    liftToEncoding _  Nothing  = Encoding E.null_
+    {-# INLINE liftToEncoding #-}
 
 instance (ToJSON a) => ToJSON (Maybe a) where
-    toJSON (Just a) = toJSON a
-    toJSON Nothing  = Null
+    toJSON = toJSON1
     {-# INLINE toJSON #-}
 
-    toEncoding (Just a) = toEncoding a
-    toEncoding Nothing  = Encoding E.null_
+    toEncoding = toEncoding1
     {-# INLINE toEncoding #-}
+
+instance FromJSON1 Maybe where
+    liftParseJSON _ Null = pure Nothing
+    liftParseJSON p a    = Just <$> p a
+    {-# INLINE liftParseJSON #-}
 
 instance (FromJSON a) => FromJSON (Maybe a) where
-    parseJSON Null   = pure Nothing
-    parseJSON a      = Just <$> parseJSON a
+    parseJSON = parseJSON1
     {-# INLINE parseJSON #-}
 
+
+instance ToJSON2 Either where
+    liftToJSON2  toA _toB (Left a)  = Object $ H.singleton left  (toA a)
+    liftToJSON2 _toA  toB (Right b) = Object $ H.singleton right (toB b)
+    {-# INLINE liftToJSON2 #-}
+
+    liftToEncoding2  toA _toB (Left a) =
+        Encoding (B.shortByteString "{\"Left\":")
+        <> toA a
+        <> Encoding (B.char7 '}')
+
+    liftToEncoding2 _toA  toB (Right b) =
+        Encoding (B.shortByteString "{\"Right\":")
+        <> toB b
+        <> Encoding (B.char7 '}')
+    {-# INLINE liftToEncoding2 #-}
+
+instance (ToJSON a) => ToJSON1 (Either a) where
+    liftToJSON = liftToJSON2 toJSON
+    {-# INLINE liftToJSON #-}
+
+    liftToEncoding = liftToEncoding2 toEncoding
+    {-# INLINE liftToEncoding #-}
+
 instance (ToJSON a, ToJSON b) => ToJSON (Either a b) where
-    toJSON (Left a)  = object [left  .= a]
-    toJSON (Right b) = object [right .= b]
+    toJSON = toJSON2
     {-# INLINE toJSON #-}
 
-    toEncoding (Left a) = Encoding $
-      B.shortByteString "{\"Left\":" <> builder a <> B.char7 '}'
-    toEncoding (Right a) = Encoding $
-      B.shortByteString "{\"Right\":" <> builder a <> B.char7 '}'
+    toEncoding = toEncoding2
     {-# INLINE toEncoding #-}
 
-instance (FromJSON a, FromJSON b) => FromJSON (Either a b) where
-    parseJSON (Object (H.toList -> [(key, value)]))
-        | key == left  = Left  <$> parseJSON value <?> Key left
-        | key == right = Right <$> parseJSON value <?> Key right
-    parseJSON _        = fail $
+instance FromJSON2 Either where
+    liftParseJSON2 pA pB (Object (H.toList -> [(key, value)]))
+        | key == left  = Left  <$> pA value <?> Key left
+        | key == right = Right <$> pB value <?> Key right
+
+    liftParseJSON2 _ _ _ = fail $
         "expected an object with a single property " ++
         "where the property key should be either " ++
         "\"Left\" or \"Right\""
+    {-# INLINE liftParseJSON2 #-}
+
+instance (FromJSON a) => FromJSON1 (Either a) where
+    liftParseJSON = liftParseJSON2 parseJSON
+    {-# INLINE liftParseJSON #-}
+
+instance (FromJSON a, FromJSON b) => FromJSON (Either a b) where
+    parseJSON = parseJSON2
     {-# INLINE parseJSON #-}
 
 left, right :: Text

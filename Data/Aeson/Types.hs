@@ -45,6 +45,18 @@ module Data.Aeson.Types
     , fromJSONKeyCoerce
     , coerceFromJSONKeyFunction
 
+    -- ** Liftings to unary and binary type constructors
+    , FromJSON1(..)
+    , parseJSON1
+    , FromJSON2(..)
+    , parseJSON2
+    , ToJSON1(..)
+    , toJSON1
+    , toEncoding1
+    , ToJSON2(..)
+    , toJSON2
+    , toEncoding2
+
     -- ** Generic JSON classes
     , GFromJSON(..)
     , GToJSON(..)
