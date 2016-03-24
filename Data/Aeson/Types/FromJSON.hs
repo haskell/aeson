@@ -34,6 +34,7 @@ module Data.Aeson.Types.FromJSON (
     -- * Generic JSON classes
     , GFromJSON(..)
     , genericParseJSON
+    , genericLiftParseJSON
     -- * Classes and types for map keys
     , FromJSONKey(..)
     , FromJSONKeyFunction(..)
@@ -60,6 +61,9 @@ module Data.Aeson.Types.FromJSON (
     , (.:!)
     , (.!=)
     , typeMismatch
+
+    -- * Internal
+    , parseOptionalFieldWith
     ) where
 
 import Prelude        ()
@@ -172,21 +176,41 @@ parseIntegral :: Integral a => String -> Value -> Parser a
 parseIntegral expected = withScientific expected $ pure . truncate
 {-# INLINE parseIntegral #-}
 
+parseOptionalFieldWith :: (Value -> Parser (Maybe a))
+                       -> Object -> Text -> Parser (Maybe a)
+parseOptionalFieldWith pj obj key =
+    case H.lookup key obj of
+     Nothing -> pure Nothing
+     Just v  -> pj v <?> Key key
+{-# INLINE parseOptionalFieldWith #-}
+
 -------------------------------------------------------------------------------
 -- Generics
 -------------------------------------------------------------------------------
 
--- | Class of generic representation types ('Rep') that can be converted from JSON.
-class GFromJSON f where
+-- | Class of generic representation types that can be converted from JSON.
+class GFromJSON arity f where
     -- | This method (applied to 'defaultOptions') is used as the
-    -- default generic implementation of 'parseJSON'.
-    gParseJSON :: Options -> Value -> Parser (f a)
+    -- default generic implementation of 'parseJSON' (if the @arity@ is 'Zero')
+    -- or 'liftParseJSON' (if the @arity@ is 'One').
+    gParseJSON :: Options -> Proxy arity
+               -> (Value -> Parser a) -> (Value -> Parser [a])
+               -> Value -> Parser (f a)
 
 -- | A configurable generic JSON decoder. This function applied to
 -- 'defaultOptions' is used as the default for 'parseJSON' when the
 -- type is an instance of 'Generic'.
-genericParseJSON :: (Generic a, GFromJSON (Rep a)) => Options -> Value -> Parser a
-genericParseJSON opts = fmap to . gParseJSON opts
+genericParseJSON :: (Generic a, GFromJSON Zero (Rep a))
+                 => Options -> Value -> Parser a
+genericParseJSON opts = fmap to . gParseJSON opts proxyZero undefined undefined
+
+-- | A configurable generic JSON decoder. This function applied to
+-- 'defaultOptions' is used as the default for 'liftParseJSON' when the
+-- type is an instance of 'Generic1'.
+genericLiftParseJSON :: (Generic1 f, GFromJSON One (Rep1 f))
+                     => Options -> (Value -> Parser a) -> (Value -> Parser [a])
+                     -> Value -> Parser (f a)
+genericLiftParseJSON opts pj pjl = fmap to1 . gParseJSON opts proxyOne pj pjl
 
 -------------------------------------------------------------------------------
 -- Class
@@ -269,7 +293,7 @@ genericParseJSON opts = fmap to . gParseJSON opts
 class FromJSON a where
     parseJSON :: Value -> Parser a
 
-    default parseJSON :: (Generic a, GFromJSON (Rep a)) => Value -> Parser a
+    default parseJSON :: (Generic a, GFromJSON Zero (Rep a)) => Value -> Parser a
     parseJSON = genericParseJSON defaultOptions
 
     parseJSONList :: Value -> Parser [a]
@@ -280,7 +304,6 @@ class FromJSON a where
         $ a
 
     parseJSONList v = typeMismatch "[a]" v
-
 
 -------------------------------------------------------------------------------
 --  Classes and types for map keys
@@ -385,8 +408,48 @@ typeMismatch expected actual =
 -------------------------------------------------------------------------------
 
 -- | Lifting of the 'FromJSON' class to unary type constructors.
+--
+-- Instead of manually writing your 'FromJSON1' instance, there are two options
+-- to do it automatically:
+--
+-- * "Data.Aeson.TH" provides Template Haskell functions which will derive an
+-- instance at compile time. The generated instance is optimized for your type
+-- so will probably be more efficient than the following two options:
+--
+-- * The compiler can provide a default generic implementation for
+-- 'liftParseJSON'.
+--
+-- To use the second, simply add a @deriving 'Generic1'@ clause to your
+-- datatype and declare a 'FromJSON1' instance for your datatype without giving
+-- a definition for 'liftParseJSON'.
+--
+-- For example:
+--
+-- @
+-- {-\# LANGUAGE DeriveGeneric \#-}
+--
+-- import "GHC.Generics"
+--
+-- data Pair a b = Pair { pairFst :: a, pairSnd :: b } deriving 'Generic1'
+--
+-- instance FromJSON a => FromJSON1 (Pair a)
+-- @
+--
+-- If @DefaultSignatures@ doesn't give exactly the results you want,
+-- you can customize the generic decoding with only a tiny amount of
+-- effort, using 'genericLiftParseJSON' with your preferred 'Options':
+--
+-- @
+-- instance FromJSON a => FromJSON1 (Pair a) where
+--     liftParseJSON = 'genericLiftParseJSON' 'defaultOptions'
+-- @
 class FromJSON1 f where
     liftParseJSON :: (Value -> Parser a) -> (Value -> Parser [a]) -> Value -> Parser (f a)
+
+    default liftParseJSON :: (Generic1 f, GFromJSON One (Rep1 f))
+                          => (Value -> Parser a) -> (Value -> Parser [a]) -> Value -> Parser (f a)
+    liftParseJSON = genericLiftParseJSON defaultOptions
+
     liftParseJSONList :: (Value -> Parser a) -> (Value -> Parser [a]) -> Value -> Parser [f a]
     liftParseJSONList f g v = listParser (liftParseJSON f g) v
 
@@ -395,8 +458,13 @@ parseJSON1 :: (FromJSON1 f, FromJSON a) => Value -> Parser (f a)
 parseJSON1 = liftParseJSON parseJSON parseJSONList
 {-# INLINE parseJSON1 #-}
 
-
 -- | Lifting of the 'FromJSON' class to binary type constructors.
+--
+-- Instead of manually writing your 'FromJSON2' instance, "Data.Aeson.TH"
+-- provides Template Haskell functions which will derive an instance at compile time.
+
+-- The compiler cannot provide a default generic implementation for 'liftParseJSON2',
+-- unlike 'parseJSON' and 'liftParseJSON'.
 class FromJSON2 f where
     liftParseJSON2
         :: (Value -> Parser a)
@@ -551,65 +619,90 @@ pmval .!= val = fromMaybe val <$> pmval
 -- Generic parseJSON
 -------------------------------------------------------------------------------
 
-instance OVERLAPPABLE_ (GFromJSON a) => GFromJSON (M1 i c a) where
+instance OVERLAPPABLE_ (GFromJSON arity a) => GFromJSON arity (M1 i c a) where
     -- Meta-information, which is not handled elsewhere, is just added to the
     -- parsed value:
-    gParseJSON opts = fmap M1 . gParseJSON opts
+    gParseJSON opts pa pj pjl = fmap M1 . gParseJSON opts pa pj pjl
 
-instance (FromJSON a) => GFromJSON (K1 i a) where
+instance (FromJSON a) => GFromJSON arity (K1 i a) where
     -- Constant values are decoded using their FromJSON instance:
-    gParseJSON _opts = fmap K1 . parseJSON
+    gParseJSON _opts _ _ _ = fmap K1 . parseJSON
 
-instance GFromJSON U1 where
+instance GFromJSON One Par1 where
+    -- Direct occurrences of the last type parameter are decoded with the
+    -- function passed in as an argument:
+    gParseJSON _opts _ pj _ = fmap Par1 . pj
+
+instance (FromJSON1 f) => GFromJSON One (Rec1 f) where
+    -- Recursive occurrences of the last type parameter are decoded using their
+    -- FromJSON1 instance:
+    gParseJSON _opts _ pj pjl = fmap Rec1 . liftParseJSON pj pjl
+
+instance GFromJSON arity U1 where
     -- Empty constructors are expected to be encoded as an empty array:
-    gParseJSON _opts v
+    gParseJSON _opts _ _ _ v
         | isEmptyArray v = pure U1
         | otherwise      = typeMismatch "unit constructor (U1)" v
 
-instance (ConsFromJSON a) => GFromJSON (C1 c a) where
+instance (ConsFromJSON arity a) => GFromJSON arity (C1 c a) where
     -- Constructors need to be decoded differently depending on whether they're
     -- a record or not. This distinction is made by consParseJSON:
-    gParseJSON opts = fmap M1 . consParseJSON opts
+    gParseJSON opts pa pj pjl = fmap M1 . consParseJSON opts pa pj pjl
 
-instance ( FromProduct a, FromProduct b
-         , ProductSize a, ProductSize b ) => GFromJSON (a :*: b) where
+instance ( FromProduct arity a, FromProduct arity b
+         , ProductSize       a, ProductSize       b
+         ) => GFromJSON arity (a :*: b) where
     -- Products are expected to be encoded to an array. Here we check whether we
     -- got an array of the same size as the product, then parse each of the
     -- product's elements using parseProduct:
-    gParseJSON opts = withArray "product (:*:)" $ \arr ->
+    gParseJSON opts pa pj pjl = withArray "product (:*:)" $ \arr ->
       let lenArray = V.length arr
           lenProduct = (unTagged2 :: Tagged2 (a :*: b) Int -> Int)
                        productSize in
       if lenArray == lenProduct
-      then parseProduct opts arr 0 lenProduct
+      then parseProduct opts pa arr 0 lenProduct pj pjl
       else fail $ "When expecting a product of " ++ show lenProduct ++
                   " values, encountered an Array of " ++ show lenArray ++
                   " elements instead"
 
-instance ( AllNullary (a :+: b) allNullary
-         , ParseSum   (a :+: b) allNullary ) => GFromJSON   (a :+: b) where
+instance ( AllNullary         (a :+: b) allNullary
+         , ParseSum     arity (a :+: b) allNullary
+         ) => GFromJSON arity (a :+: b) where
     -- If all constructors of a sum datatype are nullary and the
     -- 'allNullaryToStringTag' option is set they are expected to be
     -- encoded as strings.  This distinction is made by 'parseSum':
-    gParseJSON opts = (unTagged :: Tagged allNullary (Parser ((a :+: b) d)) ->
-                                                     (Parser ((a :+: b) d)))
-                    . parseSum opts
+    gParseJSON opts pa pj pjl =
+      (unTagged :: Tagged allNullary (Parser ((a :+: b) d)) ->
+                                     (Parser ((a :+: b) d)))
+                 . parseSum opts pa pj pjl
+
+instance (FromJSON1 f, GFromJSON One g) => GFromJSON One (f :.: g) where
+    -- If an occurrence of the last type parameter is nested inside two
+    -- composed types, it is decoded by using the outermost type's FromJSON1
+    -- instance to generically decode the innermost type:
+    gParseJSON opts pa pj pjl =
+      let gpj = gParseJSON opts pa pj pjl in
+      fmap Comp1 . liftParseJSON gpj (listParser gpj)
 
 --------------------------------------------------------------------------------
 
-class ParseSum f allNullary where
-    parseSum :: Options -> Value -> Tagged allNullary (Parser (f a))
+class ParseSum arity f allNullary where
+    parseSum :: Options -> Proxy arity
+             -> (Value -> Parser a) -> (Value -> Parser [a])
+             -> Value -> Tagged allNullary (Parser (f a))
 
-instance ( SumFromString    (a :+: b)
-         , FromPair         (a :+: b)
-         , FromTaggedObject (a :+: b) ) => ParseSum (a :+: b) True where
-    parseSum opts
+instance ( SumFromString          (a :+: b)
+         , FromPair         arity (a :+: b)
+         , FromTaggedObject arity (a :+: b)
+         ) => ParseSum      arity (a :+: b) True where
+    parseSum opts pa pj pjl
         | allNullaryToStringTag opts = Tagged . parseAllNullarySum    opts
-        | otherwise                  = Tagged . parseNonAllNullarySum opts
+        | otherwise                  = Tagged . parseNonAllNullarySum opts pa pj pjl
 
-instance ( FromPair         (a :+: b)
-         , FromTaggedObject (a :+: b) ) => ParseSum (a :+: b) False where
-    parseSum opts = Tagged . parseNonAllNullarySum opts
+instance ( FromPair         arity (a :+: b)
+         , FromTaggedObject arity (a :+: b)
+         ) => ParseSum      arity (a :+: b) False where
+    parseSum opts pa pj pjl = Tagged . parseNonAllNullarySum opts pa pj pjl
 
 --------------------------------------------------------------------------------
 
@@ -634,22 +727,24 @@ instance (Constructor c) => SumFromString (C1 c U1) where
 
 --------------------------------------------------------------------------------
 
-parseNonAllNullarySum :: ( FromPair                       (a :+: b)
-                         , FromTaggedObject               (a :+: b)
-                         ) => Options -> Value -> Parser ((a :+: b) c)
-parseNonAllNullarySum opts =
+parseNonAllNullarySum :: ( FromPair         arity (a :+: b)
+                         , FromTaggedObject arity (a :+: b)
+                         ) => Options -> Proxy arity
+                           -> (Value -> Parser c) -> (Value -> Parser [c])
+                           -> Value -> Parser ((a :+: b) c)
+parseNonAllNullarySum opts pa pj pjl =
     case sumEncoding opts of
       TaggedObject{..} ->
           withObject "Object" $ \obj -> do
             tag <- obj .: pack tagFieldName
             fromMaybe (notFound tag) $
-              parseFromTaggedObject opts contentsFieldName obj tag
+              parseFromTaggedObject opts pa contentsFieldName obj pj pjl tag
 
       ObjectWithSingleField ->
           withObject "Object" $ \obj ->
             case H.toList obj of
               [pair@(tag, _)] -> fromMaybe (notFound tag) $
-                                   parsePair opts pair
+                                   parsePair opts pa pj pjl pair
               _ -> fail "Object doesn't have a single field"
 
       TwoElemArray ->
@@ -657,27 +752,30 @@ parseNonAllNullarySum opts =
             if V.length arr == 2
             then case V.unsafeIndex arr 0 of
                    String tag -> fromMaybe (notFound tag) $
-                                   parsePair opts (tag, V.unsafeIndex arr 1)
+                                   parsePair opts pa pj pjl (tag, V.unsafeIndex arr 1)
                    _ -> fail "First element is not a String"
             else fail "Array doesn't have 2 elements"
 
 --------------------------------------------------------------------------------
 
-class FromTaggedObject f where
-    parseFromTaggedObject :: Options -> String -> Object -> Text
-                          -> Maybe (Parser (f a))
+class FromTaggedObject arity f where
+    parseFromTaggedObject :: Options -> Proxy arity
+                          -> String -> Object
+                          -> (Value -> Parser a) -> (Value -> Parser [a])
+                          -> Text -> Maybe (Parser (f a))
 
-instance (FromTaggedObject a, FromTaggedObject b) =>
-    FromTaggedObject (a :+: b) where
-        parseFromTaggedObject opts contentsFieldName obj tag =
-            (fmap L1 <$> parseFromTaggedObject opts contentsFieldName obj tag) <|>
-            (fmap R1 <$> parseFromTaggedObject opts contentsFieldName obj tag)
+instance ( FromTaggedObject arity a, FromTaggedObject arity b) =>
+    FromTaggedObject arity (a :+: b) where
+        parseFromTaggedObject opts pa contentsFieldName obj pj pjl tag =
+            (fmap L1 <$> parseFromTaggedObject opts pa contentsFieldName obj pj pjl tag) <|>
+            (fmap R1 <$> parseFromTaggedObject opts pa contentsFieldName obj pj pjl tag)
 
-instance ( FromTaggedObject' f
-         , Constructor c ) => FromTaggedObject (C1 c f) where
-    parseFromTaggedObject opts contentsFieldName obj tag
+instance ( FromTaggedObject' arity f
+         , Constructor c
+         ) => FromTaggedObject arity (C1 c f) where
+    parseFromTaggedObject opts pa contentsFieldName obj pj pjl tag
         | tag == name = Just $ M1 <$> parseFromTaggedObject'
-                                        opts contentsFieldName obj
+                                        opts pa contentsFieldName pj pjl obj
         | otherwise = Nothing
         where
           name = pack $ constructorTagModifier opts $
@@ -685,114 +783,143 @@ instance ( FromTaggedObject' f
 
 --------------------------------------------------------------------------------
 
-class FromTaggedObject' f where
-    parseFromTaggedObject' :: Options -> String -> Object -> Parser (f a)
+class FromTaggedObject' arity f where
+    parseFromTaggedObject' :: Options -> Proxy arity -> String
+                           -> (Value -> Parser a) -> (Value -> Parser [a])
+                           -> Object -> Parser (f a)
 
-class FromTaggedObject'' f isRecord where
-    parseFromTaggedObject'' :: Options -> String -> Object
-                            -> Tagged isRecord (Parser (f a))
+class FromTaggedObject'' arity f isRecord where
+    parseFromTaggedObject'' :: Options -> Proxy arity -> String
+                            -> (Value -> Parser a) -> (Value -> Parser [a])
+                            -> Object -> Tagged isRecord (Parser (f a))
 
-instance ( IsRecord             f isRecord
-         , FromTaggedObject''   f isRecord
-         ) => FromTaggedObject' f where
-    parseFromTaggedObject' opts contentsFieldName =
+instance ( IsRecord                   f isRecord
+         , FromTaggedObject''   arity f isRecord
+         ) => FromTaggedObject' arity f where
+    parseFromTaggedObject' opts pa contentsFieldName pj pjl =
         (unTagged :: Tagged isRecord (Parser (f a)) -> Parser (f a)) .
-        parseFromTaggedObject'' opts contentsFieldName
+        parseFromTaggedObject'' opts pa contentsFieldName pj pjl
 
-instance (FromRecord f) => FromTaggedObject'' f True where
-    parseFromTaggedObject'' opts _ = Tagged . parseRecord opts Nothing
+instance (FromRecord arity f) => FromTaggedObject'' arity f True where
+    parseFromTaggedObject'' opts pa _ pj pjl =
+      Tagged . parseRecord opts pa Nothing pj pjl
 
-instance (GFromJSON f) => FromTaggedObject'' f False where
-    parseFromTaggedObject'' opts contentsFieldName = Tagged .
-      (gParseJSON opts <=< (.: pack contentsFieldName))
+instance (GFromJSON arity f) => FromTaggedObject'' arity f False where
+    parseFromTaggedObject'' opts pa contentsFieldName pj pjl = Tagged .
+      (gParseJSON opts pa pj pjl <=< (.: pack contentsFieldName))
 
-instance OVERLAPPING_ FromTaggedObject'' U1 False where
-    parseFromTaggedObject'' _ _ _ = Tagged (pure U1)
+instance OVERLAPPING_ FromTaggedObject'' arity U1 False where
+    parseFromTaggedObject'' _ _ _ _ _ _ = Tagged (pure U1)
 
 --------------------------------------------------------------------------------
 
-class ConsFromJSON f where
-    consParseJSON  :: Options -> Value -> Parser (f a)
+class ConsFromJSON arity f where
+    consParseJSON  :: Options -> Proxy arity
+                   -> (Value -> Parser a) -> (Value -> Parser [a])
+                   -> Value -> Parser (f a)
 
-class ConsFromJSON' f isRecord where
-    consParseJSON' :: Options -> (Maybe Text) -- ^ A dummy label
-                                           --   (Nothing to use proper label)
+class ConsFromJSON' arity f isRecord where
+    consParseJSON' :: Options -> Proxy arity
+                   -> (Maybe Text) -- ^ A dummy label
+                                   --   (Nothing to use proper label)
+                   -> (Value -> Parser a) -> (Value -> Parser [a])
                    -> Value -> Tagged isRecord (Parser (f a))
 
-instance ( IsRecord        f isRecord
-         , ConsFromJSON'   f isRecord
-         ) => ConsFromJSON f where
-    consParseJSON opts v = let
+instance ( IsRecord            f isRecord
+         , ConsFromJSON' arity f isRecord
+         ) => ConsFromJSON arity f where
+    consParseJSON opts pa pj pjl v = let
       (v2,lab) = case (unwrapUnaryRecords opts,isUnary (undefined :: f a)) of
                        -- use a dummy object with a dummy label
         (True,True) -> ((object [(pack "dummy",v)]),Just $ pack "dummy")
         _ ->(v,Nothing)
       in (unTagged :: Tagged isRecord (Parser (f a)) -> Parser (f a))
-                       $ consParseJSON' opts lab v2
+                       $ consParseJSON' opts pa lab pj pjl v2
 
 
-instance (FromRecord f) => ConsFromJSON' f True where
-    consParseJSON' opts mlab = Tagged . (withObject "record (:*:)"
-                                $ parseRecord opts mlab)
+instance (FromRecord arity f) => ConsFromJSON' arity f True where
+    consParseJSON' opts pa mlab pj pjl = Tagged . (withObject "record (:*:)"
+                                          $ parseRecord opts pa mlab pj pjl)
 
-instance (GFromJSON f) => ConsFromJSON' f False where
-    consParseJSON' opts _ = Tagged . gParseJSON opts
+instance (GFromJSON arity f) => ConsFromJSON' arity f False where
+    consParseJSON' opts pa _ pj pjl = Tagged . gParseJSON opts pa pj pjl
 
 --------------------------------------------------------------------------------
 
-class FromRecord f where
-    parseRecord :: Options -> (Maybe Text) -- ^ A dummy label
-                                           --   (Nothing to use proper label)
-                 -> Object -> Parser (f a)
+class FromRecord arity f where
+    parseRecord :: Options -> Proxy arity
+                -> (Maybe Text) -- ^ A dummy label
+                                --   (Nothing to use proper label)
+                -> (Value -> Parser a) -> (Value -> Parser [a])
+                -> Object -> Parser (f a)
 
-instance (FromRecord a, FromRecord b) => FromRecord (a :*: b) where
-    parseRecord opts _ obj = (:*:) <$> parseRecord opts Nothing obj
-                                   <*> parseRecord opts Nothing obj
+instance ( FromRecord arity a
+         , FromRecord arity b
+         ) => FromRecord arity (a :*: b) where
+    parseRecord opts pa _ pj pjl obj =
+      (:*:) <$> parseRecord opts pa Nothing pj pjl obj
+            <*> parseRecord opts pa Nothing pj pjl obj
 
-instance (Selector s, GFromJSON a) => FromRecord (S1 s a) where
-    parseRecord opts lab = (<?> Key label) . gParseJSON opts <=< (.: label)
+instance ( Selector s
+         , GFromJSON arity a
+         ) => FromRecord arity (S1 s a) where
+    parseRecord opts pa lab pj pjl =
+      (<?> Key label) . gParseJSON opts pa pj pjl <=< (.: label)
         where
           label = fromMaybe defLabel lab
           defLabel = pack . fieldLabelModifier opts $
                        selName (undefined :: t s a p)
 
 instance OVERLAPPING_ (Selector s, FromJSON a) =>
-  FromRecord (S1 s (K1 i (Maybe a))) where
-    parseRecord _ (Just lab) obj = (M1 . K1) <$> obj .:? lab
-    parseRecord opts Nothing obj = (M1 . K1) <$> obj .:? pack label
+  FromRecord arity (S1 s (K1 i (Maybe a))) where
+    parseRecord _ _ (Just lab) _ _ obj = (M1 . K1) <$> obj .:? lab
+    parseRecord opts _ Nothing _ _ obj = (M1 . K1) <$> obj .:? pack label
         where
           label = fieldLabelModifier opts $
                     selName (undefined :: t s (K1 i (Maybe a)) p)
 
 --------------------------------------------------------------------------------
 
-class FromProduct f where
-    parseProduct :: Options -> Array -> Int -> Int -> Parser (f a)
+class FromProduct arity f where
+    parseProduct :: Options -> Proxy arity
+                 -> Array -> Int -> Int
+                 -> (Value -> Parser a) -> (Value -> Parser [a])
+                 -> Parser (f a)
 
-instance (FromProduct a, FromProduct b) => FromProduct (a :*: b) where
-    parseProduct opts arr ix len =
-        (:*:) <$> parseProduct opts arr ix  lenL
-              <*> parseProduct opts arr ixR lenR
+instance ( FromProduct    arity a
+         , FromProduct    arity b
+         ) => FromProduct arity (a :*: b) where
+    parseProduct opts pa arr ix len pj pjl =
+        (:*:) <$> parseProduct opts pa arr ix  lenL pj pjl
+              <*> parseProduct opts pa arr ixR lenR pj pjl
         where
           lenL = len `unsafeShiftR` 1
           ixR  = ix + lenL
           lenR = len - lenL
 
-instance (GFromJSON a) => FromProduct (S1 s a) where
-    parseProduct opts arr ix _ = gParseJSON opts $ V.unsafeIndex arr ix
+instance (GFromJSON arity a) => FromProduct arity (S1 s a) where
+    parseProduct opts pa arr ix _ pj pjl =
+      gParseJSON opts pa pj pjl $ V.unsafeIndex arr ix
 
 --------------------------------------------------------------------------------
 
-class FromPair f where
-    parsePair :: Options -> Pair -> Maybe (Parser (f a))
+class FromPair arity f where
+    parsePair :: Options -> Proxy arity
+              -> (Value -> Parser a) -> (Value -> Parser [a])
+              -> Pair -> Maybe (Parser (f a))
 
-instance (FromPair a, FromPair b) => FromPair (a :+: b) where
-    parsePair opts pair = (fmap L1 <$> parsePair opts pair) <|>
-                          (fmap R1 <$> parsePair opts pair)
+instance ( FromPair arity a
+         , FromPair arity b
+         ) => FromPair arity (a :+: b) where
+    parsePair opts pa pj pjl pair = (fmap L1 <$> parsePair opts pa pj pjl pair) <|>
+                                    (fmap R1 <$> parsePair opts pa pj pjl pair)
 
-instance (Constructor c, GFromJSON a, ConsFromJSON a) => FromPair (C1 c a) where
-    parsePair opts (tag, value)
-        | tag == tag' = Just $ gParseJSON opts value
+instance ( Constructor c
+         , GFromJSON    arity a
+         , ConsFromJSON arity a
+         ) => FromPair arity (C1 c a) where
+    parsePair opts pa pj pjl (tag, value)
+        | tag == tag' = Just $ gParseJSON opts pa pj pjl value
         | otherwise   = Nothing
         where
           tag' = pack $ constructorTagModifier opts $
