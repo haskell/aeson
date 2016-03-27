@@ -7,6 +7,7 @@ module Data.Aeson.Encode.Functions
     , char7
     , encode
     , foldable
+    , foldable'
     , list
     , list'
     , pairs
@@ -41,6 +42,11 @@ encode = B.toLazyByteString . builder
 foldable :: (Foldable t, ToJSON a) => t a -> Encoding
 foldable = brackets '[' ']' . foldMap (Value . toEncoding)
 {-# INLINE foldable #-}
+
+-- | Encode a 'Foldable' as a JSON array.
+foldable' :: (Foldable t) => (a -> Encoding) -> t a -> Encoding
+foldable' to = brackets '[' ']' . foldMap (Value . to)
+{-# INLINE foldable' #-}
 
 list :: (ToJSON a) => [a] -> Encoding
 list []     = emptyArray_
