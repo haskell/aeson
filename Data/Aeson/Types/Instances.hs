@@ -72,7 +72,7 @@ module Data.Aeson.Types.Instances
     ) where
 
 import Control.Applicative (Const(..))
-import Data.Aeson.Encode.Functions (brackets, builder, encode, foldable, list)
+import Data.Aeson.Encode.Functions (brackets, builder, encode, foldable, foldable', list')
 import Data.Aeson.Functions (hashMapKey, mapHashKeyVal, mapKey, mapKeyVal)
 import Data.Aeson.Types.Class
 import Data.Aeson.Types.Internal
@@ -139,7 +139,10 @@ import System.Locale (defaultTimeLocale)
 #endif
 
 parseIndexedJSON :: FromJSON a => Int -> Value -> Parser a
-parseIndexedJSON idx value = parseJSON value <?> Index idx
+parseIndexedJSON = parseIndexedJSON' parseJSON
+
+parseIndexedJSON' :: (Value -> Parser a) -> Int -> Value -> Parser a
+parseIndexedJSON' p idx value = p value <?> Index idx
 
 instance ToJSON1 Identity where
     liftToJSON to (Identity a) = to a
@@ -554,43 +557,76 @@ instance FromJSON LT.Text where
     parseJSON = withText "Lazy Text" $ pure . LT.fromStrict
     {-# INLINE parseJSON #-}
 
+instance ToJSON1 NonEmpty where
+    liftToJSON to = liftToJSON to . toList
+    {-# INLINE liftToJSON #-}
+
+    liftToEncoding = foldable'
+    {-# INLINE liftToEncoding #-}
+
 instance (ToJSON a) => ToJSON (NonEmpty a) where
-    toJSON = toJSON . toList
+    toJSON = toJSON1
     {-# INLINE toJSON #-}
 
-    toEncoding = toEncoding . toList
+    toEncoding = toEncoding1
     {-# INLINE toEncoding #-}
 
-instance (FromJSON a) => FromJSON (NonEmpty a) where
-    parseJSON = withArray "NonEmpty a" $
-        (>>= ne) . Tr.sequence . zipWith parseIndexedJSON [0..] . V.toList
+instance FromJSON1 NonEmpty where
+    liftParseJSON p = withArray "NonEmpty a" $
+        (>>= ne) . Tr.sequence . zipWith (parseIndexedJSON' p) [0..] . V.toList
       where
         ne []     = fail "Expected a NonEmpty but got an empty list"
         ne (x:xs) = pure (x :| xs)
+    {-# INLINE liftParseJSON #-}
+
+instance (FromJSON a) => FromJSON (NonEmpty a) where
+    parseJSON = parseJSON1
+
+instance ToJSON1 [] where
+    liftToJSON to = Array . V.fromList . map to
+    {-# INLINE liftToJSON #-}
+
+    liftToEncoding = list'
+    {-# INLINE liftToEncoding #-}
 
 instance OVERLAPPABLE_ (ToJSON a) => ToJSON [a] where
-    toJSON = Array . V.fromList . map toJSON
+    toJSON = toJSON1
     {-# INLINE toJSON #-}
 
-    toEncoding xs = list xs
+    toEncoding = toEncoding1
     {-# INLINE toEncoding #-}
+
+instance FromJSON1 [] where
+    liftParseJSON p = withArray "[a]" $
+        Tr.sequence . zipWith (parseIndexedJSON' p) [0..] . V.toList
+    {-# INLINE liftParseJSON #-}
 
 instance OVERLAPPABLE_ (FromJSON a) => FromJSON [a] where
-    parseJSON = withArray "[a]" $ Tr.sequence .
-                zipWith parseIndexedJSON [0..] . V.toList
+    parseJSON = parseJSON1
     {-# INLINE parseJSON #-}
 
+instance ToJSON1 Seq.Seq where
+    liftToJSON to = liftToJSON to . toList
+    {-# INLINE liftToJSON #-}
+
+    liftToEncoding = foldable'
+    {-# INLINE liftToEncoding #-}
+
 instance (ToJSON a) => ToJSON (Seq.Seq a) where
-    toJSON = toJSON . toList
+    toJSON = toJSON1
     {-# INLINE toJSON #-}
 
-    toEncoding = foldable
+    toEncoding = toEncoding1
     {-# INLINE toEncoding #-}
 
-instance (FromJSON a) => FromJSON (Seq.Seq a) where
-    parseJSON = withArray "Seq a" $
+instance FromJSON1 Seq.Seq where
+    liftParseJSON p = withArray "Seq a" $
       fmap Seq.fromList .
-      Tr.sequence . zipWith parseIndexedJSON [0..] . V.toList
+      Tr.sequence . zipWith (parseIndexedJSON' p) [0..] . V.toList
+    {-# INLINE liftParseJSON #-}
+
+instance (FromJSON a) => FromJSON (Seq.Seq a) where
+    parseJSON = parseJSON1
     {-# INLINE parseJSON #-}
 
 instance (ToJSON a) => ToJSON (Vector a) where
@@ -1619,16 +1655,27 @@ instance FromJSON (Proxy a) where
     parseJSON Null = pure Proxy
     parseJSON v    = typeMismatch "Proxy" v
 
+instance ToJSON1 (Tagged a) where
+    liftToJSON to (Tagged x) = to x
+    {-# INLINE liftToJSON #-}
+
+    liftToEncoding to (Tagged x) = to x
+    {-# INLINE liftToEncoding #-}
+
 instance ToJSON b => ToJSON (Tagged a b) where
-    toJSON (Tagged x) = toJSON x
+    toJSON = toJSON1
     {-# INLINE toJSON #-}
 
-    toEncoding (Tagged x) = toEncoding x
+    toEncoding = toEncoding1
     {-# INLINE toEncoding #-}
 
+instance FromJSON1 (Tagged a) where
+    liftParseJSON p = fmap Tagged . p
+    {-# INLINE liftParseJSON #-}
+
 instance FromJSON b => FromJSON (Tagged a b) where
+    parseJSON = parseJSON1
     {-# INLINE parseJSON #-}
-    parseJSON = fmap Tagged . parseJSON
 
 instance ToJSON a => ToJSON (Const a b) where
     toJSON (Const x) = toJSON x

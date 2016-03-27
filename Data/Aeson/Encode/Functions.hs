@@ -7,7 +7,9 @@ module Data.Aeson.Encode.Functions
     , char7
     , encode
     , foldable
+    , foldable'
     , list
+    , list'
     , pairs
     ) where
 
@@ -41,12 +43,24 @@ foldable :: (Foldable t, ToJSON a) => t a -> Encoding
 foldable = brackets '[' ']' . foldMap (Value . toEncoding)
 {-# INLINE foldable #-}
 
+-- | Encode a 'Foldable' as a JSON array.
+foldable' :: (Foldable t) => (a -> Encoding) -> t a -> Encoding
+foldable' to = brackets '[' ']' . foldMap (Value . to)
+{-# INLINE foldable' #-}
+
 list :: (ToJSON a) => [a] -> Encoding
 list []     = emptyArray_
 list (x:xs) = Encoding $
               char7 '[' <> builder x <> commas xs <> char7 ']'
       where commas = foldr (\v vs -> char7 ',' <> builder v <> vs) mempty
 {-# INLINE list #-}
+
+list' :: (a -> Encoding) -> [a] -> Encoding
+list' _  []     = emptyArray_
+list' to (x:xs) = Encoding $
+                char7 '[' <> fromEncoding (to x) <> commas xs <> char7 ']'
+      where commas = foldr (\v vs -> char7 ',' <> fromEncoding (to v) <> vs) mempty
+{-# INLINE list' #-}
 
 brackets :: Char -> Char -> Series -> Encoding
 brackets begin end (Value v) = Encoding $
