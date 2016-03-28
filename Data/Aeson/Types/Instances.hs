@@ -1616,38 +1616,74 @@ instance (FromJSON a, FromJSON b, FromJSON c, FromJSON d, FromJSON e,
                 <*> parseJSONElemAtIndex 14 ary
     {-# INLINE parseJSON #-}
 
+instance ToJSON1 Dual where
+    liftToJSON to = to . getDual
+    {-# INLINE liftToJSON #-}
+
+    liftToEncoding to = to . getDual
+    {-# INLINE liftToEncoding #-}
+
 instance ToJSON a => ToJSON (Dual a) where
-    toJSON = toJSON . getDual
+    toJSON = toJSON1
     {-# INLINE toJSON #-}
 
-    toEncoding = toEncoding . getDual
+    toEncoding = toEncoding1
     {-# INLINE toEncoding #-}
+
+instance FromJSON1 Dual where
+    liftParseJSON p = fmap Dual . p
+    {-# INLINE liftParseJSON #-}
 
 instance FromJSON a => FromJSON (Dual a) where
-    parseJSON = fmap Dual . parseJSON
+    parseJSON = parseJSON1
     {-# INLINE parseJSON #-}
+
+
+instance ToJSON1 First where
+    liftToJSON to = liftToJSON to . getFirst
+    {-# INLINE liftToJSON #-}
+
+    liftToEncoding to = liftToEncoding to . getFirst
+    {-# INLINE liftToEncoding #-}
 
 instance ToJSON a => ToJSON (First a) where
-    toJSON = toJSON . getFirst
+    toJSON = toJSON1
     {-# INLINE toJSON #-}
 
-    toEncoding = toEncoding . getFirst
+    toEncoding = toEncoding1
     {-# INLINE toEncoding #-}
+
+instance FromJSON1 First where
+    liftParseJSON p = fmap First . liftParseJSON p
+    {-# INLINE liftParseJSON #-}
 
 instance FromJSON a => FromJSON (First a) where
-    parseJSON = fmap First . parseJSON
+    parseJSON = parseJSON1
     {-# INLINE parseJSON #-}
+
+
+instance ToJSON1 Last where
+    liftToJSON to = liftToJSON to . getLast
+    {-# INLINE liftToJSON #-}
+
+    liftToEncoding to = liftToEncoding to . getLast
+    {-# INLINE liftToEncoding #-}
 
 instance ToJSON a => ToJSON (Last a) where
-    toJSON = toJSON . getLast
+    toJSON = toJSON1
     {-# INLINE toJSON #-}
 
-    toEncoding = toEncoding . getLast
+    toEncoding = toEncoding1
     {-# INLINE toEncoding #-}
 
+instance FromJSON1 Last where
+    liftParseJSON p = fmap Last . liftParseJSON p
+    {-# INLINE liftParseJSON #-}
+
 instance FromJSON a => FromJSON (Last a) where
-    parseJSON = fmap Last . parseJSON
+    parseJSON = parseJSON1
     {-# INLINE parseJSON #-}
+
 
 instance ToJSON Version where
     toJSON = toJSON . showVersion
