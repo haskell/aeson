@@ -656,6 +656,19 @@ instance (FromJSON a) => FromJSON (Seq.Seq a) where
     parseJSON = parseJSON1
     {-# INLINE parseJSON #-}
 
+instance ToJSON1 Vector where
+    liftToJSON to = Array . V.map to
+    {-# INLINE liftToJSON #-}
+
+    liftToEncoding to xs
+        | V.null xs = E.emptyArray_
+        | otherwise = Encoding $
+            B.char7 '[' <> fromEncoding (to (V.unsafeHead xs)) <>
+            V.foldr go (B.char7 ']') (V.unsafeTail xs)
+          where
+            go v b = B.char7 ',' <> fromEncoding (to v) <> b
+    {-# INLINE liftToEncoding #-}
+
 instance (ToJSON a) => ToJSON (Vector a) where
     toJSON = Array . V.map toJSON
     {-# INLINE toJSON #-}
@@ -672,9 +685,13 @@ encodeVector xs
     where go v b = B.char7 ',' <> builder v <> b
 {-# INLINE encodeVector #-}
 
+instance FromJSON1 Vector where
+    liftParseJSON p =  withArray "Vector a" $
+        V.mapM (uncurry $ parseIndexedJSON' p) . V.indexed
+    {-# INLINE liftParseJSON #-}
+
 instance (FromJSON a) => FromJSON (Vector a) where
-    parseJSON = withArray "Vector a" $ V.mapM (uncurry parseIndexedJSON) .
-                V.indexed
+    parseJSON = parseJSON1
     {-# INLINE parseJSON #-}
 
 vectorToJSON :: (VG.Vector v a, ToJSON a) => v a -> Value
