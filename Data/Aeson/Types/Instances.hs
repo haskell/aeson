@@ -79,7 +79,7 @@ module Data.Aeson.Types.Instances
 import Data.Aeson.Types.Instances.Tuple (tuple, (>*<))
 
 import Control.Applicative (Const(..))
-import Data.Aeson.Encode.Functions (brackets, builder, encode, foldable, foldable', list')
+import Data.Aeson.Encode.Functions (brackets, builder, encode, foldable, list)
 import Data.Aeson.Functions (hashMapKey, mapHashKeyVal, mapKey, mapKeyVal)
 import Data.Aeson.Types.Class
 import Data.Aeson.Types.Internal
@@ -590,7 +590,7 @@ instance ToJSON1 NonEmpty where
     liftToJSON to = liftToJSON to . toList
     {-# INLINE liftToJSON #-}
 
-    liftToEncoding = foldable'
+    liftToEncoding = foldable
     {-# INLINE liftToEncoding #-}
 
 instance (ToJSON a) => ToJSON (NonEmpty a) where
@@ -615,7 +615,7 @@ instance ToJSON1 [] where
     liftToJSON to = Array . V.fromList . map to
     {-# INLINE liftToJSON #-}
 
-    liftToEncoding = list'
+    liftToEncoding = list
     {-# INLINE liftToEncoding #-}
 
 instance (ToJSON a) => ToJSON [a] where
@@ -638,7 +638,7 @@ instance ToJSON1 Seq.Seq where
     liftToJSON to = liftToJSON to . toList
     {-# INLINE liftToJSON #-}
 
-    liftToEncoding = foldable'
+    liftToEncoding = foldable
     {-# INLINE liftToEncoding #-}
 
 instance (ToJSON a) => ToJSON (Seq.Seq a) where
@@ -751,7 +751,7 @@ instance (ToJSON a) => ToJSON (HashSet.HashSet a) where
     toJSON = toJSON . HashSet.toList
     {-# INLINE toJSON #-}
 
-    toEncoding = foldable
+    toEncoding = foldable toEncoding
     {-# INLINE toEncoding #-}
 
 instance (Eq a, Hashable a, FromJSON a) => FromJSON (HashSet.HashSet a) where
@@ -826,7 +826,7 @@ instance (ToJSON v, ToJSONKey k) => ToJSON (M.Map k v) where
 
     toEncoding = case toJSONKey of
         ToJSONKeyText (_,f) -> encodeMap f M.minViewWithKey M.foldrWithKey
-        ToJSONKeyValue (_,f) -> list' (pairEncoding f) . M.toList
+        ToJSONKeyValue (_,f) -> list (pairEncoding f) . M.toList
       where pairEncoding :: (k -> Encoding) -> (k, v) -> Encoding
             pairEncoding f (a, b) = tuple $ fromEncoding (f a) >*< builder b
     {-# INLINE toEncoding #-}
@@ -852,7 +852,7 @@ instance (ToJSON v, ToJSONKey k) => ToJSON (H.HashMap k v) where
 
     toEncoding = case toJSONKey of
         ToJSONKeyText (_,f) -> encodeWithKey f H.foldrWithKey
-        ToJSONKeyValue (_,f) -> list' (pairEncoding f) . H.toList
+        ToJSONKeyValue (_,f) -> list (pairEncoding f) . H.toList
       where pairEncoding :: (k -> Encoding) -> (k, v) -> Encoding
             pairEncoding f (a, b) = tuple $ fromEncoding (f a) >*< builder b
     {-# INLINE toEncoding #-}
