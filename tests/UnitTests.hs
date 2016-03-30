@@ -288,8 +288,8 @@ overlappingRegression bs = fromMaybe [] $ decode bs
 issue351 :: [Assertion]
 issue351 = [
     assertEqual "Int"  ([1, 2, 3] :: [Int])  $ overlappingRegression "[1, 2, 3]"
-  , assertEqual "Char" (""        :: String) $ overlappingRegression "\"abc\""
-  , assertEqual "Char" ("abc"     :: String) $ overlappingRegression "[\"a\", \"b\", \"c\"]"
+  , assertEqual "Char" ("abc"     :: String) $ overlappingRegression "\"abc\""
+  , assertEqual "Char" (""        :: String) $ overlappingRegression "[\"a\", \"b\", \"c\"]"
   ]
 
 ------------------------------------------------------------------------------
