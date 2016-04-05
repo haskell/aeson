@@ -353,7 +353,13 @@ instance Ord Encoding where
     compare (Encoding a) (Encoding b) =
       compare (toLazyByteString a) (toLazyByteString b)
 
--- | A series of values that, when encoded, should be separated by commas.
+-- | A series of values that, when encoded, should be separated by
+-- commas. Since 0.11.0.0, the '.=' operator is overloaded to create
+-- either @(Text, Value)@ or 'Series'. You can use Series when
+-- encoding directly to a bytestring builder as in the following
+-- example:
+--
+-- > toEncoding (Person name age) = pairs ("name" .= name <> "age" .= age)
 data Series = Empty
             | Value Encoding
             deriving (Typeable)
