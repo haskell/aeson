@@ -4,6 +4,11 @@
     ViewPatterns #-}
 {-# LANGUAGE DefaultSignatures #-}
 
+-- Needed for Tagged, Const and Proxy instances
+#if __GLASGOW_HASKELL__ >= 706
+{-# LANGUAGE PolyKinds #-}
+#endif
+
 #define NEEDS_INCOHERENT
 #include "overlapping-compat.h"
 
