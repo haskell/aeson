@@ -25,6 +25,7 @@ module Data.Aeson.Types.Internal
     -- * Core JSON types
       Value(..)
     , Encoding(..)
+    , unsafeToEncoding
     , Series(..)
     , Array
     , emptyArray, isEmptyArray
@@ -342,6 +343,13 @@ newtype Encoding = Encoding {
       fromEncoding :: Builder
       -- ^ Acquire the underlying bytestring builder.
     } deriving (Semigroup,Monoid)
+
+-- | Make Encoding from Builder.
+--
+--   Use with care! You have to make sure that the passed Builder 
+--   is a valid JSON Encoding! 
+unsafeToEncoding :: Builder -> Encoding
+unsafeToEncoding = Encoding
 
 instance Show Encoding where
     show (Encoding e) = show (toLazyByteString e)
