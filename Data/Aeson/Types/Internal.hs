@@ -346,8 +346,8 @@ newtype Encoding = Encoding {
 
 -- | Make Encoding from Builder.
 --
---   Use with care! You have to make sure that the passed Builder 
---   is a valid JSON Encoding! 
+-- Use with care! You have to make sure that the passed Builder
+-- is a valid JSON Encoding!
 unsafeToEncoding :: Builder -> Encoding
 unsafeToEncoding = Encoding
 
