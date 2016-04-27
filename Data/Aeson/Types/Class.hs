@@ -29,10 +29,18 @@ module Data.Aeson.Types.Class
     , typeMismatch
     ) where
 
+import Data.Aeson.Encode.Builder
 import Data.Aeson.Types.Internal
+import Data.Monoid ((<>))
 import Data.Text (Text)
 import GHC.Generics (Generic, Rep, from, to)
 import qualified Data.Aeson.Encode.Builder as E
+import qualified Data.ByteString.Builder as B
+import qualified Data.Vector as V
+
+#if !MIN_VERSION_base(4,8,0)
+import Data.Monoid (mempty)
+#endif
 
 -- | Class of generic representation types ('Rep') that can be converted to
 -- JSON.
@@ -165,6 +173,19 @@ class ToJSON a where
     toEncoding = Encoding . E.encodeToBuilder . toJSON
     {-# INLINE toEncoding #-}
 
+    toJSONList :: [a] -> Value
+    toJSONList = Array . V.fromList . map toJSON
+    {-# INLINE toJSONList #-}
+
+    toEncodingList :: [a] -> Encoding
+    toEncodingList [] = emptyArray_
+    toEncodingList (x:xs) = Encoding $
+        B.char7 '[' <> builder x <> commas xs <> B.char7 ']'
+      where
+        commas  = foldr (\v vs -> B.char7 ',' <> builder v <> vs) mempty
+        builder = fromEncoding . toEncoding
+    {-# INLINE toEncodingList #-}
+
 -- | A type that can be converted from JSON, with the possibility of
 -- failure.
 --
@@ -244,6 +265,19 @@ class FromJSON a where
 
     default parseJSON :: (Generic a, GFromJSON (Rep a)) => Value -> Parser a
     parseJSON = genericParseJSON defaultOptions
+
+    parseJSONList :: Value -> Parser [a]
+    parseJSONList (Array a)
+        = sequence
+        . zipWith parseIndexedJSON [0..]
+        . V.toList
+        $ a
+      where
+        parseIndexedJSON :: FromJSON a => Int -> Value -> Parser a
+        parseIndexedJSON idx value = parseJSON value <?> Index idx
+
+    parseJSONList v = typeMismatch "[a]" v
+
 
 -- | A key-value pair for encoding a JSON object.
 class KeyValue kv where
