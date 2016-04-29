@@ -121,7 +121,6 @@ library
     build-depends: time >= 1.5
 
   if flag(developer)
-    ghc-options: -Werror
     ghc-prof-options: -auto-all
 
   ghc-options: -O2 -Wall
