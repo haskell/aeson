@@ -49,22 +49,22 @@ withArray expected _ v           = typeMismatch expected v
 -------------------------------------------------------------------------------
 
 instance ToJSON2 ((,) ) where
-    liftToJSON2 toA toB (a, b) = Array $ V.create $ do
+    liftToJSON2 toA _ toB _ (a, b) = Array $ V.create $ do
         mv <- VM.unsafeNew 2
         VM.unsafeWrite mv 0 (toA a)
         VM.unsafeWrite mv 1 (toB b)
         return mv
     {-# INLINE liftToJSON2 #-}
 
-    liftToEncoding2 toA toB (a, b) = tuple $
+    liftToEncoding2 toA _ toB _ (a, b) = tuple $
         fromEncoding (toA a) >*<
         fromEncoding (toB b)
     {-# INLINE liftToEncoding2 #-}
 
 instance (ToJSON a) => ToJSON1 ((,) a) where
-    liftToJSON = liftToJSON2 toJSON
+    liftToJSON = liftToJSON2 toJSON toJSONList
     {-# INLINE liftToJSON #-}
-    liftToEncoding = liftToEncoding2 toEncoding
+    liftToEncoding = liftToEncoding2 toEncoding toEncodingList
     {-# INLINE liftToEncoding #-}
 
 instance (ToJSON a, ToJSON b) => ToJSON (a, b) where
@@ -74,7 +74,7 @@ instance (ToJSON a, ToJSON b) => ToJSON (a, b) where
     {-# INLINE toEncoding #-}
 
 instance FromJSON2 ((,) ) where
-    liftParseJSON2 pA pB = withArray "(a, b)" $ \t -> 
+    liftParseJSON2 pA _ pB _ = withArray "(a, b)" $ \t -> 
         let n = V.length t
         in if n == 2
             then (,)
@@ -84,7 +84,7 @@ instance FromJSON2 ((,) ) where
     {-# INLINE liftParseJSON2 #-}
 
 instance (FromJSON a) => FromJSON1 ((,) a) where
-    liftParseJSON = liftParseJSON2 parseJSON
+    liftParseJSON = liftParseJSON2 parseJSON parseJSONList
     {-# INLINE liftParseJSON #-}
 
 instance (FromJSON a, FromJSON b) => FromJSON (a, b) where
@@ -93,7 +93,7 @@ instance (FromJSON a, FromJSON b) => FromJSON (a, b) where
 
 
 instance (ToJSON a) => ToJSON2 ((,,) a) where
-    liftToJSON2 toB toC (a, b, c) = Array $ V.create $ do
+    liftToJSON2 toB _ toC _ (a, b, c) = Array $ V.create $ do
         mv <- VM.unsafeNew 3
         VM.unsafeWrite mv 0 (toJSON a)
         VM.unsafeWrite mv 1 (toB b)
@@ -101,16 +101,16 @@ instance (ToJSON a) => ToJSON2 ((,,) a) where
         return mv
     {-# INLINE liftToJSON2 #-}
 
-    liftToEncoding2 toB toC (a, b, c) = tuple $
+    liftToEncoding2 toB _ toC _ (a, b, c) = tuple $
         builder a >*<
         fromEncoding (toB b) >*<
         fromEncoding (toC c)
     {-# INLINE liftToEncoding2 #-}
 
 instance (ToJSON a, ToJSON b) => ToJSON1 ((,,) a b) where
-    liftToJSON = liftToJSON2 toJSON
+    liftToJSON = liftToJSON2 toJSON toJSONList
     {-# INLINE liftToJSON #-}
-    liftToEncoding = liftToEncoding2 toEncoding
+    liftToEncoding = liftToEncoding2 toEncoding toEncodingList
     {-# INLINE liftToEncoding #-}
 
 instance (ToJSON a, ToJSON b, ToJSON c) => ToJSON (a, b, c) where
@@ -120,7 +120,7 @@ instance (ToJSON a, ToJSON b, ToJSON c) => ToJSON (a, b, c) where
     {-# INLINE toEncoding #-}
 
 instance (FromJSON a) => FromJSON2 ((,,) a) where
-    liftParseJSON2 pB pC = withArray "(a, b, c)" $ \t -> 
+    liftParseJSON2 pB _ pC _ = withArray "(a, b, c)" $ \t -> 
         let n = V.length t
         in if n == 3
             then (,,)
@@ -131,7 +131,7 @@ instance (FromJSON a) => FromJSON2 ((,,) a) where
     {-# INLINE liftParseJSON2 #-}
 
 instance (FromJSON a, FromJSON b) => FromJSON1 ((,,) a b) where
-    liftParseJSON = liftParseJSON2 parseJSON
+    liftParseJSON = liftParseJSON2 parseJSON parseJSONList
     {-# INLINE liftParseJSON #-}
 
 instance (FromJSON a, FromJSON b, FromJSON c) => FromJSON (a, b, c) where
@@ -140,7 +140,7 @@ instance (FromJSON a, FromJSON b, FromJSON c) => FromJSON (a, b, c) where
 
 
 instance (ToJSON a, ToJSON b) => ToJSON2 ((,,,) a b) where
-    liftToJSON2 toC toD (a, b, c, d) = Array $ V.create $ do
+    liftToJSON2 toC _ toD _ (a, b, c, d) = Array $ V.create $ do
         mv <- VM.unsafeNew 4
         VM.unsafeWrite mv 0 (toJSON a)
         VM.unsafeWrite mv 1 (toJSON b)
@@ -149,7 +149,7 @@ instance (ToJSON a, ToJSON b) => ToJSON2 ((,,,) a b) where
         return mv
     {-# INLINE liftToJSON2 #-}
 
-    liftToEncoding2 toC toD (a, b, c, d) = tuple $
+    liftToEncoding2 toC _ toD _ (a, b, c, d) = tuple $
         builder a >*<
         builder b >*<
         fromEncoding (toC c) >*<
@@ -157,9 +157,9 @@ instance (ToJSON a, ToJSON b) => ToJSON2 ((,,,) a b) where
     {-# INLINE liftToEncoding2 #-}
 
 instance (ToJSON a, ToJSON b, ToJSON c) => ToJSON1 ((,,,) a b c) where
-    liftToJSON = liftToJSON2 toJSON
+    liftToJSON = liftToJSON2 toJSON toJSONList
     {-# INLINE liftToJSON #-}
-    liftToEncoding = liftToEncoding2 toEncoding
+    liftToEncoding = liftToEncoding2 toEncoding toEncodingList
     {-# INLINE liftToEncoding #-}
 
 instance (ToJSON a, ToJSON b, ToJSON c, ToJSON d) => ToJSON (a, b, c, d) where
@@ -169,7 +169,7 @@ instance (ToJSON a, ToJSON b, ToJSON c, ToJSON d) => ToJSON (a, b, c, d) where
     {-# INLINE toEncoding #-}
 
 instance (FromJSON a, FromJSON b) => FromJSON2 ((,,,) a b) where
-    liftParseJSON2 pC pD = withArray "(a, b, c, d)" $ \t -> 
+    liftParseJSON2 pC _ pD _ = withArray "(a, b, c, d)" $ \t -> 
         let n = V.length t
         in if n == 4
             then (,,,)
@@ -181,7 +181,7 @@ instance (FromJSON a, FromJSON b) => FromJSON2 ((,,,) a b) where
     {-# INLINE liftParseJSON2 #-}
 
 instance (FromJSON a, FromJSON b, FromJSON c) => FromJSON1 ((,,,) a b c) where
-    liftParseJSON = liftParseJSON2 parseJSON
+    liftParseJSON = liftParseJSON2 parseJSON parseJSONList
     {-# INLINE liftParseJSON #-}
 
 instance (FromJSON a, FromJSON b, FromJSON c, FromJSON d) => FromJSON (a, b, c, d) where
@@ -190,7 +190,7 @@ instance (FromJSON a, FromJSON b, FromJSON c, FromJSON d) => FromJSON (a, b, c, 
 
 
 instance (ToJSON a, ToJSON b, ToJSON c) => ToJSON2 ((,,,,) a b c) where
-    liftToJSON2 toD toE (a, b, c, d, e) = Array $ V.create $ do
+    liftToJSON2 toD _ toE _ (a, b, c, d, e) = Array $ V.create $ do
         mv <- VM.unsafeNew 5
         VM.unsafeWrite mv 0 (toJSON a)
         VM.unsafeWrite mv 1 (toJSON b)
@@ -200,7 +200,7 @@ instance (ToJSON a, ToJSON b, ToJSON c) => ToJSON2 ((,,,,) a b c) where
         return mv
     {-# INLINE liftToJSON2 #-}
 
-    liftToEncoding2 toD toE (a, b, c, d, e) = tuple $
+    liftToEncoding2 toD _ toE _ (a, b, c, d, e) = tuple $
         builder a >*<
         builder b >*<
         builder c >*<
@@ -209,9 +209,9 @@ instance (ToJSON a, ToJSON b, ToJSON c) => ToJSON2 ((,,,,) a b c) where
     {-# INLINE liftToEncoding2 #-}
 
 instance (ToJSON a, ToJSON b, ToJSON c, ToJSON d) => ToJSON1 ((,,,,) a b c d) where
-    liftToJSON = liftToJSON2 toJSON
+    liftToJSON = liftToJSON2 toJSON toJSONList
     {-# INLINE liftToJSON #-}
-    liftToEncoding = liftToEncoding2 toEncoding
+    liftToEncoding = liftToEncoding2 toEncoding toEncodingList
     {-# INLINE liftToEncoding #-}
 
 instance (ToJSON a, ToJSON b, ToJSON c, ToJSON d, ToJSON e) => ToJSON (a, b, c, d, e) where
@@ -221,7 +221,7 @@ instance (ToJSON a, ToJSON b, ToJSON c, ToJSON d, ToJSON e) => ToJSON (a, b, c, 
     {-# INLINE toEncoding #-}
 
 instance (FromJSON a, FromJSON b, FromJSON c) => FromJSON2 ((,,,,) a b c) where
-    liftParseJSON2 pD pE = withArray "(a, b, c, d, e)" $ \t -> 
+    liftParseJSON2 pD _ pE _ = withArray "(a, b, c, d, e)" $ \t -> 
         let n = V.length t
         in if n == 5
             then (,,,,)
@@ -234,7 +234,7 @@ instance (FromJSON a, FromJSON b, FromJSON c) => FromJSON2 ((,,,,) a b c) where
     {-# INLINE liftParseJSON2 #-}
 
 instance (FromJSON a, FromJSON b, FromJSON c, FromJSON d) => FromJSON1 ((,,,,) a b c d) where
-    liftParseJSON = liftParseJSON2 parseJSON
+    liftParseJSON = liftParseJSON2 parseJSON parseJSONList
     {-# INLINE liftParseJSON #-}
 
 instance (FromJSON a, FromJSON b, FromJSON c, FromJSON d, FromJSON e) => FromJSON (a, b, c, d, e) where
@@ -243,7 +243,7 @@ instance (FromJSON a, FromJSON b, FromJSON c, FromJSON d, FromJSON e) => FromJSO
 
 
 instance (ToJSON a, ToJSON b, ToJSON c, ToJSON d) => ToJSON2 ((,,,,,) a b c d) where
-    liftToJSON2 toE toF (a, b, c, d, e, f) = Array $ V.create $ do
+    liftToJSON2 toE _ toF _ (a, b, c, d, e, f) = Array $ V.create $ do
         mv <- VM.unsafeNew 6
         VM.unsafeWrite mv 0 (toJSON a)
         VM.unsafeWrite mv 1 (toJSON b)
@@ -254,7 +254,7 @@ instance (ToJSON a, ToJSON b, ToJSON c, ToJSON d) => ToJSON2 ((,,,,,) a b c d) w
         return mv
     {-# INLINE liftToJSON2 #-}
 
-    liftToEncoding2 toE toF (a, b, c, d, e, f) = tuple $
+    liftToEncoding2 toE _ toF _ (a, b, c, d, e, f) = tuple $
         builder a >*<
         builder b >*<
         builder c >*<
@@ -264,9 +264,9 @@ instance (ToJSON a, ToJSON b, ToJSON c, ToJSON d) => ToJSON2 ((,,,,,) a b c d) w
     {-# INLINE liftToEncoding2 #-}
 
 instance (ToJSON a, ToJSON b, ToJSON c, ToJSON d, ToJSON e) => ToJSON1 ((,,,,,) a b c d e) where
-    liftToJSON = liftToJSON2 toJSON
+    liftToJSON = liftToJSON2 toJSON toJSONList
     {-# INLINE liftToJSON #-}
-    liftToEncoding = liftToEncoding2 toEncoding
+    liftToEncoding = liftToEncoding2 toEncoding toEncodingList
     {-# INLINE liftToEncoding #-}
 
 instance (ToJSON a, ToJSON b, ToJSON c, ToJSON d, ToJSON e, ToJSON f) => ToJSON (a, b, c, d, e, f) where
@@ -276,7 +276,7 @@ instance (ToJSON a, ToJSON b, ToJSON c, ToJSON d, ToJSON e, ToJSON f) => ToJSON 
     {-# INLINE toEncoding #-}
 
 instance (FromJSON a, FromJSON b, FromJSON c, FromJSON d) => FromJSON2 ((,,,,,) a b c d) where
-    liftParseJSON2 pE pF = withArray "(a, b, c, d, e, f)" $ \t -> 
+    liftParseJSON2 pE _ pF _ = withArray "(a, b, c, d, e, f)" $ \t -> 
         let n = V.length t
         in if n == 6
             then (,,,,,)
@@ -290,7 +290,7 @@ instance (FromJSON a, FromJSON b, FromJSON c, FromJSON d) => FromJSON2 ((,,,,,) 
     {-# INLINE liftParseJSON2 #-}
 
 instance (FromJSON a, FromJSON b, FromJSON c, FromJSON d, FromJSON e) => FromJSON1 ((,,,,,) a b c d e) where
-    liftParseJSON = liftParseJSON2 parseJSON
+    liftParseJSON = liftParseJSON2 parseJSON parseJSONList
     {-# INLINE liftParseJSON #-}
 
 instance (FromJSON a, FromJSON b, FromJSON c, FromJSON d, FromJSON e, FromJSON f) => FromJSON (a, b, c, d, e, f) where
@@ -299,7 +299,7 @@ instance (FromJSON a, FromJSON b, FromJSON c, FromJSON d, FromJSON e, FromJSON f
 
 
 instance (ToJSON a, ToJSON b, ToJSON c, ToJSON d, ToJSON e) => ToJSON2 ((,,,,,,) a b c d e) where
-    liftToJSON2 toF toG (a, b, c, d, e, f, g) = Array $ V.create $ do
+    liftToJSON2 toF _ toG _ (a, b, c, d, e, f, g) = Array $ V.create $ do
         mv <- VM.unsafeNew 7
         VM.unsafeWrite mv 0 (toJSON a)
         VM.unsafeWrite mv 1 (toJSON b)
@@ -311,7 +311,7 @@ instance (ToJSON a, ToJSON b, ToJSON c, ToJSON d, ToJSON e) => ToJSON2 ((,,,,,,)
         return mv
     {-# INLINE liftToJSON2 #-}
 
-    liftToEncoding2 toF toG (a, b, c, d, e, f, g) = tuple $
+    liftToEncoding2 toF _ toG _ (a, b, c, d, e, f, g) = tuple $
         builder a >*<
         builder b >*<
         builder c >*<
@@ -322,9 +322,9 @@ instance (ToJSON a, ToJSON b, ToJSON c, ToJSON d, ToJSON e) => ToJSON2 ((,,,,,,)
     {-# INLINE liftToEncoding2 #-}
 
 instance (ToJSON a, ToJSON b, ToJSON c, ToJSON d, ToJSON e, ToJSON f) => ToJSON1 ((,,,,,,) a b c d e f) where
-    liftToJSON = liftToJSON2 toJSON
+    liftToJSON = liftToJSON2 toJSON toJSONList
     {-# INLINE liftToJSON #-}
-    liftToEncoding = liftToEncoding2 toEncoding
+    liftToEncoding = liftToEncoding2 toEncoding toEncodingList
     {-# INLINE liftToEncoding #-}
 
 instance (ToJSON a, ToJSON b, ToJSON c, ToJSON d, ToJSON e, ToJSON f, ToJSON g) => ToJSON (a, b, c, d, e, f, g) where
@@ -334,7 +334,7 @@ instance (ToJSON a, ToJSON b, ToJSON c, ToJSON d, ToJSON e, ToJSON f, ToJSON g) 
     {-# INLINE toEncoding #-}
 
 instance (FromJSON a, FromJSON b, FromJSON c, FromJSON d, FromJSON e) => FromJSON2 ((,,,,,,) a b c d e) where
-    liftParseJSON2 pF pG = withArray "(a, b, c, d, e, f, g)" $ \t -> 
+    liftParseJSON2 pF _ pG _ = withArray "(a, b, c, d, e, f, g)" $ \t -> 
         let n = V.length t
         in if n == 7
             then (,,,,,,)
@@ -349,7 +349,7 @@ instance (FromJSON a, FromJSON b, FromJSON c, FromJSON d, FromJSON e) => FromJSO
     {-# INLINE liftParseJSON2 #-}
 
 instance (FromJSON a, FromJSON b, FromJSON c, FromJSON d, FromJSON e, FromJSON f) => FromJSON1 ((,,,,,,) a b c d e f) where
-    liftParseJSON = liftParseJSON2 parseJSON
+    liftParseJSON = liftParseJSON2 parseJSON parseJSONList
     {-# INLINE liftParseJSON #-}
 
 instance (FromJSON a, FromJSON b, FromJSON c, FromJSON d, FromJSON e, FromJSON f, FromJSON g) => FromJSON (a, b, c, d, e, f, g) where
@@ -358,7 +358,7 @@ instance (FromJSON a, FromJSON b, FromJSON c, FromJSON d, FromJSON e, FromJSON f
 
 
 instance (ToJSON a, ToJSON b, ToJSON c, ToJSON d, ToJSON e, ToJSON f) => ToJSON2 ((,,,,,,,) a b c d e f) where
-    liftToJSON2 toG toH (a, b, c, d, e, f, g, h) = Array $ V.create $ do
+    liftToJSON2 toG _ toH _ (a, b, c, d, e, f, g, h) = Array $ V.create $ do
         mv <- VM.unsafeNew 8
         VM.unsafeWrite mv 0 (toJSON a)
         VM.unsafeWrite mv 1 (toJSON b)
@@ -371,7 +371,7 @@ instance (ToJSON a, ToJSON b, ToJSON c, ToJSON d, ToJSON e, ToJSON f) => ToJSON2
         return mv
     {-# INLINE liftToJSON2 #-}
 
-    liftToEncoding2 toG toH (a, b, c, d, e, f, g, h) = tuple $
+    liftToEncoding2 toG _ toH _ (a, b, c, d, e, f, g, h) = tuple $
         builder a >*<
         builder b >*<
         builder c >*<
@@ -383,9 +383,9 @@ instance (ToJSON a, ToJSON b, ToJSON c, ToJSON d, ToJSON e, ToJSON f) => ToJSON2
     {-# INLINE liftToEncoding2 #-}
 
 instance (ToJSON a, ToJSON b, ToJSON c, ToJSON d, ToJSON e, ToJSON f, ToJSON g) => ToJSON1 ((,,,,,,,) a b c d e f g) where
-    liftToJSON = liftToJSON2 toJSON
+    liftToJSON = liftToJSON2 toJSON toJSONList
     {-# INLINE liftToJSON #-}
-    liftToEncoding = liftToEncoding2 toEncoding
+    liftToEncoding = liftToEncoding2 toEncoding toEncodingList
     {-# INLINE liftToEncoding #-}
 
 instance (ToJSON a, ToJSON b, ToJSON c, ToJSON d, ToJSON e, ToJSON f, ToJSON g, ToJSON h) => ToJSON (a, b, c, d, e, f, g, h) where
@@ -395,7 +395,7 @@ instance (ToJSON a, ToJSON b, ToJSON c, ToJSON d, ToJSON e, ToJSON f, ToJSON g, 
     {-# INLINE toEncoding #-}
 
 instance (FromJSON a, FromJSON b, FromJSON c, FromJSON d, FromJSON e, FromJSON f) => FromJSON2 ((,,,,,,,) a b c d e f) where
-    liftParseJSON2 pG pH = withArray "(a, b, c, d, e, f, g, h)" $ \t -> 
+    liftParseJSON2 pG _ pH _ = withArray "(a, b, c, d, e, f, g, h)" $ \t -> 
         let n = V.length t
         in if n == 8
             then (,,,,,,,)
@@ -411,7 +411,7 @@ instance (FromJSON a, FromJSON b, FromJSON c, FromJSON d, FromJSON e, FromJSON f
     {-# INLINE liftParseJSON2 #-}
 
 instance (FromJSON a, FromJSON b, FromJSON c, FromJSON d, FromJSON e, FromJSON f, FromJSON g) => FromJSON1 ((,,,,,,,) a b c d e f g) where
-    liftParseJSON = liftParseJSON2 parseJSON
+    liftParseJSON = liftParseJSON2 parseJSON parseJSONList
     {-# INLINE liftParseJSON #-}
 
 instance (FromJSON a, FromJSON b, FromJSON c, FromJSON d, FromJSON e, FromJSON f, FromJSON g, FromJSON h) => FromJSON (a, b, c, d, e, f, g, h) where
@@ -420,7 +420,7 @@ instance (FromJSON a, FromJSON b, FromJSON c, FromJSON d, FromJSON e, FromJSON f
 
 
 instance (ToJSON a, ToJSON b, ToJSON c, ToJSON d, ToJSON e, ToJSON f, ToJSON g) => ToJSON2 ((,,,,,,,,) a b c d e f g) where
-    liftToJSON2 toH toI (a, b, c, d, e, f, g, h, i) = Array $ V.create $ do
+    liftToJSON2 toH _ toI _ (a, b, c, d, e, f, g, h, i) = Array $ V.create $ do
         mv <- VM.unsafeNew 9
         VM.unsafeWrite mv 0 (toJSON a)
         VM.unsafeWrite mv 1 (toJSON b)
@@ -434,7 +434,7 @@ instance (ToJSON a, ToJSON b, ToJSON c, ToJSON d, ToJSON e, ToJSON f, ToJSON g) 
         return mv
     {-# INLINE liftToJSON2 #-}
 
-    liftToEncoding2 toH toI (a, b, c, d, e, f, g, h, i) = tuple $
+    liftToEncoding2 toH _ toI _ (a, b, c, d, e, f, g, h, i) = tuple $
         builder a >*<
         builder b >*<
         builder c >*<
@@ -447,9 +447,9 @@ instance (ToJSON a, ToJSON b, ToJSON c, ToJSON d, ToJSON e, ToJSON f, ToJSON g) 
     {-# INLINE liftToEncoding2 #-}
 
 instance (ToJSON a, ToJSON b, ToJSON c, ToJSON d, ToJSON e, ToJSON f, ToJSON g, ToJSON h) => ToJSON1 ((,,,,,,,,) a b c d e f g h) where
-    liftToJSON = liftToJSON2 toJSON
+    liftToJSON = liftToJSON2 toJSON toJSONList
     {-# INLINE liftToJSON #-}
-    liftToEncoding = liftToEncoding2 toEncoding
+    liftToEncoding = liftToEncoding2 toEncoding toEncodingList
     {-# INLINE liftToEncoding #-}
 
 instance (ToJSON a, ToJSON b, ToJSON c, ToJSON d, ToJSON e, ToJSON f, ToJSON g, ToJSON h, ToJSON i) => ToJSON (a, b, c, d, e, f, g, h, i) where
@@ -459,7 +459,7 @@ instance (ToJSON a, ToJSON b, ToJSON c, ToJSON d, ToJSON e, ToJSON f, ToJSON g, 
     {-# INLINE toEncoding #-}
 
 instance (FromJSON a, FromJSON b, FromJSON c, FromJSON d, FromJSON e, FromJSON f, FromJSON g) => FromJSON2 ((,,,,,,,,) a b c d e f g) where
-    liftParseJSON2 pH pI = withArray "(a, b, c, d, e, f, g, h, i)" $ \t -> 
+    liftParseJSON2 pH _ pI _ = withArray "(a, b, c, d, e, f, g, h, i)" $ \t -> 
         let n = V.length t
         in if n == 9
             then (,,,,,,,,)
@@ -476,7 +476,7 @@ instance (FromJSON a, FromJSON b, FromJSON c, FromJSON d, FromJSON e, FromJSON f
     {-# INLINE liftParseJSON2 #-}
 
 instance (FromJSON a, FromJSON b, FromJSON c, FromJSON d, FromJSON e, FromJSON f, FromJSON g, FromJSON h) => FromJSON1 ((,,,,,,,,) a b c d e f g h) where
-    liftParseJSON = liftParseJSON2 parseJSON
+    liftParseJSON = liftParseJSON2 parseJSON parseJSONList
     {-# INLINE liftParseJSON #-}
 
 instance (FromJSON a, FromJSON b, FromJSON c, FromJSON d, FromJSON e, FromJSON f, FromJSON g, FromJSON h, FromJSON i) => FromJSON (a, b, c, d, e, f, g, h, i) where
@@ -485,7 +485,7 @@ instance (FromJSON a, FromJSON b, FromJSON c, FromJSON d, FromJSON e, FromJSON f
 
 
 instance (ToJSON a, ToJSON b, ToJSON c, ToJSON d, ToJSON e, ToJSON f, ToJSON g, ToJSON h) => ToJSON2 ((,,,,,,,,,) a b c d e f g h) where
-    liftToJSON2 toI toJ (a, b, c, d, e, f, g, h, i, j) = Array $ V.create $ do
+    liftToJSON2 toI _ toJ _ (a, b, c, d, e, f, g, h, i, j) = Array $ V.create $ do
         mv <- VM.unsafeNew 10
         VM.unsafeWrite mv 0 (toJSON a)
         VM.unsafeWrite mv 1 (toJSON b)
@@ -500,7 +500,7 @@ instance (ToJSON a, ToJSON b, ToJSON c, ToJSON d, ToJSON e, ToJSON f, ToJSON g, 
         return mv
     {-# INLINE liftToJSON2 #-}
 
-    liftToEncoding2 toI toJ (a, b, c, d, e, f, g, h, i, j) = tuple $
+    liftToEncoding2 toI _ toJ _ (a, b, c, d, e, f, g, h, i, j) = tuple $
         builder a >*<
         builder b >*<
         builder c >*<
@@ -514,9 +514,9 @@ instance (ToJSON a, ToJSON b, ToJSON c, ToJSON d, ToJSON e, ToJSON f, ToJSON g, 
     {-# INLINE liftToEncoding2 #-}
 
 instance (ToJSON a, ToJSON b, ToJSON c, ToJSON d, ToJSON e, ToJSON f, ToJSON g, ToJSON h, ToJSON i) => ToJSON1 ((,,,,,,,,,) a b c d e f g h i) where
-    liftToJSON = liftToJSON2 toJSON
+    liftToJSON = liftToJSON2 toJSON toJSONList
     {-# INLINE liftToJSON #-}
-    liftToEncoding = liftToEncoding2 toEncoding
+    liftToEncoding = liftToEncoding2 toEncoding toEncodingList
     {-# INLINE liftToEncoding #-}
 
 instance (ToJSON a, ToJSON b, ToJSON c, ToJSON d, ToJSON e, ToJSON f, ToJSON g, ToJSON h, ToJSON i, ToJSON j) => ToJSON (a, b, c, d, e, f, g, h, i, j) where
@@ -526,7 +526,7 @@ instance (ToJSON a, ToJSON b, ToJSON c, ToJSON d, ToJSON e, ToJSON f, ToJSON g, 
     {-# INLINE toEncoding #-}
 
 instance (FromJSON a, FromJSON b, FromJSON c, FromJSON d, FromJSON e, FromJSON f, FromJSON g, FromJSON h) => FromJSON2 ((,,,,,,,,,) a b c d e f g h) where
-    liftParseJSON2 pI pJ = withArray "(a, b, c, d, e, f, g, h, i, j)" $ \t -> 
+    liftParseJSON2 pI _ pJ _ = withArray "(a, b, c, d, e, f, g, h, i, j)" $ \t -> 
         let n = V.length t
         in if n == 10
             then (,,,,,,,,,)
@@ -544,7 +544,7 @@ instance (FromJSON a, FromJSON b, FromJSON c, FromJSON d, FromJSON e, FromJSON f
     {-# INLINE liftParseJSON2 #-}
 
 instance (FromJSON a, FromJSON b, FromJSON c, FromJSON d, FromJSON e, FromJSON f, FromJSON g, FromJSON h, FromJSON i) => FromJSON1 ((,,,,,,,,,) a b c d e f g h i) where
-    liftParseJSON = liftParseJSON2 parseJSON
+    liftParseJSON = liftParseJSON2 parseJSON parseJSONList
     {-# INLINE liftParseJSON #-}
 
 instance (FromJSON a, FromJSON b, FromJSON c, FromJSON d, FromJSON e, FromJSON f, FromJSON g, FromJSON h, FromJSON i, FromJSON j) => FromJSON (a, b, c, d, e, f, g, h, i, j) where
@@ -553,7 +553,7 @@ instance (FromJSON a, FromJSON b, FromJSON c, FromJSON d, FromJSON e, FromJSON f
 
 
 instance (ToJSON a, ToJSON b, ToJSON c, ToJSON d, ToJSON e, ToJSON f, ToJSON g, ToJSON h, ToJSON i) => ToJSON2 ((,,,,,,,,,,) a b c d e f g h i) where
-    liftToJSON2 toJ toK (a, b, c, d, e, f, g, h, i, j, k) = Array $ V.create $ do
+    liftToJSON2 toJ _ toK _ (a, b, c, d, e, f, g, h, i, j, k) = Array $ V.create $ do
         mv <- VM.unsafeNew 11
         VM.unsafeWrite mv 0 (toJSON a)
         VM.unsafeWrite mv 1 (toJSON b)
@@ -569,7 +569,7 @@ instance (ToJSON a, ToJSON b, ToJSON c, ToJSON d, ToJSON e, ToJSON f, ToJSON g, 
         return mv
     {-# INLINE liftToJSON2 #-}
 
-    liftToEncoding2 toJ toK (a, b, c, d, e, f, g, h, i, j, k) = tuple $
+    liftToEncoding2 toJ _ toK _ (a, b, c, d, e, f, g, h, i, j, k) = tuple $
         builder a >*<
         builder b >*<
         builder c >*<
@@ -584,9 +584,9 @@ instance (ToJSON a, ToJSON b, ToJSON c, ToJSON d, ToJSON e, ToJSON f, ToJSON g, 
     {-# INLINE liftToEncoding2 #-}
 
 instance (ToJSON a, ToJSON b, ToJSON c, ToJSON d, ToJSON e, ToJSON f, ToJSON g, ToJSON h, ToJSON i, ToJSON j) => ToJSON1 ((,,,,,,,,,,) a b c d e f g h i j) where
-    liftToJSON = liftToJSON2 toJSON
+    liftToJSON = liftToJSON2 toJSON toJSONList
     {-# INLINE liftToJSON #-}
-    liftToEncoding = liftToEncoding2 toEncoding
+    liftToEncoding = liftToEncoding2 toEncoding toEncodingList
     {-# INLINE liftToEncoding #-}
 
 instance (ToJSON a, ToJSON b, ToJSON c, ToJSON d, ToJSON e, ToJSON f, ToJSON g, ToJSON h, ToJSON i, ToJSON j, ToJSON k) => ToJSON (a, b, c, d, e, f, g, h, i, j, k) where
@@ -596,7 +596,7 @@ instance (ToJSON a, ToJSON b, ToJSON c, ToJSON d, ToJSON e, ToJSON f, ToJSON g, 
     {-# INLINE toEncoding #-}
 
 instance (FromJSON a, FromJSON b, FromJSON c, FromJSON d, FromJSON e, FromJSON f, FromJSON g, FromJSON h, FromJSON i) => FromJSON2 ((,,,,,,,,,,) a b c d e f g h i) where
-    liftParseJSON2 pJ pK = withArray "(a, b, c, d, e, f, g, h, i, j, k)" $ \t -> 
+    liftParseJSON2 pJ _ pK _ = withArray "(a, b, c, d, e, f, g, h, i, j, k)" $ \t -> 
         let n = V.length t
         in if n == 11
             then (,,,,,,,,,,)
@@ -615,7 +615,7 @@ instance (FromJSON a, FromJSON b, FromJSON c, FromJSON d, FromJSON e, FromJSON f
     {-# INLINE liftParseJSON2 #-}
 
 instance (FromJSON a, FromJSON b, FromJSON c, FromJSON d, FromJSON e, FromJSON f, FromJSON g, FromJSON h, FromJSON i, FromJSON j) => FromJSON1 ((,,,,,,,,,,) a b c d e f g h i j) where
-    liftParseJSON = liftParseJSON2 parseJSON
+    liftParseJSON = liftParseJSON2 parseJSON parseJSONList
     {-# INLINE liftParseJSON #-}
 
 instance (FromJSON a, FromJSON b, FromJSON c, FromJSON d, FromJSON e, FromJSON f, FromJSON g, FromJSON h, FromJSON i, FromJSON j, FromJSON k) => FromJSON (a, b, c, d, e, f, g, h, i, j, k) where
@@ -624,7 +624,7 @@ instance (FromJSON a, FromJSON b, FromJSON c, FromJSON d, FromJSON e, FromJSON f
 
 
 instance (ToJSON a, ToJSON b, ToJSON c, ToJSON d, ToJSON e, ToJSON f, ToJSON g, ToJSON h, ToJSON i, ToJSON j) => ToJSON2 ((,,,,,,,,,,,) a b c d e f g h i j) where
-    liftToJSON2 toK toL (a, b, c, d, e, f, g, h, i, j, k, l) = Array $ V.create $ do
+    liftToJSON2 toK _ toL _ (a, b, c, d, e, f, g, h, i, j, k, l) = Array $ V.create $ do
         mv <- VM.unsafeNew 12
         VM.unsafeWrite mv 0 (toJSON a)
         VM.unsafeWrite mv 1 (toJSON b)
@@ -641,7 +641,7 @@ instance (ToJSON a, ToJSON b, ToJSON c, ToJSON d, ToJSON e, ToJSON f, ToJSON g, 
         return mv
     {-# INLINE liftToJSON2 #-}
 
-    liftToEncoding2 toK toL (a, b, c, d, e, f, g, h, i, j, k, l) = tuple $
+    liftToEncoding2 toK _ toL _ (a, b, c, d, e, f, g, h, i, j, k, l) = tuple $
         builder a >*<
         builder b >*<
         builder c >*<
@@ -657,9 +657,9 @@ instance (ToJSON a, ToJSON b, ToJSON c, ToJSON d, ToJSON e, ToJSON f, ToJSON g, 
     {-# INLINE liftToEncoding2 #-}
 
 instance (ToJSON a, ToJSON b, ToJSON c, ToJSON d, ToJSON e, ToJSON f, ToJSON g, ToJSON h, ToJSON i, ToJSON j, ToJSON k) => ToJSON1 ((,,,,,,,,,,,) a b c d e f g h i j k) where
-    liftToJSON = liftToJSON2 toJSON
+    liftToJSON = liftToJSON2 toJSON toJSONList
     {-# INLINE liftToJSON #-}
-    liftToEncoding = liftToEncoding2 toEncoding
+    liftToEncoding = liftToEncoding2 toEncoding toEncodingList
     {-# INLINE liftToEncoding #-}
 
 instance (ToJSON a, ToJSON b, ToJSON c, ToJSON d, ToJSON e, ToJSON f, ToJSON g, ToJSON h, ToJSON i, ToJSON j, ToJSON k, ToJSON l) => ToJSON (a, b, c, d, e, f, g, h, i, j, k, l) where
@@ -669,7 +669,7 @@ instance (ToJSON a, ToJSON b, ToJSON c, ToJSON d, ToJSON e, ToJSON f, ToJSON g, 
     {-# INLINE toEncoding #-}
 
 instance (FromJSON a, FromJSON b, FromJSON c, FromJSON d, FromJSON e, FromJSON f, FromJSON g, FromJSON h, FromJSON i, FromJSON j) => FromJSON2 ((,,,,,,,,,,,) a b c d e f g h i j) where
-    liftParseJSON2 pK pL = withArray "(a, b, c, d, e, f, g, h, i, j, k, l)" $ \t -> 
+    liftParseJSON2 pK _ pL _ = withArray "(a, b, c, d, e, f, g, h, i, j, k, l)" $ \t -> 
         let n = V.length t
         in if n == 12
             then (,,,,,,,,,,,)
@@ -689,7 +689,7 @@ instance (FromJSON a, FromJSON b, FromJSON c, FromJSON d, FromJSON e, FromJSON f
     {-# INLINE liftParseJSON2 #-}
 
 instance (FromJSON a, FromJSON b, FromJSON c, FromJSON d, FromJSON e, FromJSON f, FromJSON g, FromJSON h, FromJSON i, FromJSON j, FromJSON k) => FromJSON1 ((,,,,,,,,,,,) a b c d e f g h i j k) where
-    liftParseJSON = liftParseJSON2 parseJSON
+    liftParseJSON = liftParseJSON2 parseJSON parseJSONList
     {-# INLINE liftParseJSON #-}
 
 instance (FromJSON a, FromJSON b, FromJSON c, FromJSON d, FromJSON e, FromJSON f, FromJSON g, FromJSON h, FromJSON i, FromJSON j, FromJSON k, FromJSON l) => FromJSON (a, b, c, d, e, f, g, h, i, j, k, l) where
@@ -698,7 +698,7 @@ instance (FromJSON a, FromJSON b, FromJSON c, FromJSON d, FromJSON e, FromJSON f
 
 
 instance (ToJSON a, ToJSON b, ToJSON c, ToJSON d, ToJSON e, ToJSON f, ToJSON g, ToJSON h, ToJSON i, ToJSON j, ToJSON k) => ToJSON2 ((,,,,,,,,,,,,) a b c d e f g h i j k) where
-    liftToJSON2 toL toM (a, b, c, d, e, f, g, h, i, j, k, l, m) = Array $ V.create $ do
+    liftToJSON2 toL _ toM _ (a, b, c, d, e, f, g, h, i, j, k, l, m) = Array $ V.create $ do
         mv <- VM.unsafeNew 13
         VM.unsafeWrite mv 0 (toJSON a)
         VM.unsafeWrite mv 1 (toJSON b)
@@ -716,7 +716,7 @@ instance (ToJSON a, ToJSON b, ToJSON c, ToJSON d, ToJSON e, ToJSON f, ToJSON g, 
         return mv
     {-# INLINE liftToJSON2 #-}
 
-    liftToEncoding2 toL toM (a, b, c, d, e, f, g, h, i, j, k, l, m) = tuple $
+    liftToEncoding2 toL _ toM _ (a, b, c, d, e, f, g, h, i, j, k, l, m) = tuple $
         builder a >*<
         builder b >*<
         builder c >*<
@@ -733,9 +733,9 @@ instance (ToJSON a, ToJSON b, ToJSON c, ToJSON d, ToJSON e, ToJSON f, ToJSON g, 
     {-# INLINE liftToEncoding2 #-}
 
 instance (ToJSON a, ToJSON b, ToJSON c, ToJSON d, ToJSON e, ToJSON f, ToJSON g, ToJSON h, ToJSON i, ToJSON j, ToJSON k, ToJSON l) => ToJSON1 ((,,,,,,,,,,,,) a b c d e f g h i j k l) where
-    liftToJSON = liftToJSON2 toJSON
+    liftToJSON = liftToJSON2 toJSON toJSONList
     {-# INLINE liftToJSON #-}
-    liftToEncoding = liftToEncoding2 toEncoding
+    liftToEncoding = liftToEncoding2 toEncoding toEncodingList
     {-# INLINE liftToEncoding #-}
 
 instance (ToJSON a, ToJSON b, ToJSON c, ToJSON d, ToJSON e, ToJSON f, ToJSON g, ToJSON h, ToJSON i, ToJSON j, ToJSON k, ToJSON l, ToJSON m) => ToJSON (a, b, c, d, e, f, g, h, i, j, k, l, m) where
@@ -745,7 +745,7 @@ instance (ToJSON a, ToJSON b, ToJSON c, ToJSON d, ToJSON e, ToJSON f, ToJSON g, 
     {-# INLINE toEncoding #-}
 
 instance (FromJSON a, FromJSON b, FromJSON c, FromJSON d, FromJSON e, FromJSON f, FromJSON g, FromJSON h, FromJSON i, FromJSON j, FromJSON k) => FromJSON2 ((,,,,,,,,,,,,) a b c d e f g h i j k) where
-    liftParseJSON2 pL pM = withArray "(a, b, c, d, e, f, g, h, i, j, k, l, m)" $ \t -> 
+    liftParseJSON2 pL _ pM _ = withArray "(a, b, c, d, e, f, g, h, i, j, k, l, m)" $ \t -> 
         let n = V.length t
         in if n == 13
             then (,,,,,,,,,,,,)
@@ -766,7 +766,7 @@ instance (FromJSON a, FromJSON b, FromJSON c, FromJSON d, FromJSON e, FromJSON f
     {-# INLINE liftParseJSON2 #-}
 
 instance (FromJSON a, FromJSON b, FromJSON c, FromJSON d, FromJSON e, FromJSON f, FromJSON g, FromJSON h, FromJSON i, FromJSON j, FromJSON k, FromJSON l) => FromJSON1 ((,,,,,,,,,,,,) a b c d e f g h i j k l) where
-    liftParseJSON = liftParseJSON2 parseJSON
+    liftParseJSON = liftParseJSON2 parseJSON parseJSONList
     {-# INLINE liftParseJSON #-}
 
 instance (FromJSON a, FromJSON b, FromJSON c, FromJSON d, FromJSON e, FromJSON f, FromJSON g, FromJSON h, FromJSON i, FromJSON j, FromJSON k, FromJSON l, FromJSON m) => FromJSON (a, b, c, d, e, f, g, h, i, j, k, l, m) where
@@ -775,7 +775,7 @@ instance (FromJSON a, FromJSON b, FromJSON c, FromJSON d, FromJSON e, FromJSON f
 
 
 instance (ToJSON a, ToJSON b, ToJSON c, ToJSON d, ToJSON e, ToJSON f, ToJSON g, ToJSON h, ToJSON i, ToJSON j, ToJSON k, ToJSON l) => ToJSON2 ((,,,,,,,,,,,,,) a b c d e f g h i j k l) where
-    liftToJSON2 toM toN (a, b, c, d, e, f, g, h, i, j, k, l, m, n) = Array $ V.create $ do
+    liftToJSON2 toM _ toN _ (a, b, c, d, e, f, g, h, i, j, k, l, m, n) = Array $ V.create $ do
         mv <- VM.unsafeNew 14
         VM.unsafeWrite mv 0 (toJSON a)
         VM.unsafeWrite mv 1 (toJSON b)
@@ -794,7 +794,7 @@ instance (ToJSON a, ToJSON b, ToJSON c, ToJSON d, ToJSON e, ToJSON f, ToJSON g, 
         return mv
     {-# INLINE liftToJSON2 #-}
 
-    liftToEncoding2 toM toN (a, b, c, d, e, f, g, h, i, j, k, l, m, n) = tuple $
+    liftToEncoding2 toM _ toN _ (a, b, c, d, e, f, g, h, i, j, k, l, m, n) = tuple $
         builder a >*<
         builder b >*<
         builder c >*<
@@ -812,9 +812,9 @@ instance (ToJSON a, ToJSON b, ToJSON c, ToJSON d, ToJSON e, ToJSON f, ToJSON g, 
     {-# INLINE liftToEncoding2 #-}
 
 instance (ToJSON a, ToJSON b, ToJSON c, ToJSON d, ToJSON e, ToJSON f, ToJSON g, ToJSON h, ToJSON i, ToJSON j, ToJSON k, ToJSON l, ToJSON m) => ToJSON1 ((,,,,,,,,,,,,,) a b c d e f g h i j k l m) where
-    liftToJSON = liftToJSON2 toJSON
+    liftToJSON = liftToJSON2 toJSON toJSONList
     {-# INLINE liftToJSON #-}
-    liftToEncoding = liftToEncoding2 toEncoding
+    liftToEncoding = liftToEncoding2 toEncoding toEncodingList
     {-# INLINE liftToEncoding #-}
 
 instance (ToJSON a, ToJSON b, ToJSON c, ToJSON d, ToJSON e, ToJSON f, ToJSON g, ToJSON h, ToJSON i, ToJSON j, ToJSON k, ToJSON l, ToJSON m, ToJSON n) => ToJSON (a, b, c, d, e, f, g, h, i, j, k, l, m, n) where
@@ -824,7 +824,7 @@ instance (ToJSON a, ToJSON b, ToJSON c, ToJSON d, ToJSON e, ToJSON f, ToJSON g, 
     {-# INLINE toEncoding #-}
 
 instance (FromJSON a, FromJSON b, FromJSON c, FromJSON d, FromJSON e, FromJSON f, FromJSON g, FromJSON h, FromJSON i, FromJSON j, FromJSON k, FromJSON l) => FromJSON2 ((,,,,,,,,,,,,,) a b c d e f g h i j k l) where
-    liftParseJSON2 pM pN = withArray "(a, b, c, d, e, f, g, h, i, j, k, l, m, n)" $ \t -> 
+    liftParseJSON2 pM _ pN _ = withArray "(a, b, c, d, e, f, g, h, i, j, k, l, m, n)" $ \t -> 
         let n = V.length t
         in if n == 14
             then (,,,,,,,,,,,,,)
@@ -846,7 +846,7 @@ instance (FromJSON a, FromJSON b, FromJSON c, FromJSON d, FromJSON e, FromJSON f
     {-# INLINE liftParseJSON2 #-}
 
 instance (FromJSON a, FromJSON b, FromJSON c, FromJSON d, FromJSON e, FromJSON f, FromJSON g, FromJSON h, FromJSON i, FromJSON j, FromJSON k, FromJSON l, FromJSON m) => FromJSON1 ((,,,,,,,,,,,,,) a b c d e f g h i j k l m) where
-    liftParseJSON = liftParseJSON2 parseJSON
+    liftParseJSON = liftParseJSON2 parseJSON parseJSONList
     {-# INLINE liftParseJSON #-}
 
 instance (FromJSON a, FromJSON b, FromJSON c, FromJSON d, FromJSON e, FromJSON f, FromJSON g, FromJSON h, FromJSON i, FromJSON j, FromJSON k, FromJSON l, FromJSON m, FromJSON n) => FromJSON (a, b, c, d, e, f, g, h, i, j, k, l, m, n) where
@@ -855,7 +855,7 @@ instance (FromJSON a, FromJSON b, FromJSON c, FromJSON d, FromJSON e, FromJSON f
 
 
 instance (ToJSON a, ToJSON b, ToJSON c, ToJSON d, ToJSON e, ToJSON f, ToJSON g, ToJSON h, ToJSON i, ToJSON j, ToJSON k, ToJSON l, ToJSON m) => ToJSON2 ((,,,,,,,,,,,,,,) a b c d e f g h i j k l m) where
-    liftToJSON2 toN toO (a, b, c, d, e, f, g, h, i, j, k, l, m, n, o) = Array $ V.create $ do
+    liftToJSON2 toN _ toO _ (a, b, c, d, e, f, g, h, i, j, k, l, m, n, o) = Array $ V.create $ do
         mv <- VM.unsafeNew 15
         VM.unsafeWrite mv 0 (toJSON a)
         VM.unsafeWrite mv 1 (toJSON b)
@@ -875,7 +875,7 @@ instance (ToJSON a, ToJSON b, ToJSON c, ToJSON d, ToJSON e, ToJSON f, ToJSON g, 
         return mv
     {-# INLINE liftToJSON2 #-}
 
-    liftToEncoding2 toN toO (a, b, c, d, e, f, g, h, i, j, k, l, m, n, o) = tuple $
+    liftToEncoding2 toN _ toO _ (a, b, c, d, e, f, g, h, i, j, k, l, m, n, o) = tuple $
         builder a >*<
         builder b >*<
         builder c >*<
@@ -894,9 +894,9 @@ instance (ToJSON a, ToJSON b, ToJSON c, ToJSON d, ToJSON e, ToJSON f, ToJSON g, 
     {-# INLINE liftToEncoding2 #-}
 
 instance (ToJSON a, ToJSON b, ToJSON c, ToJSON d, ToJSON e, ToJSON f, ToJSON g, ToJSON h, ToJSON i, ToJSON j, ToJSON k, ToJSON l, ToJSON m, ToJSON n) => ToJSON1 ((,,,,,,,,,,,,,,) a b c d e f g h i j k l m n) where
-    liftToJSON = liftToJSON2 toJSON
+    liftToJSON = liftToJSON2 toJSON toJSONList
     {-# INLINE liftToJSON #-}
-    liftToEncoding = liftToEncoding2 toEncoding
+    liftToEncoding = liftToEncoding2 toEncoding toEncodingList
     {-# INLINE liftToEncoding #-}
 
 instance (ToJSON a, ToJSON b, ToJSON c, ToJSON d, ToJSON e, ToJSON f, ToJSON g, ToJSON h, ToJSON i, ToJSON j, ToJSON k, ToJSON l, ToJSON m, ToJSON n, ToJSON o) => ToJSON (a, b, c, d, e, f, g, h, i, j, k, l, m, n, o) where
@@ -906,7 +906,7 @@ instance (ToJSON a, ToJSON b, ToJSON c, ToJSON d, ToJSON e, ToJSON f, ToJSON g, 
     {-# INLINE toEncoding #-}
 
 instance (FromJSON a, FromJSON b, FromJSON c, FromJSON d, FromJSON e, FromJSON f, FromJSON g, FromJSON h, FromJSON i, FromJSON j, FromJSON k, FromJSON l, FromJSON m) => FromJSON2 ((,,,,,,,,,,,,,,) a b c d e f g h i j k l m) where
-    liftParseJSON2 pN pO = withArray "(a, b, c, d, e, f, g, h, i, j, k, l, m, n, o)" $ \t -> 
+    liftParseJSON2 pN _ pO _ = withArray "(a, b, c, d, e, f, g, h, i, j, k, l, m, n, o)" $ \t -> 
         let n = V.length t
         in if n == 15
             then (,,,,,,,,,,,,,,)
@@ -929,9 +929,11 @@ instance (FromJSON a, FromJSON b, FromJSON c, FromJSON d, FromJSON e, FromJSON f
     {-# INLINE liftParseJSON2 #-}
 
 instance (FromJSON a, FromJSON b, FromJSON c, FromJSON d, FromJSON e, FromJSON f, FromJSON g, FromJSON h, FromJSON i, FromJSON j, FromJSON k, FromJSON l, FromJSON m, FromJSON n) => FromJSON1 ((,,,,,,,,,,,,,,) a b c d e f g h i j k l m n) where
-    liftParseJSON = liftParseJSON2 parseJSON
+    liftParseJSON = liftParseJSON2 parseJSON parseJSONList
     {-# INLINE liftParseJSON #-}
 
 instance (FromJSON a, FromJSON b, FromJSON c, FromJSON d, FromJSON e, FromJSON f, FromJSON g, FromJSON h, FromJSON i, FromJSON j, FromJSON k, FromJSON l, FromJSON m, FromJSON n, FromJSON o) => FromJSON (a, b, c, d, e, f, g, h, i, j, k, l, m, n, o) where
     parseJSON = parseJSON2
     {-# INLINE parseJSON #-}
+
+

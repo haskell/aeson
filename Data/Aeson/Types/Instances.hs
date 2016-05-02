@@ -176,10 +176,10 @@ toJSONPair keySerialiser (a, b) = Array $ V.create $ do
      return mv
 
 instance ToJSON1 Identity where
-    liftToJSON to (Identity a) = to a
+    liftToJSON to _ (Identity a) = to a
     {-# INLINE liftToJSON #-}
 
-    liftToEncoding to (Identity a) = to a
+    liftToEncoding to _ (Identity a) = to a
     {-# INLINE liftToEncoding #-}
 
 instance (ToJSON a) => ToJSON (Identity a) where
@@ -190,7 +190,7 @@ instance (ToJSON a) => ToJSON (Identity a) where
     {-# INLINE toEncoding #-}
 
 instance FromJSON1 Identity where
-    liftParseJSON p a = Identity <$> p a
+    liftParseJSON p _ a = Identity <$> p a
     {-# INLINE liftParseJSON #-}
 
 instance (FromJSON a) => FromJSON (Identity a) where
@@ -199,12 +199,12 @@ instance (FromJSON a) => FromJSON (Identity a) where
 
 
 instance ToJSON1 Maybe where
-    liftToJSON to (Just a) = to a
-    liftToJSON _  Nothing  = Null
+    liftToJSON to _ (Just a) = to a
+    liftToJSON _  _ Nothing  = Null
     {-# INLINE liftToJSON #-}
 
-    liftToEncoding to (Just a) = to a
-    liftToEncoding _  Nothing  = Encoding E.null_
+    liftToEncoding to _ (Just a) = to a
+    liftToEncoding _  _ Nothing  = Encoding E.null_
     {-# INLINE liftToEncoding #-}
 
 instance (ToJSON a) => ToJSON (Maybe a) where
@@ -215,8 +215,8 @@ instance (ToJSON a) => ToJSON (Maybe a) where
     {-# INLINE toEncoding #-}
 
 instance FromJSON1 Maybe where
-    liftParseJSON _ Null = pure Nothing
-    liftParseJSON p a    = Just <$> p a
+    liftParseJSON _ _ Null = pure Nothing
+    liftParseJSON p _ a    = Just <$> p a
     {-# INLINE liftParseJSON #-}
 
 instance (FromJSON a) => FromJSON (Maybe a) where
@@ -225,26 +225,26 @@ instance (FromJSON a) => FromJSON (Maybe a) where
 
 
 instance ToJSON2 Either where
-    liftToJSON2  toA _toB (Left a)  = Object $ H.singleton left  (toA a)
-    liftToJSON2 _toA  toB (Right b) = Object $ H.singleton right (toB b)
+    liftToJSON2  toA _ _toB _ (Left a)  = Object $ H.singleton left  (toA a)
+    liftToJSON2 _toA _  toB _ (Right b) = Object $ H.singleton right (toB b)
     {-# INLINE liftToJSON2 #-}
 
-    liftToEncoding2  toA _toB (Left a) =
+    liftToEncoding2  toA _ _toB _ (Left a) =
         Encoding (B.shortByteString "{\"Left\":")
         <> toA a
         <> Encoding (B.char7 '}')
 
-    liftToEncoding2 _toA  toB (Right b) =
+    liftToEncoding2 _toA _ toB _ (Right b) =
         Encoding (B.shortByteString "{\"Right\":")
         <> toB b
         <> Encoding (B.char7 '}')
     {-# INLINE liftToEncoding2 #-}
 
 instance (ToJSON a) => ToJSON1 (Either a) where
-    liftToJSON = liftToJSON2 toJSON
+    liftToJSON = liftToJSON2 toJSON toJSONList
     {-# INLINE liftToJSON #-}
 
-    liftToEncoding = liftToEncoding2 toEncoding
+    liftToEncoding = liftToEncoding2 toEncoding toEncodingList
     {-# INLINE liftToEncoding #-}
 
 instance (ToJSON a, ToJSON b) => ToJSON (Either a b) where
@@ -255,18 +255,18 @@ instance (ToJSON a, ToJSON b) => ToJSON (Either a b) where
     {-# INLINE toEncoding #-}
 
 instance FromJSON2 Either where
-    liftParseJSON2 pA pB (Object (H.toList -> [(key, value)]))
+    liftParseJSON2 pA _ pB _ (Object (H.toList -> [(key, value)]))
         | key == left  = Left  <$> pA value <?> Key left
         | key == right = Right <$> pB value <?> Key right
 
-    liftParseJSON2 _ _ _ = fail $
+    liftParseJSON2 _ _ _ _ _ = fail $
         "expected an object with a single property " ++
         "where the property key should be either " ++
         "\"Left\" or \"Right\""
     {-# INLINE liftParseJSON2 #-}
 
 instance (FromJSON a) => FromJSON1 (Either a) where
-    liftParseJSON = liftParseJSON2 parseJSON
+    liftParseJSON = liftParseJSON2 parseJSON parseJSONList
     {-# INLINE liftParseJSON #-}
 
 instance (FromJSON a, FromJSON b) => FromJSON (Either a b) where
@@ -587,10 +587,10 @@ instance FromJSON LT.Text where
     {-# INLINE parseJSON #-}
 
 instance ToJSON1 NonEmpty where
-    liftToJSON to = liftToJSON to . toList
+    liftToJSON to _ = listValue to . toList
     {-# INLINE liftToJSON #-}
 
-    liftToEncoding = foldable
+    liftToEncoding to _ = foldable to
     {-# INLINE liftToEncoding #-}
 
 instance (ToJSON a) => ToJSON (NonEmpty a) where
@@ -601,7 +601,7 @@ instance (ToJSON a) => ToJSON (NonEmpty a) where
     {-# INLINE toEncoding #-}
 
 instance FromJSON1 NonEmpty where
-    liftParseJSON p = withArray "NonEmpty a" $
+    liftParseJSON p _ = withArray "NonEmpty a" $
         (>>= ne) . Tr.sequence . zipWith (parseIndexedJSON' p) [0..] . V.toList
       where
         ne []     = fail "Expected a NonEmpty but got an empty list"
@@ -612,10 +612,10 @@ instance (FromJSON a) => FromJSON (NonEmpty a) where
     parseJSON = parseJSON1
 
 instance ToJSON1 [] where
-    liftToJSON to = Array . V.fromList . map to
+    liftToJSON _ to' = to'
     {-# INLINE liftToJSON #-}
 
-    liftToEncoding = list
+    liftToEncoding _ to' = to'
     {-# INLINE liftToEncoding #-}
 
 instance (ToJSON a) => ToJSON [a] where
@@ -626,8 +626,7 @@ instance (ToJSON a) => ToJSON [a] where
     {-# INLINE toEncoding #-}
 
 instance FromJSON1 [] where
-    liftParseJSON p = withArray "[a]" $
-        Tr.sequence . zipWith (parseIndexedJSON' p) [0..] . V.toList
+    liftParseJSON _ p' = p'
     {-# INLINE liftParseJSON #-}
 
 instance (FromJSON a) => FromJSON [a] where
@@ -635,10 +634,10 @@ instance (FromJSON a) => FromJSON [a] where
     {-# INLINE parseJSON #-}
 
 instance ToJSON1 Seq.Seq where
-    liftToJSON to = liftToJSON to . toList
+    liftToJSON to _ = listValue to . toList
     {-# INLINE liftToJSON #-}
 
-    liftToEncoding = foldable
+    liftToEncoding to _ = foldable to
     {-# INLINE liftToEncoding #-}
 
 instance (ToJSON a) => ToJSON (Seq.Seq a) where
@@ -649,7 +648,7 @@ instance (ToJSON a) => ToJSON (Seq.Seq a) where
     {-# INLINE toEncoding #-}
 
 instance FromJSON1 Seq.Seq where
-    liftParseJSON p = withArray "Seq a" $
+    liftParseJSON p _ = withArray "Seq a" $
       fmap Seq.fromList .
       Tr.sequence . zipWith (parseIndexedJSON' p) [0..] . V.toList
     {-# INLINE liftParseJSON #-}
@@ -659,10 +658,10 @@ instance (FromJSON a) => FromJSON (Seq.Seq a) where
     {-# INLINE parseJSON #-}
 
 instance ToJSON1 Vector where
-    liftToJSON to = Array . V.map to
+    liftToJSON to _ = Array . V.map to
     {-# INLINE liftToJSON #-}
 
-    liftToEncoding to xs
+    liftToEncoding to _ xs
         | V.null xs = E.emptyArray_
         | otherwise = Encoding $
             B.char7 '[' <> fromEncoding (to (V.unsafeHead xs)) <>
@@ -688,7 +687,7 @@ encodeVector xs
 {-# INLINE encodeVector #-}
 
 instance FromJSON1 Vector where
-    liftParseJSON p =  withArray "Vector a" $
+    liftParseJSON p _ = withArray "Vector a" $
         V.mapM (uncurry $ parseIndexedJSON' p) . V.indexed
     {-# INLINE liftParseJSON #-}
 
@@ -980,10 +979,10 @@ instance FromJSON NominalDiffTime where
     {-# INLINE parseJSON #-}
 
 instance ToJSON1 Dual where
-    liftToJSON to = to . getDual
+    liftToJSON to _ = to . getDual
     {-# INLINE liftToJSON #-}
 
-    liftToEncoding to = to . getDual
+    liftToEncoding to _ = to . getDual
     {-# INLINE liftToEncoding #-}
 
 instance ToJSON a => ToJSON (Dual a) where
@@ -994,7 +993,7 @@ instance ToJSON a => ToJSON (Dual a) where
     {-# INLINE toEncoding #-}
 
 instance FromJSON1 Dual where
-    liftParseJSON p = fmap Dual . p
+    liftParseJSON p _ = fmap Dual . p
     {-# INLINE liftParseJSON #-}
 
 instance FromJSON a => FromJSON (Dual a) where
@@ -1003,10 +1002,10 @@ instance FromJSON a => FromJSON (Dual a) where
 
 
 instance ToJSON1 First where
-    liftToJSON to = liftToJSON to . getFirst
+    liftToJSON to to' = liftToJSON to to' . getFirst
     {-# INLINE liftToJSON #-}
 
-    liftToEncoding to = liftToEncoding to . getFirst
+    liftToEncoding to to' = liftToEncoding to to' . getFirst
     {-# INLINE liftToEncoding #-}
 
 instance ToJSON a => ToJSON (First a) where
@@ -1017,7 +1016,7 @@ instance ToJSON a => ToJSON (First a) where
     {-# INLINE toEncoding #-}
 
 instance FromJSON1 First where
-    liftParseJSON p = fmap First . liftParseJSON p
+    liftParseJSON p p' = fmap First . liftParseJSON p p'
     {-# INLINE liftParseJSON #-}
 
 instance FromJSON a => FromJSON (First a) where
@@ -1026,10 +1025,10 @@ instance FromJSON a => FromJSON (First a) where
 
 
 instance ToJSON1 Last where
-    liftToJSON to = liftToJSON to . getLast
+    liftToJSON to to' = liftToJSON to to' . getLast
     {-# INLINE liftToJSON #-}
 
-    liftToEncoding to = liftToEncoding to . getLast
+    liftToEncoding to to' = liftToEncoding to to' . getLast
     {-# INLINE liftToEncoding #-}
 
 instance ToJSON a => ToJSON (Last a) where
@@ -1040,7 +1039,7 @@ instance ToJSON a => ToJSON (Last a) where
     {-# INLINE toEncoding #-}
 
 instance FromJSON1 Last where
-    liftParseJSON p = fmap Last . liftParseJSON p
+    liftParseJSON p p' = fmap Last . liftParseJSON p p'
     {-# INLINE liftParseJSON #-}
 
 instance FromJSON a => FromJSON (Last a) where
@@ -1076,10 +1075,10 @@ instance FromJSON (Proxy a) where
     parseJSON v    = typeMismatch "Proxy" v
 
 instance ToJSON1 (Tagged a) where
-    liftToJSON to (Tagged x) = to x
+    liftToJSON to _ (Tagged x) = to x
     {-# INLINE liftToJSON #-}
 
-    liftToEncoding to (Tagged x) = to x
+    liftToEncoding to _ (Tagged x) = to x
     {-# INLINE liftToEncoding #-}
 
 instance ToJSON b => ToJSON (Tagged a b) where
@@ -1090,7 +1089,7 @@ instance ToJSON b => ToJSON (Tagged a b) where
     {-# INLINE toEncoding #-}
 
 instance FromJSON1 (Tagged a) where
-    liftParseJSON p = fmap Tagged . p
+    liftParseJSON p _ = fmap Tagged . p
     {-# INLINE liftParseJSON #-}
 
 instance FromJSON b => FromJSON (Tagged a b) where

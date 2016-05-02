@@ -30,7 +30,7 @@ tuple :: Int -> String
 tuple n = fold $ flip execState DList.empty $ do
     -- ToJSON2
     t ["instance ", toJsonContext2, "ToJSON2 (", tupleConstr, " ", vs2, ") where" ]
-    t ["    liftToJSON2 ", toPrev, " ", toLast, " ", vs', " = Array $ V.create $ do" ]
+    t ["    liftToJSON2 ", toPrev, " _ ", toLast, " _ ", vs', " = Array $ V.create $ do" ]
     t ["        mv <- VM.unsafeNew ", show n ]
     forM_ (zip [0..] vs) $ \(i, v) ->
         let to = case i of
@@ -42,7 +42,7 @@ tuple n = fold $ flip execState DList.empty $ do
     t ["    {-# INLINE liftToJSON2 #-}" ]
     t []
 
-    t ["    liftToEncoding2 ", toPrev, " ", toLast, " ", vs', " = tuple $" ]
+    t ["    liftToEncoding2 ", toPrev, " _ ", toLast, " _ ", vs', " = tuple $" ]
     forM_ (zip [0..] vs) $ \(i, v) -> t . ("        " :) $ case i of
 
         _ | i == n - 1 -> [ "fromEncoding (", toLast, " ", v, ")" ]
@@ -53,9 +53,9 @@ tuple n = fold $ flip execState DList.empty $ do
 
     -- ToJSON1
     t ["instance ", toJsonContext1, "ToJSON1 (", tupleConstr, " ", vs1, ") where" ]
-    t ["    liftToJSON = liftToJSON2 toJSON" ]
+    t ["    liftToJSON = liftToJSON2 toJSON toJSONList" ]
     t ["    {-# INLINE liftToJSON #-}" ]
-    t ["    liftToEncoding = liftToEncoding2 toEncoding" ]
+    t ["    liftToEncoding = liftToEncoding2 toEncoding toEncodingList" ]
     t ["    {-# INLINE liftToEncoding #-}" ]
     t []
 
@@ -69,7 +69,7 @@ tuple n = fold $ flip execState DList.empty $ do
 
     -- FromJSON2
     t ["instance ", fromJsonContext2, "FromJSON2 (", tupleConstr, " ", vs2, ") where" ]
-    t ["    liftParseJSON2 ", pPrev, " ", pLast, " = withArray \"", vs', "\" $ \\t -> " ]
+    t ["    liftParseJSON2 ", pPrev, " _ ", pLast, " _ = withArray \"", vs', "\" $ \\t -> " ]
     t ["        let n = V.length t" ]
     t ["        in if n == ", show n ]
     t ["            then ", tupleConstr ]
@@ -86,7 +86,7 @@ tuple n = fold $ flip execState DList.empty $ do
 
     -- FromJSON1
     t ["instance ", fromJsonContext1, "FromJSON1 (", tupleConstr, " ", vs1, ") where" ]
-    t ["    liftParseJSON = liftParseJSON2 parseJSON" ]
+    t ["    liftParseJSON = liftParseJSON2 parseJSON parseJSONList" ]
     t ["    {-# INLINE liftParseJSON #-}" ]
     t []
 
