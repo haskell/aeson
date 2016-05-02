@@ -38,6 +38,9 @@ module Data.Aeson.Types.Class
     , KeyValue(..)
     -- * Functions needed for documentation
     , typeMismatch
+    -- * Encoding functions
+    , list
+    , listValue
     ) where
 
 import Data.Aeson.Encode.Builder
@@ -185,7 +188,7 @@ class ToJSON a where
     {-# INLINE toEncoding #-}
 
     toJSONList :: [a] -> Value
-    toJSONList = Array . V.fromList . map toJSON
+    toJSONList = listValue toJSON
     {-# INLINE toJSONList #-}
 
     toEncodingList :: [a] -> Encoding
@@ -324,28 +327,36 @@ typeMismatch expected actual =
 
 -- | Lifting of the 'FromJSON' class to unary type constructors.
 class FromJSON1 f where
-    liftParseJSON :: (Value -> Parser a) -> Value -> Parser (f a)
+    liftParseJSON :: (Value -> Parser a) -> (Value -> Parser [a]) -> Value -> Parser (f a)
+    liftParseJSONList :: (Value -> Parser a) -> (Value -> Parser [a]) -> Value -> Parser [f a]
+    liftParseJSONList f g v = case v of
+        Array vals -> fmap V.toList (V.mapM (liftParseJSON f g) vals)
+        _ -> typeMismatch "[a]" v
 
 -- | Lift the standard 'parseJSON' function through the type constructor.
 parseJSON1 :: (FromJSON1 f, FromJSON a) => Value -> Parser (f a)
-parseJSON1 = liftParseJSON parseJSON
+parseJSON1 = liftParseJSON parseJSON parseJSONList
 {-# INLINE parseJSON1 #-}
 
 -- | Lifting of the 'ToJSON' class to unary type constructors.
 class ToJSON1 f where
-    liftToJSON :: (a -> Value) -> f a -> Value
+    liftToJSON :: (a -> Value) -> ([a] -> Value) -> f a -> Value
+    liftToJSONList :: (a -> Value) -> ([a] -> Value) -> [f a] -> Value
+    liftToJSONList f g = listValue (liftToJSON f g)
 
-    -- | Unfortunately there cannot be default implementation of 'liftToEncoding'.
-    liftToEncoding :: (a -> Encoding) -> f a -> Encoding
+    -- | Unfortunately there cannot be a default implementation of 'liftToEncoding'.
+    liftToEncoding :: (a -> Encoding) -> ([a] -> Encoding) -> f a -> Encoding
+    liftToEncodingList :: (a -> Encoding) -> ([a] -> Encoding) -> [f a] -> Encoding
+    liftToEncodingList f g = list (liftToEncoding f g)
 
 -- | Lift the standard 'toJSON' function through the type constructor.
 toJSON1 :: (ToJSON1 f, ToJSON a) => f a -> Value
-toJSON1 = liftToJSON toJSON
+toJSON1 = liftToJSON toJSON toJSONList
 {-# INLINE toJSON1 #-}
 
 -- | Lift the standard 'toEncoding' function through the type constructor.
 toEncoding1 :: (ToJSON1 f, ToJSON a) => f a -> Encoding
-toEncoding1 = liftToEncoding toEncoding
+toEncoding1 = liftToEncoding toEncoding toEncodingList
 {-# INLINE toEncoding1 #-}
 
 
@@ -353,26 +364,51 @@ toEncoding1 = liftToEncoding toEncoding
 class FromJSON2 f where
     liftParseJSON2
         :: (Value -> Parser a)
+        -> (Value -> Parser [a])
         -> (Value -> Parser b)
+        -> (Value -> Parser [b])
         -> Value -> Parser (f a b)
+    liftParseJSONList2 
+        :: (Value -> Parser a) 
+        -> (Value -> Parser [a]) 
+        -> (Value -> Parser b) 
+        -> (Value -> Parser [b]) 
+        -> Value -> Parser [f a b]
+    liftParseJSONList2 fa ga fb gb v = case v of
+        Array vals -> fmap V.toList (V.mapM (liftParseJSON2 fa ga fb gb) vals)
+        _ -> typeMismatch "[a]" v
 
 -- | Lift the standard 'parseJSON' function through the type constructor.
 parseJSON2 :: (FromJSON2 f, FromJSON a, FromJSON b) => Value -> Parser (f a b)
-parseJSON2 = liftParseJSON2 parseJSON parseJSON
+parseJSON2 = liftParseJSON2 parseJSON parseJSONList parseJSON parseJSONList
 {-# INLINE parseJSON2 #-}
 
 -- | Lifting of the 'ToJSON' class to binary type constructors.
 class ToJSON2 f where
-    liftToJSON2 :: (a -> Value) -> (b -> Value) -> f a b -> Value
+    liftToJSON2 :: (a -> Value) -> ([a] -> Value) -> (b -> Value) -> ([b] -> Value) -> f a b -> Value
+    liftToJSONList2 :: (a -> Value) -> ([a] -> Value) -> (b -> Value) -> ([b] -> Value) -> [f a b] -> Value
+    liftToJSONList2 fa ga fb gb = listValue (liftToJSON2 fa ga fb gb)
 
-    liftToEncoding2 :: (a -> Encoding) -> (b -> Encoding) -> f a b -> Encoding
+    liftToEncoding2 :: (a -> Encoding) -> ([a] -> Encoding) -> (b -> Encoding) -> ([b] -> Encoding) -> f a b -> Encoding
+    liftToEncodingList2 :: (a -> Encoding) -> ([a] -> Encoding) -> (b -> Encoding) -> ([b] -> Encoding) -> [f a b] -> Encoding
+    liftToEncodingList2 fa ga fb gb = list (liftToEncoding2 fa ga fb gb)
 
 -- | Lift the standard 'toJSON' function through the type constructor.
 toJSON2 :: (ToJSON2 f, ToJSON a, ToJSON b) => f a b -> Value
-toJSON2 = liftToJSON2 toJSON toJSON
+toJSON2 = liftToJSON2 toJSON toJSONList toJSON toJSONList
 {-# INLINE toJSON2 #-}
 
 -- | Lift the standard 'toEncoding' function through the type constructor.
 toEncoding2 :: (ToJSON2 f, ToJSON a, ToJSON b) => f a b -> Encoding
-toEncoding2 = liftToEncoding2 toEncoding toEncoding
+toEncoding2 = liftToEncoding2 toEncoding toEncodingList toEncoding toEncodingList
 {-# INLINE toEncoding2 #-}
+
+list :: (a -> Encoding) -> [a] -> Encoding
+list _  []     = emptyArray_
+list to (x:xs) = Encoding $
+                B.char7 '[' <> fromEncoding (to x) <> commas xs <> B.char7 ']'
+      where commas = foldr (\v vs -> B.char7 ',' <> fromEncoding (to v) <> vs) mempty
+{-# INLINE list #-}
+
+listValue :: (a -> Value) -> [a] -> Value
+listValue f = Array . V.fromList . map f
