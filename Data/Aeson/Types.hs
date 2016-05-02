@@ -37,6 +37,17 @@ module Data.Aeson.Types
     , KeyValue(..)
     , modifyFailure
 
+    -- ** Liftings to unary and binary type constructors
+    , FromJSON1(..)
+    , parseJSON1
+    , FromJSON2(..)
+    , parseJSON2
+    , ToJSON1(..)
+    , toJSON1
+    , toEncoding1
+    , ToJSON2(..)
+    , toJSON2
+
     -- ** Generic JSON classes
     , GFromJSON(..)
     , GToJSON(..)
