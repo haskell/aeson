@@ -9,9 +9,6 @@
 {-# LANGUAGE PolyKinds #-}
 #endif
 
-#define NEEDS_INCOHERENT
-#include "overlapping-compat.h"
-
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 
 -- TODO: Drop this when we remove support for Data.Attoparsec.Number
@@ -67,7 +64,7 @@ module Data.Aeson.Types.Instances
     ) where
 
 import Control.Applicative (Const(..))
-import Data.Aeson.Encode.Functions (brackets, builder, encode, foldable, list)
+import Data.Aeson.Encode.Functions (brackets, builder, encode, foldable)
 import Data.Aeson.Functions (hashMapKey, mapHashKeyVal, mapKey, mapKeyVal)
 import Data.Aeson.Types.Class
 import Data.Aeson.Types.Internal
@@ -97,6 +94,7 @@ import Text.ParserCombinators.ReadP (readP_to_S)
 import Foreign.Storable (Storable)
 import Numeric.Natural (Natural)
 import Prelude hiding (foldr)
+import qualified Prelude
 import qualified Data.Aeson.Encode.Builder as E
 import qualified Data.Aeson.Parser.Time as Time
 import qualified Data.ByteString.Builder as B
@@ -229,23 +227,18 @@ instance FromJSON () where
                     else fail "Expected an empty array"
     {-# INLINE parseJSON #-}
 
-instance INCOHERENT_ ToJSON [Char] where
-    toJSON = String . T.pack
-    {-# INLINE toJSON #-}
-
-    toEncoding = Encoding . E.string
-    {-# INLINE toEncoding #-}
-
-instance INCOHERENT_ FromJSON [Char] where
-    parseJSON = withText "String" $ pure . T.unpack
-    {-# INLINE parseJSON #-}
-
 instance ToJSON Char where
     toJSON = String . T.singleton
     {-# INLINE toJSON #-}
 
+    toJSONList = String . T.pack
+    {-# INLINE toJSONList #-}
+
     toEncoding = Encoding . E.string . (:[])
     {-# INLINE toEncoding #-}
+
+    toEncodingList = Encoding . E.string
+    {-# INLINE toEncodingList #-}
 
 instance FromJSON Char where
     parseJSON = withText "Char" $ \t ->
@@ -253,6 +246,9 @@ instance FromJSON Char where
                     then pure $ T.head t
                     else fail "Expected a string of length 1"
     {-# INLINE parseJSON #-}
+
+    parseJSONList = withText "String" $ pure . T.unpack
+    {-# INLINE parseJSONList #-}
 
 instance ToJSON Scientific where
     toJSON = Number
@@ -498,10 +494,13 @@ instance FromJSON LT.Text where
     {-# INLINE parseJSON #-}
 
 instance (ToJSON a) => ToJSON (NonEmpty a) where
-    toJSON = toJSON . toList
+    toJSON = Array . V.fromList . map toJSON . toList
     {-# INLINE toJSON #-}
 
-    toEncoding = toEncoding . toList
+    toEncoding (x :| xs) = Encoding $
+        B.char7 '[' <> builder x <> commas xs <> B.char7 ']'
+      where
+        commas  = Prelude.foldr (\v vs -> B.char7 ',' <> builder v <> vs) mempty
     {-# INLINE toEncoding #-}
 
 instance (FromJSON a) => FromJSON (NonEmpty a) where
@@ -511,16 +510,15 @@ instance (FromJSON a) => FromJSON (NonEmpty a) where
         ne []     = fail "Expected a NonEmpty but got an empty list"
         ne (x:xs) = pure (x :| xs)
 
-instance OVERLAPPABLE_ (ToJSON a) => ToJSON [a] where
-    toJSON = Array . V.fromList . map toJSON
+instance (ToJSON a) => ToJSON [a] where
+    toJSON = toJSONList
     {-# INLINE toJSON #-}
 
-    toEncoding xs = list xs
+    toEncoding = toEncodingList
     {-# INLINE toEncoding #-}
 
-instance OVERLAPPABLE_ (FromJSON a) => FromJSON [a] where
-    parseJSON = withArray "[a]" $ Tr.sequence .
-                zipWith parseIndexedJSON [0..] . V.toList
+instance (FromJSON a) => FromJSON [a] where
+    parseJSON = parseJSONList
     {-# INLINE parseJSON #-}
 
 instance (ToJSON a) => ToJSON (Seq.Seq a) where
