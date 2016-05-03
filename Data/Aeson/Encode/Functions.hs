@@ -25,6 +25,9 @@ import Data.Foldable (Foldable, foldMap)
 import Data.Monoid (mempty)
 #endif
 
+list :: (a -> Encoding) -> [a] -> Encoding
+list = listEncoding
+
 builder :: ToJSON a => a -> Builder
 builder = fromEncoding . toEncoding
 {-# INLINE builder #-}

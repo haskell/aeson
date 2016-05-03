@@ -39,8 +39,9 @@ module Data.Aeson.Types.Class
     -- * Functions needed for documentation
     , typeMismatch
     -- * Encoding functions
-    , list
+    , listEncoding
     , listValue
+    , listParser
     ) where
 
 import Data.Aeson.Encode.Builder
@@ -329,9 +330,7 @@ typeMismatch expected actual =
 class FromJSON1 f where
     liftParseJSON :: (Value -> Parser a) -> (Value -> Parser [a]) -> Value -> Parser (f a)
     liftParseJSONList :: (Value -> Parser a) -> (Value -> Parser [a]) -> Value -> Parser [f a]
-    liftParseJSONList f g v = case v of
-        Array vals -> fmap V.toList (V.mapM (liftParseJSON f g) vals)
-        _ -> typeMismatch "[a]" v
+    liftParseJSONList f g v = listParser (liftParseJSON f g) v 
 
 -- | Lift the standard 'parseJSON' function through the type constructor.
 parseJSON1 :: (FromJSON1 f, FromJSON a) => Value -> Parser (f a)
@@ -347,7 +346,7 @@ class ToJSON1 f where
     -- | Unfortunately there cannot be a default implementation of 'liftToEncoding'.
     liftToEncoding :: (a -> Encoding) -> ([a] -> Encoding) -> f a -> Encoding
     liftToEncodingList :: (a -> Encoding) -> ([a] -> Encoding) -> [f a] -> Encoding
-    liftToEncodingList f g = list (liftToEncoding f g)
+    liftToEncodingList f g = listEncoding (liftToEncoding f g)
 
 -- | Lift the standard 'toJSON' function through the type constructor.
 toJSON1 :: (ToJSON1 f, ToJSON a) => f a -> Value
@@ -391,7 +390,7 @@ class ToJSON2 f where
 
     liftToEncoding2 :: (a -> Encoding) -> ([a] -> Encoding) -> (b -> Encoding) -> ([b] -> Encoding) -> f a b -> Encoding
     liftToEncodingList2 :: (a -> Encoding) -> ([a] -> Encoding) -> (b -> Encoding) -> ([b] -> Encoding) -> [f a b] -> Encoding
-    liftToEncodingList2 fa ga fb gb = list (liftToEncoding2 fa ga fb gb)
+    liftToEncodingList2 fa ga fb gb = listEncoding (liftToEncoding2 fa ga fb gb)
 
 -- | Lift the standard 'toJSON' function through the type constructor.
 toJSON2 :: (ToJSON2 f, ToJSON a, ToJSON b) => f a b -> Value
@@ -403,12 +402,19 @@ toEncoding2 :: (ToJSON2 f, ToJSON a, ToJSON b) => f a b -> Encoding
 toEncoding2 = liftToEncoding2 toEncoding toEncodingList toEncoding toEncodingList
 {-# INLINE toEncoding2 #-}
 
-list :: (a -> Encoding) -> [a] -> Encoding
-list _  []     = emptyArray_
-list to (x:xs) = Encoding $
+listEncoding :: (a -> Encoding) -> [a] -> Encoding
+listEncoding _  []     = emptyArray_
+listEncoding to (x:xs) = Encoding $
                 B.char7 '[' <> fromEncoding (to x) <> commas xs <> B.char7 ']'
       where commas = foldr (\v vs -> B.char7 ',' <> fromEncoding (to v) <> vs) mempty
-{-# INLINE list #-}
+{-# INLINE listEncoding #-}
 
 listValue :: (a -> Value) -> [a] -> Value
 listValue f = Array . V.fromList . map f
+{-# INLINE listValue #-}
+
+listParser :: (Value -> Parser a) -> Value -> Parser [a]
+listParser f (Array xs) = fmap V.toList (V.mapM f xs)
+listParser _ v          = typeMismatch "[a]" v
+
+
