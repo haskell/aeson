@@ -56,12 +56,18 @@ thNullaryParseJSONObjectWithSingleField = $(mkParseJSON optsObjectWithSingleFiel
 gNullaryToJSONString :: Nullary -> Value
 gNullaryToJSONString = genericToJSON defaultOptions
 
+gNullaryToEncodingString :: Nullary -> Encoding
+gNullaryToEncodingString = genericToEncoding defaultOptions
+
 gNullaryParseJSONString :: Value -> Parser Nullary
 gNullaryParseJSONString = genericParseJSON defaultOptions
 
 
 gNullaryToJSON2ElemArray :: Nullary -> Value
 gNullaryToJSON2ElemArray = genericToJSON opts2ElemArray
+
+gNullaryToEncoding2ElemArray :: Nullary -> Encoding
+gNullaryToEncoding2ElemArray = genericToEncoding opts2ElemArray
 
 gNullaryParseJSON2ElemArray :: Value -> Parser Nullary
 gNullaryParseJSON2ElemArray = genericParseJSON opts2ElemArray
@@ -70,12 +76,18 @@ gNullaryParseJSON2ElemArray = genericParseJSON opts2ElemArray
 gNullaryToJSONTaggedObject :: Nullary -> Value
 gNullaryToJSONTaggedObject = genericToJSON optsTaggedObject
 
+gNullaryToEncodingTaggedObject :: Nullary -> Encoding
+gNullaryToEncodingTaggedObject = genericToEncoding optsTaggedObject
+
 gNullaryParseJSONTaggedObject :: Value -> Parser Nullary
 gNullaryParseJSONTaggedObject = genericParseJSON optsTaggedObject
 
 
 gNullaryToJSONObjectWithSingleField :: Nullary -> Value
 gNullaryToJSONObjectWithSingleField = genericToJSON optsObjectWithSingleField
+
+gNullaryToEncodingObjectWithSingleField :: Nullary -> Encoding
+gNullaryToEncodingObjectWithSingleField = genericToEncoding optsObjectWithSingleField
 
 gNullaryParseJSONObjectWithSingleField :: Value -> Parser Nullary
 gNullaryParseJSONObjectWithSingleField = genericParseJSON optsObjectWithSingleField
@@ -121,6 +133,9 @@ thSomeTypeParseJSONObjectWithSingleField =
 gSomeTypeToJSON2ElemArray :: SomeType Int -> Value
 gSomeTypeToJSON2ElemArray = genericToJSON opts2ElemArray
 
+gSomeTypeToEncoding2ElemArray :: SomeType Int -> Encoding
+gSomeTypeToEncoding2ElemArray = genericToEncoding opts2ElemArray
+
 gSomeTypeParseJSON2ElemArray :: Value -> Parser (SomeType Int)
 gSomeTypeParseJSON2ElemArray = genericParseJSON opts2ElemArray
 
@@ -128,12 +143,18 @@ gSomeTypeParseJSON2ElemArray = genericParseJSON opts2ElemArray
 gSomeTypeToJSONTaggedObject :: SomeType Int -> Value
 gSomeTypeToJSONTaggedObject = genericToJSON optsTaggedObject
 
+gSomeTypeToEncodingTaggedObject :: SomeType Int -> Encoding
+gSomeTypeToEncodingTaggedObject = genericToEncoding optsTaggedObject
+
 gSomeTypeParseJSONTaggedObject :: Value -> Parser (SomeType Int)
 gSomeTypeParseJSONTaggedObject = genericParseJSON optsTaggedObject
 
 
 gSomeTypeToJSONObjectWithSingleField :: SomeType Int -> Value
 gSomeTypeToJSONObjectWithSingleField = genericToJSON optsObjectWithSingleField
+
+gSomeTypeToEncodingObjectWithSingleField :: SomeType Int -> Encoding
+gSomeTypeToEncodingObjectWithSingleField = genericToEncoding optsObjectWithSingleField
 
 gSomeTypeParseJSONObjectWithSingleField :: Value -> Parser (SomeType Int)
 gSomeTypeParseJSONObjectWithSingleField = genericParseJSON optsObjectWithSingleField
@@ -165,12 +186,18 @@ thApproxParseJSONDefault = $(mkParseJSON defaultOptions ''Approx)
 gApproxToJSONUnwrap :: Approx String -> Value
 gApproxToJSONUnwrap = genericToJSON optsUnwrapUnaryRecords
 
+gApproxToEncodingUnwrap :: Approx String -> Encoding
+gApproxToEncodingUnwrap = genericToEncoding optsUnwrapUnaryRecords
+
 gApproxParseJSONUnwrap :: Value -> Parser (Approx String)
 gApproxParseJSONUnwrap = genericParseJSON optsUnwrapUnaryRecords
 
 
 gApproxToJSONDefault :: Approx String -> Value
 gApproxToJSONDefault = genericToJSON defaultOptions
+
+gApproxToEncodingDefault :: Approx String -> Encoding
+gApproxToEncodingDefault = genericToEncoding defaultOptions
 
 gApproxParseJSONDefault :: Value -> Parser (Approx String)
 gApproxParseJSONDefault = genericParseJSON defaultOptions

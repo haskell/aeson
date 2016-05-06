@@ -17,7 +17,7 @@ tests = testGroup "data families" [
         testGroup "Nullary" [
             testProperty "string" (isString . thNullaryToJSONString)
           , testProperty "2ElemArray" (is2ElemArray . thNullaryToJSON2ElemArray)
-          , testProperty "TaggedObject" (isTaggedObjectValue . thNullaryToJSONTaggedObject)
+          , testProperty "TaggedObject" (isNullaryTaggedObject . thNullaryToJSONTaggedObject)
           , testProperty "ObjectWithSingleField" (isObjectWithSingleField . thNullaryToJSONObjectWithSingleField)
 
           , testGroup "roundTrip" [
