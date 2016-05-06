@@ -24,6 +24,7 @@ import GHC.Generics (Generic)
 import Test.Framework (Test, testGroup)
 import Test.Framework.Providers.HUnit (testCase)
 import Test.HUnit (Assertion, assertFailure, assertEqual)
+import UnitTests.NullaryConstructors (nullaryConstructors)
 import qualified Data.ByteString.Lazy.Char8 as L
 import qualified Data.Text.Lazy.Builder as TLB
 import qualified Data.Text.Lazy.Encoding as TLE
@@ -66,6 +67,7 @@ tests = testGroup "unit" [
   , testGroup "JSONPath" $ fmap (testCase "-") jsonPath
   , testGroup "Hashable laws" $ fmap (testCase "-") hashableLaws
   , testGroup "Issue #351" $ fmap (testCase "-") issue351
+  , testGroup "Nullary constructors" $ fmap (testCase "-") nullaryConstructors
   ]
 
 roundTripCamel :: String -> Assertion

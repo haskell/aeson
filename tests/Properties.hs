@@ -209,11 +209,11 @@ tests = testGroup "properties" [
       , testProperty "ApproxDefault" $
         gApproxToJSONDefault `sameAs` gApproxToEncodingDefault
       , testProperty "SomeType2ElemArray" $
-        gSomeTypeToJSON2ElemArray `sameAsV` gSomeTypeToEncoding2ElemArray
+        gSomeTypeToJSON2ElemArray `sameAs` gSomeTypeToEncoding2ElemArray
       , testProperty "SomeTypeTaggedObject" $
-        gSomeTypeToJSONTaggedObject `sameAsV` gSomeTypeToEncodingTaggedObject
+        gSomeTypeToJSONTaggedObject `sameAs` gSomeTypeToEncodingTaggedObject
       , testProperty "SomeTypeObjectWithSingleField" $
-        gSomeTypeToJSONObjectWithSingleField `sameAsV`
+        gSomeTypeToJSONObjectWithSingleField `sameAs`
         gSomeTypeToEncodingObjectWithSingleField
       ]
     ]
