@@ -23,6 +23,11 @@ module Data.Aeson.Types.Class
     , genericToJSON
     , genericToEncoding
     , genericParseJSON
+    -- * Classes and types for map keys
+    , ToJSONKeyFunction(..)
+    , FromJSONKeyFunction(..)
+    , ToJSONKey(..)
+    , FromJSONKey(..)
     -- * Object key-value pairs
     , KeyValue(..)
     -- * Functions needed for documentation
@@ -249,6 +254,25 @@ class FromJSON a where
 class KeyValue kv where
     (.=) :: ToJSON v => Text -> v -> kv
     infixr 8 .=
+
+data ToJSONKeyFunction a
+  = ToJSONKeyText (a -> Text, a -> Encoding)
+  | ToJSONKeyValue (a -> Value, a -> Encoding)
+
+data FromJSONKeyFunction a
+  = FromJSONKeyText (Text -> a)
+  | FromJSONKeyTextParser (Text -> Parser a)
+  | FromJSONKeyValue (Value -> Parser a)
+
+class ToJSONKey a where
+  toJSONKey :: ToJSONKeyFunction a
+  toJSONKeyList :: ToJSONKeyFunction [a]
+  toJSONKeyList = error "toJSONKeyList: write the default"
+
+class FromJSONKey a where
+  fromJSONKey :: FromJSONKeyFunction a
+  fromJSONKeyList :: FromJSONKeyFunction [a]
+  fromJSONKeyList = error "fromJSONKeyList: write the default"
 
 -- | Fail parsing due to a type mismatch, with a descriptive message.
 --
