@@ -79,9 +79,6 @@ tests = testGroup "data families" [
       ]
     ]
 
--- We only test generic instances for GHC 7.6 and higher because GHC 7.4 has
--- a bug concerning generics and data families
-#if __GLASGOW_HASKELL__ >= 706
   , testGroup "generics" [
       testGroup "toJSON" [
         testGroup "Nullary" [
@@ -138,5 +135,4 @@ tests = testGroup "data families" [
         gSomeTypeToEncodingObjectWithSingleField
       ]
     ]
-#endif
   ]

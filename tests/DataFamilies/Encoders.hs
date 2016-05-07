@@ -142,8 +142,6 @@ thGADTParseJSONDefault = $(mkParseJSON defaultOptions 'GADT)
 -- Generic encoders/decoders
 --------------------------------------------------------------------------------
 
-#if __GLASGOW_HASKELL__ >= 706
-
 -- Nullary
 
 gNullaryToJSONString :: Nullary Int -> Value
@@ -236,5 +234,3 @@ gApproxToEncodingDefault = genericToEncoding defaultOptions
 
 gApproxParseJSONDefault :: Value -> Parser (Approx String)
 gApproxParseJSONDefault = genericParseJSON defaultOptions
-
-#endif

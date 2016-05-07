@@ -1,18 +1,17 @@
-{-# LANGUAGE CPP #-}
+-- DataKinds is needed for deriveAll0 calls on GHC 8
+{-# LANGUAGE DataKinds #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE GADTs #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE StandaloneDeriving #-}
 {-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE TypeFamilies #-}
 
 module DataFamilies.Types where
 
+import Generics.Deriving.TH (deriveAll0)
 import Types (ApproxEq(..))
-
-#if __GLASGOW_HASKELL__ >= 706
-import GHC.Generics
-#endif
 
 data family Nullary a
 data instance Nullary Int  = C1 | C2 | C3 deriving (Eq, Show)
@@ -41,12 +40,10 @@ data instance GADT a where
 deriving instance Eq   (GADT a)
 deriving instance Show (GADT a)
 
--- We only derive instances for GHC 7.6 and higher because GHC 7.4 has a bug
--- concerning generics and data families
+-- We use generic-deriving to be able to derive Generic instances for
+-- data families on GHC 7.4.
 
-#if __GLASGOW_HASKELL__ >= 706
-deriving instance Generic (Nullary Int)
-deriving instance Generic (Nullary Char)
-deriving instance Generic (SomeType c () a)
-deriving instance Generic (Approx a)
-#endif
+$(deriveAll0 'C1)
+$(deriveAll0 'C4)
+$(deriveAll0 'Approx)
+$(deriveAll0 'Nullary)
