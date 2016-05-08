@@ -64,6 +64,10 @@ module Data.Aeson.Types.Instances
     , tuple
     , (>*<)
     , typeMismatch
+
+    -- * Keys for maps
+    , ToJSONKey(..)
+    , FromJSONKey(..)
     ) where
 
 import Control.Applicative (Const(..))
@@ -1607,6 +1611,19 @@ instance FromJSON a => FromJSON (Const a b) where
 --------------------------------------------
 -- Instances for converting to/from map keys
 --------------------------------------------
+class ToJSONKey a where
+  toJSONKey :: ToJSONKeyFunction a
+  default toJSONKey :: ToJSON a => ToJSONKeyFunction a
+  toJSONKey = ToJSONKeyValue (toJSON, toEncoding)
+  toJSONKeyList :: ToJSONKeyFunction [a]
+  default toJSONKeyList :: ToJSON a => ToJSONKeyFunction [a]
+  toJSONKeyList = ToJSONKeyValue (toJSON, toEncoding)
+
+class FromJSONKey a where
+  fromJSONKey :: FromJSONKeyFunction a
+  fromJSONKeyList :: FromJSONKeyFunction [a]
+  fromJSONKeyList = error "fromJSONKeyList: write the default"
+
 instance ToJSONKey Text where
   toJSONKey = ToJSONKeyText (id,toEncoding)
 
@@ -1642,11 +1659,11 @@ instance ToJSONKey Char where
   toJSONKey = ToJSONKeyText (T.singleton, toEncoding)
   toJSONKeyList = ToJSONKeyText (T.pack, toEncoding . T.pack)
 
-instance ToJSONKey a => ToJSONKey [a] where
+instance (ToJSONKey a, ToJSON a) => ToJSONKey [a] where
   toJSONKey = toJSONKeyList
 
-instance ToJSONKey a => ToJSONKey (Identity a) where
-  toJSONKey = contramapToJSONKeyFunction Identity toJSONKey
+instance (ToJSONKey a, ToJSON a) => ToJSONKey (Identity a) where
+  toJSONKey = contramapToJSONKeyFunction runIdentity toJSONKey
 
 instance FromJSONKey a => FromJSONKey (Identity a) where
   fromJSONKey = mapFromJSONKeyFunction Identity fromJSONKey

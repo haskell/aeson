@@ -26,8 +26,6 @@ module Data.Aeson.Types.Class
     -- * Classes and types for map keys
     , ToJSONKeyFunction(..)
     , FromJSONKeyFunction(..)
-    , ToJSONKey(..)
-    , FromJSONKey(..)
     -- * Object key-value pairs
     , KeyValue(..)
     -- * Functions needed for documentation
@@ -267,36 +265,6 @@ data FromJSONKeyFunction a
   = FromJSONKeyText (Text -> a)
   | FromJSONKeyTextParser (Text -> Parser a)
   | FromJSONKeyValue (Value -> Parser a)
-
-demandToJSONKeyValue :: ToJSONKeyFunction a -> (a -> Value, a -> Encoding)
-demandToJSONKeyValue x = 
-  case x of
-    ToJSONKeyText (f,g) -> (String . f, g)
-    ToJSONKeyValue a -> a
-
-class ToJSONKey a where
-  toJSONKey :: ToJSONKeyFunction a
-  default toJSONKey :: ToJSON a => ToJSONKeyFunction a
-  toJSONKey = ToJSONKeyValue (toJSON, toEncoding)
-  toJSONKeyList :: ToJSONKeyFunction [a]
-  toJSONKeyList = ToJSONKeyValue 
-      ( Array . V.fromList . map f
-      , list' g
-      )
-    where (f,g) = demandToJSONKeyValue toJSONKey
-
--- Stole this from Data.Aeson.Encode.Functions
-list' :: (a -> Encoding) -> [a] -> Encoding
-list' _ []     = emptyArray_
-list' e (x:xs) = Encoding $
-              B.char7 '[' <> fromEncoding (e x) <> commas xs <> B.char7 ']'
-      where commas = foldr (\v vs -> B.char7 ',' <> fromEncoding (e v) <> vs) mempty
-{-# INLINE list' #-}
-
-class FromJSONKey a where
-  fromJSONKey :: FromJSONKeyFunction a
-  fromJSONKeyList :: FromJSONKeyFunction [a]
-  fromJSONKeyList = error "fromJSONKeyList: write the default"
 
 -- | Fail parsing due to a type mismatch, with a descriptive message.
 --
