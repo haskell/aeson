@@ -1613,9 +1613,17 @@ instance ToJSONKey Text where
 instance FromJSONKey Text where
   fromJSONKey = FromJSONKeyText id
 
+instance ToJSONKey Bool where
+  toJSONKey = ToJSONKeyText
+    ( (\x -> if x then "true" else "false")
+    , (\x -> Encoding $ if x then "\"true\"" else "\"false\"")
+    )
+
 instance ToJSONKey Int where
   toJSONKey = ToJSONKeyText 
-    (LT.toStrict . LTB.toLazyText . LTBI.decimal, toEncoding)
+    ( LT.toStrict . LTB.toLazyText . LTBI.decimal
+    , \x -> Encoding $ B.char7 '"' <> fromEncoding (toEncoding x) <> B.char7 '"'
+    )
 
 instance FromJSONKey Int where
   -- not sure if there if there is already a helper in
@@ -1625,6 +1633,17 @@ instance FromJSONKey Int where
     Right (v,t2) -> if T.null t2 
       then return v 
       else fail "Was not an integer, had extra stuff."
+
+instance (ToJSON a, ToJSON b) => ToJSONKey (a,b)
+instance (ToJSON a, ToJSON b, ToJSON c) => ToJSONKey (a,b,c)
+instance (ToJSON a, ToJSON b, ToJSON c, ToJSON d) => ToJSONKey (a,b,c,d)
+
+instance ToJSONKey Char where
+  toJSONKey = ToJSONKeyText (T.singleton, toEncoding)
+  toJSONKeyList = ToJSONKeyText (T.pack, toEncoding . T.pack)
+
+instance ToJSONKey a => ToJSONKey [a] where
+  toJSONKey = toJSONKeyList
 
 instance ToJSONKey a => ToJSONKey (Identity a) where
   toJSONKey = contramapToJSONKeyFunction Identity toJSONKey

@@ -37,7 +37,11 @@ module Data.Aeson.Types.Class
 import Data.Aeson.Types.Internal
 import Data.Text (Text)
 import GHC.Generics (Generic, Rep, from, to)
+import Data.Monoid ((<>))
+import Data.Aeson.Encode.Builder (emptyArray_)
+import qualified Data.ByteString.Builder as B
 import qualified Data.Aeson.Encode.Builder as E
+import qualified Data.Vector as V
 
 -- | Class of generic representation types ('Rep') that can be converted to
 -- JSON.
@@ -264,10 +268,30 @@ data FromJSONKeyFunction a
   | FromJSONKeyTextParser (Text -> Parser a)
   | FromJSONKeyValue (Value -> Parser a)
 
+demandToJSONKeyValue :: ToJSONKeyFunction a -> (a -> Value, a -> Encoding)
+demandToJSONKeyValue x = 
+  case x of
+    ToJSONKeyText (f,g) -> (String . f, g)
+    ToJSONKeyValue a -> a
+
 class ToJSONKey a where
   toJSONKey :: ToJSONKeyFunction a
+  default toJSONKey :: ToJSON a => ToJSONKeyFunction a
+  toJSONKey = ToJSONKeyValue (toJSON, toEncoding)
   toJSONKeyList :: ToJSONKeyFunction [a]
-  toJSONKeyList = error "toJSONKeyList: write the default"
+  toJSONKeyList = ToJSONKeyValue 
+      ( Array . V.fromList . map f
+      , list' g
+      )
+    where (f,g) = demandToJSONKeyValue toJSONKey
+
+-- Stole this from Data.Aeson.Encode.Functions
+list' :: (a -> Encoding) -> [a] -> Encoding
+list' _ []     = emptyArray_
+list' e (x:xs) = Encoding $
+              B.char7 '[' <> fromEncoding (e x) <> commas xs <> B.char7 ']'
+      where commas = foldr (\v vs -> B.char7 ',' <> fromEncoding (e v) <> vs) mempty
+{-# INLINE list' #-}
 
 class FromJSONKey a where
   fromJSONKey :: FromJSONKeyFunction a
