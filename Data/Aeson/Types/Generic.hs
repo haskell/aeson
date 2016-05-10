@@ -21,7 +21,7 @@
 
 module Data.Aeson.Types.Generic ( ) where
 
-import Control.Applicative ((<|>))
+import Control.Applicative ((<|>), liftA2)
 import Control.Monad ((<=<))
 import Control.Monad.ST (ST)
 import Data.Aeson.Encode.Builder (emptyArray_)
@@ -247,7 +247,7 @@ instance OVERLAPPING_ TaggedObjectEnc' U1 False where
     taggedObjectEnc' _ _ _ = Tagged mempty
 
 instance (RecordToEncoding f) => TaggedObjectEnc' f True where
-    taggedObjectEnc' opts _ = Tagged . (B.char7 ',' <>) . fst . recordToEncoding opts
+    taggedObjectEnc' opts _ = Tagged . (B.char7 ',' <>) . fromMaybe mempty . fst . recordToEncoding opts
 
 instance (GToEncoding f) => TaggedObjectEnc' f False where
     taggedObjectEnc' opts contentsFieldName =
@@ -343,7 +343,7 @@ instance (RecordToEncoding f) => ConsToEncoding' f True where
       let (enc, mbVal) = recordToEncoding opts x
       in case (unwrapUnaryRecords opts, isUn, mbVal) of
            (True, True, Just val) -> Tagged val
-           _ -> Tagged $ B.char7 '{' <> enc <> B.char7 '}'
+           _ -> Tagged $ B.char7 '{' <> fromMaybe mempty enc <> B.char7 '}'
 
 instance GToEncoding f => ConsToEncoding' f False where
     consToEncoding' opts _ = Tagged . gbuilder opts
@@ -374,16 +374,19 @@ fieldToPair opts m1 = pure ( pack $ fieldLabelModifier opts $ selName m1
 --------------------------------------------------------------------------------
 
 class RecordToEncoding f where
-    -- 1st element: whole thing
+    -- 1st element: the encoded sequence of key-value pairs;
+    --              'Nothing' if it is empty (due to 'omitNothingFields')
     -- 2nd element: in case the record has only 1 field, just the value
     --              of the field (without the key); 'Nothing' otherwise
-    recordToEncoding :: Options -> f a -> (B.Builder, Maybe B.Builder)
+    recordToEncoding :: Options -> f a -> (Maybe B.Builder, Maybe B.Builder)
 
 instance (RecordToEncoding a, RecordToEncoding b) => RecordToEncoding (a :*: b) where
-    recordToEncoding opts (a :*: b) =
-      (fst (recordToEncoding opts a) <> B.char7 ',' <>
-       fst (recordToEncoding opts b),
-       Nothing)
+    recordToEncoding opts (a :*: b) = (encoding, Nothing)
+      where
+        aEncoding = fst (recordToEncoding opts a)
+        bEncoding = fst (recordToEncoding opts b)
+        encoding = liftA2 sep aEncoding bEncoding <|> aEncoding <|> bEncoding
+        sep x y = x <> B.char7 ',' <> y
 
 instance (Selector s, GToEncoding a) => RecordToEncoding (S1 s a) where
     recordToEncoding = fieldToEncoding
@@ -394,11 +397,11 @@ instance OVERLAPPING_ (Selector s, ToJSON a) =>
                                   , K1 Nothing <- k1 = (mempty, Nothing)
     recordToEncoding opts m1 = fieldToEncoding opts m1
 
-fieldToEncoding :: (Selector s, GToEncoding a) => Options -> S1 s a p -> (B.Builder, Maybe B.Builder)
+fieldToEncoding :: (Selector s, GToEncoding a) => Options -> S1 s a p -> (Maybe B.Builder, Maybe B.Builder)
 fieldToEncoding opts m1 =
   let keyBuilder = builder (fieldLabelModifier opts $ selName m1)
       valueBuilder = gbuilder opts (unM1 m1)
-  in  (keyBuilder <> B.char7 ':' <> valueBuilder, Just valueBuilder)
+  in  (Just $ keyBuilder <> B.char7 ':' <> valueBuilder, Just valueBuilder)
 
 --------------------------------------------------------------------------------
 
