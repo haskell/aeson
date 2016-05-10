@@ -215,6 +215,8 @@ tests = testGroup "properties" [
       , testProperty "SomeTypeObjectWithSingleField" $
         gSomeTypeToJSONObjectWithSingleField `sameAs`
         gSomeTypeToEncodingObjectWithSingleField
+      , testProperty "SomeTypeOmitNothingFields" $
+        gSomeTypeToJSONOmitNothingFields `sameAs` gSomeTypeToEncodingOmitNothingFields
       ]
     ]
   , testGroup "template-haskell" [
