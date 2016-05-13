@@ -258,13 +258,13 @@ class KeyValue kv where
     infixr 8 .=
 
 data ToJSONKeyFunction a
-  = ToJSONKeyText (a -> Text, a -> Encoding)
-  | ToJSONKeyValue (a -> Value, a -> Encoding)
+    = ToJSONKeyText (a -> Text, a -> Encoding)
+    | ToJSONKeyValue (a -> Value, a -> Encoding)
 
 data FromJSONKeyFunction a
-  = FromJSONKeyText (Text -> a)
-  | FromJSONKeyTextParser (Text -> Parser a)
-  | FromJSONKeyValue (Value -> Parser a)
+    = FromJSONKeyText (Text -> a)
+    | FromJSONKeyTextParser (Text -> Parser a)
+    | FromJSONKeyValue (Value -> Parser a)
 
 -- | Fail parsing due to a type mismatch, with a descriptive message.
 --

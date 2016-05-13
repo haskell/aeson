@@ -1612,72 +1612,89 @@ instance FromJSON a => FromJSON (Const a b) where
 -- Instances for converting to/from map keys
 --------------------------------------------
 class ToJSONKey a where
-  toJSONKey :: ToJSONKeyFunction a
-  default toJSONKey :: ToJSON a => ToJSONKeyFunction a
-  toJSONKey = ToJSONKeyValue (toJSON, toEncoding)
-  toJSONKeyList :: ToJSONKeyFunction [a]
-  default toJSONKeyList :: ToJSON a => ToJSONKeyFunction [a]
-  toJSONKeyList = ToJSONKeyValue (toJSON, toEncoding)
+    toJSONKey :: ToJSONKeyFunction a
+    default toJSONKey :: ToJSON a => ToJSONKeyFunction a
+    toJSONKey = ToJSONKeyValue (toJSON, toEncoding)
+    toJSONKeyList :: ToJSONKeyFunction [a]
+    default toJSONKeyList :: ToJSON a => ToJSONKeyFunction [a]
+    toJSONKeyList = ToJSONKeyValue (toJSON, toEncoding)
 
 class FromJSONKey a where
-  fromJSONKey :: FromJSONKeyFunction a
-  fromJSONKeyList :: FromJSONKeyFunction [a]
-  fromJSONKeyList = error "fromJSONKeyList: write the default"
+    fromJSONKey :: FromJSONKeyFunction a
+    default fromJSONKey :: FromJSON a => FromJSONKeyFunction a
+    fromJSONKey = FromJSONKeyValue parseJSON
+    fromJSONKeyList :: FromJSONKeyFunction [a]
+    default fromJSONKeyList :: FromJSON a => FromJSONKeyFunction [a]
+    fromJSONKeyList = FromJSONKeyValue parseJSON
 
 instance ToJSONKey Text where
-  toJSONKey = ToJSONKeyText (id,toEncoding)
+    toJSONKey = ToJSONKeyText (id,toEncoding)
 
 instance FromJSONKey Text where
-  fromJSONKey = FromJSONKeyText id
+    fromJSONKey = FromJSONKeyText id
 
 instance ToJSONKey Bool where
-  toJSONKey = ToJSONKeyText
-    ( (\x -> if x then "true" else "false")
-    , (\x -> Encoding $ if x then "\"true\"" else "\"false\"")
-    )
-
+    toJSONKey = ToJSONKeyText
+        ( (\x -> if x then "true" else "false")
+        , (\x -> Encoding $ if x then "\"true\"" else "\"false\"")
+        )
+  
 instance ToJSONKey Int where
-  toJSONKey = ToJSONKeyText 
-    ( LT.toStrict . LTB.toLazyText . LTBI.decimal
-    , \x -> Encoding $ B.char7 '"' <> fromEncoding (toEncoding x) <> B.char7 '"'
-    )
+    toJSONKey = ToJSONKeyText 
+        ( LT.toStrict . LTB.toLazyText . LTBI.decimal
+        , \x -> Encoding $ B.char7 '"' <> fromEncoding (toEncoding x) <> B.char7 '"'
+        )
 
 instance FromJSONKey Int where
-  -- not sure if there if there is already a helper in
-  -- aeson for doing this.
-  fromJSONKey = FromJSONKeyTextParser $ \t -> case TR.decimal t of
-    Left err -> fail err
-    Right (v,t2) -> if T.null t2 
-      then return v 
-      else fail "Was not an integer, had extra stuff."
+    -- not sure if there if there is already a helper in
+    -- aeson for doing this.
+    fromJSONKey = FromJSONKeyTextParser $ \t -> case TR.decimal t of
+      Left err -> fail err
+      Right (v,t2) -> if T.null t2 
+        then return v 
+        else fail "Was not an integer, had extra stuff."
 
 instance (ToJSON a, ToJSON b) => ToJSONKey (a,b)
 instance (ToJSON a, ToJSON b, ToJSON c) => ToJSONKey (a,b,c)
 instance (ToJSON a, ToJSON b, ToJSON c, ToJSON d) => ToJSONKey (a,b,c,d)
 
+instance (FromJSON a, FromJSON b) => FromJSONKey (a,b)
+instance (FromJSON a, FromJSON b, FromJSON c) => FromJSONKey (a,b,c)
+instance (FromJSON a, FromJSON b, FromJSON c, FromJSON d) => FromJSONKey (a,b,c,d)
+
 instance ToJSONKey Char where
-  toJSONKey = ToJSONKeyText (T.singleton, toEncoding)
-  toJSONKeyList = ToJSONKeyText (T.pack, toEncoding . T.pack)
+    toJSONKey = ToJSONKeyText (T.singleton, toEncoding)
+    toJSONKeyList = ToJSONKeyText (T.pack, toEncoding . T.pack)
+
+instance FromJSONKey Char where
+    fromJSONKey = FromJSONKeyTextParser $ \t -> 
+        if T.length t == 1 
+            then return (T.index t 0) 
+            else typeMismatch "Expected Char but String didn't contain exactly one character" (String t)
+    fromJSONKeyList = FromJSONKeyText T.unpack
 
 instance (ToJSONKey a, ToJSON a) => ToJSONKey [a] where
-  toJSONKey = toJSONKeyList
+    toJSONKey = toJSONKeyList
+
+instance (FromJSONKey a, FromJSON a) => FromJSONKey [a] where
+    fromJSONKey = fromJSONKeyList
 
 instance (ToJSONKey a, ToJSON a) => ToJSONKey (Identity a) where
-  toJSONKey = contramapToJSONKeyFunction runIdentity toJSONKey
+    toJSONKey = contramapToJSONKeyFunction runIdentity toJSONKey
 
-instance FromJSONKey a => FromJSONKey (Identity a) where
-  fromJSONKey = mapFromJSONKeyFunction Identity fromJSONKey
+instance (FromJSONKey a, FromJSON a) => FromJSONKey (Identity a) where
+    fromJSONKey = mapFromJSONKeyFunction Identity fromJSONKey
 
 contramapToJSONKeyFunction :: (b -> a) -> ToJSONKeyFunction a -> ToJSONKeyFunction b
 contramapToJSONKeyFunction h x = case x of
-  ToJSONKeyText (f,g) -> ToJSONKeyText (f . h, g . h)
-  ToJSONKeyValue (f,g) -> ToJSONKeyValue (f . h, g . h)
+    ToJSONKeyText (f,g) -> ToJSONKeyText (f . h, g . h)
+    ToJSONKeyValue (f,g) -> ToJSONKeyValue (f . h, g . h)
 
 mapFromJSONKeyFunction :: (a -> b) -> FromJSONKeyFunction a -> FromJSONKeyFunction b
 mapFromJSONKeyFunction h x = case x of
-  FromJSONKeyText f -> FromJSONKeyText (h . f)
-  FromJSONKeyTextParser f -> FromJSONKeyTextParser (fmap h . f)
-  FromJSONKeyValue f -> FromJSONKeyValue (fmap h . f)
+    FromJSONKeyText f -> FromJSONKeyText (h . f)
+    FromJSONKeyTextParser f -> FromJSONKeyTextParser (fmap h . f)
+    FromJSONKeyValue f -> FromJSONKeyValue (fmap h . f)
 
 -- | @withObject expected f value@ applies @f@ to the 'Object' when @value@ is an @Object@
 --   and fails using @'typeMismatch' expected@ otherwise.
