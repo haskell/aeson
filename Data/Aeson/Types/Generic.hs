@@ -30,9 +30,11 @@ import Data.Aeson.Types.Instances
 import Data.Aeson.Types.Internal
 import Data.Bits (unsafeShiftR)
 import Data.ByteString.Builder as B
+import qualified Data.ByteString.Lazy as BSL (null)
 import Data.DList (DList, toList, empty)
 import Data.Maybe (fromMaybe)
 import Data.Monoid ((<>))
+import Data.List (intersperse)
 import Data.Text (Text, pack, unpack)
 import GHC.Generics
 import qualified Data.HashMap.Strict as H
@@ -41,7 +43,7 @@ import qualified Data.Vector.Mutable as VM
 
 #if !MIN_VERSION_base(4,8,0)
 import Control.Applicative ((<*>), (<$>), pure)
-import Data.Monoid (mempty)
+import Data.Monoid (mempty, mconcat)
 #endif
 
 --------------------------------------------------------------------------------
@@ -380,6 +382,11 @@ class RecordToEncoding f where
     recordToEncoding :: Options -> f a -> (B.Builder, Maybe B.Builder)
 
 instance (RecordToEncoding a, RecordToEncoding b) => RecordToEncoding (a :*: b) where
+    recordToEncoding opts (a :*: b) | omitNothingFields opts =
+      (mconcat $ intersperse (B.char7 ',') $
+        filter (not . BSL.null . B.toLazyByteString)
+        [fst (recordToEncoding opts a), fst (recordToEncoding opts b)]
+      , Nothing)
     recordToEncoding opts (a :*: b) =
       (fst (recordToEncoding opts a) <> B.char7 ',' <>
        fst (recordToEncoding opts b),
@@ -430,6 +437,10 @@ class EncodeProduct f where
 
 instance ( EncodeProduct a
          , EncodeProduct b ) => EncodeProduct (a :*: b) where
+    encodeProduct opts (a :*: b) | omitNothingFields opts =
+        mconcat $ intersperse (B.char7 ',') $
+        filter (not . BSL.null . B.toLazyByteString)
+        [encodeProduct opts a, encodeProduct opts b]
     encodeProduct opts (a :*: b) = encodeProduct opts a <>
                                    B.char7 ',' <>
                                    encodeProduct opts b
