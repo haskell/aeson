@@ -1655,10 +1655,7 @@ ifromJSON = iparse parseJSON
 (.:) :: (FromJSON a) => Object -> Text -> Parser a
 obj .: key = case H.lookup key obj of
                Nothing -> fail $ "key " ++ show key ++ " not present"
-               Just v  -> modifyFailure addKeyName
-                        $ parseJSON v <?> Key key
-  where
-    addKeyName = (("failed to parse field " <> unpack key <> ": ") <>)
+               Just v  -> parseJSON v <?> Key key
 {-# INLINE (.:) #-}
 
 -- | Retrieve the value associated with the given key of an 'Object'.
@@ -1671,10 +1668,7 @@ obj .: key = case H.lookup key obj of
 (.:?) :: (FromJSON a) => Object -> Text -> Parser (Maybe a)
 obj .:? key = case H.lookup key obj of
                Nothing -> pure Nothing
-               Just v  -> modifyFailure addKeyName
-                        $ parseJSON v <?> Key key
-  where
-    addKeyName = (("failed to parse field " <> unpack key <> ": ") <>)
+               Just v  -> parseJSON v <?> Key key
 {-# INLINE (.:?) #-}
 
 -- | Like '.:?', but the resulting parser will fail,
@@ -1682,10 +1676,7 @@ obj .:? key = case H.lookup key obj of
 (.:!) :: (FromJSON a) => Object -> Text -> Parser (Maybe a)
 obj .:! key = case H.lookup key obj of
                Nothing -> pure Nothing
-               Just v  -> modifyFailure addKeyName
-                        $ Just <$> parseJSON v <?> Key key
-  where
-    addKeyName = (("failed to parse field " <> unpack key <> ": ") <>)
+               Just v  -> Just <$> parseJSON v <?> Key key
 {-# INLINE (.:!) #-}
 
 -- | Helper for use in combination with '.:?' to provide default
