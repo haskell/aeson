@@ -544,7 +544,7 @@ instance ( FromPair         (a :+: b)
 
 parseAllNullarySum :: SumFromString f => Options -> Value -> Parser (f a)
 parseAllNullarySum opts = withText "Text" $ \key ->
-                            maybe (notFound $ unpack key) return $
+                            maybe (notFound key) return $
                               parseSumFromString opts key
 
 class SumFromString f where
@@ -571,13 +571,13 @@ parseNonAllNullarySum opts =
       TaggedObject{..} ->
           withObject "Object" $ \obj -> do
             tag <- obj .: pack tagFieldName
-            fromMaybe (notFound $ unpack tag) $
+            fromMaybe (notFound tag) $
               parseFromTaggedObject opts contentsFieldName obj tag
 
       ObjectWithSingleField ->
           withObject "Object" $ \obj ->
             case H.toList obj of
-              [pair@(tag, _)] -> fromMaybe (notFound $ unpack tag) $
+              [pair@(tag, _)] -> fromMaybe (notFound tag) $
                                    parsePair opts pair
               _ -> fail "Object doesn't have a single field"
 
@@ -585,7 +585,7 @@ parseNonAllNullarySum opts =
           withArray "Array" $ \arr ->
             if V.length arr == 2
             then case V.unsafeIndex arr 0 of
-                   String tag -> fromMaybe (notFound $ unpack tag) $
+                   String tag -> fromMaybe (notFound tag) $
                                    parsePair opts (tag, V.unsafeIndex arr 1)
                    _ -> fail "First element is not a String"
             else fail "Array doesn't have 2 elements"
@@ -791,6 +791,6 @@ newtype Tagged2 (s :: * -> *) b = Tagged2 {unTagged2 :: b}
 
 --------------------------------------------------------------------------------
 
-notFound :: String -> Parser a
-notFound key = fail $ "The key \"" ++ key ++ "\" was not found"
+notFound :: Text -> Parser a
+notFound key = fail $ "The key \"" ++ unpack key ++ "\" was not found"
 {-# INLINE notFound #-}
