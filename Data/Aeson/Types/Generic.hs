@@ -679,12 +679,11 @@ instance (FromRecord a, FromRecord b) => FromRecord (a :*: b) where
                                    <*> parseRecord opts Nothing obj
 
 instance (Selector s, GFromJSON a) => FromRecord (S1 s a) where
-    parseRecord opts (Just lab) = maybe (notFound $ unpack lab)
-                      (gParseJSON opts) . H.lookup lab
-    parseRecord opts Nothing    = maybe (notFound label)
-                      (gParseJSON opts) . H.lookup (pack label)
+    parseRecord opts lab = (<?> Key label) . gParseJSON opts <=< (.: label)
         where
-          label = fieldLabelModifier opts $ selName (undefined :: t s a p)
+          label = fromMaybe defLabel lab
+          defLabel = pack . fieldLabelModifier opts $
+                       selName (undefined :: t s a p)
 
 instance OVERLAPPING_ (Selector s, FromJSON a) =>
   FromRecord (S1 s (K1 i (Maybe a))) where
