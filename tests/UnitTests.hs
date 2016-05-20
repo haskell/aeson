@@ -86,7 +86,9 @@ camelFrom c s = let (p:ps) = split c s
 data Wibble = Wibble {
     wibbleString :: String
   , wibbleInt :: Int
-  } deriving (Generic, Show)
+  } deriving (Generic, Show, Eq)
+
+instance FromJSON Wibble
 
 instance ToJSON Wibble where
     toJSON     = genericToJSON defaultOptions
@@ -263,6 +265,10 @@ jsonPath = [
   , assertEqual "Seq a"
       (Left "Error in $[2]: expected Int, encountered Boolean")
       (eitherDecode "[0,1,true]" :: Either String (Seq Int))
+  , assertEqual "Wibble"
+      (Left "Error in $.wibbleInt: expected Int, encountered Boolean")
+      (eitherDecode "{\"wibbleString\":\"\",\"wibbleInt\":true}"
+         :: Either String Wibble)
   ]
 
 ------------------------------------------------------------------------------
