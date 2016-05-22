@@ -37,15 +37,15 @@ encode = B.toLazyByteString . builder
 {-# INLINE encode #-}
 
 -- | Encode a 'Foldable' as a JSON array.
-foldable :: (Foldable t, ToJSON a) => t a -> Encoding
-foldable = brackets '[' ']' . foldMap (Value . toEncoding)
+foldable :: (Foldable t) => (a -> Encoding) -> t a -> Encoding
+foldable to = brackets '[' ']' . foldMap (Value . to)
 {-# INLINE foldable #-}
 
-list :: (ToJSON a) => [a] -> Encoding
-list []     = emptyArray_
-list (x:xs) = Encoding $
-              char7 '[' <> builder x <> commas xs <> char7 ']'
-      where commas = foldr (\v vs -> char7 ',' <> builder v <> vs) mempty
+list :: (a -> Encoding) -> [a] -> Encoding
+list _  []     = emptyArray_
+list to (x:xs) = Encoding $
+                char7 '[' <> fromEncoding (to x) <> commas xs <> char7 ']'
+      where commas = foldr (\v vs -> char7 ',' <> fromEncoding (to v) <> vs) mempty
 {-# INLINE list #-}
 
 brackets :: Char -> Char -> Series -> Encoding
