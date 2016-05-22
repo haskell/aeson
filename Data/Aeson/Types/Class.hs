@@ -23,6 +23,9 @@ module Data.Aeson.Types.Class
     , genericToJSON
     , genericToEncoding
     , genericParseJSON
+    -- * Classes and types for map keys
+    , ToJSONKeyFunction(..)
+    , FromJSONKeyFunction(..)
     -- * Object key-value pairs
     , KeyValue(..)
     -- * Functions needed for documentation
@@ -32,7 +35,11 @@ module Data.Aeson.Types.Class
 import Data.Aeson.Types.Internal
 import Data.Text (Text)
 import GHC.Generics (Generic, Rep, from, to)
+import Data.Monoid ((<>))
+import Data.Aeson.Encode.Builder (emptyArray_)
+import qualified Data.ByteString.Builder as B
 import qualified Data.Aeson.Encode.Builder as E
+import qualified Data.Vector as V
 
 -- | Class of generic representation types ('Rep') that can be converted to
 -- JSON.
@@ -249,6 +256,15 @@ class FromJSON a where
 class KeyValue kv where
     (.=) :: ToJSON v => Text -> v -> kv
     infixr 8 .=
+
+data ToJSONKeyFunction a
+    = ToJSONKeyText (a -> Text, a -> Encoding)
+    | ToJSONKeyValue (a -> Value, a -> Encoding)
+
+data FromJSONKeyFunction a
+    = FromJSONKeyText (Text -> a)
+    | FromJSONKeyTextParser (Text -> Parser a)
+    | FromJSONKeyValue (Value -> Parser a)
 
 -- | Fail parsing due to a type mismatch, with a descriptive message.
 --
