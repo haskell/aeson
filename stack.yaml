@@ -1,0 +1,7 @@
+resolver: lts-5.16
+packages:
+- '.'
+- benchmarks
+extra-deps:
+- generic-deriving-1.10.4.1
+flags: {}
