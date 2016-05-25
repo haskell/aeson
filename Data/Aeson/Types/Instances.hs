@@ -704,18 +704,6 @@ encodeKV :: (ToJSON v) => (k -> Encoding) -> k -> v -> B.Builder
 encodeKV encodeKey k v = fromEncoding (encodeKey k) <> B.char7 ':' <> builder v
 {-# INLINE encodeKV #-}
 
-instance (FromJSON v) => FromJSON (M.Map Text v) where
-    parseJSON = withObject "Map Text a" $
-                  fmap (H.foldrWithKey M.insert M.empty) . H.traverseWithKey (\k v -> parseJSON v <?> Key k)
-
-instance (FromJSON v) => FromJSON (M.Map LT.Text v) where
-    parseJSON = fmap (hashMapKey LT.fromStrict) . parseJSON
-    {-# INLINE parseJSON #-}
-
-instance (FromJSON v) => FromJSON (M.Map String v) where
-    parseJSON = fmap (hashMapKey unpack) . parseJSON
-    {-# INLINE parseJSON #-}
-
 instance (ToJSON v, ToJSONKey k) => ToJSON (M.Map k v) where
     toJSON = case toJSONKey of
         ToJSONKeyText (f,_) -> Object . mapHashKeyVal f toJSON
