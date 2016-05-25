@@ -152,7 +152,7 @@ benchDecodeMap name val =
 main :: IO ()
 main = do
     defaultMain
-        [ bgroup "encode"
+        [ bgroup "decode"
             [ bgroup "HashMap"
                 [ benchDecodeHM "10"    encodedValue10
                 , benchDecodeHM "100"   encodedValue100
