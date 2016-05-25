@@ -100,14 +100,14 @@ library
     tagged >=0.8.3 && <0.9,
     template-haskell >= 2.7,
     text >= 1.1.1.0,
-    transformers,
     unordered-containers >= 0.2.5.0,
     vector >= 0.8
 
   if !impl(ghc >= 8.0)
-    -- `Data.Semigroup` and `Control.Monad.Fail` are available in base only since GHC 8.0 / base 4.9
+    -- `Data.Semigroup` and `Control.Monad.Fail` and `Control.Monad.IO.Class` are available in base only since GHC 8.0 / base 4.9
     build-depends:
       semigroups >= 0.16.1 && < 0.19,
+      transformers,
       fail == 4.9.*
 
   if !impl(ghc >= 7.10)
