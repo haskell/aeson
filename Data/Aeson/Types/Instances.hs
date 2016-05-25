@@ -35,6 +35,11 @@ module Data.Aeson.Types.Instances
       FromJSON(..)
     , ToJSON(..)
     , KeyValue(..)
+    -- ** Keys for maps
+    , ToJSONKey(..)
+    , ToJSONKeyFunction(..)
+    , FromJSONKey(..)
+    , FromJSONKeyFunction(..)
     -- ** Generic JSON classes
     , GFromJSON(..)
     , GToJSON(..)
@@ -64,15 +69,11 @@ module Data.Aeson.Types.Instances
     , tuple
     , (>*<)
     , typeMismatch
-
-    -- * Keys for maps
-    , ToJSONKey(..)
-    , FromJSONKey(..)
     ) where
 
 import Control.Applicative (Const(..))
 import Data.Aeson.Encode.Functions (brackets, builder, encode, foldable, list, list')
-import Data.Aeson.Functions (hashMapKey, mapHashKeyVal, mapKey, mapKeyVal)
+import Data.Aeson.Functions (mapHashKeyVal, mapKey, mapKeyVal)
 import Data.Aeson.Types.Class
 import Data.Aeson.Types.Internal
 import Data.Attoparsec.Number (Number(..))
