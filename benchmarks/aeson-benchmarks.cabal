@@ -177,6 +177,7 @@ executable aeson-benchmark-map
     containers,
     deepseq,
     hashable,
+    tagged,
     text,
     transformers,
     transformers-compat,

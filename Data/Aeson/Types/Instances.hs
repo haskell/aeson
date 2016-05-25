@@ -1622,14 +1622,19 @@ instance ToJSONKey Text where
 instance FromJSONKey Text where
     fromJSONKey = FromJSONKeyText id
 
+-- | TODO: where ToJSONKey instance
+instance FromJSONKey b => FromJSONKey (Tagged a b) where
+    fromJSONKey = fmap Tagged fromJSONKey
+    fromJSONKeyList = (fmap . fmap) Tagged fromJSONKeyList
+
 instance ToJSONKey Bool where
     toJSONKey = ToJSONKeyText
         ( (\x -> if x then "true" else "false")
         , (\x -> Encoding $ if x then "\"true\"" else "\"false\"")
         )
-  
+
 instance ToJSONKey Int where
-    toJSONKey = ToJSONKeyText 
+    toJSONKey = ToJSONKeyText
         ( LT.toStrict . LTB.toLazyText . LTBI.decimal
         , \x -> Encoding $ B.char7 '"' <> fromEncoding (toEncoding x) <> B.char7 '"'
         )
@@ -1639,8 +1644,8 @@ instance FromJSONKey Int where
     -- aeson for doing this.
     fromJSONKey = FromJSONKeyTextParser $ \t -> case TR.decimal t of
       Left err -> fail err
-      Right (v,t2) -> if T.null t2 
-        then return v 
+      Right (v,t2) -> if T.null t2
+        then return v
         else fail "Was not an integer, had extra stuff."
 
 instance (ToJSON a, ToJSON b) => ToJSONKey (a,b)
@@ -1656,9 +1661,9 @@ instance ToJSONKey Char where
     toJSONKeyList = ToJSONKeyText (T.pack, toEncoding . T.pack)
 
 instance FromJSONKey Char where
-    fromJSONKey = FromJSONKeyTextParser $ \t -> 
-        if T.length t == 1 
-            then return (T.index t 0) 
+    fromJSONKey = FromJSONKeyTextParser $ \t ->
+        if T.length t == 1
+            then return (T.index t 0)
             else typeMismatch "Expected Char but String didn't contain exactly one character" (String t)
     fromJSONKeyList = FromJSONKeyText T.unpack
 

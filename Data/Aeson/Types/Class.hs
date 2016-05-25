@@ -1,4 +1,4 @@
-{-# LANGUAGE CPP, DefaultSignatures, FlexibleContexts #-}
+{-# LANGUAGE CPP, DefaultSignatures, FlexibleContexts, DeriveFunctor #-}
 
 -- |
 -- Module:      Data.Aeson.Types.Class
@@ -265,6 +265,8 @@ data FromJSONKeyFunction a
     = FromJSONKeyText (Text -> a)
     | FromJSONKeyTextParser (Text -> Parser a)
     | FromJSONKeyValue (Value -> Parser a)
+  deriving (Functor)
+
 
 -- | Fail parsing due to a type mismatch, with a descriptive message.
 --
