@@ -44,7 +44,6 @@ instance FromJSONKey T1 where
 -- Coerce
 -------------------------------------------------------------------------------
 
--- | TODO: same as T1 for now
 newtype T2 = T2 T.Text
   deriving (Eq, Ord)
 
@@ -55,7 +54,7 @@ instance Hashable T2 where
 instance FromJSON T2 where
     parseJSON = withText "T2" $ pure . T2
 instance FromJSONKey T2 where
-    fromJSONKey = FromJSONKeyText T2
+    fromJSONKey = FromJSONKeyCoerce
 
 -------------------------------------------------------------------------------
 -- TextParser

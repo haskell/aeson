@@ -128,6 +128,8 @@ import qualified Data.Vector.Primitive as VP
 import qualified Data.Vector.Storable as VS
 import qualified Data.Vector.Unboxed as VU
 
+import Unsafe.Coerce (unsafeCoerce)
+
 #if MIN_VERSION_base(4,8,0)
 #else
 import Control.Applicative ((<$>), (<*>), pure)
@@ -720,6 +722,8 @@ instance (ToJSON v, ToJSONKey k) => ToJSON (M.Map k v) where
 
 instance (FromJSON v, FromJSONKey k, Ord k) => FromJSON (M.Map k v) where
     parseJSON = case fromJSONKey of
+        FromJSONKeyCoerce -> withObject "Map k v" $
+            fmap (H.foldrWithKey (M.insert . unsafeCoerce) M.empty) . H.traverseWithKey (\k v -> parseJSON v <?> Key k)
         FromJSONKeyText f -> withObject "Map k v" $
             fmap (H.foldrWithKey (M.insert . f) M.empty) . H.traverseWithKey (\k v -> parseJSON v <?> Key k)
         FromJSONKeyTextParser f -> withObject "Map k v" $
@@ -744,6 +748,8 @@ instance (ToJSON v, ToJSONKey k) => ToJSON (H.HashMap k v) where
 
 instance (FromJSON v, FromJSONKey k, Eq k, Hashable k) => FromJSON (H.HashMap k v) where
     parseJSON = case fromJSONKey of
+        FromJSONKeyCoerce -> withObject "HashMap ~Text v" $
+            uc . H.traverseWithKey (\k v -> parseJSON v <?> Key k)
         FromJSONKeyText f -> withObject "HashMap k v" $
             fmap (mapKey f) . H.traverseWithKey (\k v -> parseJSON v <?> Key k)
         FromJSONKeyTextParser f -> withObject "HashMap k v" $
@@ -751,6 +757,9 @@ instance (FromJSON v, FromJSONKey k, Eq k, Hashable k) => FromJSON (H.HashMap k 
         FromJSONKeyValue f -> withArray "Map k v" $ \arr ->
             H.fromList <$> (Tr.sequence .
                 zipWith (parseIndexedJSONPair f) [0..] . V.toList $ arr)
+      where
+        uc :: Parser (H.HashMap Text v) -> Parser (H.HashMap k v)
+        uc = unsafeCoerce
     {-# INLINE parseJSON #-}
 
 instance (ToJSON v) => ToJSON (Tree.Tree v) where
@@ -1620,7 +1629,7 @@ instance ToJSONKey Text where
     toJSONKey = ToJSONKeyText (id,toEncoding)
 
 instance FromJSONKey Text where
-    fromJSONKey = FromJSONKeyText id
+    fromJSONKey = FromJSONKeyCoerce
 
 -- | TODO: where ToJSONKey instance
 instance FromJSONKey b => FromJSONKey (Tagged a b) where

@@ -262,7 +262,8 @@ data ToJSONKeyFunction a
     | ToJSONKeyValue (a -> Value, a -> Encoding)
 
 data FromJSONKeyFunction a
-    = FromJSONKeyText (Text -> a)
+    = FromJSONKeyCoerce
+    | FromJSONKeyText (Text -> a)
     | FromJSONKeyTextParser (Text -> Parser a)
     | FromJSONKeyValue (Value -> Parser a)
   deriving (Functor)
