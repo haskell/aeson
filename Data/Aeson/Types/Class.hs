@@ -321,6 +321,17 @@ coerceFromJSONKeyFunction (FromJSONKeyText f)            = FromJSONKeyText (coer
 coerceFromJSONKeyFunction (FromJSONKeyTextParser f)      = FromJSONKeyTextParser (fmap coerce' . f)
 coerceFromJSONKeyFunction (FromJSONKeyValue f)           = FromJSONKeyValue (fmap coerce' . f)
 
+{-# RULES
+  "FromJSONKeyCoerce: fmap id"     forall (x :: FromJSONKeyFunction a).
+                                   fmap id x = x
+  #-}
+#if HAS_COERCIBLE
+{-# RULES
+  "FromJSONKeyCoerce: fmap coerce" forall x .
+                                   fmap coerce x = coerceFromJSONKeyFunction x
+  #-}
+#endif
+
 -- | Fail parsing due to a type mismatch, with a descriptive message.
 --
 -- Example usage:
