@@ -3,7 +3,7 @@
 import Control.DeepSeq
 import Criterion.Main
 import Data.Aeson
--- import Data.Aeson.Types (Parser)
+import Data.Aeson.Types (fromJSONKeyCoerce)
 import Data.Hashable
 import Data.Proxy (Proxy (..))
 import Data.Tagged (Tagged (..))
@@ -54,7 +54,7 @@ instance Hashable T2 where
 instance FromJSON T2 where
     parseJSON = withText "T2" $ pure . T2
 instance FromJSONKey T2 where
-    fromJSONKey = FromJSONKeyCoerce
+    fromJSONKey = fromJSONKeyCoerce
 
 -------------------------------------------------------------------------------
 -- TextParser

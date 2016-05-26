@@ -42,6 +42,8 @@ module Data.Aeson.Types
     , ToJSONKeyFunction(..)
     , FromJSONKey(..)
     , FromJSONKeyFunction(..)
+    , fromJSONKeyCoerce
+    , coerceFromJSONKeyFunction
 
     -- ** Generic JSON classes
     , GFromJSON(..)

@@ -40,6 +40,8 @@ module Data.Aeson.Types.Instances
     , ToJSONKeyFunction(..)
     , FromJSONKey(..)
     , FromJSONKeyFunction(..)
+    , fromJSONKeyCoerce
+    , coerceFromJSONKeyFunction
     -- ** Generic JSON classes
     , GFromJSON(..)
     , GToJSON(..)
@@ -722,7 +724,7 @@ instance (ToJSON v, ToJSONKey k) => ToJSON (M.Map k v) where
 
 instance (FromJSON v, FromJSONKey k, Ord k) => FromJSON (M.Map k v) where
     parseJSON = case fromJSONKey of
-        FromJSONKeyCoerce -> withObject "Map k v" $
+        FromJSONKeyCoerce _-> withObject "Map k v" $
             fmap (H.foldrWithKey (M.insert . unsafeCoerce) M.empty) . H.traverseWithKey (\k v -> parseJSON v <?> Key k)
         FromJSONKeyText f -> withObject "Map k v" $
             fmap (H.foldrWithKey (M.insert . f) M.empty) . H.traverseWithKey (\k v -> parseJSON v <?> Key k)
@@ -748,7 +750,7 @@ instance (ToJSON v, ToJSONKey k) => ToJSON (H.HashMap k v) where
 
 instance (FromJSON v, FromJSONKey k, Eq k, Hashable k) => FromJSON (H.HashMap k v) where
     parseJSON = case fromJSONKey of
-        FromJSONKeyCoerce -> withObject "HashMap ~Text v" $
+        FromJSONKeyCoerce _ -> withObject "HashMap ~Text v" $
             uc . H.traverseWithKey (\k v -> parseJSON v <?> Key k)
         FromJSONKeyText f -> withObject "HashMap k v" $
             fmap (mapKey f) . H.traverseWithKey (\k v -> parseJSON v <?> Key k)
@@ -1629,11 +1631,11 @@ instance ToJSONKey Text where
     toJSONKey = ToJSONKeyText (id,toEncoding)
 
 instance FromJSONKey Text where
-    fromJSONKey = FromJSONKeyCoerce
+    fromJSONKey = fromJSONKeyCoerce
 
 -- | TODO: where ToJSONKey instance
 instance FromJSONKey b => FromJSONKey (Tagged a b) where
-    fromJSONKey = fmap Tagged fromJSONKey
+    fromJSONKey = coerceFromJSONKeyFunction (fromJSONKey :: FromJSONKeyFunction b)
     fromJSONKeyList = (fmap . fmap) Tagged fromJSONKeyList
 
 instance ToJSONKey Bool where
@@ -1694,10 +1696,7 @@ contramapToJSONKeyFunction h x = case x of
     ToJSONKeyValue (f,g) -> ToJSONKeyValue (f . h, g . h)
 
 mapFromJSONKeyFunction :: (a -> b) -> FromJSONKeyFunction a -> FromJSONKeyFunction b
-mapFromJSONKeyFunction h x = case x of
-    FromJSONKeyText f -> FromJSONKeyText (h . f)
-    FromJSONKeyTextParser f -> FromJSONKeyTextParser (fmap h . f)
-    FromJSONKeyValue f -> FromJSONKeyValue (fmap h . f)
+mapFromJSONKeyFunction = fmap
 
 -- | @withObject expected f value@ applies @f@ to the 'Object' when @value@ is an @Object@
 --   and fails using @'typeMismatch' expected@ otherwise.

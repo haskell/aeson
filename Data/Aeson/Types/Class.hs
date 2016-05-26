@@ -1,4 +1,5 @@
-{-# LANGUAGE CPP, DefaultSignatures, FlexibleContexts, DeriveFunctor #-}
+{-# LANGUAGE CPP, GADTs, DefaultSignatures, FlexibleContexts, DeriveFunctor,
+    ScopedTypeVariables #-}
 
 -- |
 -- Module:      Data.Aeson.Types.Class
@@ -26,6 +27,8 @@ module Data.Aeson.Types.Class
     -- * Classes and types for map keys
     , ToJSONKeyFunction(..)
     , FromJSONKeyFunction(..)
+    , fromJSONKeyCoerce
+    , coerceFromJSONKeyFunction
     -- * Object key-value pairs
     , KeyValue(..)
     -- * Functions needed for documentation
@@ -40,6 +43,18 @@ import Data.Aeson.Encode.Builder (emptyArray_)
 import qualified Data.ByteString.Builder as B
 import qualified Data.Aeson.Encode.Builder as E
 import qualified Data.Vector as V
+
+#define HAS_COERCIBLE MIN_VERSION_base(4,7,0)
+
+#if HAS_COERCIBLE
+import Data.Coerce (Coercible, coerce)
+coerce' :: Coercible a b => a -> b
+coerce' = coerce
+#else
+import Unsafe.Coerce (unsafeCoerce)
+coerce' :: a -> b
+coerce' = unsafeCoerce
+#endif
 
 -- | Class of generic representation types ('Rep') that can be converted to
 -- JSON.
@@ -261,13 +276,50 @@ data ToJSONKeyFunction a
     = ToJSONKeyText (a -> Text, a -> Encoding)
     | ToJSONKeyValue (a -> Value, a -> Encoding)
 
+-- | With GHC 7.8 + we carry around 'Coercible Text a' dictionary,
+-- to have even some amount of safety net.
+-- Unfortunately we cannot enforce that 'Hashable' instance agree on the type level
+--
+-- ATM this type is intentionally not exported. FromJSONKeyFunction can be inspected,
+-- but cannot be constructed.
+data CoerceText a where
+#if HAS_COERCIBLE
+    CoerceText :: Coercible Text a => CoerceText a
+#else
+    CoerceText :: CoerceText a
+#endif
+
 data FromJSONKeyFunction a
-    = FromJSONKeyCoerce
+    = FromJSONKeyCoerce (CoerceText a)
     | FromJSONKeyText (Text -> a)
     | FromJSONKeyTextParser (Text -> Parser a)
     | FromJSONKeyValue (Value -> Parser a)
-  deriving (Functor)
 
+instance Functor FromJSONKeyFunction where
+    fmap h (FromJSONKeyCoerce CoerceText) = FromJSONKeyText (h . coerce')
+    fmap h (FromJSONKeyText f)            = FromJSONKeyText (h . f)
+    fmap h (FromJSONKeyTextParser f)      = FromJSONKeyTextParser (fmap h . f)
+    fmap h (FromJSONKeyValue f)           = FromJSONKeyValue (fmap h . f)
+
+-- | Construct 'FromJSONKeyFunction' for types coercible from 'Text'. This
+-- conversion is still unsafe, as 'Hashable' and 'Eq' instances of @a@ should be
+-- compatible with 'Text' i.e. hash values be equal for wrapped values as well.
+fromJSONKeyCoerce ::
+#if HAS_COERCIBLE
+    Coercible Text a =>
+#endif
+    FromJSONKeyFunction a
+fromJSONKeyCoerce = FromJSONKeyCoerce CoerceText
+
+coerceFromJSONKeyFunction ::
+#if HAS_COERCIBLE
+    Coercible a b =>
+#endif
+    FromJSONKeyFunction a -> FromJSONKeyFunction b
+coerceFromJSONKeyFunction (FromJSONKeyCoerce CoerceText) = FromJSONKeyCoerce CoerceText
+coerceFromJSONKeyFunction (FromJSONKeyText f)            = FromJSONKeyText (coerce' . f)
+coerceFromJSONKeyFunction (FromJSONKeyTextParser f)      = FromJSONKeyTextParser (fmap coerce' . f)
+coerceFromJSONKeyFunction (FromJSONKeyValue f)           = FromJSONKeyValue (fmap coerce' . f)
 
 -- | Fail parsing due to a type mismatch, with a descriptive message.
 --
