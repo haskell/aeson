@@ -44,7 +44,8 @@ import qualified Data.ByteString.Builder as B
 import qualified Data.Aeson.Encode.Builder as E
 import qualified Data.Vector as V
 
-#define HAS_COERCIBLE MIN_VERSION_base(4,7,0)
+-- Coercible derivations aren't as powerful on GHC 7.8, though supported.
+#define HAS_COERCIBLE (__GLASGOW_HASKELL__ >= 709)
 
 #if HAS_COERCIBLE
 import Data.Coerce (Coercible, coerce)
