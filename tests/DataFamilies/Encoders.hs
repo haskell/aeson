@@ -1,3 +1,4 @@
+{-# LANGUAGE CPP #-}
 {-# LANGUAGE GADTs #-}
 {-# LANGUAGE TemplateHaskell #-}
 
@@ -136,3 +137,100 @@ thGADTToEncodingDefault = $(mkToEncoding defaultOptions 'GADT)
 
 thGADTParseJSONDefault :: Value -> Parser (GADT String)
 thGADTParseJSONDefault = $(mkParseJSON defaultOptions 'GADT)
+
+--------------------------------------------------------------------------------
+-- Generic encoders/decoders
+--------------------------------------------------------------------------------
+
+-- Nullary
+
+gNullaryToJSONString :: Nullary Int -> Value
+gNullaryToJSONString = genericToJSON defaultOptions
+
+gNullaryToEncodingString :: Nullary Int -> Encoding
+gNullaryToEncodingString = genericToEncoding defaultOptions
+
+gNullaryParseJSONString :: Value -> Parser (Nullary Int)
+gNullaryParseJSONString = genericParseJSON defaultOptions
+
+
+gNullaryToJSON2ElemArray :: Nullary Int -> Value
+gNullaryToJSON2ElemArray = genericToJSON opts2ElemArray
+
+gNullaryToEncoding2ElemArray :: Nullary Int -> Encoding
+gNullaryToEncoding2ElemArray = genericToEncoding opts2ElemArray
+
+gNullaryParseJSON2ElemArray :: Value -> Parser (Nullary Int)
+gNullaryParseJSON2ElemArray = genericParseJSON opts2ElemArray
+
+
+gNullaryToJSONTaggedObject :: Nullary Int -> Value
+gNullaryToJSONTaggedObject = genericToJSON optsTaggedObject
+
+gNullaryToEncodingTaggedObject :: Nullary Int -> Encoding
+gNullaryToEncodingTaggedObject = genericToEncoding optsTaggedObject
+
+gNullaryParseJSONTaggedObject :: Value -> Parser (Nullary Int)
+gNullaryParseJSONTaggedObject = genericParseJSON optsTaggedObject
+
+
+gNullaryToJSONObjectWithSingleField :: Nullary Int -> Value
+gNullaryToJSONObjectWithSingleField = genericToJSON optsObjectWithSingleField
+
+gNullaryToEncodingObjectWithSingleField :: Nullary Int -> Encoding
+gNullaryToEncodingObjectWithSingleField = genericToEncoding optsObjectWithSingleField
+
+gNullaryParseJSONObjectWithSingleField :: Value -> Parser (Nullary Int)
+gNullaryParseJSONObjectWithSingleField = genericParseJSON optsObjectWithSingleField
+
+-- SomeType
+
+gSomeTypeToJSON2ElemArray :: SomeType c () Int -> Value
+gSomeTypeToJSON2ElemArray = genericToJSON opts2ElemArray
+
+gSomeTypeToEncoding2ElemArray :: SomeType c () Int -> Encoding
+gSomeTypeToEncoding2ElemArray = genericToEncoding opts2ElemArray
+
+gSomeTypeParseJSON2ElemArray :: Value -> Parser (SomeType c () Int)
+gSomeTypeParseJSON2ElemArray = genericParseJSON opts2ElemArray
+
+
+gSomeTypeToJSONTaggedObject :: SomeType c () Int -> Value
+gSomeTypeToJSONTaggedObject = genericToJSON optsTaggedObject
+
+gSomeTypeToEncodingTaggedObject :: SomeType c () Int -> Encoding
+gSomeTypeToEncodingTaggedObject = genericToEncoding optsTaggedObject
+
+gSomeTypeParseJSONTaggedObject :: Value -> Parser (SomeType c () Int)
+gSomeTypeParseJSONTaggedObject = genericParseJSON optsTaggedObject
+
+
+gSomeTypeToJSONObjectWithSingleField :: SomeType c () Int -> Value
+gSomeTypeToJSONObjectWithSingleField = genericToJSON optsObjectWithSingleField
+
+gSomeTypeToEncodingObjectWithSingleField :: SomeType c () Int -> Encoding
+gSomeTypeToEncodingObjectWithSingleField = genericToEncoding optsObjectWithSingleField
+
+gSomeTypeParseJSONObjectWithSingleField :: Value -> Parser (SomeType c () Int)
+gSomeTypeParseJSONObjectWithSingleField = genericParseJSON optsObjectWithSingleField
+
+-- Approx
+
+gApproxToJSONUnwrap :: Approx String -> Value
+gApproxToJSONUnwrap = genericToJSON optsUnwrapUnaryRecords
+
+gApproxToEncodingUnwrap :: Approx String -> Encoding
+gApproxToEncodingUnwrap = genericToEncoding optsUnwrapUnaryRecords
+
+gApproxParseJSONUnwrap :: Value -> Parser (Approx String)
+gApproxParseJSONUnwrap = genericParseJSON optsUnwrapUnaryRecords
+
+
+gApproxToJSONDefault :: Approx String -> Value
+gApproxToJSONDefault = genericToJSON defaultOptions
+
+gApproxToEncodingDefault :: Approx String -> Encoding
+gApproxToEncodingDefault = genericToEncoding defaultOptions
+
+gApproxParseJSONDefault :: Value -> Parser (Approx String)
+gApproxParseJSONDefault = genericParseJSON defaultOptions

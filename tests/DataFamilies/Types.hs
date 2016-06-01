@@ -1,11 +1,16 @@
+-- DataKinds is needed for deriveAll0 calls on GHC 8
+{-# LANGUAGE DataKinds #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE GADTs #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE StandaloneDeriving #-}
+{-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE TypeFamilies #-}
 
 module DataFamilies.Types where
 
+import Generics.Deriving.TH (deriveAll0)
 import Types (ApproxEq(..))
 
 data family Nullary a
@@ -34,3 +39,11 @@ data instance GADT a where
 
 deriving instance Eq   (GADT a)
 deriving instance Show (GADT a)
+
+-- We use generic-deriving to be able to derive Generic instances for
+-- data families on GHC 7.4.
+
+$(deriveAll0 'C1)
+$(deriveAll0 'C4)
+$(deriveAll0 'Approx)
+$(deriveAll0 'Nullary)

@@ -206,6 +206,9 @@ instance ( IsRecord           a isRecord
 class TaggedObjectPairs' f isRecord where
     taggedObjectPairs' :: Options -> String -> f a -> Tagged isRecord [Pair]
 
+instance OVERLAPPING_ TaggedObjectPairs' U1 False where
+    taggedObjectPairs' _ _ _ = Tagged []
+
 instance (RecordToPairs f) => TaggedObjectPairs' f True where
     taggedObjectPairs' opts _ = Tagged . toList . recordToPairs opts
 
@@ -233,7 +236,6 @@ instance ( IsRecord         a isRecord
         (builder tagFieldName <>
          B.char7 ':' <>
          builder (constructorTagModifier opts (conName (undefined :: t c a p)))) <>
-        B.char7 ',' <>
         ((unTagged :: Tagged isRecord B.Builder -> B.Builder) .
          taggedObjectEnc' opts contentsFieldName . unM1 $ v) <>
         B.char7 '}'
@@ -241,12 +243,15 @@ instance ( IsRecord         a isRecord
 class TaggedObjectEnc' f isRecord where
     taggedObjectEnc' :: Options -> String -> f a -> Tagged isRecord B.Builder
 
+instance OVERLAPPING_ TaggedObjectEnc' U1 False where
+    taggedObjectEnc' _ _ _ = Tagged mempty
+
 instance (RecordToEncoding f) => TaggedObjectEnc' f True where
-    taggedObjectEnc' opts _ = Tagged . recordToEncoding opts
+    taggedObjectEnc' opts _ = Tagged . (B.char7 ',' <>) . fst . recordToEncoding opts
 
 instance (GToEncoding f) => TaggedObjectEnc' f False where
     taggedObjectEnc' opts contentsFieldName =
-        Tagged . (\z -> builder contentsFieldName <> B.char7 ':' <> z) .
+        Tagged . (\z -> B.char7 ',' <> builder contentsFieldName <> B.char7 ':' <> z) .
         gbuilder opts
 
 --------------------------------------------------------------------------------
@@ -334,12 +339,11 @@ instance ( IsRecord        f isRecord
                           . consToEncoding' opts (isUnary (undefined :: f a))
 
 instance (RecordToEncoding f) => ConsToEncoding' f True where
-    consToEncoding' opts isUn x
-      | (True,True) <- (unwrapUnaryRecords opts,isUn) = Tagged $   recordToEncoding opts x
-      | otherwise = Tagged $
-          B.char7 '{' <>
-          recordToEncoding opts x <>
-          B.char7 '}'
+    consToEncoding' opts isUn x =
+      let (enc, mbVal) = recordToEncoding opts x
+      in case (unwrapUnaryRecords opts, isUn, mbVal) of
+           (True, True, Just val) -> Tagged val
+           _ -> Tagged $ B.char7 '{' <> enc <> B.char7 '}'
 
 instance GToEncoding f => ConsToEncoding' f False where
     consToEncoding' opts _ = Tagged . gbuilder opts
@@ -370,12 +374,16 @@ fieldToPair opts m1 = pure ( pack $ fieldLabelModifier opts $ selName m1
 --------------------------------------------------------------------------------
 
 class RecordToEncoding f where
-    recordToEncoding :: Options -> f a -> B.Builder
+    -- 1st element: whole thing
+    -- 2nd element: in case the record has only 1 field, just the value
+    --              of the field (without the key); 'Nothing' otherwise
+    recordToEncoding :: Options -> f a -> (B.Builder, Maybe B.Builder)
 
 instance (RecordToEncoding a, RecordToEncoding b) => RecordToEncoding (a :*: b) where
-    recordToEncoding opts (a :*: b) = recordToEncoding opts a <>
-                                      B.char7 ',' <>
-                                      recordToEncoding opts b
+    recordToEncoding opts (a :*: b) =
+      (fst (recordToEncoding opts a) <> B.char7 ',' <>
+       fst (recordToEncoding opts b),
+       Nothing)
 
 instance (Selector s, GToEncoding a) => RecordToEncoding (S1 s a) where
     recordToEncoding = fieldToEncoding
@@ -383,14 +391,14 @@ instance (Selector s, GToEncoding a) => RecordToEncoding (S1 s a) where
 instance OVERLAPPING_ (Selector s, ToJSON a) =>
   RecordToEncoding (S1 s (K1 i (Maybe a))) where
     recordToEncoding opts (M1 k1) | omitNothingFields opts
-                                  , K1 Nothing <- k1 = mempty
+                                  , K1 Nothing <- k1 = (mempty, Nothing)
     recordToEncoding opts m1 = fieldToEncoding opts m1
 
-fieldToEncoding :: (Selector s, GToEncoding a) => Options -> S1 s a p -> B.Builder
+fieldToEncoding :: (Selector s, GToEncoding a) => Options -> S1 s a p -> (B.Builder, Maybe B.Builder)
 fieldToEncoding opts m1 =
-    builder (fieldLabelModifier opts $ selName m1) <>
-    B.char7 ':' <>
-    gbuilder opts (unM1 m1)
+  let keyBuilder = builder (fieldLabelModifier opts $ selName m1)
+      valueBuilder = gbuilder opts (unM1 m1)
+  in  (keyBuilder <> B.char7 ':' <> valueBuilder, Just valueBuilder)
 
 --------------------------------------------------------------------------------
 
@@ -626,6 +634,9 @@ instance (FromRecord f) => FromTaggedObject'' f True where
 instance (GFromJSON f) => FromTaggedObject'' f False where
     parseFromTaggedObject'' opts contentsFieldName = Tagged .
       (gParseJSON opts <=< (.: pack contentsFieldName))
+
+instance OVERLAPPING_ FromTaggedObject'' U1 False where
+    parseFromTaggedObject'' _ _ _ = Tagged (pure U1)
 
 --------------------------------------------------------------------------------
 

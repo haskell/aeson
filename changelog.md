@@ -1,5 +1,14 @@
 For the latest version of this document, please see [https://github.com/bos/aeson/blob/master/changelog.md](https://github.com/bos/aeson/blob/master/changelog.md).
 
+# 0.12.0.0
+
+* Remove the `contents` field encoding with `allNullaryToStringTag = False`,
+  giving us `{ "tag" : "c1" }` instead of `{ "tag" : "c1", contents : [] }`.
+  The contents field is optional when parsing so this is only a breaking change for ToJSON.
+
+* Fix a bug where `genericToEncoding` with `unwrapUnaryRecords = True`
+  would produce an invalid encoding: `"unwrap\":""`.
+
 ### 0.11.2.0
 
 * Enable `PolyKinds` to generalize `Proxy`, `Tagged`, and `Const` instances.

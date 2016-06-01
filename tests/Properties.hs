@@ -112,6 +112,9 @@ isTaggedObjectValue (Object obj) = "tag"      `H.member` obj &&
                                    "contents" `H.member` obj
 isTaggedObjectValue _            = False
 
+isNullaryTaggedObject :: Value -> Bool
+isNullaryTaggedObject obj = isTaggedObject obj && isObjectWithSingleField obj
+
 isTaggedObject :: Value -> Bool
 isTaggedObject (Object obj) = "tag" `H.member` obj
 isTaggedObject _            = False
@@ -166,12 +169,60 @@ tests = testGroup "properties" [
   , testGroup "failure messages" [
       testProperty "modify failure" modifyFailureProp
     ]
+  , testGroup "generic" [
+      testGroup "toJSON" [
+        testGroup "Nullary" [
+            testProperty "string" (isString . gNullaryToJSONString)
+          , testProperty "2ElemArray" (is2ElemArray . gNullaryToJSON2ElemArray)
+          , testProperty "TaggedObject" (isNullaryTaggedObject . gNullaryToJSONTaggedObject)
+          , testProperty "ObjectWithSingleField" (isObjectWithSingleField . gNullaryToJSONObjectWithSingleField)
+          , testGroup "roundTrip" [
+              testProperty "string" (toParseJSON gNullaryParseJSONString gNullaryToJSONString)
+            , testProperty "2ElemArray" (toParseJSON gNullaryParseJSON2ElemArray gNullaryToJSON2ElemArray)
+            , testProperty "TaggedObject" (toParseJSON gNullaryParseJSONTaggedObject gNullaryToJSONTaggedObject)
+            , testProperty "ObjectWithSingleField" (toParseJSON gNullaryParseJSONObjectWithSingleField gNullaryToJSONObjectWithSingleField)
+            ]
+        ]
+      , testGroup "SomeType" [
+          testProperty "2ElemArray" (is2ElemArray . gSomeTypeToJSON2ElemArray)
+        , testProperty "TaggedObject" (isTaggedObject . gSomeTypeToJSONTaggedObject)
+        , testProperty "ObjectWithSingleField" (isObjectWithSingleField . gSomeTypeToJSONObjectWithSingleField)
+        , testGroup "roundTrip" [
+            testProperty "2ElemArray" (toParseJSON gSomeTypeParseJSON2ElemArray gSomeTypeToJSON2ElemArray)
+          , testProperty "TaggedObject" (toParseJSON gSomeTypeParseJSONTaggedObject gSomeTypeToJSONTaggedObject)
+          , testProperty "ObjectWithSingleField" (toParseJSON gSomeTypeParseJSONObjectWithSingleField gSomeTypeToJSONObjectWithSingleField)
+          ]
+        ]
+      ]
+    , testGroup "toEncoding" [
+        testProperty "NullaryString" $
+        gNullaryToJSONString `sameAs` gNullaryToEncodingString
+      , testProperty "Nullary2ElemArray" $
+        gNullaryToJSON2ElemArray `sameAs` gNullaryToEncoding2ElemArray
+      , testProperty "NullaryTaggedObject" $
+        gNullaryToJSONTaggedObject `sameAs` gNullaryToEncodingTaggedObject
+      , testProperty "NullaryObjectWithSingleField" $
+        gNullaryToJSONObjectWithSingleField `sameAs`
+        gNullaryToEncodingObjectWithSingleField
+      -- , testProperty "ApproxUnwrap" $
+      --   gApproxToJSONUnwrap `sameAs` gApproxToEncodingUnwrap
+      , testProperty "ApproxDefault" $
+        gApproxToJSONDefault `sameAs` gApproxToEncodingDefault
+      , testProperty "SomeType2ElemArray" $
+        gSomeTypeToJSON2ElemArray `sameAs` gSomeTypeToEncoding2ElemArray
+      , testProperty "SomeTypeTaggedObject" $
+        gSomeTypeToJSONTaggedObject `sameAs` gSomeTypeToEncodingTaggedObject
+      , testProperty "SomeTypeObjectWithSingleField" $
+        gSomeTypeToJSONObjectWithSingleField `sameAs`
+        gSomeTypeToEncodingObjectWithSingleField
+      ]
+    ]
   , testGroup "template-haskell" [
       testGroup "toJSON" [
         testGroup "Nullary" [
             testProperty "string" (isString . thNullaryToJSONString)
           , testProperty "2ElemArray" (is2ElemArray . thNullaryToJSON2ElemArray)
-          , testProperty "TaggedObject" (isTaggedObjectValue . thNullaryToJSONTaggedObject)
+          , testProperty "TaggedObject" (isNullaryTaggedObject . thNullaryToJSONTaggedObject)
           , testProperty "ObjectWithSingleField" (isObjectWithSingleField . thNullaryToJSONObjectWithSingleField)
 
           , testGroup "roundTrip" [

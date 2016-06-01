@@ -8,6 +8,7 @@ module Data.Aeson.Encode.Functions
     , encode
     , foldable
     , list
+    , list'
     , pairs
     ) where
 
@@ -43,6 +44,13 @@ encode = B.toLazyByteString . builder
 foldable :: (Foldable t) => (a -> Encoding) -> t a -> Encoding
 foldable to = brackets '[' ']' . foldMap (Value . to)
 {-# INLINE foldable #-}
+
+list' :: (a -> Encoding) -> [a] -> Encoding
+list' _ []     = emptyArray_
+list' e (x:xs) = Encoding $
+              char7 '[' <> fromEncoding (e x) <> commas xs <> char7 ']'
+      where commas = foldr (\v vs -> char7 ',' <> fromEncoding (e v) <> vs) mempty
+{-# INLINE list' #-}
 
 brackets :: Char -> Char -> Series -> Encoding
 brackets begin end (Value v) = Encoding $

@@ -57,6 +57,11 @@ module Data.Aeson
     , fromJSON
     , ToJSON(..)
     , KeyValue(..)
+    -- ** Keys for maps
+    , ToJSONKey(..)
+    , ToJSONKeyFunction(..)
+    , FromJSONKey(..)
+    , FromJSONKeyFunction(..)
     -- ** Generic JSON classes and options
     , GFromJSON(..)
     , GToJSON(..)

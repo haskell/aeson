@@ -48,6 +48,14 @@ module Data.Aeson.Types
     , ToJSON2(..)
     , toJSON2
 
+    -- ** Keys for maps
+    , ToJSONKey(..)
+    , ToJSONKeyFunction(..)
+    , FromJSONKey(..)
+    , FromJSONKeyFunction(..)
+    , fromJSONKeyCoerce
+    , coerceFromJSONKeyFunction
+
     -- ** Generic JSON classes
     , GFromJSON(..)
     , GToJSON(..)
