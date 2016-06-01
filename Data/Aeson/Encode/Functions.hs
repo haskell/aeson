@@ -21,8 +21,9 @@ import Data.Monoid ((<>))
 import qualified Data.ByteString.Builder as B
 import qualified Data.ByteString.Lazy as L
 
+import Data.Foldable (toList)
 #if !MIN_VERSION_base(4,8,0)
-import Data.Foldable (Foldable, foldMap)
+import Data.Foldable (Foldable)
 import Data.Monoid (mempty)
 #endif
 
@@ -39,7 +40,7 @@ encode = B.toLazyByteString . builder
 
 -- | Encode a 'Foldable' as a JSON array.
 foldable :: (Foldable t, ToJSON a) => t a -> Encoding
-foldable = brackets '[' ']' . foldMap (Value . toEncoding)
+foldable = list . toList
 {-# INLINE foldable #-}
 
 list :: (ToJSON a) => [a] -> Encoding
