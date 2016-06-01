@@ -37,6 +37,14 @@ module Data.Aeson.Types
     , KeyValue(..)
     , modifyFailure
 
+    -- ** Keys for maps
+    , ToJSONKey(..)
+    , ToJSONKeyFunction(..)
+    , FromJSONKey(..)
+    , FromJSONKeyFunction(..)
+    , fromJSONKeyCoerce
+    , coerceFromJSONKeyFunction
+
     -- ** Generic JSON classes
     , GFromJSON(..)
     , GToJSON(..)
