@@ -90,7 +90,7 @@ import Data.Aeson.Types.Instances.Tuple ()
 import Data.Aeson.Encoding (Encoding (..), emptyArray_, dict, tuple, (>*<))
 
 import Control.Applicative (Const(..))
-import Data.Aeson.Encode.Functions (builder, encode)
+import Data.Aeson.Encode.Functions (builder)
 import Data.Aeson.Functions (mapHashKeyVal, mapKey, mapKeyVal)
 import Data.Aeson.Types.Class
 import Data.Aeson.Types.Internal
@@ -1114,8 +1114,16 @@ instance ToJSON UTCTime where
     toEncoding t = Encoding (E.quote $ E.utcTime t)
 
 -- | Encode something to a JSON string.
+--
+-- TODO: remove me, this is a hack
 stringEncoding :: (ToJSON a) => a -> Value
-stringEncoding = String . T.dropAround (== '"') . T.decodeLatin1 . L.toStrict . encode
+stringEncoding = String
+    . T.dropAround (== '"')
+    . T.decodeLatin1
+    . L.toStrict
+    . B.toLazyByteString
+    . fromEncoding
+    . toEncoding 
 {-# INLINE stringEncoding #-}
 
 instance FromJSON UTCTime where
