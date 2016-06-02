@@ -107,7 +107,8 @@ import Data.Aeson.Types ( Value(..), Parser
                         , defaultOptions
                         , defaultTaggedObject
                         )
-import Data.Aeson.Types.Internal (Encoding(..), (<?>), JSONPathElement(Key))
+import Data.Aeson.Types.Internal ((<?>), JSONPathElement(Key))
+import Data.Aeson.Encoding ( Encoding(..) )
 import Control.Monad       ( liftM2, return, mapM, fail )
 import Data.Bool           ( Bool(False, True), otherwise, (&&), not )
 import Data.Either         ( Either(Left, Right) )

@@ -78,8 +78,6 @@ module Data.Aeson.Types.Instances
     , (.:?)
     , (.:!)
     , (.!=)
-    , tuple
-    , (>*<)
     , typeMismatch
 
     , listEncoding
@@ -87,10 +85,12 @@ module Data.Aeson.Types.Instances
     , listParser
     ) where
 
-import Data.Aeson.Types.Instances.Tuple (tuple, (>*<))
+import Data.Aeson.Types.Instances.Tuple ()
+
+import Data.Aeson.Encoding (Encoding (..), emptyArray_, dict, tuple, (>*<))
 
 import Control.Applicative (Const(..))
-import Data.Aeson.Encode.Functions (builder, builder', encode, list, encodeWithKey, encodeMap)
+import Data.Aeson.Encode.Functions (builder, encode)
 import Data.Aeson.Functions (mapHashKeyVal, mapKey, mapKeyVal)
 import Data.Aeson.Types.Class
 import Data.Aeson.Types.Internal
@@ -398,7 +398,7 @@ instance ToJSON () where
     toJSON _ = emptyArray
     {-# INLINE toJSON #-}
 
-    toEncoding _ = E.emptyArray_
+    toEncoding _ = emptyArray_
     {-# INLINE toEncoding #-}
 
 instance FromJSON () where
@@ -823,11 +823,11 @@ instance ToJSONKey k => ToJSON1 (M.Map k) where
 
     -- liftToEncoding :: forall a. (a -> Encoding) -> ([a] -> Encoding) -> M.Map k a -> Encoding
     liftToEncoding g _ = case toJSONKey of
-        ToJSONKeyText (_,f) -> encodeMap f g M.minViewWithKey M.foldrWithKey
-        ToJSONKeyValue (_,f) -> list (pairEncoding f) . M.toList
+        ToJSONKeyText (_,f) -> dict f g M.foldrWithKey
+        ToJSONKeyValue (_,f) -> listEncoding (pairEncoding f) . M.toList
       where
         -- pairEncoding :: (k -> Encoding) -> (k, a) -> Encoding
-        pairEncoding f (a, b) = tuple $ fromEncoding (f a) >*< builder' g b
+        pairEncoding f (a, b) = tuple $ f a >*< g b
     {-# INLINE liftToEncoding #-}
 
 instance (FromJSONKey k, Ord k) => FromJSON1 (M.Map k) where
@@ -902,7 +902,7 @@ instance ToJSON1 Vector where
     {-# INLINE liftToJSON #-}
 
     liftToEncoding to _ xs
-        | V.null xs = E.emptyArray_
+        | V.null xs = emptyArray_
         | otherwise = Encoding $
             B.char7 '[' <> fromEncoding (to (V.unsafeHead xs)) <>
             V.foldr go (B.char7 ']') (V.unsafeTail xs)
@@ -919,7 +919,7 @@ instance (ToJSON a) => ToJSON (Vector a) where
 
 encodeVector :: (ToJSON a, VG.Vector v a) => v a -> Encoding
 encodeVector xs
-  | VG.null xs = E.emptyArray_
+  | VG.null xs = emptyArray_
   | otherwise  = Encoding $
                  B.char7 '[' <> builder (VG.unsafeHead xs) <>
                  VG.foldr go (B.char7 ']') (VG.unsafeTail xs)
@@ -1006,11 +1006,11 @@ instance ToJSONKey k => ToJSON1 (H.HashMap k) where
 
     -- liftToEncoding :: forall a. (a -> Encoding) -> ([a] -> Encoding) -> H.HashMap k a -> Encoding
     liftToEncoding g _ = case toJSONKey of
-        ToJSONKeyText (_,f) -> encodeWithKey f g H.foldrWithKey
-        ToJSONKeyValue (_,f) -> list (pairEncoding f) . H.toList
+        ToJSONKeyText (_,f) -> dict f g H.foldrWithKey
+        ToJSONKeyValue (_,f) -> listEncoding (pairEncoding f) . H.toList
       where
         -- pairEncoding :: (k -> Encoding) -> (k, a) -> Encoding
-        pairEncoding f (a, b) = tuple $ fromEncoding (f a) >*< builder' g b
+        pairEncoding f (a, b) = tuple $ f a >*< g b
     {-# INLINE liftToEncoding #-}
 
 instance (ToJSON v, ToJSONKey k) => ToJSON (H.HashMap k v) where
@@ -1366,15 +1366,6 @@ withBool :: String -> (Bool -> Parser a) -> Value -> Parser a
 withBool _        f (Bool arr) = f arr
 withBool expected _ v          = typeMismatch expected v
 {-# INLINE withBool #-}
-
-instance KeyValue Pair where
-    name .= value = (name, toJSON value)
-    {-# INLINE (.=) #-}
-
-instance KeyValue Series where
-    name .= value = Value . Encoding $
-                    E.text name <> B.char7 ':' <> builder value
-    {-# INLINE (.=) #-}
 
 -- | Convert a value from JSON, failing if the types do not match.
 fromJSON :: (FromJSON a) => Value -> Result a

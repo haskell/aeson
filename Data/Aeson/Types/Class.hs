@@ -1,5 +1,5 @@
-{-# LANGUAGE CPP, GADTs, DefaultSignatures, FlexibleContexts, DeriveFunctor,
-    ScopedTypeVariables #-}
+{-# LANGUAGE CPP, GADTs, DefaultSignatures, FlexibleInstances, FlexibleContexts, DeriveFunctor,
+    ScopedTypeVariables, TypeSynonymInstances #-}
 
 -- |
 -- Module:      Data.Aeson.Types.Class
@@ -58,7 +58,7 @@ import Data.Aeson.Types.Internal
 import Data.Monoid ((<>))
 import Data.Text (Text)
 import GHC.Generics (Generic, Rep, from, to)
-import Data.Aeson.Encode.Builder (emptyArray_)
+import Data.Aeson.Encoding (Encoding (..), Series (..), emptyArray_, list)
 import qualified Data.ByteString.Builder as B
 import qualified Data.Aeson.Encode.Builder as E
 import qualified Data.Vector as V
@@ -325,6 +325,17 @@ class KeyValue kv where
     (.=) :: ToJSON v => Text -> v -> kv
     infixr 8 .=
 
+instance KeyValue Series where
+    name .= value = Value . Encoding $
+                    E.text name <> B.char7 ':' <> builder value
+      where
+        builder = fromEncoding . toEncoding
+    {-# INLINE (.=) #-}
+
+instance KeyValue Pair where
+    name .= value = (name, toJSON value)
+    {-# INLINE (.=) #-}
+
 -------------------------------------------------------------------------------
 --  Classes and types for map keys
 -------------------------------------------------------------------------------
@@ -525,11 +536,7 @@ toEncoding2 = liftToEncoding2 toEncoding toEncodingList toEncoding toEncodingLis
 -------------------------------------------------------------------------------
 
 listEncoding :: (a -> Encoding) -> [a] -> Encoding
-listEncoding _  []     = emptyArray_
-listEncoding to' (x:xs) = Encoding $
-                B.char7 '[' <> fromEncoding (to' x) <> commas xs <> B.char7 ']'
-      where commas = foldr (\v vs -> B.char7 ',' <> fromEncoding (to' v) <> vs) mempty
-{-# INLINE listEncoding #-}
+listEncoding = list
 
 listValue :: (a -> Value) -> [a] -> Value
 listValue f = Array . V.fromList . map f

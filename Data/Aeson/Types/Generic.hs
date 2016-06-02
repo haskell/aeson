@@ -24,9 +24,10 @@ module Data.Aeson.Types.Generic ( ) where
 import Control.Applicative ((<|>))
 import Control.Monad ((<=<))
 import Control.Monad.ST (ST)
-import Data.Aeson.Encode.Builder (emptyArray_)
+import Data.Aeson.Encoding (Encoding (..), emptyArray_)
 import Data.Aeson.Encode.Functions (builder)
 import Data.Aeson.Types.Instances
+import Data.Aeson.Encoding ((>*<), tuple)
 import Data.Aeson.Types.Internal
 import Data.Bits (unsafeShiftR)
 import Data.ByteString.Builder as B
@@ -299,8 +300,8 @@ instance (TwoElemArrayEnc a, TwoElemArrayEnc b) => TwoElemArrayEnc (a :+: b) whe
 instance ( GToEncoding a, ConsToEncoding a
          , Constructor c ) => TwoElemArrayEnc (C1 c a) where
     twoElemArrayEnc opts x = fromEncoding . tuple $
-      builder (constructorTagModifier opts (conName (undefined :: t c a p))) >*<
-      gbuilder opts x
+      toEncoding (constructorTagModifier opts (conName (undefined :: t c a p))) >*<
+      gToEncoding opts x
 
 --------------------------------------------------------------------------------
 
