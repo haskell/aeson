@@ -37,9 +37,11 @@ module Data.Aeson.Types.Class
     , genericParseJSON
     -- * Classes and types for map keys
     , ToJSONKeyFunction(..)
+    , contramapToJSONKeyFunction
     , FromJSONKeyFunction(..)
     , fromJSONKeyCoerce
     , coerceFromJSONKeyFunction
+    , mapFromJSONKeyFunction
     -- * Object key-value pairs
     , KeyValue(..)
     -- * Functions needed for documentation
@@ -377,6 +379,14 @@ coerceFromJSONKeyFunction (FromJSONKeyValue f)           = FromJSONKeyValue (fma
                                    fmap coerce x = coerceFromJSONKeyFunction x
   #-}
 #endif
+
+contramapToJSONKeyFunction :: (b -> a) -> ToJSONKeyFunction a -> ToJSONKeyFunction b
+contramapToJSONKeyFunction h x = case x of
+    ToJSONKeyText (f,g) -> ToJSONKeyText (f . h, g . h)
+    ToJSONKeyValue (f,g) -> ToJSONKeyValue (f . h, g . h)
+
+mapFromJSONKeyFunction :: (a -> b) -> FromJSONKeyFunction a -> FromJSONKeyFunction b
+mapFromJSONKeyFunction = fmap
 
 -- | Fail parsing due to a type mismatch, with a descriptive message.
 --

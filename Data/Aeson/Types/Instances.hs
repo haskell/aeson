@@ -1,7 +1,7 @@
 {-# LANGUAGE CPP, BangPatterns, DeriveDataTypeable, FlexibleContexts,
     FlexibleInstances, GeneralizedNewtypeDeriving,
     OverloadedStrings, UndecidableInstances, ScopedTypeVariables,
-    ViewPatterns, InstanceSigs #-}
+    ViewPatterns #-}
 {-# LANGUAGE DefaultSignatures #-}
 
 {-# OPTIONS_GHC -fno-warn-orphans #-}
@@ -30,10 +30,12 @@ module Data.Aeson.Types.Instances
     -- ** Keys for maps
     , ToJSONKey(..)
     , ToJSONKeyFunction(..)
+    , contramapToJSONKeyFunction
     , FromJSONKey(..)
     , FromJSONKeyFunction(..)
     , fromJSONKeyCoerce
     , coerceFromJSONKeyFunction
+    , mapFromJSONKeyFunction
     -- ** Liftings to unary and binary type constructors
     , FromJSON1(..)
     , parseJSON1
@@ -79,8 +81,8 @@ module Data.Aeson.Types.Instances
 import Data.Aeson.Types.Instances.Tuple (tuple, (>*<))
 
 import Control.Applicative (Const(..))
-import Data.Aeson.Encode.Functions (brackets, builder, builder', encode, foldable, list)
-import Data.Aeson.Functions (hashMapKey, mapHashKeyVal, mapKey, mapKeyVal)
+import Data.Aeson.Encode.Functions (builder, builder', encode, foldable, list, encodeWithKey, encodeMap)
+import Data.Aeson.Functions (mapHashKeyVal, mapKey, mapKeyVal)
 import Data.Aeson.Types.Class
 import Data.Aeson.Types.Internal
 import Data.Attoparsec.Number (Number(..))
@@ -97,7 +99,7 @@ import Data.Proxy (Proxy(..))
 import Data.Ratio (Ratio, (%), numerator, denominator)
 import Data.Scientific (Scientific)
 import Data.Tagged (Tagged(..))
-import Data.Text (Text, pack, unpack)
+import Data.Text (Text, unpack)
 import Data.Time (Day, LocalTime, NominalDiffTime, TimeOfDay, UTCTime,
                   ZonedTime)
 import Data.Time.Format (FormatTime, formatTime, parseTime)
@@ -109,7 +111,6 @@ import Text.ParserCombinators.ReadP (readP_to_S)
 import Foreign.Storable (Storable)
 import Numeric.Natural (Natural)
 import Prelude hiding (foldr)
-import qualified Prelude
 import qualified Data.Aeson.Encode.Builder as E
 import qualified Data.Aeson.Parser.Time as Time
 import qualified Data.ByteString.Builder as B
@@ -151,40 +152,32 @@ import Data.Time.Format (defaultTimeLocale)
 import System.Locale (defaultTimeLocale)
 #endif
 
-parseIndexedJSON :: FromJSON a => Int -> Value -> Parser a
-parseIndexedJSON = parseIndexedJSON' parseJSON
+parseIndexedJSON :: (Value -> Parser a) -> Int -> Value -> Parser a
+parseIndexedJSON p idx value = p value <?> Index idx
+{-# INLINE parseIndexedJSON #-}
 
-parseIndexedJSON' :: (Value -> Parser a) -> Int -> Value -> Parser a
-parseIndexedJSON' p idx value = p value <?> Index idx
-
-parseIndexedJSONPair :: FromJSON b => (Value -> Parser a) -> Int -> Value -> Parser (a, b)
-parseIndexedJSONPair keyParser = parseIndexedJSONPair' keyParser parseJSON
-{-# INLINE parseIndexedJSONPair #-}
-
-parseIndexedJSONPair' :: (Value -> Parser a) -> (Value -> Parser b) -> Int -> Value -> Parser (a, b)
-parseIndexedJSONPair' keyParser valParser idx value = p value <?> Index idx
+parseIndexedJSONPair :: (Value -> Parser a) -> (Value -> Parser b) -> Int -> Value -> Parser (a, b)
+parseIndexedJSONPair keyParser valParser idx value = p value <?> Index idx
   where
     p = withArray "(k,v)" $ \ab ->
         let n = V.length ab
         in if n == 2
-             then (,) <$> parseJSONElemAtIndex' keyParser 0 ab
-                      <*> parseJSONElemAtIndex' valParser 1 ab
+             then (,) <$> parseJSONElemAtIndex keyParser 0 ab
+                      <*> parseJSONElemAtIndex valParser 1 ab
              else fail $ "cannot unpack array of length " ++
                          show n ++ " into a pair"
-{-# INLINE parseIndexedJSONPair' #-}
 
+    parseJSONElemAtIndex :: (Value -> Parser a) -> Int -> Vector Value -> Parser a
+    parseJSONElemAtIndex p' idx' ary = p' (V.unsafeIndex ary idx') <?> Index idx'
+{-# INLINE parseIndexedJSONPair #-}
 
-toJSONPair :: ToJSON b => (a -> Value) -> (a, b) -> Value
-toJSONPair f = toJSONPair' f toJSON
-{-# INLINE toJSONPair #-}
-
-toJSONPair' :: (a -> Value) -> (b -> Value) -> (a, b) -> Value
-toJSONPair' keySerialiser valSerializer (a, b) = Array $ V.create $ do
+toJSONPair :: (a -> Value) -> (b -> Value) -> (a, b) -> Value
+toJSONPair keySerialiser valSerializer (a, b) = Array $ V.create $ do
      mv <- VM.unsafeNew 2
      VM.unsafeWrite mv 0 (keySerialiser a)
      VM.unsafeWrite mv 1 (valSerializer b)
      return mv
-{-# INLINE toJSONPair' #-}
+{-# INLINE toJSONPair #-}
 
 
 instance ToJSON1 Identity where
@@ -614,7 +607,7 @@ instance (ToJSON a) => ToJSON (NonEmpty a) where
 
 instance FromJSON1 NonEmpty where
     liftParseJSON p _ = withArray "NonEmpty a" $
-        (>>= ne) . Tr.sequence . zipWith (parseIndexedJSON' p) [0..] . V.toList
+        (>>= ne) . Tr.sequence . zipWith (parseIndexedJSON p) [0..] . V.toList
       where
         ne []     = fail "Expected a NonEmpty but got an empty list"
         ne (x:xs) = pure (x :| xs)
@@ -662,7 +655,7 @@ instance (ToJSON a) => ToJSON (Seq.Seq a) where
 instance FromJSON1 Seq.Seq where
     liftParseJSON p _ = withArray "Seq a" $
       fmap Seq.fromList .
-      Tr.sequence . zipWith (parseIndexedJSON' p) [0..] . V.toList
+      Tr.sequence . zipWith (parseIndexedJSON p) [0..] . V.toList
     {-# INLINE liftParseJSON #-}
 
 instance (FromJSON a) => FromJSON (Seq.Seq a) where
@@ -700,7 +693,7 @@ encodeVector xs
 
 instance FromJSON1 Vector where
     liftParseJSON p _ = withArray "Vector a" $
-        V.mapM (uncurry $ parseIndexedJSON' p) . V.indexed
+        V.mapM (uncurry $ parseIndexedJSON p) . V.indexed
     {-# INLINE liftParseJSON #-}
 
 instance (FromJSON a) => FromJSON (Vector a) where
@@ -712,7 +705,7 @@ vectorToJSON = Array . V.map toJSON . V.convert
 {-# INLINE vectorToJSON #-}
 
 vectorParseJSON :: (FromJSON a, VG.Vector w a) => String -> Value -> Parser (w a)
-vectorParseJSON s = withArray s $ fmap V.convert . V.mapM (uncurry parseIndexedJSON) . V.indexed
+vectorParseJSON s = withArray s $ fmap V.convert . V.mapM (uncurry $ parseIndexedJSON parseJSON) . V.indexed
 {-# INLINE vectorParseJSON #-}
 
 instance (Storable a, ToJSON a) => ToJSON (VS.Vector a) where
@@ -803,60 +796,19 @@ instance FromJSON a => FromJSON (IntMap.IntMap a) where
     parseJSON = fmap IntMap.fromList . parseJSON
     {-# INLINE parseJSON #-}
 
-encodeMap :: (ToJSON v)
-          => (k -> Encoding)
-          -> (m -> Maybe ((k,v), m))
-          -> ((k -> v -> B.Builder -> B.Builder) -> B.Builder -> m -> B.Builder)
-          -> m -> Encoding
-encodeMap encodeKey = encodeMap' encodeKey toEncoding
-{-# INLINE encodeMap #-}
-
-encodeMap' :: (k -> Encoding)
-           -> (v -> Encoding)
-           -> (m -> Maybe ((k,v), m))
-           -> ((k -> v -> B.Builder -> B.Builder) -> B.Builder -> m -> B.Builder)
-           -> m -> Encoding
-encodeMap' encodeKey encodeVal minViewWithKey foldrWithKey xs =
-    case minViewWithKey xs of
-      Nothing         -> E.emptyObject_
-      Just ((k,v),ys) -> Encoding $
-                         B.char7 '{' <> encodeKV' encodeKey encodeVal k v <>
-                         foldrWithKey go (B.char7 '}') ys
-  where go k v b = B.char7 ',' <> encodeKV' encodeKey encodeVal k v <> b
-{-# INLINE encodeMap' #-}
-
-encodeWithKey' :: (k -> Encoding)
-               -> (v -> Encoding)
-               -> ((k -> v -> Series -> Series) -> Series -> m -> Series)
-               -> m -> Encoding
-encodeWithKey' encodeKey encodeVal foldrWithKey = brackets '{' '}' . foldrWithKey go mempty
-  where go k v c = Value (Encoding $ encodeKV' encodeKey encodeVal k v) <> c
-{-# INLINE encodeWithKey' #-}
-
-encodeWithKey :: (ToJSON v)
-              => (k -> Encoding)
-              -> ((k -> v -> Series -> Series) -> Series -> m -> Series)
-              -> m -> Encoding
-encodeWithKey encodeKey = encodeWithKey' encodeKey toEncoding
-{-# INLINE encodeWithKey #-}
-
--- | TODO: rename to encodeKV
-encodeKV' :: (k -> Encoding) -> (v -> Encoding) -> k -> v -> B.Builder
-encodeKV' encodeKey encodeVal k v = fromEncoding (encodeKey k) <> B.char7 ':' <> builder' encodeVal v
-{-# INLINE encodeKV' #-}
-
 instance ToJSONKey k => ToJSON1 (M.Map k) where
     liftToJSON g _ = case toJSONKey of
         ToJSONKeyText (f,_) -> Object . mapHashKeyVal f g
-        ToJSONKeyValue (f,_) -> Array . V.fromList . map (toJSONPair' f g) . M.toList
+        ToJSONKeyValue (f,_) -> Array . V.fromList . map (toJSONPair f g) . M.toList
     {-# INLINE liftToJSON #-}
 
-    liftToEncoding :: forall a. (a -> Encoding) -> ([a] -> Encoding) -> M.Map k a -> Encoding
+    -- liftToEncoding :: forall a. (a -> Encoding) -> ([a] -> Encoding) -> M.Map k a -> Encoding
     liftToEncoding g _ = case toJSONKey of
-        ToJSONKeyText (_,f) -> encodeMap' f g M.minViewWithKey M.foldrWithKey
+        ToJSONKeyText (_,f) -> encodeMap f g M.minViewWithKey M.foldrWithKey
         ToJSONKeyValue (_,f) -> list (pairEncoding f) . M.toList
-      where pairEncoding :: (k -> Encoding) -> (k, a) -> Encoding
-            pairEncoding f (a, b) = tuple $ fromEncoding (f a) >*< builder' g b
+      where
+        -- pairEncoding :: (k -> Encoding) -> (k, a) -> Encoding
+        pairEncoding f (a, b) = tuple $ fromEncoding (f a) >*< builder' g b
     {-# INLINE liftToEncoding #-}
 
 instance (FromJSONKey k, Ord k) => FromJSON1 (M.Map k) where
@@ -869,7 +821,7 @@ instance (FromJSONKey k, Ord k) => FromJSON1 (M.Map k) where
             H.foldrWithKey (\k v m -> M.insert <$> f k <*> (p v <?> Key k) <*> m) (pure M.empty)
         FromJSONKeyValue f -> withArray "Map k v" $ \arr ->
             M.fromList <$> (Tr.sequence .
-                zipWith (parseIndexedJSONPair' f p) [0..] . V.toList $ arr)
+                zipWith (parseIndexedJSONPair f p) [0..] . V.toList $ arr)
     {-# INLINE liftParseJSON #-}
 
 instance (ToJSON v, ToJSONKey k) => ToJSON (M.Map k v) where
@@ -886,15 +838,16 @@ instance (FromJSON v, FromJSONKey k, Ord k) => FromJSON (M.Map k v) where
 instance ToJSONKey k => ToJSON1 (H.HashMap k) where
     liftToJSON g _ = case toJSONKey of
         ToJSONKeyText (f,_) -> Object . mapKeyVal f g
-        ToJSONKeyValue (f,_) -> Array . V.fromList . map (toJSONPair' f g) . H.toList
+        ToJSONKeyValue (f,_) -> Array . V.fromList . map (toJSONPair f g) . H.toList
     {-# INLINE liftToJSON #-}
 
-    liftToEncoding :: forall a. (a -> Encoding) -> ([a] -> Encoding) -> H.HashMap k a -> Encoding
+    -- liftToEncoding :: forall a. (a -> Encoding) -> ([a] -> Encoding) -> H.HashMap k a -> Encoding
     liftToEncoding g _ = case toJSONKey of
-        ToJSONKeyText (_,f) -> encodeWithKey' f g H.foldrWithKey
+        ToJSONKeyText (_,f) -> encodeWithKey f g H.foldrWithKey
         ToJSONKeyValue (_,f) -> list (pairEncoding f) . H.toList
-      where pairEncoding :: (k -> Encoding) -> (k, a) -> Encoding
-            pairEncoding f (a, b) = tuple $ fromEncoding (f a) >*< builder' g b
+      where
+        -- pairEncoding :: (k -> Encoding) -> (k, a) -> Encoding
+        pairEncoding f (a, b) = tuple $ fromEncoding (f a) >*< builder' g b
     {-# INLINE liftToEncoding #-}
 
 instance (ToJSON v, ToJSONKey k) => ToJSON (H.HashMap k v) where
@@ -914,7 +867,7 @@ instance (FromJSONKey k, Eq k, Hashable k) => FromJSON1 (H.HashMap k) where
             H.foldrWithKey (\k v m -> H.insert <$> f k <*> (p v <?> Key k) <*> m) (pure H.empty)
         FromJSONKeyValue f -> withArray "Map k v" $ \arr ->
             H.fromList <$> (Tr.sequence .
-                zipWith (parseIndexedJSONPair' f p) [0..] . V.toList $ arr)
+                zipWith (parseIndexedJSONPair f p) [0..] . V.toList $ arr)
       where
         uc :: Parser (H.HashMap Text v) -> Parser (H.HashMap k v)
         uc = unsafeCoerce
@@ -942,7 +895,7 @@ instance ToJSON Value where
     {-# INLINE toEncoding #-}
 
 instance FromJSON Value where
-    parseJSON a = pure a
+    parseJSON = pure
     {-# INLINE parseJSON #-}
 
 instance ToJSON DotNetTime where
@@ -1004,12 +957,6 @@ instance ToJSON UTCTime where
 stringEncoding :: (ToJSON a) => a -> Value
 stringEncoding = String . T.dropAround (== '"') . T.decodeLatin1 . L.toStrict . encode
 {-# INLINE stringEncoding #-}
-
-parseJSONElemAtIndex :: FromJSON a => Int -> Vector Value -> Parser a
-parseJSONElemAtIndex = parseJSONElemAtIndex' parseJSON
-
-parseJSONElemAtIndex' :: (Value -> Parser a) -> Int -> Vector Value -> Parser a
-parseJSONElemAtIndex' p idx ary = p (V.unsafeIndex ary idx) <?> Index idx
 
 instance FromJSON UTCTime where
     parseJSON = withText "UTCTime" (Time.run Time.utcTime)
@@ -1240,13 +1187,7 @@ instance (ToJSONKey a, ToJSON a) => ToJSONKey (Identity a) where
 instance (FromJSONKey a, FromJSON a) => FromJSONKey (Identity a) where
     fromJSONKey = mapFromJSONKeyFunction Identity fromJSONKey
 
-contramapToJSONKeyFunction :: (b -> a) -> ToJSONKeyFunction a -> ToJSONKeyFunction b
-contramapToJSONKeyFunction h x = case x of
-    ToJSONKeyText (f,g) -> ToJSONKeyText (f . h, g . h)
-    ToJSONKeyValue (f,g) -> ToJSONKeyValue (f . h, g . h)
 
-mapFromJSONKeyFunction :: (a -> b) -> FromJSONKeyFunction a -> FromJSONKeyFunction b
-mapFromJSONKeyFunction = fmap
 
 -- | @withObject expected f value@ applies @f@ to the 'Object' when @value@ is an @Object@
 --   and fails using @'typeMismatch' expected@ otherwise.
