@@ -2,6 +2,12 @@ For the latest version of this document, please see [https://github.com/bos/aeso
 
 # 0.12.0.0
 
+* Added list specific members to `ToJSON` and `FromJSON` classes. In the same
+  way `Read` / `Show` handle lists specifically. This removes need for
+  overlapping instances to handle `String`.
+
+* Added higher rank classes: `ToJSON1`, `ToJSON2`, `FromJSON1`, and `FromJSON2`
+
 * Modified instances for `Map` and `HashMap`. Introduced new `FromJSONKey` and
   `ToJSONKey` type classes.
 
