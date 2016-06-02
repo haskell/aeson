@@ -873,29 +873,14 @@ instance (FromJSONKey k, Ord k) => FromJSON1 (M.Map k) where
     {-# INLINE liftParseJSON #-}
 
 instance (ToJSON v, ToJSONKey k) => ToJSON (M.Map k v) where
-    toJSON = case toJSONKey of
-        ToJSONKeyText (f,_) -> Object . mapHashKeyVal f toJSON
-        ToJSONKeyValue (f,_) -> Array . V.fromList . map (toJSONPair f) . M.toList
+    toJSON = toJSON1
     {-# INLINE toJSON #-}
 
-    toEncoding = case toJSONKey of
-        ToJSONKeyText (_,f) -> encodeMap f M.minViewWithKey M.foldrWithKey
-        ToJSONKeyValue (_,f) -> list (pairEncoding f) . M.toList
-      where pairEncoding :: (k -> Encoding) -> (k, v) -> Encoding
-            pairEncoding f (a, b) = tuple $ fromEncoding (f a) >*< builder b
+    toEncoding = toEncoding1
     {-# INLINE toEncoding #-}
 
 instance (FromJSON v, FromJSONKey k, Ord k) => FromJSON (M.Map k v) where
-    parseJSON = case fromJSONKey of
-        FromJSONKeyCoerce _-> withObject "Map k v" $
-            fmap (H.foldrWithKey (M.insert . unsafeCoerce) M.empty) . H.traverseWithKey (\k v -> parseJSON v <?> Key k)
-        FromJSONKeyText f -> withObject "Map k v" $
-            fmap (H.foldrWithKey (M.insert . f) M.empty) . H.traverseWithKey (\k v -> parseJSON v <?> Key k)
-        FromJSONKeyTextParser f -> withObject "Map k v" $
-            H.foldrWithKey (\k v m -> M.insert <$> f k <*> (parseJSON v <?> Key k) <*> m) (pure M.empty)
-        FromJSONKeyValue f -> withArray "Map k v" $ \arr ->
-            M.fromList <$> (Tr.sequence .
-                zipWith (parseIndexedJSONPair f) [0..] . V.toList $ arr)
+    parseJSON = parseJSON1
     {-# INLINE parseJSON #-}
 
 instance ToJSONKey k => ToJSON1 (H.HashMap k) where
@@ -913,32 +898,29 @@ instance ToJSONKey k => ToJSON1 (H.HashMap k) where
     {-# INLINE liftToEncoding #-}
 
 instance (ToJSON v, ToJSONKey k) => ToJSON (H.HashMap k v) where
-    toJSON = case toJSONKey of
-        ToJSONKeyText (f,_) -> Object . mapKeyVal f toJSON
-        ToJSONKeyValue (f,_) -> Array . V.fromList . map (toJSONPair f) . H.toList
+    toJSON = toJSON1
     {-# INLINE toJSON #-}
 
-    toEncoding = case toJSONKey of
-        ToJSONKeyText (_,f) -> encodeWithKey f H.foldrWithKey
-        ToJSONKeyValue (_,f) -> list (pairEncoding f) . H.toList
-      where pairEncoding :: (k -> Encoding) -> (k, v) -> Encoding
-            pairEncoding f (a, b) = tuple $ fromEncoding (f a) >*< builder b
+    toEncoding = toEncoding1
     {-# INLINE toEncoding #-}
 
-instance (FromJSON v, FromJSONKey k, Eq k, Hashable k) => FromJSON (H.HashMap k v) where
-    parseJSON = case fromJSONKey of
+instance (FromJSONKey k, Eq k, Hashable k) => FromJSON1 (H.HashMap k) where
+    liftParseJSON p _ = case fromJSONKey of
         FromJSONKeyCoerce _ -> withObject "HashMap ~Text v" $
-            uc . H.traverseWithKey (\k v -> parseJSON v <?> Key k)
+            uc . H.traverseWithKey (\k v -> p v <?> Key k)
         FromJSONKeyText f -> withObject "HashMap k v" $
-            fmap (mapKey f) . H.traverseWithKey (\k v -> parseJSON v <?> Key k)
+            fmap (mapKey f) . H.traverseWithKey (\k v -> p v <?> Key k)
         FromJSONKeyTextParser f -> withObject "HashMap k v" $
-            H.foldrWithKey (\k v m -> H.insert <$> f k <*> (parseJSON v <?> Key k) <*> m) (pure H.empty)
+            H.foldrWithKey (\k v m -> H.insert <$> f k <*> (p v <?> Key k) <*> m) (pure H.empty)
         FromJSONKeyValue f -> withArray "Map k v" $ \arr ->
             H.fromList <$> (Tr.sequence .
-                zipWith (parseIndexedJSONPair f) [0..] . V.toList $ arr)
+                zipWith (parseIndexedJSONPair' f p) [0..] . V.toList $ arr)
       where
         uc :: Parser (H.HashMap Text v) -> Parser (H.HashMap k v)
         uc = unsafeCoerce
+
+instance (FromJSON v, FromJSONKey k, Eq k, Hashable k) => FromJSON (H.HashMap k v) where
+    parseJSON = parseJSON1
     {-# INLINE parseJSON #-}
 
 instance (ToJSON v) => ToJSON (Tree.Tree v) where
