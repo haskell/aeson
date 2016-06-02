@@ -76,17 +76,23 @@ instance FromJSONKey T3 where
 -- Values
 -------------------------------------------------------------------------------
 
+value10, value100, value1000, value10000 :: HM.HashMap T.Text T.Text
+value10 = value 10
+value100 = value 100
+value1000 = value 1000
+value10000 = value 10000
+
 encodedValue10 :: LBS.ByteString
-encodedValue10 = encode $ value 10
+encodedValue10 = encode $ value10
 
 encodedValue100 :: LBS.ByteString
-encodedValue100 = encode $ value 100
+encodedValue100 = encode $ value100
 
 encodedValue1000 :: LBS.ByteString
-encodedValue1000 = encode $ value 1000
+encodedValue1000 = encode $ value1000
 
 encodedValue10000 :: LBS.ByteString
-encodedValue10000 = encode $ value 10000
+encodedValue10000 = encode $ value10000
 
 -------------------------------------------------------------------------------
 -- Helpers
@@ -125,45 +131,73 @@ benchDecodeHM
     :: String
     -> LBS.ByteString
     -> Benchmark
-benchDecodeHM name val =
-    bgroup name
-        [  bench "Text"            $ nf (decodeHM proxyText) val
-        ,  bench "Identity"        $ nf (decodeHM proxyT1)   val
-        ,  bench "Coerce"          $ nf (decodeHM proxyT2)   val
-        ,  bench "Parser"          $ nf (decodeHM proxyT3)   val
-        ,  bench "Tagged Text"     $ nf (decodeHM $ proxyTagged proxyText) val
-        ,  bench "Tagged Identity" $ nf (decodeHM $ proxyTagged proxyT1)   val
-        ,  bench "Tagged Coerce"   $ nf (decodeHM $ proxyTagged proxyT2)   val
-        ,  bench "Tagged Parser"   $ nf (decodeHM $ proxyTagged proxyT3)   val
-        ]
+benchDecodeHM name val = bgroup name
+    [  bench "Text"            $ nf (decodeHM proxyText) val
+    ,  bench "Identity"        $ nf (decodeHM proxyT1)   val
+    ,  bench "Coerce"          $ nf (decodeHM proxyT2)   val
+    ,  bench "Parser"          $ nf (decodeHM proxyT3)   val
+    ,  bench "Tagged Text"     $ nf (decodeHM $ proxyTagged proxyText) val
+    ,  bench "Tagged Identity" $ nf (decodeHM $ proxyTagged proxyT1)   val
+    ,  bench "Tagged Coerce"   $ nf (decodeHM $ proxyTagged proxyT2)   val
+    ,  bench "Tagged Parser"   $ nf (decodeHM $ proxyTagged proxyT3)   val
+    ]
 
 benchDecodeMap
     :: String
     -> LBS.ByteString
     -> Benchmark
-benchDecodeMap name val =
-    bgroup name
-        [  bench "Text"     $ nf (decodeMap proxyText) val
-        ,  bench "Identity" $ nf (decodeMap proxyT1)   val
-        ,  bench "Coerce"   $ nf (decodeMap proxyT2)   val
-        ,  bench "Parser"   $ nf (decodeMap proxyT3)   val
-        ]
+benchDecodeMap name val = bgroup name
+    [  bench "Text"     $ nf (decodeMap proxyText) val
+    ,  bench "Identity" $ nf (decodeMap proxyT1)   val
+    ,  bench "Coerce"   $ nf (decodeMap proxyT2)   val
+    ,  bench "Parser"   $ nf (decodeMap proxyT3)   val
+    ]
+
+benchEncodeHM
+    :: String
+    -> HM.HashMap T.Text T.Text
+    -> Benchmark
+benchEncodeHM name val = bgroup name
+    [ bench "Text" $ nf encode val
+    ]
+
+benchEncodeMap
+    :: String
+    -> HM.HashMap T.Text T.Text
+    -> Benchmark
+benchEncodeMap name val = bgroup name
+    [ bench "Text" $ nf encode val'
+    ]
+  where
+    val' :: M.Map T.Text T.Text
+    val' = M.fromList . HM.toList $ val
 
 main :: IO ()
-main = do
-    defaultMain
-        [ bgroup "decode"
-            [ bgroup "HashMap"
-                [ benchDecodeHM "10"    encodedValue10
-                , benchDecodeHM "100"   encodedValue100
-                , benchDecodeHM "1000"  encodedValue1000
-                , benchDecodeHM "10000" encodedValue10000
-                ]
-            , bgroup "Map"
-                [ benchDecodeMap "10"    encodedValue10
-                , benchDecodeMap "100"   encodedValue100
-                , benchDecodeMap "1000"  encodedValue1000
-                , benchDecodeMap "10000" encodedValue10000
-                ]
+main = defaultMain
+    [ bgroup "decode"
+        [ bgroup "HashMap"
+            [ benchDecodeHM "10"    encodedValue10
+            , benchDecodeHM "100"   encodedValue100
+            , benchDecodeHM "1000"  encodedValue1000
+            , benchDecodeHM "10000" encodedValue10000
+            ]
+        , bgroup "Map"
+            [ benchDecodeMap "10"    encodedValue10
+            , benchDecodeMap "100"   encodedValue100
+            , benchDecodeMap "1000"  encodedValue1000
+            , benchDecodeMap "10000" encodedValue10000
             ]
         ]
+    , bgroup "encode"
+        [ bgroup "HashMap"
+            [ benchEncodeHM "100"   value100
+            , benchEncodeHM "1000"  value1000
+            , benchEncodeHM "10000" value10000
+            ]
+        , bgroup "Map"
+            [ benchEncodeMap "100"   value100
+            , benchEncodeMap "1000"  value1000
+            , benchEncodeMap "10000" value10000
+            ]
+        ]
+    ]
