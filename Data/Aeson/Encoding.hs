@@ -10,12 +10,18 @@ module Data.Aeson.Encoding
     -- * Encoding constructors
     , emptyArray_
     , emptyObject_
+    , wrapArray
+    , wrapObject
+    , text
     , list
-    , dict 
+    , dict
     , tuple
     , (>*<)
+    -- ** chars
+    , comma, colon, openBracket, closeBracket, openCurly, closeCurly
     ) where
 
+import Data.Text (Text)
 import Data.ByteString.Builder (Builder, char7, toLazyByteString)
 import Data.Semigroup (Semigroup((<>)))
 import Data.ByteString.Builder.Prim (primBounded)
@@ -79,6 +85,12 @@ emptyArray_ = Encoding B.emptyArray_
 emptyObject_ :: Encoding
 emptyObject_ = Encoding B.emptyObject_
 
+wrapArray :: Encoding -> Encoding
+wrapArray e = openBracket <> e <> closeBracket
+
+wrapObject :: Encoding -> Encoding
+wrapObject e = openCurly <> e <> closeCurly
+
 -- | Encode a series of key/value pairs, separated by commas.
 pairs :: Series -> Encoding
 pairs = brackets '{' '}'
@@ -126,3 +138,18 @@ Encoding a >*< Encoding b = Encoding $ a <> char7 ',' <> b
 tuple :: Encoding -> Encoding
 tuple b = Encoding (char7 '[' <> fromEncoding b <> char7 ']')
 {-# INLINE tuple #-}
+
+text :: Text -> Encoding
+text = Encoding . B.text
+
+-------------------------------------------------------------------------------
+-- chars
+-------------------------------------------------------------------------------
+
+comma, colon, openBracket, closeBracket, openCurly, closeCurly :: Encoding
+comma        = Encoding $ char7 ','
+colon        = Encoding $ char7 ':'
+openBracket  = Encoding $ char7 '['
+closeBracket = Encoding $ char7 ']'
+openCurly    = Encoding $ char7 '{'
+closeCurly   = Encoding $ char7 '}'
