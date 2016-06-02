@@ -160,6 +160,13 @@ gSomeTypeParseJSONObjectWithSingleField :: Value -> Parser (SomeType Int)
 gSomeTypeParseJSONObjectWithSingleField = genericParseJSON optsObjectWithSingleField
 
 
+gSomeTypeToJSONOmitNothingFields :: SomeType Int -> Value
+gSomeTypeToJSONOmitNothingFields = genericToJSON optsOmitNothingFields
+
+gSomeTypeToEncodingOmitNothingFields :: SomeType Int -> Encoding
+gSomeTypeToEncodingOmitNothingFields = genericToEncoding optsOmitNothingFields
+
+
 --------------------------------------------------------------------------------
 -- Approx encoders/decoders
 --------------------------------------------------------------------------------
