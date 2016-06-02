@@ -112,7 +112,7 @@ library
 
   if !impl(ghc >= 7.10)
     -- `Numeric.Natural` is available in base only since GHC 7.10 / base 4.8
-    build-depends: nats >=1 && <1.1
+    build-depends: nats >=1 && <1.2
 
   if flag(old-locale)
     build-depends: time < 1.5, old-locale
@@ -180,7 +180,7 @@ test-suite tests
     build-depends: time >= 1.5
 
   if !impl(ghc >= 7.10)
-    build-depends: nats >=1 && <1.1
+    build-depends: nats >=1 && <1.2
 
 source-repository head
   type:     git
