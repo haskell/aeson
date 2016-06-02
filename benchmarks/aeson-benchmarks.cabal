@@ -30,6 +30,7 @@ library
     Data.Aeson.Types.Generic
     Data.Aeson.Types.Instances
     Data.Aeson.Types.Internal
+    Data.Aeson.Types.Instances.Tuple
 
   build-depends:
     attoparsec >= 0.13.0.1,
