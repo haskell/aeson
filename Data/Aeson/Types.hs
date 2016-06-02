@@ -81,6 +81,10 @@ module Data.Aeson.Types
     , (.!=)
     , object
 
+    , listEncoding
+    , listValue
+    , listParser
+
     -- * Generic and TH encoding configuration
     , Options(..)
     , SumEncoding(..)

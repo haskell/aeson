@@ -36,8 +36,10 @@ module Data.Aeson.Types.Class
     , genericToEncoding
     , genericParseJSON
     -- * Classes and types for map keys
+    , ToJSONKey(..)
     , ToJSONKeyFunction(..)
     , contramapToJSONKeyFunction
+    , FromJSONKey(..)
     , FromJSONKeyFunction(..)
     , fromJSONKeyCoerce
     , coerceFromJSONKeyFunction
@@ -314,11 +316,34 @@ class FromJSON a where
 
     parseJSONList v = typeMismatch "[a]" v
 
+-------------------------------------------------------------------------------
+-- Object key-value pairs
+-------------------------------------------------------------------------------
 
 -- | A key-value pair for encoding a JSON object.
 class KeyValue kv where
     (.=) :: ToJSON v => Text -> v -> kv
     infixr 8 .=
+
+-------------------------------------------------------------------------------
+--  Classes and types for map keys
+-------------------------------------------------------------------------------
+
+class ToJSONKey a where
+    toJSONKey :: ToJSONKeyFunction a
+    default toJSONKey :: ToJSON a => ToJSONKeyFunction a
+    toJSONKey = ToJSONKeyValue (toJSON, toEncoding)
+    toJSONKeyList :: ToJSONKeyFunction [a]
+    default toJSONKeyList :: ToJSON a => ToJSONKeyFunction [a]
+    toJSONKeyList = ToJSONKeyValue (toJSON, toEncoding)
+
+class FromJSONKey a where
+    fromJSONKey :: FromJSONKeyFunction a
+    default fromJSONKey :: FromJSON a => FromJSONKeyFunction a
+    fromJSONKey = FromJSONKeyValue parseJSON
+    fromJSONKeyList :: FromJSONKeyFunction [a]
+    default fromJSONKeyList :: FromJSON a => FromJSONKeyFunction [a]
+    fromJSONKeyList = FromJSONKeyValue parseJSON
 
 data ToJSONKeyFunction a
     = ToJSONKeyText (a -> Text, a -> Encoding)
@@ -387,6 +412,10 @@ contramapToJSONKeyFunction h x = case x of
 
 mapFromJSONKeyFunction :: (a -> b) -> FromJSONKeyFunction a -> FromJSONKeyFunction b
 mapFromJSONKeyFunction = fmap
+
+-------------------------------------------------------------------------------
+-- Functions needed for documentation
+-------------------------------------------------------------------------------
 
 -- | Fail parsing due to a type mismatch, with a descriptive message.
 --
@@ -491,11 +520,15 @@ toEncoding2 :: (ToJSON2 f, ToJSON a, ToJSON b) => f a b -> Encoding
 toEncoding2 = liftToEncoding2 toEncoding toEncodingList toEncoding toEncodingList
 {-# INLINE toEncoding2 #-}
 
+-------------------------------------------------------------------------------
+-- Encoding functions
+-------------------------------------------------------------------------------
+
 listEncoding :: (a -> Encoding) -> [a] -> Encoding
 listEncoding _  []     = emptyArray_
-listEncoding to (x:xs) = Encoding $
-                B.char7 '[' <> fromEncoding (to x) <> commas xs <> B.char7 ']'
-      where commas = foldr (\v vs -> B.char7 ',' <> fromEncoding (to v) <> vs) mempty
+listEncoding to' (x:xs) = Encoding $
+                B.char7 '[' <> fromEncoding (to' x) <> commas xs <> B.char7 ']'
+      where commas = foldr (\v vs -> B.char7 ',' <> fromEncoding (to' v) <> vs) mempty
 {-# INLINE listEncoding #-}
 
 listValue :: (a -> Value) -> [a] -> Value
@@ -505,5 +538,32 @@ listValue f = Array . V.fromList . map f
 listParser :: (Value -> Parser a) -> Value -> Parser [a]
 listParser f (Array xs) = fmap V.toList (V.mapM f xs)
 listParser _ v          = typeMismatch "[a]" v
+{-# INLINE listParser #-}
 
+-------------------------------------------------------------------------------
+-- [] instances
+-------------------------------------------------------------------------------
 
+-- These are needed for key-class default definitions
+
+instance ToJSON1 [] where
+    liftToJSON _ to' = to'
+    {-# INLINE liftToJSON #-}
+
+    liftToEncoding _ to' = to'
+    {-# INLINE liftToEncoding #-}
+
+instance (ToJSON a) => ToJSON [a] where
+    toJSON = toJSON1
+    {-# INLINE toJSON #-}
+
+    toEncoding = toEncoding1
+    {-# INLINE toEncoding #-}
+
+instance FromJSON1 [] where
+    liftParseJSON _ p' = p'
+    {-# INLINE liftParseJSON #-}
+
+instance (FromJSON a) => FromJSON [a] where
+    parseJSON = parseJSON1
+    {-# INLINE parseJSON #-}

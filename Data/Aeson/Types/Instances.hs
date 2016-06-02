@@ -76,6 +76,10 @@ module Data.Aeson.Types.Instances
     , tuple
     , (>*<)
     , typeMismatch
+
+    , listEncoding
+    , listValue
+    , listParser
     ) where
 
 import Data.Aeson.Types.Instances.Tuple (tuple, (>*<))
@@ -152,6 +156,10 @@ import Data.Time.Format (defaultTimeLocale)
 import System.Locale (defaultTimeLocale)
 #endif
 
+-------------------------------------------------------------------------------
+-- Helpers
+-------------------------------------------------------------------------------
+
 parseIndexedJSON :: (Value -> Parser a) -> Int -> Value -> Parser a
 parseIndexedJSON p idx value = p value <?> Index idx
 {-# INLINE parseIndexedJSON #-}
@@ -179,6 +187,40 @@ toJSONPair keySerialiser valSerializer (a, b) = Array $ V.create $ do
      return mv
 {-# INLINE toJSONPair #-}
 
+realFloatToJSON :: RealFloat a => a -> Value
+realFloatToJSON d
+    | isNaN d || isInfinite d = Null
+    | otherwise = Number $ Scientific.fromFloatDigits d
+{-# INLINE realFloatToJSON #-}
+
+realFloatToEncoding :: RealFloat a => a -> Encoding
+realFloatToEncoding d
+    | isNaN d || isInfinite d = Encoding E.null_
+    | otherwise               = toEncoding (Scientific.fromFloatDigits d)
+{-# INLINE realFloatToEncoding #-}
+
+scientificToNumber :: Scientific -> Number
+scientificToNumber s
+    | e < 0     = D $ Scientific.toRealFloat s
+    | otherwise = I $ c * 10 ^ e
+  where
+    e = Scientific.base10Exponent s
+    c = Scientific.coefficient s
+{-# INLINE scientificToNumber #-}
+
+parseRealFloat :: RealFloat a => String -> Value -> Parser a
+parseRealFloat _        (Number s) = pure $ Scientific.toRealFloat s
+parseRealFloat _        Null       = pure (0/0)
+parseRealFloat expected v          = typeMismatch expected v
+{-# INLINE parseRealFloat #-}
+
+parseIntegral :: Integral a => String -> Value -> Parser a
+parseIntegral expected = withScientific expected $ pure . truncate
+{-# INLINE parseIntegral #-}
+
+-------------------------------------------------------------------------------
+-- base
+-------------------------------------------------------------------------------
 
 instance ToJSON1 Identity where
     liftToJSON to _ (Identity a) = to a
@@ -201,6 +243,40 @@ instance FromJSON1 Identity where
 instance (FromJSON a) => FromJSON (Identity a) where
     parseJSON = parseJSON1
     {-# INLINE parseJSON #-}
+
+
+instance ToJSON2 Const where
+    liftToJSON2 to _ _ _ (Const x) = to x
+    {-# INLINE liftToJSON2 #-}
+
+    liftToEncoding2 to _ _ _ (Const x) = to x
+    {-# INLINE liftToEncoding2 #-}
+
+instance FromJSON2 Const where
+    liftParseJSON2 p _ _ _ = fmap Const . p
+    {-# INLINE liftParseJSON2 #-}
+
+instance ToJSON a => ToJSON1 (Const a) where
+    liftToJSON _ _ (Const x) = toJSON x
+    {-# INLINE liftToJSON #-}
+
+    liftToEncoding _ _ (Const x) = toEncoding x
+    {-# INLINE liftToEncoding #-}
+
+instance FromJSON a => FromJSON1 (Const a) where
+    liftParseJSON _ _ = fmap Const . parseJSON
+    {-# INLINE liftParseJSON #-}
+
+instance ToJSON a => ToJSON (Const a b) where
+    toJSON (Const x) = toJSON x
+    {-# INLINE toJSON #-}
+
+    toEncoding (Const x) = toEncoding x
+    {-# INLINE toEncoding #-}
+
+instance FromJSON a => FromJSON (Const a b) where
+    {-# INLINE parseJSON #-}
+    parseJSON = fmap Const . parseJSON
 
 
 instance ToJSON1 Maybe where
@@ -282,6 +358,7 @@ left, right :: Text
 left  = "Left"
 right = "Right"
 
+
 instance ToJSON Bool where
     toJSON = Bool
     {-# INLINE toJSON #-}
@@ -347,17 +424,6 @@ instance FromJSON Char where
 
     parseJSONList = withText "String" $ pure . T.unpack
     {-# INLINE parseJSONList #-}
-
-instance ToJSON Scientific where
-    toJSON = Number
-    {-# INLINE toJSON #-}
-
-    toEncoding = Encoding . E.number
-    {-# INLINE toEncoding #-}
-
-instance FromJSON Scientific where
-    parseJSON = withScientific "Scientific" pure
-    {-# INLINE parseJSON #-}
 
 instance ToJSON Double where
     toJSON = realFloatToJSON
@@ -591,6 +657,25 @@ instance FromJSON LT.Text where
     parseJSON = withText "Lazy Text" $ pure . LT.fromStrict
     {-# INLINE parseJSON #-}
 
+instance ToJSON Version where
+    toJSON = toJSON . showVersion
+    {-# INLINE toJSON #-}
+
+    toEncoding = toEncoding . showVersion
+    {-# INLINE toEncoding #-}
+
+instance FromJSON Version where
+    {-# INLINE parseJSON #-}
+    parseJSON = withText "Version" $ go . readP_to_S parseVersion . unpack
+      where
+        go [(v,[])] = return v
+        go (_ : xs) = go xs
+        go _        = fail $ "could not parse Version"
+
+-------------------------------------------------------------------------------
+-- semigroups NonEmpty
+-------------------------------------------------------------------------------
+
 instance ToJSON1 NonEmpty where
     liftToJSON to _ = listValue to . toList
     {-# INLINE liftToJSON #-}
@@ -615,28 +700,26 @@ instance FromJSON1 NonEmpty where
 
 instance (FromJSON a) => FromJSON (NonEmpty a) where
     parseJSON = parseJSON1
+    {-# INLINE parseJSON #-}
 
-instance ToJSON1 [] where
-    liftToJSON _ to' = to'
-    {-# INLINE liftToJSON #-}
+-------------------------------------------------------------------------------
+-- scientific
+-------------------------------------------------------------------------------
 
-    liftToEncoding _ to' = to'
-    {-# INLINE liftToEncoding #-}
-
-instance (ToJSON a) => ToJSON [a] where
-    toJSON = toJSON1
+instance ToJSON Scientific where
+    toJSON = Number
     {-# INLINE toJSON #-}
 
-    toEncoding = toEncoding1
+    toEncoding = Encoding . E.number
     {-# INLINE toEncoding #-}
 
-instance FromJSON1 [] where
-    liftParseJSON _ p' = p'
-    {-# INLINE liftParseJSON #-}
-
-instance (FromJSON a) => FromJSON [a] where
-    parseJSON = parseJSON1
+instance FromJSON Scientific where
+    parseJSON = withScientific "Scientific" pure
     {-# INLINE parseJSON #-}
+
+-------------------------------------------------------------------------------
+-- containers
+-------------------------------------------------------------------------------
 
 instance ToJSON1 Seq.Seq where
     liftToJSON to _ = listValue to . toList
@@ -661,6 +744,152 @@ instance FromJSON1 Seq.Seq where
 instance (FromJSON a) => FromJSON (Seq.Seq a) where
     parseJSON = parseJSON1
     {-# INLINE parseJSON #-}
+
+
+instance ToJSON1 Set.Set where
+    liftToJSON to _ = listValue to . Set.toList
+    {-# INLINE liftToJSON #-}
+
+    liftToEncoding to _ = listEncoding to . Set.toList
+    {-# INLINE liftToEncoding #-}
+
+instance (ToJSON a) => ToJSON (Set.Set a) where
+    toJSON = toJSON1
+    {-# INLINE toJSON #-}
+
+    toEncoding = toEncoding1
+    {-# INLINE toEncoding #-}
+
+instance (Ord a, FromJSON a) => FromJSON (Set.Set a) where
+    parseJSON = fmap Set.fromList . parseJSON
+    {-# INLINE parseJSON #-}
+
+
+instance FromJSON IntSet.IntSet where
+    parseJSON = fmap IntSet.fromList . parseJSON
+    {-# INLINE parseJSON #-}
+
+instance ToJSON IntSet.IntSet where
+    toJSON = toJSON . IntSet.toList
+    {-# INLINE toJSON #-}
+
+    toEncoding = toEncoding . IntSet.toList
+    {-# INLINE toEncoding #-}
+
+
+instance ToJSON1 IntMap.IntMap where
+    liftToJSON to tol = liftToJSON to' tol' . IntMap.toList
+      where
+        to'  = liftToJSON2     toJSON toJSONList to tol
+        tol' = liftToJSONList2 toJSON toJSONList to tol
+    {-# INLINE liftToJSON #-}
+
+    liftToEncoding to tol = liftToEncoding to' tol' . IntMap.toList
+      where
+        to'  = liftToEncoding2     toEncoding toEncodingList to tol
+        tol' = liftToEncodingList2 toEncoding toEncodingList to tol
+    {-# INLINE liftToEncoding #-}
+
+instance ToJSON a => ToJSON (IntMap.IntMap a) where
+    toJSON = toJSON1
+    {-# INLINE toJSON #-}
+
+    toEncoding = toEncoding1
+    {-# INLINE toEncoding #-}
+
+instance FromJSON1 IntMap.IntMap where
+    liftParseJSON p pl = fmap IntMap.fromList . liftParseJSON p' pl'
+      where
+        p'  = liftParseJSON2     parseJSON parseJSONList p pl
+        pl' = liftParseJSONList2 parseJSON parseJSONList p pl
+    {-# INLINE liftParseJSON #-}
+
+instance FromJSON a => FromJSON (IntMap.IntMap a) where
+    parseJSON = fmap IntMap.fromList . parseJSON
+    {-# INLINE parseJSON #-}
+
+
+instance ToJSONKey k => ToJSON1 (M.Map k) where
+    liftToJSON g _ = case toJSONKey of
+        ToJSONKeyText (f,_) -> Object . mapHashKeyVal f g
+        ToJSONKeyValue (f,_) -> Array . V.fromList . map (toJSONPair f g) . M.toList
+    {-# INLINE liftToJSON #-}
+
+    -- liftToEncoding :: forall a. (a -> Encoding) -> ([a] -> Encoding) -> M.Map k a -> Encoding
+    liftToEncoding g _ = case toJSONKey of
+        ToJSONKeyText (_,f) -> encodeMap f g M.minViewWithKey M.foldrWithKey
+        ToJSONKeyValue (_,f) -> list (pairEncoding f) . M.toList
+      where
+        -- pairEncoding :: (k -> Encoding) -> (k, a) -> Encoding
+        pairEncoding f (a, b) = tuple $ fromEncoding (f a) >*< builder' g b
+    {-# INLINE liftToEncoding #-}
+
+instance (FromJSONKey k, Ord k) => FromJSON1 (M.Map k) where
+    liftParseJSON p _ = case fromJSONKey of
+        FromJSONKeyCoerce _-> withObject "Map k v" $
+            fmap (H.foldrWithKey (M.insert . unsafeCoerce) M.empty) . H.traverseWithKey (\k v -> p v <?> Key k)
+        FromJSONKeyText f -> withObject "Map k v" $
+            fmap (H.foldrWithKey (M.insert . f) M.empty) . H.traverseWithKey (\k v -> p v <?> Key k)
+        FromJSONKeyTextParser f -> withObject "Map k v" $
+            H.foldrWithKey (\k v m -> M.insert <$> f k <*> (p v <?> Key k) <*> m) (pure M.empty)
+        FromJSONKeyValue f -> withArray "Map k v" $ \arr ->
+            M.fromList <$> (Tr.sequence .
+                zipWith (parseIndexedJSONPair f p) [0..] . V.toList $ arr)
+    {-# INLINE liftParseJSON #-}
+
+instance (ToJSON v, ToJSONKey k) => ToJSON (M.Map k v) where
+    toJSON = toJSON1
+    {-# INLINE toJSON #-}
+
+    toEncoding = toEncoding1
+    {-# INLINE toEncoding #-}
+
+instance (FromJSON v, FromJSONKey k, Ord k) => FromJSON (M.Map k v) where
+    parseJSON = parseJSON1
+    {-# INLINE parseJSON #-}
+
+
+instance ToJSON1 Tree.Tree where
+    liftToJSON to tol = go
+      where
+        go (Tree.Node root branches) =
+            liftToJSON2 to tol to' tol' (root, branches)
+
+        to' = liftToJSON go (listValue go)
+        tol' = liftToJSONList go (listValue go)
+    {-# INLINE liftToJSON #-}
+
+    liftToEncoding to tol = go
+      where
+        go (Tree.Node root branches) =
+            liftToEncoding2 to tol to' tol' (root, branches)
+
+        to' = liftToEncoding go (listEncoding go)
+        tol' = liftToEncodingList go (listEncoding go)
+    {-# INLINE liftToEncoding #-}
+
+instance (ToJSON v) => ToJSON (Tree.Tree v) where
+    toJSON = toJSON1
+    {-# INLINE toJSON #-}
+
+    toEncoding = toEncoding1
+    {-# INLINE toEncoding #-}
+
+instance FromJSON1 Tree.Tree where
+    liftParseJSON p pl = go
+      where
+        go v = uncurry Tree.Node <$> liftParseJSON2 p pl p' pl' v
+
+        p' = liftParseJSON go (listParser go)
+        pl'= liftParseJSONList go (listParser go)
+
+instance (FromJSON v) => FromJSON (Tree.Tree v) where
+    parseJSON = parseJSON1
+    {-# INLINE parseJSON #-}
+
+-------------------------------------------------------------------------------
+-- vector
+-------------------------------------------------------------------------------
 
 instance ToJSON1 Vector where
     liftToJSON to _ = Array . V.map to
@@ -740,100 +969,28 @@ instance (VG.Vector VU.Vector a, FromJSON a) => FromJSON (VU.Vector a) where
     parseJSON = vectorParseJSON "Data.Vector.Unboxed.Vector a"
     {-# INLINE parseJSON #-}
 
-instance (ToJSON a) => ToJSON (Set.Set a) where
-    toJSON = toJSON . Set.toList
-    {-# INLINE toJSON #-}
+-------------------------------------------------------------------------------
+-- unordered-containers
+-------------------------------------------------------------------------------
 
-    toEncoding = encodeSet Set.minView Set.foldr
-    {-# INLINE toEncoding #-}
-
-instance (Ord a, FromJSON a) => FromJSON (Set.Set a) where
-    parseJSON = fmap Set.fromList . parseJSON
-    {-# INLINE parseJSON #-}
-
-instance (ToJSON a) => ToJSON (HashSet.HashSet a) where
-    toJSON = toJSON . HashSet.toList
-    {-# INLINE toJSON #-}
-
-    toEncoding = foldable toEncoding
-    {-# INLINE toEncoding #-}
-
-instance (Eq a, Hashable a, FromJSON a) => FromJSON (HashSet.HashSet a) where
-    parseJSON = fmap HashSet.fromList . parseJSON
-    {-# INLINE parseJSON #-}
-
-instance ToJSON IntSet.IntSet where
-    toJSON = toJSON . IntSet.toList
-    {-# INLINE toJSON #-}
-
-    toEncoding = encodeSet IntSet.minView IntSet.foldr
-    {-# INLINE toEncoding #-}
-
-encodeSet :: (ToJSON a) =>
-             (s -> Maybe (a, s))
-          -> ((a -> B.Builder -> B.Builder) -> B.Builder -> s -> B.Builder)
-          -> s -> Encoding
-encodeSet minView foldr xs =
-    case minView xs of
-      Nothing     -> E.emptyArray_
-      Just (m,ys) -> Encoding $
-                     B.char7 '[' <> builder m <> foldr go (B.char7 ']') ys
-        where go v b = B.char7 ',' <> builder v <> b
-{-# INLINE encodeSet #-}
-
-instance FromJSON IntSet.IntSet where
-    parseJSON = fmap IntSet.fromList . parseJSON
-    {-# INLINE parseJSON #-}
-
-instance ToJSON a => ToJSON (IntMap.IntMap a) where
-    toJSON = toJSON . IntMap.toList
-    {-# INLINE toJSON #-}
-
-    toEncoding = toEncoding . IntMap.toList
-    {-# INLINE toEncoding #-}
-
-instance FromJSON a => FromJSON (IntMap.IntMap a) where
-    parseJSON = fmap IntMap.fromList . parseJSON
-    {-# INLINE parseJSON #-}
-
-instance ToJSONKey k => ToJSON1 (M.Map k) where
-    liftToJSON g _ = case toJSONKey of
-        ToJSONKeyText (f,_) -> Object . mapHashKeyVal f g
-        ToJSONKeyValue (f,_) -> Array . V.fromList . map (toJSONPair f g) . M.toList
+instance ToJSON1 HashSet.HashSet where
+    liftToJSON to _ = listValue to . HashSet.toList
     {-# INLINE liftToJSON #-}
 
-    -- liftToEncoding :: forall a. (a -> Encoding) -> ([a] -> Encoding) -> M.Map k a -> Encoding
-    liftToEncoding g _ = case toJSONKey of
-        ToJSONKeyText (_,f) -> encodeMap f g M.minViewWithKey M.foldrWithKey
-        ToJSONKeyValue (_,f) -> list (pairEncoding f) . M.toList
-      where
-        -- pairEncoding :: (k -> Encoding) -> (k, a) -> Encoding
-        pairEncoding f (a, b) = tuple $ fromEncoding (f a) >*< builder' g b
+    liftToEncoding to _ = listEncoding to . HashSet.toList
     {-# INLINE liftToEncoding #-}
 
-instance (FromJSONKey k, Ord k) => FromJSON1 (M.Map k) where
-    liftParseJSON p _ = case fromJSONKey of
-        FromJSONKeyCoerce _-> withObject "Map k v" $
-            fmap (H.foldrWithKey (M.insert . unsafeCoerce) M.empty) . H.traverseWithKey (\k v -> p v <?> Key k)
-        FromJSONKeyText f -> withObject "Map k v" $
-            fmap (H.foldrWithKey (M.insert . f) M.empty) . H.traverseWithKey (\k v -> p v <?> Key k)
-        FromJSONKeyTextParser f -> withObject "Map k v" $
-            H.foldrWithKey (\k v m -> M.insert <$> f k <*> (p v <?> Key k) <*> m) (pure M.empty)
-        FromJSONKeyValue f -> withArray "Map k v" $ \arr ->
-            M.fromList <$> (Tr.sequence .
-                zipWith (parseIndexedJSONPair f p) [0..] . V.toList $ arr)
-    {-# INLINE liftParseJSON #-}
-
-instance (ToJSON v, ToJSONKey k) => ToJSON (M.Map k v) where
+instance (ToJSON a) => ToJSON (HashSet.HashSet a) where
     toJSON = toJSON1
     {-# INLINE toJSON #-}
 
     toEncoding = toEncoding1
     {-# INLINE toEncoding #-}
 
-instance (FromJSON v, FromJSONKey k, Ord k) => FromJSON (M.Map k v) where
-    parseJSON = parseJSON1
+instance (Eq a, Hashable a, FromJSON a) => FromJSON (HashSet.HashSet a) where
+    parseJSON = fmap HashSet.fromList . parseJSON
     {-# INLINE parseJSON #-}
+
 
 instance ToJSONKey k => ToJSON1 (H.HashMap k) where
     liftToJSON g _ = case toJSONKey of
@@ -876,16 +1033,9 @@ instance (FromJSON v, FromJSONKey k, Eq k, Hashable k) => FromJSON (H.HashMap k 
     parseJSON = parseJSON1
     {-# INLINE parseJSON #-}
 
-instance (ToJSON v) => ToJSON (Tree.Tree v) where
-    toJSON (Tree.Node root branches) = toJSON (root,branches)
-    {-# INLINE toJSON #-}
-
-    toEncoding (Tree.Node root branches) = toEncoding (root,branches)
-    {-# INLINE toEncoding #-}
-
-instance (FromJSON v) => FromJSON (Tree.Tree v) where
-    parseJSON j = uncurry Tree.Node <$> parseJSON j
-    {-# INLINE parseJSON #-}
+-------------------------------------------------------------------------------
+-- aeson
+-------------------------------------------------------------------------------
 
 instance ToJSON Value where
     toJSON a = a
@@ -915,6 +1065,10 @@ instance FromJSON DotNetTime where
              Just d -> pure (DotNetTime d)
              _      -> fail "could not parse .NET time"
     {-# INLINE parseJSON #-}
+
+-------------------------------------------------------------------------------
+-- time
+-------------------------------------------------------------------------------
 
 instance ToJSON Day where
     toJSON       = stringEncoding
@@ -975,6 +1129,10 @@ instance ToJSON NominalDiffTime where
 instance FromJSON NominalDiffTime where
     parseJSON = withScientific "NominalDiffTime" $ pure . realToFrac
     {-# INLINE parseJSON #-}
+
+-------------------------------------------------------------------------------
+-- base Monoid/Semigroup
+-------------------------------------------------------------------------------
 
 instance ToJSON1 Dual where
     liftToJSON to _ = to . getDual
@@ -1044,21 +1202,9 @@ instance FromJSON a => FromJSON (Last a) where
     parseJSON = parseJSON1
     {-# INLINE parseJSON #-}
 
-
-instance ToJSON Version where
-    toJSON = toJSON . showVersion
-    {-# INLINE toJSON #-}
-
-    toEncoding = toEncoding . showVersion
-    {-# INLINE toEncoding #-}
-
-instance FromJSON Version where
-    {-# INLINE parseJSON #-}
-    parseJSON = withText "Version" $ go . readP_to_S parseVersion . unpack
-      where
-        go [(v,[])] = return v
-        go (_ : xs) = go xs
-        go _        = fail $ "could not parse Version"
+-------------------------------------------------------------------------------
+-- tagged
+-------------------------------------------------------------------------------
 
 instance ToJSON (Proxy a) where
     toJSON _ = Null
@@ -1071,6 +1217,7 @@ instance FromJSON (Proxy a) where
     {-# INLINE parseJSON #-}
     parseJSON Null = pure Proxy
     parseJSON v    = typeMismatch "Proxy" v
+
 
 instance ToJSON1 (Tagged a) where
     liftToJSON to _ (Tagged x) = to x
@@ -1094,35 +1241,19 @@ instance FromJSON b => FromJSON (Tagged a b) where
     parseJSON = parseJSON1
     {-# INLINE parseJSON #-}
 
-instance ToJSON a => ToJSON (Const a b) where
-    toJSON (Const x) = toJSON x
-    {-# INLINE toJSON #-}
+instance FromJSONKey b => FromJSONKey (Tagged a b) where
+    fromJSONKey = coerceFromJSONKeyFunction (fromJSONKey :: FromJSONKeyFunction b)
+    fromJSONKeyList = (fmap . fmap) Tagged fromJSONKeyList
 
-    toEncoding (Const x) = toEncoding x
-    {-# INLINE toEncoding #-}
+instance ToJSONKey b => ToJSONKey (Tagged a b) where
+    toJSONKey = contramapToJSONKeyFunction unTagged toJSONKey
+    toJSONKeyList = contramapToJSONKeyFunction (fmap unTagged) toJSONKeyList
 
-instance FromJSON a => FromJSON (Const a b) where
-    {-# INLINE parseJSON #-}
-    parseJSON = fmap Const . parseJSON
-
---------------------------------------------
+-------------------------------------------------------------------------------
 -- Instances for converting to/from map keys
---------------------------------------------
-class ToJSONKey a where
-    toJSONKey :: ToJSONKeyFunction a
-    default toJSONKey :: ToJSON a => ToJSONKeyFunction a
-    toJSONKey = ToJSONKeyValue (toJSON, toEncoding)
-    toJSONKeyList :: ToJSONKeyFunction [a]
-    default toJSONKeyList :: ToJSON a => ToJSONKeyFunction [a]
-    toJSONKeyList = ToJSONKeyValue (toJSON, toEncoding)
+-------------------------------------------------------------------------------
 
-class FromJSONKey a where
-    fromJSONKey :: FromJSONKeyFunction a
-    default fromJSONKey :: FromJSON a => FromJSONKeyFunction a
-    fromJSONKey = FromJSONKeyValue parseJSON
-    fromJSONKeyList :: FromJSONKeyFunction [a]
-    default fromJSONKeyList :: FromJSON a => FromJSONKeyFunction [a]
-    fromJSONKeyList = FromJSONKeyValue parseJSON
+
 
 instance ToJSONKey Text where
     toJSONKey = ToJSONKeyText (id,toEncoding)
@@ -1130,10 +1261,7 @@ instance ToJSONKey Text where
 instance FromJSONKey Text where
     fromJSONKey = fromJSONKeyCoerce
 
--- | TODO: where ToJSONKey instance
-instance FromJSONKey b => FromJSONKey (Tagged a b) where
-    fromJSONKey = coerceFromJSONKeyFunction (fromJSONKey :: FromJSONKeyFunction b)
-    fromJSONKeyList = (fmap . fmap) Tagged fromJSONKeyList
+
 
 instance ToJSONKey Bool where
     toJSONKey = ToJSONKeyText
@@ -1187,7 +1315,9 @@ instance (ToJSONKey a, ToJSON a) => ToJSONKey (Identity a) where
 instance (FromJSONKey a, FromJSON a) => FromJSONKey (Identity a) where
     fromJSONKey = mapFromJSONKeyFunction Identity fromJSONKey
 
-
+-------------------------------------------------------------------------------
+-- Functions
+-------------------------------------------------------------------------------
 
 -- | @withObject expected f value@ applies @f@ to the 'Object' when @value@ is an @Object@
 --   and fails using @'typeMismatch' expected@ otherwise.
@@ -1310,34 +1440,3 @@ obj .:! key = case H.lookup key obj of
 (.!=) :: Parser (Maybe a) -> a -> Parser a
 pmval .!= val = fromMaybe val <$> pmval
 {-# INLINE (.!=) #-}
-
-realFloatToJSON :: RealFloat a => a -> Value
-realFloatToJSON d
-    | isNaN d || isInfinite d = Null
-    | otherwise = Number $ Scientific.fromFloatDigits d
-{-# INLINE realFloatToJSON #-}
-
-realFloatToEncoding :: RealFloat a => a -> Encoding
-realFloatToEncoding d
-    | isNaN d || isInfinite d = Encoding E.null_
-    | otherwise               = toEncoding (Scientific.fromFloatDigits d)
-{-# INLINE realFloatToEncoding #-}
-
-scientificToNumber :: Scientific -> Number
-scientificToNumber s
-    | e < 0     = D $ Scientific.toRealFloat s
-    | otherwise = I $ c * 10 ^ e
-  where
-    e = Scientific.base10Exponent s
-    c = Scientific.coefficient s
-{-# INLINE scientificToNumber #-}
-
-parseRealFloat :: RealFloat a => String -> Value -> Parser a
-parseRealFloat _        (Number s) = pure $ Scientific.toRealFloat s
-parseRealFloat _        Null       = pure (0/0)
-parseRealFloat expected v          = typeMismatch expected v
-{-# INLINE parseRealFloat #-}
-
-parseIntegral :: Integral a => String -> Value -> Parser a
-parseIntegral expected = withScientific expected $ pure . truncate
-{-# INLINE parseIntegral #-}
