@@ -1,16 +1,13 @@
 {-# LANGUAGE CPP, BangPatterns, DeriveDataTypeable, FlexibleContexts,
     FlexibleInstances, GeneralizedNewtypeDeriving,
     OverloadedStrings, UndecidableInstances, ScopedTypeVariables,
-    ViewPatterns #-}
+    ViewPatterns, InstanceSigs #-}
 {-# LANGUAGE DefaultSignatures #-}
 
 -- Needed for Tagged, Const and Proxy instances
 #if __GLASGOW_HASKELL__ >= 706
 {-# LANGUAGE PolyKinds #-}
 #endif
-
-#define NEEDS_INCOHERENT
-#include "overlapping-compat.h"
 
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 
@@ -35,6 +32,16 @@ module Data.Aeson.Types.Instances
       FromJSON(..)
     , ToJSON(..)
     , KeyValue(..)
+    -- ** Liftings to unary and binary type constructors
+    , FromJSON1(..)
+    , parseJSON1
+    , FromJSON2(..)
+    , parseJSON2
+    , ToJSON1(..)
+    , toJSON1
+    , toEncoding1
+    , ToJSON2(..)
+    , toJSON2
     -- ** Keys for maps
     , ToJSONKey(..)
     , ToJSONKeyFunction(..)
@@ -73,8 +80,10 @@ module Data.Aeson.Types.Instances
     , typeMismatch
     ) where
 
+import Data.Aeson.Types.Instances.Tuple (tuple, (>*<))
+
 import Control.Applicative (Const(..))
-import Data.Aeson.Encode.Functions (brackets, builder, encode, foldable, list, list')
+import Data.Aeson.Encode.Functions (brackets, builder, builder', encode, foldable, list, list')
 import Data.Aeson.Functions (mapHashKeyVal, mapKey, mapKeyVal)
 import Data.Aeson.Types.Class
 import Data.Aeson.Types.Internal
@@ -104,6 +113,7 @@ import Text.ParserCombinators.ReadP (readP_to_S)
 import Foreign.Storable (Storable)
 import Numeric.Natural (Natural)
 import Prelude hiding (foldr)
+import qualified Prelude
 import qualified Data.Aeson.Encode.Builder as E
 import qualified Data.Aeson.Parser.Time as Time
 import qualified Data.ByteString.Builder as B
@@ -125,10 +135,10 @@ import qualified Data.Text.Lazy.Builder.Int as LTBI
 import qualified Data.Tree as Tree
 import qualified Data.Vector as V
 import qualified Data.Vector.Generic as VG
-import qualified Data.Vector.Mutable as VM (unsafeNew, unsafeWrite)
 import qualified Data.Vector.Primitive as VP
 import qualified Data.Vector.Storable as VS
 import qualified Data.Vector.Unboxed as VU
+import qualified Data.Vector.Mutable as VM
 
 import Unsafe.Coerce (unsafeCoerce)
 
@@ -146,70 +156,137 @@ import System.Locale (defaultTimeLocale)
 #endif
 
 parseIndexedJSON :: FromJSON a => Int -> Value -> Parser a
-parseIndexedJSON idx value = parseJSON value <?> Index idx
+parseIndexedJSON = parseIndexedJSON' parseJSON
+
+parseIndexedJSON' :: (Value -> Parser a) -> Int -> Value -> Parser a
+parseIndexedJSON' p idx value = p value <?> Index idx
+
+instance ToJSON1 Identity where
+    liftToJSON to _ (Identity a) = to a
+    {-# INLINE liftToJSON #-}
+
+    liftToEncoding to _ (Identity a) = to a
+    {-# INLINE liftToEncoding #-}
 
 parseIndexedJSONPair :: FromJSON b => (Value -> Parser a) -> Int -> Value -> Parser (a, b)
-parseIndexedJSONPair keyParser idx value = p value <?> Index idx
+parseIndexedJSONPair keyParser = parseIndexedJSONPair' keyParser parseJSON
+{-# INLINE parseIndexedJSONPair #-}
+
+parseIndexedJSONPair' :: (Value -> Parser a) -> (Value -> Parser b) -> Int -> Value -> Parser (a, b)
+parseIndexedJSONPair' keyParser valParser idx value = p value <?> Index idx
   where
     p = withArray "(k,v)" $ \ab ->
         let n = V.length ab
         in if n == 2
              then (,) <$> parseJSONElemAtIndex' keyParser 0 ab
-                      <*> parseJSONElemAtIndex 1 ab
+                      <*> parseJSONElemAtIndex' valParser 1 ab
              else fail $ "cannot unpack array of length " ++
                          show n ++ " into a pair"
+{-# INLINE parseIndexedJSONPair' #-}
+
 
 toJSONPair :: ToJSON b => (a -> Value) -> (a, b) -> Value
-toJSONPair keySerialiser (a, b) = Array $ V.create $ do
+toJSONPair f = toJSONPair' f toJSON
+{-# INLINE toJSONPair #-}
+
+toJSONPair' :: (a -> Value) -> (b -> Value) -> (a, b) -> Value
+toJSONPair' keySerialiser valSerializer (a, b) = Array $ V.create $ do
      mv <- VM.unsafeNew 2
      VM.unsafeWrite mv 0 (keySerialiser a)
-     VM.unsafeWrite mv 1 (toJSON b)
+     VM.unsafeWrite mv 1 (valSerializer b)
      return mv
+{-# INLINE toJSONPair' #-}
+
 
 instance (ToJSON a) => ToJSON (Identity a) where
-    toJSON (Identity a) = toJSON a
+    toJSON = toJSON1 
     {-# INLINE toJSON #-}
 
-    toEncoding (Identity a) = toEncoding a
+    toEncoding = toEncoding1
     {-# INLINE toEncoding #-}
+
+instance FromJSON1 Identity where
+    liftParseJSON p _ a = Identity <$> p a
+    {-# INLINE liftParseJSON #-}
 
 instance (FromJSON a) => FromJSON (Identity a) where
-    parseJSON a      = Identity <$> parseJSON a
+    parseJSON = parseJSON1 
     {-# INLINE parseJSON #-}
+
+
+instance ToJSON1 Maybe where
+    liftToJSON to _ (Just a) = to a
+    liftToJSON _  _ Nothing  = Null
+    {-# INLINE liftToJSON #-}
+
+    liftToEncoding to _ (Just a) = to a
+    liftToEncoding _  _ Nothing  = Encoding E.null_
+    {-# INLINE liftToEncoding #-}
 
 instance (ToJSON a) => ToJSON (Maybe a) where
-    toJSON (Just a) = toJSON a
-    toJSON Nothing  = Null
+    toJSON = toJSON1
     {-# INLINE toJSON #-}
 
-    toEncoding (Just a) = toEncoding a
-    toEncoding Nothing  = Encoding E.null_
+    toEncoding = toEncoding1
     {-# INLINE toEncoding #-}
+
+instance FromJSON1 Maybe where
+    liftParseJSON _ _ Null = pure Nothing
+    liftParseJSON p _ a    = Just <$> p a
+    {-# INLINE liftParseJSON #-}
 
 instance (FromJSON a) => FromJSON (Maybe a) where
-    parseJSON Null   = pure Nothing
-    parseJSON a      = Just <$> parseJSON a
+    parseJSON = parseJSON1
     {-# INLINE parseJSON #-}
 
+
+instance ToJSON2 Either where
+    liftToJSON2  toA _ _toB _ (Left a)  = Object $ H.singleton left  (toA a)
+    liftToJSON2 _toA _  toB _ (Right b) = Object $ H.singleton right (toB b)
+    {-# INLINE liftToJSON2 #-}
+
+    liftToEncoding2  toA _ _toB _ (Left a) =
+        Encoding (B.shortByteString "{\"Left\":")
+        <> toA a
+        <> Encoding (B.char7 '}')
+
+    liftToEncoding2 _toA _ toB _ (Right b) =
+        Encoding (B.shortByteString "{\"Right\":")
+        <> toB b
+        <> Encoding (B.char7 '}')
+    {-# INLINE liftToEncoding2 #-}
+
+instance (ToJSON a) => ToJSON1 (Either a) where
+    liftToJSON = liftToJSON2 toJSON toJSONList
+    {-# INLINE liftToJSON #-}
+
+    liftToEncoding = liftToEncoding2 toEncoding toEncodingList
+    {-# INLINE liftToEncoding #-}
+
 instance (ToJSON a, ToJSON b) => ToJSON (Either a b) where
-    toJSON (Left a)  = object [left  .= a]
-    toJSON (Right b) = object [right .= b]
+    toJSON = toJSON2
     {-# INLINE toJSON #-}
 
-    toEncoding (Left a) = Encoding $
-      B.shortByteString "{\"Left\":" <> builder a <> B.char7 '}'
-    toEncoding (Right a) = Encoding $
-      B.shortByteString "{\"Right\":" <> builder a <> B.char7 '}'
+    toEncoding = toEncoding2
     {-# INLINE toEncoding #-}
 
-instance (FromJSON a, FromJSON b) => FromJSON (Either a b) where
-    parseJSON (Object (H.toList -> [(key, value)]))
-        | key == left  = Left  <$> parseJSON value <?> Key left
-        | key == right = Right <$> parseJSON value <?> Key right
-    parseJSON _        = fail $
+instance FromJSON2 Either where
+    liftParseJSON2 pA _ pB _ (Object (H.toList -> [(key, value)]))
+        | key == left  = Left  <$> pA value <?> Key left
+        | key == right = Right <$> pB value <?> Key right
+
+    liftParseJSON2 _ _ _ _ _ = fail $
         "expected an object with a single property " ++
         "where the property key should be either " ++
         "\"Left\" or \"Right\""
+    {-# INLINE liftParseJSON2 #-}
+
+instance (FromJSON a) => FromJSON1 (Either a) where
+    liftParseJSON = liftParseJSON2 parseJSON parseJSONList
+    {-# INLINE liftParseJSON #-}
+
+instance (FromJSON a, FromJSON b) => FromJSON (Either a b) where
+    parseJSON = parseJSON2
     {-# INLINE parseJSON #-}
 
 left, right :: Text
@@ -259,23 +336,18 @@ instance FromJSON () where
                     else fail "Expected an empty array"
     {-# INLINE parseJSON #-}
 
-instance INCOHERENT_ ToJSON [Char] where
-    toJSON = String . T.pack
-    {-# INLINE toJSON #-}
-
-    toEncoding = Encoding . E.string
-    {-# INLINE toEncoding #-}
-
-instance INCOHERENT_ FromJSON [Char] where
-    parseJSON = withText "String" $ pure . T.unpack
-    {-# INLINE parseJSON #-}
-
 instance ToJSON Char where
     toJSON = String . T.singleton
     {-# INLINE toJSON #-}
 
+    toJSONList = String . T.pack
+    {-# INLINE toJSONList #-}
+
     toEncoding = Encoding . E.string . (:[])
     {-# INLINE toEncoding #-}
+
+    toEncodingList = Encoding . E.string
+    {-# INLINE toEncodingList #-}
 
 instance FromJSON Char where
     parseJSON = withText "Char" $ \t ->
@@ -283,6 +355,9 @@ instance FromJSON Char where
                     then pure $ T.head t
                     else fail "Expected a string of length 1"
     {-# INLINE parseJSON #-}
+
+    parseJSONList = withText "String" $ pure . T.unpack
+    {-# INLINE parseJSONList #-}
 
 instance ToJSON Scientific where
     toJSON = Number
@@ -527,44 +602,89 @@ instance FromJSON LT.Text where
     parseJSON = withText "Lazy Text" $ pure . LT.fromStrict
     {-# INLINE parseJSON #-}
 
+instance ToJSON1 NonEmpty where
+    liftToJSON to _ = listValue to . toList
+    {-# INLINE liftToJSON #-}
+
+    liftToEncoding to _ = foldable to
+    {-# INLINE liftToEncoding #-}
+
 instance (ToJSON a) => ToJSON (NonEmpty a) where
-    toJSON = toJSON . toList
+    toJSON = toJSON1
     {-# INLINE toJSON #-}
 
-    toEncoding = toEncoding . toList
+    toEncoding = toEncoding1
     {-# INLINE toEncoding #-}
 
-instance (FromJSON a) => FromJSON (NonEmpty a) where
-    parseJSON = withArray "NonEmpty a" $
-        (>>= ne) . Tr.sequence . zipWith parseIndexedJSON [0..] . V.toList
+instance FromJSON1 NonEmpty where
+    liftParseJSON p _ = withArray "NonEmpty a" $
+        (>>= ne) . Tr.sequence . zipWith (parseIndexedJSON' p) [0..] . V.toList
       where
         ne []     = fail "Expected a NonEmpty but got an empty list"
         ne (x:xs) = pure (x :| xs)
+    {-# INLINE liftParseJSON #-}
 
-instance OVERLAPPABLE_ (ToJSON a) => ToJSON [a] where
-    toJSON = Array . V.fromList . map toJSON
+instance (FromJSON a) => FromJSON (NonEmpty a) where
+    parseJSON = parseJSON1
+
+instance ToJSON1 [] where
+    liftToJSON _ to' = to'
+    {-# INLINE liftToJSON #-}
+
+    liftToEncoding _ to' = to'
+    {-# INLINE liftToEncoding #-}
+
+instance (ToJSON a) => ToJSON [a] where
+    toJSON = toJSONList
     {-# INLINE toJSON #-}
 
-    toEncoding xs = list xs
+    toEncoding = toEncodingList
     {-# INLINE toEncoding #-}
 
-instance OVERLAPPABLE_ (FromJSON a) => FromJSON [a] where
-    parseJSON = withArray "[a]" $ Tr.sequence .
-                zipWith parseIndexedJSON [0..] . V.toList
+instance (FromJSON a) => FromJSON [a] where
+    parseJSON = parseJSONList
     {-# INLINE parseJSON #-}
+
+instance FromJSON1 [] where
+    liftParseJSON _ p' = p'
+    {-# INLINE liftParseJSON #-}
+
+instance ToJSON1 Seq.Seq where
+    liftToJSON to _ = listValue to . toList
+    {-# INLINE liftToJSON #-}
+
+    liftToEncoding to _ = foldable to
+    {-# INLINE liftToEncoding #-}
 
 instance (ToJSON a) => ToJSON (Seq.Seq a) where
-    toJSON = toJSON . toList
+    toJSON = toJSON1
     {-# INLINE toJSON #-}
 
-    toEncoding = foldable
+    toEncoding = toEncoding1
     {-# INLINE toEncoding #-}
 
-instance (FromJSON a) => FromJSON (Seq.Seq a) where
-    parseJSON = withArray "Seq a" $
+instance FromJSON1 Seq.Seq where
+    liftParseJSON p _ = withArray "Seq a" $
       fmap Seq.fromList .
-      Tr.sequence . zipWith parseIndexedJSON [0..] . V.toList
+      Tr.sequence . zipWith (parseIndexedJSON' p) [0..] . V.toList
+    {-# INLINE liftParseJSON #-}
+
+instance (FromJSON a) => FromJSON (Seq.Seq a) where
+    parseJSON = parseJSON1
     {-# INLINE parseJSON #-}
+
+instance ToJSON1 Vector where
+    liftToJSON to _ = Array . V.map to
+    {-# INLINE liftToJSON #-}
+
+    liftToEncoding to _ xs
+        | V.null xs = E.emptyArray_
+        | otherwise = Encoding $
+            B.char7 '[' <> fromEncoding (to (V.unsafeHead xs)) <>
+            V.foldr go (B.char7 ']') (V.unsafeTail xs)
+          where
+            go v b = B.char7 ',' <> fromEncoding (to v) <> b
+    {-# INLINE liftToEncoding #-}
 
 instance (ToJSON a) => ToJSON (Vector a) where
     toJSON = Array . V.map toJSON
@@ -582,9 +702,13 @@ encodeVector xs
     where go v b = B.char7 ',' <> builder v <> b
 {-# INLINE encodeVector #-}
 
+instance FromJSON1 Vector where
+    liftParseJSON p _ = withArray "Vector a" $
+        V.mapM (uncurry $ parseIndexedJSON' p) . V.indexed
+    {-# INLINE liftParseJSON #-}
+
 instance (FromJSON a) => FromJSON (Vector a) where
-    parseJSON = withArray "Vector a" $ V.mapM (uncurry parseIndexedJSON) .
-                V.indexed
+    parseJSON = parseJSON1
     {-# INLINE parseJSON #-}
 
 vectorToJSON :: (VG.Vector v a, ToJSON a) => v a -> Value
@@ -642,7 +766,7 @@ instance (ToJSON a) => ToJSON (HashSet.HashSet a) where
     toJSON = toJSON . HashSet.toList
     {-# INLINE toJSON #-}
 
-    toEncoding = foldable
+    toEncoding = foldable toEncoding
     {-# INLINE toEncoding #-}
 
 instance (Eq a, Hashable a, FromJSON a) => FromJSON (HashSet.HashSet a) where
@@ -688,26 +812,72 @@ encodeMap :: (ToJSON v)
           -> (m -> Maybe ((k,v), m))
           -> ((k -> v -> B.Builder -> B.Builder) -> B.Builder -> m -> B.Builder)
           -> m -> Encoding
-encodeMap encodeKey minViewWithKey foldrWithKey xs =
+encodeMap encodeKey = encodeMap' encodeKey toEncoding
+{-# INLINE encodeMap #-}
+
+encodeMap' :: (k -> Encoding)
+           -> (v -> Encoding)
+           -> (m -> Maybe ((k,v), m))
+           -> ((k -> v -> B.Builder -> B.Builder) -> B.Builder -> m -> B.Builder)
+           -> m -> Encoding
+encodeMap' encodeKey encodeVal minViewWithKey foldrWithKey xs =
     case minViewWithKey xs of
       Nothing         -> E.emptyObject_
       Just ((k,v),ys) -> Encoding $
-                         B.char7 '{' <> encodeKV encodeKey k v <>
+                         B.char7 '{' <> encodeKV' encodeKey encodeVal k v <>
                          foldrWithKey go (B.char7 '}') ys
-  where go k v b = B.char7 ',' <> encodeKV encodeKey k v <> b
-{-# INLINE encodeMap #-}
+  where go k v b = B.char7 ',' <> encodeKV' encodeKey encodeVal k v <> b
+{-# INLINE encodeMap' #-}
+
+encodeWithKey' :: (k -> Encoding)
+               -> (v -> Encoding)
+               -> ((k -> v -> Series -> Series) -> Series -> m -> Series)
+               -> m -> Encoding
+encodeWithKey' encodeKey encodeVal foldrWithKey = brackets '{' '}' . foldrWithKey go mempty
+  where go k v c = Value (Encoding $ encodeKV' encodeKey encodeVal k v) <> c
+{-# INLINE encodeWithKey' #-}
 
 encodeWithKey :: (ToJSON v)
               => (k -> Encoding)
               -> ((k -> v -> Series -> Series) -> Series -> m -> Series)
               -> m -> Encoding
-encodeWithKey encodeKey foldrWithKey = brackets '{' '}' . foldrWithKey go mempty
-  where go k v c = Value (Encoding $ encodeKV encodeKey k v) <> c
+encodeWithKey encodeKey = encodeWithKey' encodeKey toEncoding
 {-# INLINE encodeWithKey #-}
+
+encodeKV' :: (k -> Encoding) -> (v -> Encoding) -> k -> v -> B.Builder
+encodeKV' encodeKey encodeVal k v = fromEncoding (encodeKey k) <> B.char7 ':' <> builder' encodeVal v
+{-# INLINE encodeKV' #-}
 
 encodeKV :: (ToJSON v) => (k -> Encoding) -> k -> v -> B.Builder
 encodeKV encodeKey k v = fromEncoding (encodeKey k) <> B.char7 ':' <> builder v
 {-# INLINE encodeKV #-}
+
+instance ToJSONKey k => ToJSON1 (M.Map k) where
+    liftToJSON g _ = case toJSONKey of
+        ToJSONKeyText (f,_) -> Object . mapHashKeyVal f g
+        ToJSONKeyValue (f,_) -> Array . V.fromList . map (toJSONPair' f g) . M.toList
+    {-# INLINE liftToJSON #-}
+
+    liftToEncoding :: forall a. (a -> Encoding) -> ([a] -> Encoding) -> M.Map k a -> Encoding
+    liftToEncoding g _ = case toJSONKey of
+        ToJSONKeyText (_,f) -> encodeMap' f g M.minViewWithKey M.foldrWithKey
+        ToJSONKeyValue (_,f) -> list' (pairEncoding f) . M.toList
+      where pairEncoding :: (k -> Encoding) -> (k, a) -> Encoding
+            pairEncoding f (a, b) = tuple $ fromEncoding (f a) >*< builder' g b
+    {-# INLINE liftToEncoding #-}
+
+instance (FromJSONKey k, Ord k) => FromJSON1 (M.Map k) where
+    liftParseJSON p _ = case fromJSONKey of
+        FromJSONKeyCoerce _-> withObject "Map k v" $
+            fmap (H.foldrWithKey (M.insert . unsafeCoerce) M.empty) . H.traverseWithKey (\k v -> p v <?> Key k)
+        FromJSONKeyText f -> withObject "Map k v" $
+            fmap (H.foldrWithKey (M.insert . f) M.empty) . H.traverseWithKey (\k v -> p v <?> Key k)
+        FromJSONKeyTextParser f -> withObject "Map k v" $
+            H.foldrWithKey (\k v m -> M.insert <$> f k <*> (p v <?> Key k) <*> m) (pure M.empty)
+        FromJSONKeyValue f -> withArray "Map k v" $ \arr ->
+            M.fromList <$> (Tr.sequence .
+                zipWith (parseIndexedJSONPair' f p) [0..] . V.toList $ arr)
+    {-# INLINE liftParseJSON #-}
 
 instance (ToJSON v, ToJSONKey k) => ToJSON (M.Map k v) where
     toJSON = case toJSONKey of
@@ -734,6 +904,20 @@ instance (FromJSON v, FromJSONKey k, Ord k) => FromJSON (M.Map k v) where
             M.fromList <$> (Tr.sequence .
                 zipWith (parseIndexedJSONPair f) [0..] . V.toList $ arr)
     {-# INLINE parseJSON #-}
+
+instance ToJSONKey k => ToJSON1 (H.HashMap k) where
+    liftToJSON g _ = case toJSONKey of
+        ToJSONKeyText (f,_) -> Object . mapKeyVal f g
+        ToJSONKeyValue (f,_) -> Array . V.fromList . map (toJSONPair' f g) . H.toList
+    {-# INLINE liftToJSON #-}
+
+    liftToEncoding :: forall a. (a -> Encoding) -> ([a] -> Encoding) -> H.HashMap k a -> Encoding
+    liftToEncoding g _ = case toJSONKey of
+        ToJSONKeyText (_,f) -> encodeWithKey' f g H.foldrWithKey
+        ToJSONKeyValue (_,f) -> list' (pairEncoding f) . H.toList
+      where pairEncoding :: (k -> Encoding) -> (k, a) -> Encoding
+            pairEncoding f (a, b) = tuple $ fromEncoding (f a) >*< builder' g b
+    {-# INLINE liftToEncoding #-}
 
 instance (ToJSON v, ToJSONKey k) => ToJSON (H.HashMap k v) where
     toJSON = case toJSONKey of
@@ -870,694 +1054,74 @@ parseJSONElemAtIndex = parseJSONElemAtIndex' parseJSON
 parseJSONElemAtIndex' :: (Value -> Parser a) -> Int -> Vector Value -> Parser a
 parseJSONElemAtIndex' p idx ary = p (V.unsafeIndex ary idx) <?> Index idx
 
-tuple :: B.Builder -> Encoding
-tuple b = Encoding (B.char7 '[' <> b <> B.char7 ']')
-{-# INLINE tuple #-}
+instance ToJSON1 Dual where
+    liftToJSON to _ = to . getDual
+    {-# INLINE liftToJSON #-}
 
-(>*<) :: B.Builder -> B.Builder -> B.Builder
-a >*< b = a <> B.char7 ',' <> b
-{-# INLINE (>*<) #-}
-infixr 6 >*<
-
-instance (ToJSON a, ToJSON b) => ToJSON (a,b) where
-    toJSON (a,b) = Array $ V.create $ do
-                     mv <- VM.unsafeNew 2
-                     VM.unsafeWrite mv 0 (toJSON a)
-                     VM.unsafeWrite mv 1 (toJSON b)
-                     return mv
-    {-# INLINE toJSON #-}
-
-    toEncoding (a,b) = tuple $
-      builder a >*< builder b
-    {-# INLINE toEncoding #-}
-
-instance (FromJSON a, FromJSON b) => FromJSON (a,b) where
-    parseJSON = withArray "(a,b)" $ \ab ->
-        let n = V.length ab
-        in if n == 2
-             then (,) <$> parseJSONElemAtIndex 0 ab
-                      <*> parseJSONElemAtIndex 1 ab
-             else fail $ "cannot unpack array of length " ++
-                         show n ++ " into a pair"
-    {-# INLINE parseJSON #-}
-
-instance (ToJSON a, ToJSON b, ToJSON c) => ToJSON (a,b,c) where
-    toJSON (a,b,c) = Array $ V.create $ do
-                       mv <- VM.unsafeNew 3
-                       VM.unsafeWrite mv 0 (toJSON a)
-                       VM.unsafeWrite mv 1 (toJSON b)
-                       VM.unsafeWrite mv 2 (toJSON c)
-                       return mv
-    {-# INLINE toJSON #-}
-
-    toEncoding (a,b,c) = tuple $
-      builder a >*<
-      builder b >*<
-      builder c
-    {-# INLINE toEncoding #-}
-
-instance (FromJSON a, FromJSON b, FromJSON c) => FromJSON (a,b,c) where
-    parseJSON = withArray "(a,b,c)" $ \abc ->
-        let n = V.length abc
-        in if n == 3
-             then (,,) <$> parseJSONElemAtIndex 0 abc
-                       <*> parseJSONElemAtIndex 1 abc
-                       <*> parseJSONElemAtIndex 2 abc
-             else fail $ "cannot unpack array of length " ++
-                          show n ++ " into a 3-tuple"
-    {-# INLINE parseJSON #-}
-
-instance (ToJSON a, ToJSON b, ToJSON c, ToJSON d) => ToJSON (a,b,c,d) where
-    toJSON (a,b,c,d) = Array $ V.create $ do
-                         mv <- VM.unsafeNew 4
-                         VM.unsafeWrite mv 0 (toJSON a)
-                         VM.unsafeWrite mv 1 (toJSON b)
-                         VM.unsafeWrite mv 2 (toJSON c)
-                         VM.unsafeWrite mv 3 (toJSON d)
-                         return mv
-    {-# INLINE toJSON #-}
-
-    toEncoding (a,b,c,d) = tuple $
-      builder a >*<
-      builder b >*<
-      builder c >*<
-      builder d
-    {-# INLINE toEncoding #-}
-
-instance (FromJSON a, FromJSON b, FromJSON c, FromJSON d) =>
-         FromJSON (a,b,c,d) where
-    parseJSON = withArray "(a,b,c,d)" $ \abcd ->
-        let n = V.length abcd
-        in if n == 4
-             then (,,,) <$> parseJSONElemAtIndex 0 abcd
-                        <*> parseJSONElemAtIndex 1 abcd
-                        <*> parseJSONElemAtIndex 2 abcd
-                        <*> parseJSONElemAtIndex 3 abcd
-             else fail $ "cannot unpack array of length " ++
-                         show n ++ " into a 4-tuple"
-    {-# INLINE parseJSON #-}
-
-instance (ToJSON a, ToJSON b, ToJSON c, ToJSON d, ToJSON e) =>
-         ToJSON (a,b,c,d,e) where
-    toJSON (a,b,c,d,e) = Array $ V.create $ do
-                           mv <- VM.unsafeNew 5
-                           VM.unsafeWrite mv 0 (toJSON a)
-                           VM.unsafeWrite mv 1 (toJSON b)
-                           VM.unsafeWrite mv 2 (toJSON c)
-                           VM.unsafeWrite mv 3 (toJSON d)
-                           VM.unsafeWrite mv 4 (toJSON e)
-                           return mv
-    {-# INLINE toJSON #-}
-
-    toEncoding (a,b,c,d,e) = tuple $
-      builder a >*<
-      builder b >*<
-      builder c >*<
-      builder d >*<
-      builder e
-    {-# INLINE toEncoding #-}
-
-instance (FromJSON a, FromJSON b, FromJSON c, FromJSON d, FromJSON e) =>
-         FromJSON (a,b,c,d,e) where
-    parseJSON = withArray "(a,b,c,d,e)" $ \abcde ->
-        let n = V.length abcde
-        in if n == 5
-             then (,,,,) <$> parseJSONElemAtIndex 0 abcde
-                         <*> parseJSONElemAtIndex 1 abcde
-                         <*> parseJSONElemAtIndex 2 abcde
-                         <*> parseJSONElemAtIndex 3 abcde
-                         <*> parseJSONElemAtIndex 4 abcde
-             else fail $ "cannot unpack array of length " ++
-                         show n ++ " into a 5-tuple"
-    {-# INLINE parseJSON #-}
-
-instance (ToJSON a, ToJSON b, ToJSON c, ToJSON d, ToJSON e, ToJSON f) =>
-         ToJSON (a,b,c,d,e,f) where
-    toJSON (a,b,c,d,e,f) = Array $ V.create $ do
-                             mv <- VM.unsafeNew 6
-                             VM.unsafeWrite mv 0 (toJSON a)
-                             VM.unsafeWrite mv 1 (toJSON b)
-                             VM.unsafeWrite mv 2 (toJSON c)
-                             VM.unsafeWrite mv 3 (toJSON d)
-                             VM.unsafeWrite mv 4 (toJSON e)
-                             VM.unsafeWrite mv 5 (toJSON f)
-                             return mv
-    {-# INLINE toJSON #-}
-
-    toEncoding (a,b,c,d,e,f) = tuple $
-      builder a >*<
-      builder b >*<
-      builder c >*<
-      builder d >*<
-      builder e >*<
-      builder f
-    {-# INLINE toEncoding #-}
-
-instance (FromJSON a, FromJSON b, FromJSON c, FromJSON d, FromJSON e,
-          FromJSON f) => FromJSON (a,b,c,d,e,f) where
-    parseJSON = withArray "(a,b,c,d,e,f)" $ \abcdef ->
-        let n = V.length abcdef
-        in if n == 6
-             then (,,,,,) <$> parseJSONElemAtIndex 0 abcdef
-                          <*> parseJSONElemAtIndex 1 abcdef
-                          <*> parseJSONElemAtIndex 2 abcdef
-                          <*> parseJSONElemAtIndex 3 abcdef
-                          <*> parseJSONElemAtIndex 4 abcdef
-                          <*> parseJSONElemAtIndex 5 abcdef
-             else fail $ "cannot unpack array of length " ++
-                         show n ++ " into a 6-tuple"
-    {-# INLINE parseJSON #-}
-
-instance (ToJSON a, ToJSON b, ToJSON c, ToJSON d, ToJSON e, ToJSON f,
-          ToJSON g) => ToJSON (a,b,c,d,e,f,g) where
-    toJSON (a,b,c,d,e,f,g) = Array $ V.create $ do
-                               mv <- VM.unsafeNew 7
-                               VM.unsafeWrite mv 0 (toJSON a)
-                               VM.unsafeWrite mv 1 (toJSON b)
-                               VM.unsafeWrite mv 2 (toJSON c)
-                               VM.unsafeWrite mv 3 (toJSON d)
-                               VM.unsafeWrite mv 4 (toJSON e)
-                               VM.unsafeWrite mv 5 (toJSON f)
-                               VM.unsafeWrite mv 6 (toJSON g)
-                               return mv
-    {-# INLINE toJSON #-}
-
-    toEncoding (a,b,c,d,e,f,g) = tuple $
-      builder a >*<
-      builder b >*<
-      builder c >*<
-      builder d >*<
-      builder e >*<
-      builder f >*<
-      builder g
-    {-# INLINE toEncoding #-}
-
-instance (FromJSON a, FromJSON b, FromJSON c, FromJSON d, FromJSON e,
-          FromJSON f, FromJSON g) => FromJSON (a,b,c,d,e,f,g) where
-    parseJSON = withArray "(a,b,c,d,e,f,g)" $ \abcdefg ->
-        let n = V.length abcdefg
-        in if n == 7
-             then (,,,,,,) <$> parseJSONElemAtIndex 0 abcdefg
-                           <*> parseJSONElemAtIndex 1 abcdefg
-                           <*> parseJSONElemAtIndex 2 abcdefg
-                           <*> parseJSONElemAtIndex 3 abcdefg
-                           <*> parseJSONElemAtIndex 4 abcdefg
-                           <*> parseJSONElemAtIndex 5 abcdefg
-                           <*> parseJSONElemAtIndex 6 abcdefg
-             else fail $ "cannot unpack array of length " ++
-                         show n ++ " into a 7-tuple"
-    {-# INLINE parseJSON #-}
-
-instance (ToJSON a, ToJSON b, ToJSON c, ToJSON d, ToJSON e, ToJSON f,
-          ToJSON g, ToJSON h) => ToJSON (a,b,c,d,e,f,g,h) where
-    toJSON (a,b,c,d,e,f,g,h) = Array $ V.create $ do
-      mv <- VM.unsafeNew 8
-      VM.unsafeWrite mv 0 (toJSON a)
-      VM.unsafeWrite mv 1 (toJSON b)
-      VM.unsafeWrite mv 2 (toJSON c)
-      VM.unsafeWrite mv 3 (toJSON d)
-      VM.unsafeWrite mv 4 (toJSON e)
-      VM.unsafeWrite mv 5 (toJSON f)
-      VM.unsafeWrite mv 6 (toJSON g)
-      VM.unsafeWrite mv 7 (toJSON h)
-      return mv
-    {-# INLINE toJSON #-}
-
-    toEncoding (a,b,c,d,e,f,g,h) = tuple $
-      builder a >*<
-      builder b >*<
-      builder c >*<
-      builder d >*<
-      builder e >*<
-      builder f >*<
-      builder g >*<
-      builder h
-    {-# INLINE toEncoding #-}
-
-instance (FromJSON a, FromJSON b, FromJSON c, FromJSON d, FromJSON e,
-          FromJSON f, FromJSON g, FromJSON h) =>
-         FromJSON (a,b,c,d,e,f,g,h) where
-    parseJSON = withArray "(a,b,c,d,e,f,g,h)" $ \ary ->
-        let n = V.length ary
-        in if n /= 8
-           then fail $ "cannot unpack array of length " ++
-                       show n ++ " into an 8-tuple"
-           else (,,,,,,,)
-                <$> parseJSONElemAtIndex 0 ary
-                <*> parseJSONElemAtIndex 1 ary
-                <*> parseJSONElemAtIndex 2 ary
-                <*> parseJSONElemAtIndex 3 ary
-                <*> parseJSONElemAtIndex 4 ary
-                <*> parseJSONElemAtIndex 5 ary
-                <*> parseJSONElemAtIndex 6 ary
-                <*> parseJSONElemAtIndex 7 ary
-    {-# INLINE parseJSON #-}
-
-instance (ToJSON a, ToJSON b, ToJSON c, ToJSON d, ToJSON e, ToJSON f,
-          ToJSON g, ToJSON h, ToJSON i) => ToJSON (a,b,c,d,e,f,g,h,i) where
-    toJSON (a,b,c,d,e,f,g,h,i) = Array $ V.create $ do
-      mv <- VM.unsafeNew 9
-      VM.unsafeWrite mv 0 (toJSON a)
-      VM.unsafeWrite mv 1 (toJSON b)
-      VM.unsafeWrite mv 2 (toJSON c)
-      VM.unsafeWrite mv 3 (toJSON d)
-      VM.unsafeWrite mv 4 (toJSON e)
-      VM.unsafeWrite mv 5 (toJSON f)
-      VM.unsafeWrite mv 6 (toJSON g)
-      VM.unsafeWrite mv 7 (toJSON h)
-      VM.unsafeWrite mv 8 (toJSON i)
-      return mv
-    {-# INLINE toJSON #-}
-
-    toEncoding (a,b,c,d,e,f,g,h,i) = tuple $
-      builder a >*<
-      builder b >*<
-      builder c >*<
-      builder d >*<
-      builder e >*<
-      builder f >*<
-      builder g >*<
-      builder h >*<
-      builder i
-    {-# INLINE toEncoding #-}
-
-instance (FromJSON a, FromJSON b, FromJSON c, FromJSON d, FromJSON e,
-          FromJSON f, FromJSON g, FromJSON h, FromJSON i) =>
-         FromJSON (a,b,c,d,e,f,g,h,i) where
-    parseJSON = withArray "(a,b,c,d,e,f,g,h,i)" $ \ary ->
-        let n = V.length ary
-        in if n /= 9
-           then fail $ "cannot unpack array of length " ++
-                       show n ++ " into a 9-tuple"
-           else (,,,,,,,,)
-                <$> parseJSONElemAtIndex 0 ary
-                <*> parseJSONElemAtIndex 1 ary
-                <*> parseJSONElemAtIndex 2 ary
-                <*> parseJSONElemAtIndex 3 ary
-                <*> parseJSONElemAtIndex 4 ary
-                <*> parseJSONElemAtIndex 5 ary
-                <*> parseJSONElemAtIndex 6 ary
-                <*> parseJSONElemAtIndex 7 ary
-                <*> parseJSONElemAtIndex 8 ary
-    {-# INLINE parseJSON #-}
-
-instance (ToJSON a, ToJSON b, ToJSON c, ToJSON d, ToJSON e, ToJSON f,
-          ToJSON g, ToJSON h, ToJSON i, ToJSON j) =>
-         ToJSON (a,b,c,d,e,f,g,h,i,j) where
-    toJSON (a,b,c,d,e,f,g,h,i,j) = Array $ V.create $ do
-      mv <- VM.unsafeNew 10
-      VM.unsafeWrite mv 0 (toJSON a)
-      VM.unsafeWrite mv 1 (toJSON b)
-      VM.unsafeWrite mv 2 (toJSON c)
-      VM.unsafeWrite mv 3 (toJSON d)
-      VM.unsafeWrite mv 4 (toJSON e)
-      VM.unsafeWrite mv 5 (toJSON f)
-      VM.unsafeWrite mv 6 (toJSON g)
-      VM.unsafeWrite mv 7 (toJSON h)
-      VM.unsafeWrite mv 8 (toJSON i)
-      VM.unsafeWrite mv 9 (toJSON j)
-      return mv
-    {-# INLINE toJSON #-}
-
-    toEncoding (a,b,c,d,e,f,g,h,i,j) = tuple $
-      builder a >*<
-      builder b >*<
-      builder c >*<
-      builder d >*<
-      builder e >*<
-      builder f >*<
-      builder g >*<
-      builder h >*<
-      builder i >*<
-      builder j
-    {-# INLINE toEncoding #-}
-
-instance (FromJSON a, FromJSON b, FromJSON c, FromJSON d, FromJSON e,
-          FromJSON f, FromJSON g, FromJSON h, FromJSON i, FromJSON j) =>
-         FromJSON (a,b,c,d,e,f,g,h,i,j) where
-    parseJSON = withArray "(a,b,c,d,e,f,g,h,i,j)" $ \ary ->
-        let n = V.length ary
-        in if n /= 10
-           then fail $ "cannot unpack array of length " ++
-                       show n ++ " into a 10-tuple"
-           else (,,,,,,,,,)
-                <$> parseJSONElemAtIndex 0 ary
-                <*> parseJSONElemAtIndex 1 ary
-                <*> parseJSONElemAtIndex 2 ary
-                <*> parseJSONElemAtIndex 3 ary
-                <*> parseJSONElemAtIndex 4 ary
-                <*> parseJSONElemAtIndex 5 ary
-                <*> parseJSONElemAtIndex 6 ary
-                <*> parseJSONElemAtIndex 7 ary
-                <*> parseJSONElemAtIndex 8 ary
-                <*> parseJSONElemAtIndex 9 ary
-    {-# INLINE parseJSON #-}
-
-instance (ToJSON a, ToJSON b, ToJSON c, ToJSON d, ToJSON e, ToJSON f,
-          ToJSON g, ToJSON h, ToJSON i, ToJSON j, ToJSON k) =>
-         ToJSON (a,b,c,d,e,f,g,h,i,j,k) where
-    toJSON (a,b,c,d,e,f,g,h,i,j,k) = Array $ V.create $ do
-      mv <- VM.unsafeNew 11
-      VM.unsafeWrite mv 0 (toJSON a)
-      VM.unsafeWrite mv 1 (toJSON b)
-      VM.unsafeWrite mv 2 (toJSON c)
-      VM.unsafeWrite mv 3 (toJSON d)
-      VM.unsafeWrite mv 4 (toJSON e)
-      VM.unsafeWrite mv 5 (toJSON f)
-      VM.unsafeWrite mv 6 (toJSON g)
-      VM.unsafeWrite mv 7 (toJSON h)
-      VM.unsafeWrite mv 8 (toJSON i)
-      VM.unsafeWrite mv 9 (toJSON j)
-      VM.unsafeWrite mv 10 (toJSON k)
-      return mv
-    {-# INLINE toJSON #-}
-
-    toEncoding (a,b,c,d,e,f,g,h,i,j,k) = tuple $
-      builder a >*<
-      builder b >*<
-      builder c >*<
-      builder d >*<
-      builder e >*<
-      builder f >*<
-      builder g >*<
-      builder h >*<
-      builder i >*<
-      builder j >*<
-      builder k
-    {-# INLINE toEncoding #-}
-
-instance (FromJSON a, FromJSON b, FromJSON c, FromJSON d, FromJSON e,
-          FromJSON f, FromJSON g, FromJSON h, FromJSON i, FromJSON j,
-          FromJSON k) =>
-         FromJSON (a,b,c,d,e,f,g,h,i,j,k) where
-    parseJSON = withArray "(a,b,c,d,e,f,g,h,i,j,k)" $ \ary ->
-        let n = V.length ary
-        in if n /= 11
-           then fail $ "cannot unpack array of length " ++
-                       show n ++ " into an 11-tuple"
-           else (,,,,,,,,,,)
-                <$> parseJSONElemAtIndex 0 ary
-                <*> parseJSONElemAtIndex 1 ary
-                <*> parseJSONElemAtIndex 2 ary
-                <*> parseJSONElemAtIndex 3 ary
-                <*> parseJSONElemAtIndex 4 ary
-                <*> parseJSONElemAtIndex 5 ary
-                <*> parseJSONElemAtIndex 6 ary
-                <*> parseJSONElemAtIndex 7 ary
-                <*> parseJSONElemAtIndex 8 ary
-                <*> parseJSONElemAtIndex 9 ary
-                <*> parseJSONElemAtIndex 10 ary
-    {-# INLINE parseJSON #-}
-
-instance (ToJSON a, ToJSON b, ToJSON c, ToJSON d, ToJSON e, ToJSON f,
-          ToJSON g, ToJSON h, ToJSON i, ToJSON j, ToJSON k, ToJSON l) =>
-         ToJSON (a,b,c,d,e,f,g,h,i,j,k,l) where
-    toJSON (a,b,c,d,e,f,g,h,i,j,k,l) = Array $ V.create $ do
-      mv <- VM.unsafeNew 12
-      VM.unsafeWrite mv 0 (toJSON a)
-      VM.unsafeWrite mv 1 (toJSON b)
-      VM.unsafeWrite mv 2 (toJSON c)
-      VM.unsafeWrite mv 3 (toJSON d)
-      VM.unsafeWrite mv 4 (toJSON e)
-      VM.unsafeWrite mv 5 (toJSON f)
-      VM.unsafeWrite mv 6 (toJSON g)
-      VM.unsafeWrite mv 7 (toJSON h)
-      VM.unsafeWrite mv 8 (toJSON i)
-      VM.unsafeWrite mv 9 (toJSON j)
-      VM.unsafeWrite mv 10 (toJSON k)
-      VM.unsafeWrite mv 11 (toJSON l)
-      return mv
-    {-# INLINE toJSON #-}
-
-    toEncoding (a,b,c,d,e,f,g,h,i,j,k,l) = tuple $
-      builder a >*<
-      builder b >*<
-      builder c >*<
-      builder d >*<
-      builder e >*<
-      builder f >*<
-      builder g >*<
-      builder h >*<
-      builder i >*<
-      builder j >*<
-      builder k >*<
-      builder l
-    {-# INLINE toEncoding #-}
-
-instance (FromJSON a, FromJSON b, FromJSON c, FromJSON d, FromJSON e,
-          FromJSON f, FromJSON g, FromJSON h, FromJSON i, FromJSON j,
-          FromJSON k, FromJSON l) =>
-         FromJSON (a,b,c,d,e,f,g,h,i,j,k,l) where
-    parseJSON = withArray "(a,b,c,d,e,f,g,h,i,j,k,l)" $ \ary ->
-        let n = V.length ary
-        in if n /= 12
-           then fail $ "cannot unpack array of length " ++
-                       show n ++ " into a 12-tuple"
-           else (,,,,,,,,,,,)
-                <$> parseJSONElemAtIndex 0 ary
-                <*> parseJSONElemAtIndex 1 ary
-                <*> parseJSONElemAtIndex 2 ary
-                <*> parseJSONElemAtIndex 3 ary
-                <*> parseJSONElemAtIndex 4 ary
-                <*> parseJSONElemAtIndex 5 ary
-                <*> parseJSONElemAtIndex 6 ary
-                <*> parseJSONElemAtIndex 7 ary
-                <*> parseJSONElemAtIndex 8 ary
-                <*> parseJSONElemAtIndex 9 ary
-                <*> parseJSONElemAtIndex 10 ary
-                <*> parseJSONElemAtIndex 11 ary
-    {-# INLINE parseJSON #-}
-
-instance (ToJSON a, ToJSON b, ToJSON c, ToJSON d, ToJSON e, ToJSON f,
-          ToJSON g, ToJSON h, ToJSON i, ToJSON j, ToJSON k, ToJSON l,
-          ToJSON m) =>
-         ToJSON (a,b,c,d,e,f,g,h,i,j,k,l,m) where
-    toJSON (a,b,c,d,e,f,g,h,i,j,k,l,m) = Array $ V.create $ do
-      mv <- VM.unsafeNew 13
-      VM.unsafeWrite mv 0 (toJSON a)
-      VM.unsafeWrite mv 1 (toJSON b)
-      VM.unsafeWrite mv 2 (toJSON c)
-      VM.unsafeWrite mv 3 (toJSON d)
-      VM.unsafeWrite mv 4 (toJSON e)
-      VM.unsafeWrite mv 5 (toJSON f)
-      VM.unsafeWrite mv 6 (toJSON g)
-      VM.unsafeWrite mv 7 (toJSON h)
-      VM.unsafeWrite mv 8 (toJSON i)
-      VM.unsafeWrite mv 9 (toJSON j)
-      VM.unsafeWrite mv 10 (toJSON k)
-      VM.unsafeWrite mv 11 (toJSON l)
-      VM.unsafeWrite mv 12 (toJSON m)
-      return mv
-    {-# INLINE toJSON #-}
-
-    toEncoding (a,b,c,d,e,f,g,h,i,j,k,l,m) = tuple $
-      builder a >*<
-      builder b >*<
-      builder c >*<
-      builder d >*<
-      builder e >*<
-      builder f >*<
-      builder g >*<
-      builder h >*<
-      builder i >*<
-      builder j >*<
-      builder k >*<
-      builder l >*<
-      builder m
-    {-# INLINE toEncoding #-}
-
-instance (FromJSON a, FromJSON b, FromJSON c, FromJSON d, FromJSON e,
-          FromJSON f, FromJSON g, FromJSON h, FromJSON i, FromJSON j,
-          FromJSON k, FromJSON l, FromJSON m) =>
-         FromJSON (a,b,c,d,e,f,g,h,i,j,k,l,m) where
-    parseJSON = withArray "(a,b,c,d,e,f,g,h,i,j,k,l,m)" $ \ary ->
-        let n = V.length ary
-        in if n /= 13
-           then fail $ "cannot unpack array of length " ++
-                       show n ++ " into a 13-tuple"
-           else (,,,,,,,,,,,,)
-                <$> parseJSONElemAtIndex 0 ary
-                <*> parseJSONElemAtIndex 1 ary
-                <*> parseJSONElemAtIndex 2 ary
-                <*> parseJSONElemAtIndex 3 ary
-                <*> parseJSONElemAtIndex 4 ary
-                <*> parseJSONElemAtIndex 5 ary
-                <*> parseJSONElemAtIndex 6 ary
-                <*> parseJSONElemAtIndex 7 ary
-                <*> parseJSONElemAtIndex 8 ary
-                <*> parseJSONElemAtIndex 9 ary
-                <*> parseJSONElemAtIndex 10 ary
-                <*> parseJSONElemAtIndex 11 ary
-                <*> parseJSONElemAtIndex 12 ary
-    {-# INLINE parseJSON #-}
-
-instance (ToJSON a, ToJSON b, ToJSON c, ToJSON d, ToJSON e, ToJSON f,
-          ToJSON g, ToJSON h, ToJSON i, ToJSON j, ToJSON k, ToJSON l,
-          ToJSON m, ToJSON n) =>
-         ToJSON (a,b,c,d,e,f,g,h,i,j,k,l,m,n) where
-    toJSON (a,b,c,d,e,f,g,h,i,j,k,l,m,n) = Array $ V.create $ do
-      mv <- VM.unsafeNew 14
-      VM.unsafeWrite mv 0 (toJSON a)
-      VM.unsafeWrite mv 1 (toJSON b)
-      VM.unsafeWrite mv 2 (toJSON c)
-      VM.unsafeWrite mv 3 (toJSON d)
-      VM.unsafeWrite mv 4 (toJSON e)
-      VM.unsafeWrite mv 5 (toJSON f)
-      VM.unsafeWrite mv 6 (toJSON g)
-      VM.unsafeWrite mv 7 (toJSON h)
-      VM.unsafeWrite mv 8 (toJSON i)
-      VM.unsafeWrite mv 9 (toJSON j)
-      VM.unsafeWrite mv 10 (toJSON k)
-      VM.unsafeWrite mv 11 (toJSON l)
-      VM.unsafeWrite mv 12 (toJSON m)
-      VM.unsafeWrite mv 13 (toJSON n)
-      return mv
-    {-# INLINE toJSON #-}
-
-    toEncoding (a,b,c,d,e,f,g,h,i,j,k,l,m,n) = tuple $
-      builder a >*<
-      builder b >*<
-      builder c >*<
-      builder d >*<
-      builder e >*<
-      builder f >*<
-      builder g >*<
-      builder h >*<
-      builder i >*<
-      builder j >*<
-      builder k >*<
-      builder l >*<
-      builder m >*<
-      builder n
-    {-# INLINE toEncoding #-}
-
-instance (FromJSON a, FromJSON b, FromJSON c, FromJSON d, FromJSON e,
-          FromJSON f, FromJSON g, FromJSON h, FromJSON i, FromJSON j,
-          FromJSON k, FromJSON l, FromJSON m, FromJSON n) =>
-         FromJSON (a,b,c,d,e,f,g,h,i,j,k,l,m,n) where
-    parseJSON = withArray "(a,b,c,d,e,f,g,h,i,j,k,l,m,n)" $ \ary ->
-        let n = V.length ary
-        in if n /= 14
-           then fail $ "cannot unpack array of length " ++
-                       show n ++ " into a 14-tuple"
-           else (,,,,,,,,,,,,,)
-                <$> parseJSONElemAtIndex 0 ary
-                <*> parseJSONElemAtIndex 1 ary
-                <*> parseJSONElemAtIndex 2 ary
-                <*> parseJSONElemAtIndex 3 ary
-                <*> parseJSONElemAtIndex 4 ary
-                <*> parseJSONElemAtIndex 5 ary
-                <*> parseJSONElemAtIndex 6 ary
-                <*> parseJSONElemAtIndex 7 ary
-                <*> parseJSONElemAtIndex 8 ary
-                <*> parseJSONElemAtIndex 9 ary
-                <*> parseJSONElemAtIndex 10 ary
-                <*> parseJSONElemAtIndex 11 ary
-                <*> parseJSONElemAtIndex 12 ary
-                <*> parseJSONElemAtIndex 13 ary
-    {-# INLINE parseJSON #-}
-
-instance (ToJSON a, ToJSON b, ToJSON c, ToJSON d, ToJSON e, ToJSON f,
-          ToJSON g, ToJSON h, ToJSON i, ToJSON j, ToJSON k, ToJSON l,
-          ToJSON m, ToJSON n, ToJSON o) =>
-         ToJSON (a,b,c,d,e,f,g,h,i,j,k,l,m,n,o) where
-    toJSON (a,b,c,d,e,f,g,h,i,j,k,l,m,n,o) = Array $ V.create $ do
-      mv <- VM.unsafeNew 15
-      VM.unsafeWrite mv 0 (toJSON a)
-      VM.unsafeWrite mv 1 (toJSON b)
-      VM.unsafeWrite mv 2 (toJSON c)
-      VM.unsafeWrite mv 3 (toJSON d)
-      VM.unsafeWrite mv 4 (toJSON e)
-      VM.unsafeWrite mv 5 (toJSON f)
-      VM.unsafeWrite mv 6 (toJSON g)
-      VM.unsafeWrite mv 7 (toJSON h)
-      VM.unsafeWrite mv 8 (toJSON i)
-      VM.unsafeWrite mv 9 (toJSON j)
-      VM.unsafeWrite mv 10 (toJSON k)
-      VM.unsafeWrite mv 11 (toJSON l)
-      VM.unsafeWrite mv 12 (toJSON m)
-      VM.unsafeWrite mv 13 (toJSON n)
-      VM.unsafeWrite mv 14 (toJSON o)
-      return mv
-    {-# INLINE toJSON #-}
-
-    toEncoding (a,b,c,d,e,f,g,h,i,j,k,l,m,n,o) = tuple $
-      builder a >*<
-      builder b >*<
-      builder c >*<
-      builder d >*<
-      builder e >*<
-      builder f >*<
-      builder g >*<
-      builder h >*<
-      builder i >*<
-      builder j >*<
-      builder k >*<
-      builder l >*<
-      builder m >*<
-      builder n >*<
-      builder o
-    {-# INLINE toEncoding #-}
-
-instance (FromJSON a, FromJSON b, FromJSON c, FromJSON d, FromJSON e,
-          FromJSON f, FromJSON g, FromJSON h, FromJSON i, FromJSON j,
-          FromJSON k, FromJSON l, FromJSON m, FromJSON n, FromJSON o) =>
-         FromJSON (a,b,c,d,e,f,g,h,i,j,k,l,m,n,o) where
-    parseJSON = withArray "(a,b,c,d,e,f,g,h,i,j,k,l,m,n,o)" $ \ary ->
-        let n = V.length ary
-        in if n /= 15
-           then fail $ "cannot unpack array of length " ++
-                       show n ++ " into a 15-tuple"
-           else (,,,,,,,,,,,,,,)
-                <$> parseJSONElemAtIndex 0 ary
-                <*> parseJSONElemAtIndex 1 ary
-                <*> parseJSONElemAtIndex 2 ary
-                <*> parseJSONElemAtIndex 3 ary
-                <*> parseJSONElemAtIndex 4 ary
-                <*> parseJSONElemAtIndex 5 ary
-                <*> parseJSONElemAtIndex 6 ary
-                <*> parseJSONElemAtIndex 7 ary
-                <*> parseJSONElemAtIndex 8 ary
-                <*> parseJSONElemAtIndex 9 ary
-                <*> parseJSONElemAtIndex 10 ary
-                <*> parseJSONElemAtIndex 11 ary
-                <*> parseJSONElemAtIndex 12 ary
-                <*> parseJSONElemAtIndex 13 ary
-                <*> parseJSONElemAtIndex 14 ary
-    {-# INLINE parseJSON #-}
+    liftToEncoding to _ = to . getDual
+    {-# INLINE liftToEncoding #-}
 
 instance ToJSON a => ToJSON (Dual a) where
-    toJSON = toJSON . getDual
+    toJSON = toJSON1
     {-# INLINE toJSON #-}
 
-    toEncoding = toEncoding . getDual
+    toEncoding = toEncoding1
     {-# INLINE toEncoding #-}
+
+instance FromJSON1 Dual where
+    liftParseJSON p _ = fmap Dual . p
+    {-# INLINE liftParseJSON #-}
 
 instance FromJSON a => FromJSON (Dual a) where
-    parseJSON = fmap Dual . parseJSON
+    parseJSON = parseJSON1
     {-# INLINE parseJSON #-}
+
+
+instance ToJSON1 First where
+    liftToJSON to to' = liftToJSON to to' . getFirst
+    {-# INLINE liftToJSON #-}
+
+    liftToEncoding to to' = liftToEncoding to to' . getFirst
+    {-# INLINE liftToEncoding #-}
 
 instance ToJSON a => ToJSON (First a) where
-    toJSON = toJSON . getFirst
+    toJSON = toJSON1
     {-# INLINE toJSON #-}
 
-    toEncoding = toEncoding . getFirst
+    toEncoding = toEncoding1
     {-# INLINE toEncoding #-}
+
+instance FromJSON1 First where
+    liftParseJSON p p' = fmap First . liftParseJSON p p'
+    {-# INLINE liftParseJSON #-}
 
 instance FromJSON a => FromJSON (First a) where
-    parseJSON = fmap First . parseJSON
+    parseJSON = parseJSON1
     {-# INLINE parseJSON #-}
+
+
+instance ToJSON1 Last where
+    liftToJSON to to' = liftToJSON to to' . getLast
+    {-# INLINE liftToJSON #-}
+
+    liftToEncoding to to' = liftToEncoding to to' . getLast
+    {-# INLINE liftToEncoding #-}
 
 instance ToJSON a => ToJSON (Last a) where
-    toJSON = toJSON . getLast
+    toJSON = toJSON1
     {-# INLINE toJSON #-}
 
-    toEncoding = toEncoding . getLast
+    toEncoding = toEncoding1
     {-# INLINE toEncoding #-}
 
+instance FromJSON1 Last where
+    liftParseJSON p p' = fmap Last . liftParseJSON p p'
+    {-# INLINE liftParseJSON #-}
+
 instance FromJSON a => FromJSON (Last a) where
-    parseJSON = fmap Last . parseJSON
+    parseJSON = parseJSON1
     {-# INLINE parseJSON #-}
+
 
 instance ToJSON Version where
     toJSON = toJSON . showVersion
@@ -1586,16 +1150,27 @@ instance FromJSON (Proxy a) where
     parseJSON Null = pure Proxy
     parseJSON v    = typeMismatch "Proxy" v
 
+instance ToJSON1 (Tagged a) where
+    liftToJSON to _ (Tagged x) = to x
+    {-# INLINE liftToJSON #-}
+
+    liftToEncoding to _ (Tagged x) = to x
+    {-# INLINE liftToEncoding #-}
+
 instance ToJSON b => ToJSON (Tagged a b) where
-    toJSON (Tagged x) = toJSON x
+    toJSON = toJSON1
     {-# INLINE toJSON #-}
 
-    toEncoding (Tagged x) = toEncoding x
+    toEncoding = toEncoding1
     {-# INLINE toEncoding #-}
 
+instance FromJSON1 (Tagged a) where
+    liftParseJSON p _ = fmap Tagged . p
+    {-# INLINE liftParseJSON #-}
+
 instance FromJSON b => FromJSON (Tagged a b) where
+    parseJSON = parseJSON1
     {-# INLINE parseJSON #-}
-    parseJSON = fmap Tagged . parseJSON
 
 instance ToJSON a => ToJSON (Const a b) where
     toJSON (Const x) = toJSON x

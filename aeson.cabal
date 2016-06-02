@@ -85,6 +85,7 @@ library
     Data.Aeson.Types.Class
     Data.Aeson.Types.Generic
     Data.Aeson.Types.Instances
+    Data.Aeson.Types.Instances.Tuple
     Data.Aeson.Types.Internal
 
   build-depends:

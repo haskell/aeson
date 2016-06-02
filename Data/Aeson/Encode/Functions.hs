@@ -4,6 +4,7 @@ module Data.Aeson.Encode.Functions
     (
       brackets
     , builder
+    , builder'
     , char7
     , encode
     , foldable
@@ -26,9 +27,17 @@ import Data.Foldable (Foldable, foldMap)
 import Data.Monoid (mempty)
 #endif
 
+list :: (a -> Encoding) -> [a] -> Encoding
+list = listEncoding
+
 builder :: ToJSON a => a -> Builder
 builder = fromEncoding . toEncoding
 {-# INLINE builder #-}
+
+builder' :: (a -> Encoding) -> a -> Builder
+builder' f = fromEncoding . f
+{-# INLINE builder' #-}
+
 
 -- | Efficiently serialize a JSON value as a lazy 'L.ByteString'.
 --
@@ -38,16 +47,9 @@ encode = B.toLazyByteString . builder
 {-# INLINE encode #-}
 
 -- | Encode a 'Foldable' as a JSON array.
-foldable :: (Foldable t, ToJSON a) => t a -> Encoding
-foldable = brackets '[' ']' . foldMap (Value . toEncoding)
+foldable :: (Foldable t) => (a -> Encoding) -> t a -> Encoding
+foldable to = brackets '[' ']' . foldMap (Value . to)
 {-# INLINE foldable #-}
-
-list :: (ToJSON a) => [a] -> Encoding
-list []     = emptyArray_
-list (x:xs) = Encoding $
-              char7 '[' <> builder x <> commas xs <> char7 ']'
-      where commas = foldr (\v vs -> char7 ',' <> builder v <> vs) mempty
-{-# INLINE list #-}
 
 list' :: (a -> Encoding) -> [a] -> Encoding
 list' _ []     = emptyArray_
