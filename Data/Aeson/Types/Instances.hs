@@ -90,7 +90,7 @@ module Data.Aeson.Types.Instances
 import Data.Aeson.Types.Instances.Tuple (tuple, (>*<))
 
 import Control.Applicative (Const(..))
-import Data.Aeson.Encode.Functions (builder, builder', encode, foldable, list, encodeWithKey, encodeMap)
+import Data.Aeson.Encode.Functions (builder, builder', encode, list, encodeWithKey, encodeMap)
 import Data.Aeson.Functions (mapHashKeyVal, mapKey, mapKeyVal)
 import Data.Aeson.Types.Class
 import Data.Aeson.Types.Internal
@@ -128,6 +128,7 @@ import qualified Data.HashMap.Strict as H
 import qualified Data.HashSet as HashSet
 import qualified Data.IntMap as IntMap
 import qualified Data.IntSet as IntSet
+import qualified Data.List.NonEmpty as NE
 import qualified Data.Map as M
 import qualified Data.Scientific as Scientific
 import qualified Data.Sequence as Seq
@@ -682,10 +683,10 @@ instance FromJSON Version where
 -------------------------------------------------------------------------------
 
 instance ToJSON1 NonEmpty where
-    liftToJSON to _ = listValue to . toList
+    liftToJSON to _ = listValue to . NE.toList
     {-# INLINE liftToJSON #-}
 
-    liftToEncoding to _ = foldable to
+    liftToEncoding to _ = listEncoding to . NE.toList
     {-# INLINE liftToEncoding #-}
 
 instance (ToJSON a) => ToJSON (NonEmpty a) where
@@ -730,7 +731,7 @@ instance ToJSON1 Seq.Seq where
     liftToJSON to _ = listValue to . toList
     {-# INLINE liftToJSON #-}
 
-    liftToEncoding to _ = foldable to
+    liftToEncoding to _ = listEncoding to . toList
     {-# INLINE liftToEncoding #-}
 
 instance (ToJSON a) => ToJSON (Seq.Seq a) where

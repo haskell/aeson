@@ -94,7 +94,19 @@ module Data.Aeson.Types
     , defaultTaggedObject
     ) where
 
-import Data.Aeson.Encode.Functions (foldable, pairs)
 import Data.Aeson.Types.Generic ()
 import Data.Aeson.Types.Instances
 import Data.Aeson.Types.Internal
+
+import Data.Foldable (Foldable, toList)
+import Data.Aeson.Encode.Functions (brackets)
+
+-- | Encode a 'Foldable' as a JSON array.
+foldable :: (Foldable t, ToJSON a) => t a -> Encoding
+foldable = toEncoding . toList
+{-# INLINE foldable #-}
+
+-- | Encode a series of key/value pairs, separated by commas.
+pairs :: Series -> Encoding
+pairs = brackets '{' '}'
+{-# INLINE pairs #-}

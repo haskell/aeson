@@ -7,9 +7,7 @@ module Data.Aeson.Encode.Functions
     , builder'
     , char7
     , encode
-    , foldable
     , list
-    , pairs
     , encodeMap
     , encodeWithKey
     ) where
@@ -47,20 +45,12 @@ encode :: ToJSON a => a -> L.ByteString
 encode = B.toLazyByteString . builder
 {-# INLINE encode #-}
 
--- | Encode a 'Foldable' as a JSON array.
-foldable :: (Foldable t) => (a -> Encoding) -> t a -> Encoding
-foldable to = list to . toList
-{-# INLINE foldable #-}
-
 brackets :: Char -> Char -> Series -> Encoding
 brackets begin end (Value v) = Encoding $
                                char7 begin <> fromEncoding v <> char7 end
 brackets begin end Empty     = Encoding (primBounded (ascii2 (begin,end)) ())
 
--- | Encode a series of key/value pairs, separated by commas.
-pairs :: Series -> Encoding
-pairs = brackets '{' '}'
-{-# INLINE pairs #-}
+
 
 encodeMap :: (k -> Encoding)
           -> (v -> Encoding)
