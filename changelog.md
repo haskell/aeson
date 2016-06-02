@@ -2,6 +2,9 @@ For the latest version of this document, please see [https://github.com/bos/aeso
 
 # 0.12.0.0
 
+* Modified instances for `Map` and `HashMap`. Introduced new `FromJSONKey` and
+  `ToJSONKey` type classes.
+
 * Remove the `contents` field encoding with `allNullaryToStringTag = False`,
   giving us `{ "tag" : "c1" }` instead of `{ "tag" : "c1", contents : [] }`.
   The contents field is optional when parsing so this is only a breaking change for ToJSON.

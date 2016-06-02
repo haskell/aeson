@@ -32,7 +32,7 @@ matrix:
       compiler: ": #GHC 7.10.2"
       addons: {apt: {packages: [cabal-install-1.22,ghc-7.10.2], sources: [hvr-ghc]}}
     - env: BUILD=cabal CABALVER=1.24 GHCVER=8.0.1
-      compiler: ": #GHC 8.0.0.20160511"
+      compiler: ": #GHC 8.0.1"
       addons: {apt: {packages: [cabal-install-1.24,ghc-8.0.1], sources: [hvr-ghc]}}
     - env: BUILD=stack CABALVER=1.22 GHCVER=7.10.3
       compiler: ": #GHC 7.10.3"
