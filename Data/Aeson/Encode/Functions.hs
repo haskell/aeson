@@ -19,6 +19,7 @@ import Data.Aeson.Types.Class
 import Data.Aeson.Types.Internal
 import Data.ByteString.Builder (Builder, char7)
 import Data.ByteString.Builder.Prim (primBounded)
+import Data.Foldable (toList)
 import Data.Monoid ((<>))
 import qualified Data.ByteString.Builder as B
 import qualified Data.ByteString.Lazy as L
@@ -48,7 +49,7 @@ encode = B.toLazyByteString . builder
 
 -- | Encode a 'Foldable' as a JSON array.
 foldable :: (Foldable t) => (a -> Encoding) -> t a -> Encoding
-foldable to = brackets '[' ']' . foldMap (Value . to)
+foldable to = list to . toList
 {-# INLINE foldable #-}
 
 brackets :: Char -> Char -> Series -> Encoding
