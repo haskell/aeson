@@ -1,4 +1,7 @@
 {-# LANGUAGE CPP, DeriveGeneric, OverloadedStrings, ScopedTypeVariables, TemplateHaskell #-}
+#if __GLASGOW_HASKELL__ >= 708
+{-# LANGUAGE DataKinds #-}
+#endif
 
 {-# OPTIONS_GHC -fno-warn-deprecations #-}
 
@@ -233,6 +236,10 @@ jsonEncoding = [
   , assertEqual "Just Nothing" "null" $ encode (Just Nothing :: Maybe (Maybe Int))
   , assertEqual "Proxy Int" "null" $ encode (Proxy :: Proxy Int)
   , assertEqual "Tagged Char Int" "1" $ encode (Tagged 1 :: Tagged Char Int)
+#if __GLASGOW_HASKELL__ >= 708
+    -- Test Tagged instance is polykinded
+  , assertEqual "Tagged 123 Int" "1" $ encode (Tagged 1 :: Tagged 123 Int)
+#endif
   , assertEqual "Const Char Int" "\"c\"" $ encode (Const 'c' :: Const Char Int)
   , assertEqual "Tuple" "[1,2]" $ encode ((1, 2) :: (Int, Int))
   , assertEqual "NonEmpty" "[1,2,3]" $ encode (1 :| [2, 3] :: NonEmpty Int)
@@ -288,8 +295,8 @@ overlappingRegression bs = fromMaybe [] $ decode bs
 issue351 :: [Assertion]
 issue351 = [
     assertEqual "Int"  ([1, 2, 3] :: [Int])  $ overlappingRegression "[1, 2, 3]"
-  , assertEqual "Char" (""        :: String) $ overlappingRegression "\"abc\""
-  , assertEqual "Char" ("abc"     :: String) $ overlappingRegression "[\"a\", \"b\", \"c\"]"
+  , assertEqual "Char" ("abc"     :: String) $ overlappingRegression "\"abc\""
+  , assertEqual "Char" (""        :: String) $ overlappingRegression "[\"a\", \"b\", \"c\"]"
   ]
 
 ------------------------------------------------------------------------------

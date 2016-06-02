@@ -17,6 +17,17 @@ module Data.Aeson.Types.Class
     -- * Core JSON classes
       FromJSON(..)
     , ToJSON(..)
+    -- * Liftings to unary and binary type constructors
+    , FromJSON1(..)
+    , parseJSON1
+    , FromJSON2(..)
+    , parseJSON2
+    , ToJSON1(..)
+    , toJSON1
+    , toEncoding1
+    , ToJSON2(..)
+    , toJSON2
+    , toEncoding2
     -- * Generic JSON classes
     , GFromJSON(..)
     , GToJSON(..)
@@ -25,24 +36,36 @@ module Data.Aeson.Types.Class
     , genericToEncoding
     , genericParseJSON
     -- * Classes and types for map keys
+    , ToJSONKey(..)
     , ToJSONKeyFunction(..)
+    , contramapToJSONKeyFunction
+    , FromJSONKey(..)
     , FromJSONKeyFunction(..)
     , fromJSONKeyCoerce
     , coerceFromJSONKeyFunction
+    , mapFromJSONKeyFunction
     -- * Object key-value pairs
     , KeyValue(..)
     -- * Functions needed for documentation
     , typeMismatch
+    -- * Encoding functions
+    , listEncoding
+    , listValue
+    , listParser
     ) where
 
 import Data.Aeson.Types.Internal
+import Data.Monoid ((<>))
 import Data.Text (Text)
 import GHC.Generics (Generic, Rep, from, to)
-import Data.Monoid ((<>))
 import Data.Aeson.Encode.Builder (emptyArray_)
 import qualified Data.ByteString.Builder as B
 import qualified Data.Aeson.Encode.Builder as E
 import qualified Data.Vector as V
+
+#if !MIN_VERSION_base(4,8,0)
+import Data.Monoid (mempty)
+#endif
 
 -- Coercible derivations aren't as powerful on GHC 7.8, though supported.
 #define HAS_COERCIBLE (__GLASGOW_HASKELL__ >= 709)
@@ -188,6 +211,19 @@ class ToJSON a where
     toEncoding = Encoding . E.encodeToBuilder . toJSON
     {-# INLINE toEncoding #-}
 
+    toJSONList :: [a] -> Value
+    toJSONList = listValue toJSON
+    {-# INLINE toJSONList #-}
+
+    toEncodingList :: [a] -> Encoding
+    toEncodingList [] = emptyArray_
+    toEncodingList (x:xs) = Encoding $
+        B.char7 '[' <> builder x <> commas xs <> B.char7 ']'
+      where
+        commas  = foldr (\v vs -> B.char7 ',' <> builder v <> vs) mempty
+        builder = fromEncoding . toEncoding
+    {-# INLINE toEncodingList #-}
+
 -- | A type that can be converted from JSON, with the possibility of
 -- failure.
 --
@@ -268,10 +304,46 @@ class FromJSON a where
     default parseJSON :: (Generic a, GFromJSON (Rep a)) => Value -> Parser a
     parseJSON = genericParseJSON defaultOptions
 
+    parseJSONList :: Value -> Parser [a]
+    parseJSONList (Array a)
+        = sequence
+        . zipWith parseIndexedJSON [0..]
+        . V.toList
+        $ a
+      where
+        parseIndexedJSON :: FromJSON a => Int -> Value -> Parser a
+        parseIndexedJSON idx value = parseJSON value <?> Index idx
+
+    parseJSONList v = typeMismatch "[a]" v
+
+-------------------------------------------------------------------------------
+-- Object key-value pairs
+-------------------------------------------------------------------------------
+
 -- | A key-value pair for encoding a JSON object.
 class KeyValue kv where
     (.=) :: ToJSON v => Text -> v -> kv
     infixr 8 .=
+
+-------------------------------------------------------------------------------
+--  Classes and types for map keys
+-------------------------------------------------------------------------------
+
+class ToJSONKey a where
+    toJSONKey :: ToJSONKeyFunction a
+    default toJSONKey :: ToJSON a => ToJSONKeyFunction a
+    toJSONKey = ToJSONKeyValue (toJSON, toEncoding)
+    toJSONKeyList :: ToJSONKeyFunction [a]
+    default toJSONKeyList :: ToJSON a => ToJSONKeyFunction [a]
+    toJSONKeyList = ToJSONKeyValue (toJSON, toEncoding)
+
+class FromJSONKey a where
+    fromJSONKey :: FromJSONKeyFunction a
+    default fromJSONKey :: FromJSON a => FromJSONKeyFunction a
+    fromJSONKey = FromJSONKeyValue parseJSON
+    fromJSONKeyList :: FromJSONKeyFunction [a]
+    default fromJSONKeyList :: FromJSON a => FromJSONKeyFunction [a]
+    fromJSONKeyList = FromJSONKeyValue parseJSON
 
 data ToJSONKeyFunction a
     = ToJSONKeyText (a -> Text, a -> Encoding)
@@ -333,6 +405,18 @@ coerceFromJSONKeyFunction (FromJSONKeyValue f)           = FromJSONKeyValue (fma
   #-}
 #endif
 
+contramapToJSONKeyFunction :: (b -> a) -> ToJSONKeyFunction a -> ToJSONKeyFunction b
+contramapToJSONKeyFunction h x = case x of
+    ToJSONKeyText (f,g) -> ToJSONKeyText (f . h, g . h)
+    ToJSONKeyValue (f,g) -> ToJSONKeyValue (f . h, g . h)
+
+mapFromJSONKeyFunction :: (a -> b) -> FromJSONKeyFunction a -> FromJSONKeyFunction b
+mapFromJSONKeyFunction = fmap
+
+-------------------------------------------------------------------------------
+-- Functions needed for documentation
+-------------------------------------------------------------------------------
+
 -- | Fail parsing due to a type mismatch, with a descriptive message.
 --
 -- Example usage:
@@ -355,3 +439,131 @@ typeMismatch expected actual =
              Number _ -> "Number"
              Bool _   -> "Boolean"
              Null     -> "Null"
+
+-------------------------------------------------------------------------------
+-- Lifings of FromJSON and ToJSON to unary and binary type constructors
+-------------------------------------------------------------------------------
+
+-- | Lifting of the 'FromJSON' class to unary type constructors.
+class FromJSON1 f where
+    liftParseJSON :: (Value -> Parser a) -> (Value -> Parser [a]) -> Value -> Parser (f a)
+    liftParseJSONList :: (Value -> Parser a) -> (Value -> Parser [a]) -> Value -> Parser [f a]
+    liftParseJSONList f g v = listParser (liftParseJSON f g) v 
+
+-- | Lift the standard 'parseJSON' function through the type constructor.
+parseJSON1 :: (FromJSON1 f, FromJSON a) => Value -> Parser (f a)
+parseJSON1 = liftParseJSON parseJSON parseJSONList
+{-# INLINE parseJSON1 #-}
+
+-- | Lifting of the 'ToJSON' class to unary type constructors.
+class ToJSON1 f where
+    liftToJSON :: (a -> Value) -> ([a] -> Value) -> f a -> Value
+    liftToJSONList :: (a -> Value) -> ([a] -> Value) -> [f a] -> Value
+    liftToJSONList f g = listValue (liftToJSON f g)
+
+    -- | Unfortunately there cannot be a default implementation of 'liftToEncoding'.
+    liftToEncoding :: (a -> Encoding) -> ([a] -> Encoding) -> f a -> Encoding
+    liftToEncodingList :: (a -> Encoding) -> ([a] -> Encoding) -> [f a] -> Encoding
+    liftToEncodingList f g = listEncoding (liftToEncoding f g)
+
+-- | Lift the standard 'toJSON' function through the type constructor.
+toJSON1 :: (ToJSON1 f, ToJSON a) => f a -> Value
+toJSON1 = liftToJSON toJSON toJSONList
+{-# INLINE toJSON1 #-}
+
+-- | Lift the standard 'toEncoding' function through the type constructor.
+toEncoding1 :: (ToJSON1 f, ToJSON a) => f a -> Encoding
+toEncoding1 = liftToEncoding toEncoding toEncodingList
+{-# INLINE toEncoding1 #-}
+
+
+-- | Lifting of the 'FromJSON' class to binary type constructors.
+class FromJSON2 f where
+    liftParseJSON2
+        :: (Value -> Parser a)
+        -> (Value -> Parser [a])
+        -> (Value -> Parser b)
+        -> (Value -> Parser [b])
+        -> Value -> Parser (f a b)
+    liftParseJSONList2 
+        :: (Value -> Parser a) 
+        -> (Value -> Parser [a]) 
+        -> (Value -> Parser b) 
+        -> (Value -> Parser [b]) 
+        -> Value -> Parser [f a b]
+    liftParseJSONList2 fa ga fb gb v = case v of
+        Array vals -> fmap V.toList (V.mapM (liftParseJSON2 fa ga fb gb) vals)
+        _ -> typeMismatch "[a]" v
+
+-- | Lift the standard 'parseJSON' function through the type constructor.
+parseJSON2 :: (FromJSON2 f, FromJSON a, FromJSON b) => Value -> Parser (f a b)
+parseJSON2 = liftParseJSON2 parseJSON parseJSONList parseJSON parseJSONList
+{-# INLINE parseJSON2 #-}
+
+-- | Lifting of the 'ToJSON' class to binary type constructors.
+class ToJSON2 f where
+    liftToJSON2 :: (a -> Value) -> ([a] -> Value) -> (b -> Value) -> ([b] -> Value) -> f a b -> Value
+    liftToJSONList2 :: (a -> Value) -> ([a] -> Value) -> (b -> Value) -> ([b] -> Value) -> [f a b] -> Value
+    liftToJSONList2 fa ga fb gb = listValue (liftToJSON2 fa ga fb gb)
+
+    liftToEncoding2 :: (a -> Encoding) -> ([a] -> Encoding) -> (b -> Encoding) -> ([b] -> Encoding) -> f a b -> Encoding
+    liftToEncodingList2 :: (a -> Encoding) -> ([a] -> Encoding) -> (b -> Encoding) -> ([b] -> Encoding) -> [f a b] -> Encoding
+    liftToEncodingList2 fa ga fb gb = listEncoding (liftToEncoding2 fa ga fb gb)
+
+-- | Lift the standard 'toJSON' function through the type constructor.
+toJSON2 :: (ToJSON2 f, ToJSON a, ToJSON b) => f a b -> Value
+toJSON2 = liftToJSON2 toJSON toJSONList toJSON toJSONList
+{-# INLINE toJSON2 #-}
+
+-- | Lift the standard 'toEncoding' function through the type constructor.
+toEncoding2 :: (ToJSON2 f, ToJSON a, ToJSON b) => f a b -> Encoding
+toEncoding2 = liftToEncoding2 toEncoding toEncodingList toEncoding toEncodingList
+{-# INLINE toEncoding2 #-}
+
+-------------------------------------------------------------------------------
+-- Encoding functions
+-------------------------------------------------------------------------------
+
+listEncoding :: (a -> Encoding) -> [a] -> Encoding
+listEncoding _  []     = emptyArray_
+listEncoding to' (x:xs) = Encoding $
+                B.char7 '[' <> fromEncoding (to' x) <> commas xs <> B.char7 ']'
+      where commas = foldr (\v vs -> B.char7 ',' <> fromEncoding (to' v) <> vs) mempty
+{-# INLINE listEncoding #-}
+
+listValue :: (a -> Value) -> [a] -> Value
+listValue f = Array . V.fromList . map f
+{-# INLINE listValue #-}
+
+listParser :: (Value -> Parser a) -> Value -> Parser [a]
+listParser f (Array xs) = fmap V.toList (V.mapM f xs)
+listParser _ v          = typeMismatch "[a]" v
+{-# INLINE listParser #-}
+
+-------------------------------------------------------------------------------
+-- [] instances
+-------------------------------------------------------------------------------
+
+-- These are needed for key-class default definitions
+
+instance ToJSON1 [] where
+    liftToJSON _ to' = to'
+    {-# INLINE liftToJSON #-}
+
+    liftToEncoding _ to' = to'
+    {-# INLINE liftToEncoding #-}
+
+instance (ToJSON a) => ToJSON [a] where
+    toJSON = toJSON1
+    {-# INLINE toJSON #-}
+
+    toEncoding = toEncoding1
+    {-# INLINE toEncoding #-}
+
+instance FromJSON1 [] where
+    liftParseJSON _ p' = p'
+    {-# INLINE liftParseJSON #-}
+
+instance (FromJSON a) => FromJSON [a] where
+    parseJSON = parseJSON1
+    {-# INLINE parseJSON #-}

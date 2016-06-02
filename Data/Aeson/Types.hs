@@ -45,6 +45,18 @@ module Data.Aeson.Types
     , fromJSONKeyCoerce
     , coerceFromJSONKeyFunction
 
+    -- ** Liftings to unary and binary type constructors
+    , FromJSON1(..)
+    , parseJSON1
+    , FromJSON2(..)
+    , parseJSON2
+    , ToJSON1(..)
+    , toJSON1
+    , toEncoding1
+    , ToJSON2(..)
+    , toJSON2
+    , toEncoding2
+
     -- ** Generic JSON classes
     , GFromJSON(..)
     , GToJSON(..)
@@ -69,6 +81,10 @@ module Data.Aeson.Types
     , (.!=)
     , object
 
+    , listEncoding
+    , listValue
+    , listParser
+
     -- * Generic and TH encoding configuration
     , Options(..)
     , SumEncoding(..)
@@ -78,7 +94,19 @@ module Data.Aeson.Types
     , defaultTaggedObject
     ) where
 
-import Data.Aeson.Encode.Functions (foldable, pairs)
 import Data.Aeson.Types.Generic ()
 import Data.Aeson.Types.Instances
 import Data.Aeson.Types.Internal
+
+import Data.Foldable (Foldable, toList)
+import Data.Aeson.Encode.Functions (brackets)
+
+-- | Encode a 'Foldable' as a JSON array.
+foldable :: (Foldable t, ToJSON a) => t a -> Encoding
+foldable = toEncoding . toList
+{-# INLINE foldable #-}
+
+-- | Encode a series of key/value pairs, separated by commas.
+pairs :: Series -> Encoding
+pairs = brackets '{' '}'
+{-# INLINE pairs #-}
