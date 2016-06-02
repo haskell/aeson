@@ -4,6 +4,7 @@ module Data.Aeson.Encode.Functions
     (
       brackets
     , builder
+    , builder'
     , char7
     , encode
     , foldable
@@ -31,6 +32,11 @@ list = listEncoding
 builder :: ToJSON a => a -> Builder
 builder = fromEncoding . toEncoding
 {-# INLINE builder #-}
+
+builder' :: (a -> Encoding) -> a -> Builder
+builder' f = fromEncoding . f
+{-# INLINE builder' #-}
+
 
 -- | Efficiently serialize a JSON value as a lazy 'L.ByteString'.
 --
