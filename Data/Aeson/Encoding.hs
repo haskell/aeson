@@ -7,6 +7,8 @@ module Data.Aeson.Encoding
     , unsafeToEncoding
     , Series (..) -- TODO: don't export constructor
     , pairs
+    -- * Predicates
+    , nullEncoding
     -- * Encoding constructors
     , emptyArray_
     , emptyObject_
@@ -27,6 +29,7 @@ import Data.Semigroup (Semigroup((<>)))
 import Data.ByteString.Builder.Prim (primBounded)
 import Data.Typeable (Typeable)
 
+import qualified Data.ByteString.Lazy as BSL
 import qualified Data.Aeson.Encode.Builder as B
 
 -- | An encoding of a JSON value.
@@ -78,6 +81,9 @@ instance Semigroup Series where
 instance Monoid Series where
     mempty  = Empty
     mappend = (<>)
+
+nullEncoding :: Encoding -> Bool
+nullEncoding = BSL.null . toLazyByteString . fromEncoding
 
 emptyArray_ :: Encoding
 emptyArray_ = Encoding B.emptyArray_
