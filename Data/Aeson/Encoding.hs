@@ -1,4 +1,4 @@
-{-# LANGUAGE GeneralizedNewtypeDeriving, DeriveDataTypeable, RankNTypes #-}
+{-# LANGUAGE CPP, GeneralizedNewtypeDeriving, DeriveDataTypeable, RankNTypes #-}
 module Data.Aeson.Encoding
     (
     -- * Encoding
@@ -22,6 +22,10 @@ module Data.Aeson.Encoding
     -- ** chars
     , comma, colon, openBracket, closeBracket, openCurly, closeCurly
     ) where
+
+#if !MIN_VERSION_base(4,8,0)
+import Data.Monoid (Monoid(..))
+#endif
 
 import Data.Text (Text)
 import Data.ByteString.Builder (Builder, char7, toLazyByteString)
