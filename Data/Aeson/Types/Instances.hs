@@ -120,7 +120,7 @@ import Text.ParserCombinators.ReadP (readP_to_S)
 import Foreign.Storable (Storable)
 import Numeric.Natural (Natural)
 import Prelude hiding (foldr)
-import qualified Data.Aeson.Encode.Builder as E
+import qualified Data.Aeson.Encode.Builder as EB
 import qualified Data.Aeson.Parser.Time as Time
 import qualified Data.ByteString.Builder as B
 import qualified Data.ByteString.Lazy as L
@@ -201,7 +201,7 @@ realFloatToJSON d
 
 realFloatToEncoding :: RealFloat a => a -> Encoding
 realFloatToEncoding d
-    | isNaN d || isInfinite d = Encoding E.null_
+    | isNaN d || isInfinite d = Encoding EB.null_
     | otherwise               = toEncoding (Scientific.fromFloatDigits d)
 {-# INLINE realFloatToEncoding #-}
 
@@ -291,7 +291,7 @@ instance ToJSON1 Maybe where
     {-# INLINE liftToJSON #-}
 
     liftToEncoding to _ (Just a) = to a
-    liftToEncoding _  _ Nothing  = Encoding E.null_
+    liftToEncoding _  _ Nothing  = Encoding EB.null_
     {-# INLINE liftToEncoding #-}
 
 instance (ToJSON a) => ToJSON (Maybe a) where
@@ -369,7 +369,7 @@ instance ToJSON Bool where
     toJSON = Bool
     {-# INLINE toJSON #-}
 
-    toEncoding = Encoding . E.bool
+    toEncoding = Encoding . EB.bool
     {-# INLINE toEncoding #-}
 
 instance FromJSON Bool where
@@ -415,10 +415,10 @@ instance ToJSON Char where
     toJSONList = String . T.pack
     {-# INLINE toJSONList #-}
 
-    toEncoding = Encoding . E.string . (:[])
+    toEncoding = Encoding . EB.string . (:[])
     {-# INLINE toEncoding #-}
 
-    toEncodingList = Encoding . E.string
+    toEncodingList = Encoding . EB.string
     {-# INLINE toEncodingList #-}
 
 instance FromJSON Char where
@@ -490,7 +490,7 @@ instance HasResolution a => ToJSON (Fixed a) where
     toJSON = Number . realToFrac
     {-# INLINE toJSON #-}
 
-    toEncoding = Encoding . E.number . realToFrac
+    toEncoding = Encoding . EB.number . realToFrac
     {-# INLINE toEncoding #-}
 
 -- | /WARNING:/ Only parse fixed-precision numbers from trusted input
@@ -643,7 +643,7 @@ instance ToJSON Text where
     toJSON = String
     {-# INLINE toJSON #-}
 
-    toEncoding = Encoding . E.text
+    toEncoding = Encoding . EB.text
     {-# INLINE toEncoding #-}
 
 instance FromJSON Text where
@@ -656,7 +656,7 @@ instance ToJSON LT.Text where
 
     toEncoding t = Encoding $
       B.char7 '"' <>
-      LT.foldrChunks (\x xs -> E.unquoted x <> xs) (B.char7 '"') t
+      LT.foldrChunks (\x xs -> EB.unquoted x <> xs) (B.char7 '"') t
     {-# INLINE toEncoding #-}
 
 instance FromJSON LT.Text where
@@ -716,7 +716,7 @@ instance ToJSON Scientific where
     toJSON = Number
     {-# INLINE toJSON #-}
 
-    toEncoding = Encoding . E.number
+    toEncoding = Encoding . EB.number
     {-# INLINE toEncoding #-}
 
 instance FromJSON Scientific where
@@ -1047,7 +1047,7 @@ instance ToJSON Value where
     toJSON a = a
     {-# INLINE toJSON #-}
 
-    toEncoding = Encoding . E.encodeToBuilder
+    toEncoding = Encoding . EB.encodeToBuilder
     {-# INLINE toEncoding #-}
 
 instance FromJSON Value where
@@ -1078,21 +1078,21 @@ instance FromJSON DotNetTime where
 
 instance ToJSON Day where
     toJSON       = stringEncoding
-    toEncoding z = Encoding (E.quote $ E.day z)
+    toEncoding z = Encoding (EB.quote $ EB.day z)
 
 instance FromJSON Day where
     parseJSON = withText "Day" (Time.run Time.day)
 
 instance ToJSON TimeOfDay where
     toJSON       = stringEncoding
-    toEncoding z = Encoding (E.quote $ E.timeOfDay z)
+    toEncoding z = Encoding (EB.quote $ EB.timeOfDay z)
 
 instance FromJSON TimeOfDay where
     parseJSON = withText "TimeOfDay" (Time.run Time.timeOfDay)
 
 instance ToJSON LocalTime where
     toJSON       = stringEncoding
-    toEncoding z = Encoding (E.quote $ E.localTime z)
+    toEncoding z = Encoding (EB.quote $ EB.localTime z)
 
 instance FromJSON LocalTime where
     parseJSON = withText "LocalTime" (Time.run Time.localTime)
@@ -1100,7 +1100,7 @@ instance FromJSON LocalTime where
 instance ToJSON ZonedTime where
     toJSON = stringEncoding
 
-    toEncoding z = Encoding (E.quote $ E.zonedTime z)
+    toEncoding z = Encoding (EB.quote $ EB.zonedTime z)
 
 formatMillis :: (FormatTime t) => t -> String
 formatMillis = take 3 . formatTime defaultTimeLocale "%q"
@@ -1111,7 +1111,7 @@ instance FromJSON ZonedTime where
 instance ToJSON UTCTime where
     toJSON = stringEncoding
 
-    toEncoding t = Encoding (E.quote $ E.utcTime t)
+    toEncoding t = Encoding (EB.quote $ EB.utcTime t)
 
 -- | Encode something to a JSON string.
 --
@@ -1133,7 +1133,7 @@ instance ToJSON NominalDiffTime where
     toJSON = Number . realToFrac
     {-# INLINE toJSON #-}
 
-    toEncoding = Encoding . E.number . realToFrac
+    toEncoding = Encoding . EB.number . realToFrac
     {-# INLINE toEncoding #-}
 
 -- | /WARNING:/ Only parse lengths of time from trusted input
@@ -1224,7 +1224,7 @@ instance ToJSON (Proxy a) where
     toJSON _ = Null
     {-# INLINE toJSON #-}
 
-    toEncoding _ = Encoding E.null_
+    toEncoding _ = Encoding EB.null_
     {-# INLINE toEncoding #-}
 
 instance FromJSON (Proxy a) where
