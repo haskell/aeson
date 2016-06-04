@@ -555,7 +555,7 @@ instance ( FromPair         (a :+: b)
 
 parseAllNullarySum :: SumFromString f => Options -> Value -> Parser (f a)
 parseAllNullarySum opts = withText "Text" $ \key ->
-                            maybe (notFound $ unpack key) return $
+                            maybe (notFound key) return $
                               parseSumFromString opts key
 
 class SumFromString f where
@@ -582,13 +582,13 @@ parseNonAllNullarySum opts =
       TaggedObject{..} ->
           withObject "Object" $ \obj -> do
             tag <- obj .: pack tagFieldName
-            fromMaybe (notFound $ unpack tag) $
+            fromMaybe (notFound tag) $
               parseFromTaggedObject opts contentsFieldName obj tag
 
       ObjectWithSingleField ->
           withObject "Object" $ \obj ->
             case H.toList obj of
-              [pair@(tag, _)] -> fromMaybe (notFound $ unpack tag) $
+              [pair@(tag, _)] -> fromMaybe (notFound tag) $
                                    parsePair opts pair
               _ -> fail "Object doesn't have a single field"
 
@@ -596,7 +596,7 @@ parseNonAllNullarySum opts =
           withArray "Array" $ \arr ->
             if V.length arr == 2
             then case V.unsafeIndex arr 0 of
-                   String tag -> fromMaybe (notFound $ unpack tag) $
+                   String tag -> fromMaybe (notFound tag) $
                                    parsePair opts (tag, V.unsafeIndex arr 1)
                    _ -> fail "First element is not a String"
             else fail "Array doesn't have 2 elements"
@@ -690,12 +690,11 @@ instance (FromRecord a, FromRecord b) => FromRecord (a :*: b) where
                                    <*> parseRecord opts Nothing obj
 
 instance (Selector s, GFromJSON a) => FromRecord (S1 s a) where
-    parseRecord opts (Just lab) = maybe (notFound $ unpack lab)
-                      (gParseJSON opts) . H.lookup lab
-    parseRecord opts Nothing    = maybe (notFound label)
-                      (gParseJSON opts) . H.lookup (pack label)
+    parseRecord opts lab = (<?> Key label) . gParseJSON opts <=< (.: label)
         where
-          label = fieldLabelModifier opts $ selName (undefined :: t s a p)
+          label = fromMaybe defLabel lab
+          defLabel = pack . fieldLabelModifier opts $
+                       selName (undefined :: t s a p)
 
 instance OVERLAPPING_ (Selector s, FromJSON a) =>
   FromRecord (S1 s (K1 i (Maybe a))) where
@@ -803,6 +802,6 @@ newtype Tagged2 (s :: * -> *) b = Tagged2 {unTagged2 :: b}
 
 --------------------------------------------------------------------------------
 
-notFound :: String -> Parser a
-notFound key = fail $ "The key \"" ++ key ++ "\" was not found"
+notFound :: Text -> Parser a
+notFound key = fail $ "The key \"" ++ unpack key ++ "\" was not found"
 {-# INLINE notFound #-}

@@ -107,7 +107,7 @@ import Data.Aeson.Types ( Value(..), Parser
                         , defaultOptions
                         , defaultTaggedObject
                         )
-import Data.Aeson.Types.Internal (Encoding(..))
+import Data.Aeson.Types.Internal (Encoding(..), (<?>), JSONPathElement(Key))
 import Control.Monad       ( liftM2, return, mapM, fail )
 import Data.Bool           ( Bool(False, True), otherwise, (&&), not )
 import Data.Either         ( Either(Left, Right) )
@@ -1010,7 +1010,7 @@ instance OVERLAPPABLE_ (FromJSON a) => LookupField a where
     lookupField tName rec obj key =
         case H.lookup key obj of
           Nothing -> unknownFieldFail tName rec (T.unpack key)
-          Just v  -> parseJSON v
+          Just v  -> parseJSON v <?> Key key
 
 instance (FromJSON a) => LookupField (Maybe a) where
     lookupField _ _ = (.:?)
