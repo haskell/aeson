@@ -6,10 +6,15 @@ For the latest version of this document, please see [https://github.com/bos/aeso
   way `Read` / `Show` handle lists specifically. This removes need for
   overlapping instances to handle `String`.
 
-* Added higher rank classes: `ToJSON1`, `ToJSON2`, `FromJSON1`, and `FromJSON2`
+* Added higher rank classes: `ToJSON1`, `ToJSON2`, `FromJSON1`, and `FromJSON2`.
 
 * Modified instances for `Map` and `HashMap`. Introduced new `FromJSONKey` and
   `ToJSONKey` type classes.
+
+* Export `decodeWith`, `decodeStrictWith`, `eitherDecodeWith`, and
+  `eitherDecodeStrictWith` from `Data.Aeson.Parser`. This allows
+  decoding using explicit parsers instead of using `FromJSON`
+  instances.
 
 * Remove the `contents` field encoding with `allNullaryToStringTag = False`,
   giving us `{ "tag" : "c1" }` instead of `{ "tag" : "c1", contents : [] }`.

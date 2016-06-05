@@ -39,9 +39,16 @@ module Data.Aeson.Parser
     -- $strict
     , json'
     , value'
+    -- * Decoding without FromJSON instances
+    , decodeWith
+    , decodeStrictWith
+    , eitherDecodeWith
+    , eitherDecodeStrictWith
     ) where
 
-import Data.Aeson.Parser.Internal (json, json', jstring, value, value')
+import Data.Aeson.Parser.Internal (decodeStrictWith, decodeWith,
+                                   eitherDecodeStrictWith, eitherDecodeWith,
+                                   json, json', jstring, value, value')
 
 -- $lazy
 --
