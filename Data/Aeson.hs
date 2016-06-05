@@ -152,7 +152,7 @@ decode' :: (FromJSON a) => L.ByteString -> Maybe a
 decode' = decodeWith jsonEOF' fromJSON
 {-# INLINE decode' #-}
 
--- | Efficiently deserialize a JSON value from a lazy 'L.ByteString'.
+-- | Efficiently deserialize a JSON value from a strict 'B.ByteString'.
 -- If this fails due to incomplete or invalid input, 'Nothing' is
 -- returned.
 --
