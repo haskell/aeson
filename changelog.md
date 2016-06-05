@@ -23,6 +23,20 @@ For the latest version of this document, please see [https://github.com/bos/aeso
 * Fix a bug where `genericToEncoding` with `unwrapUnaryRecords = True`
   would produce an invalid encoding: `"unwrap\":""`.
 
+* Get rid of redundancy of JSONPath error messages in nested records.
+
+  `eitherDecode "{\"x\":{\"a\": [1,2,true]}}" :: Either String Y`
+  previously yielded `Error in $.x.a[2]: failed to parse field" x:
+  failed to parse field a: expected Int, encountered Boolean` and now
+  yields `Error in $.x.a[2]: expected Int, encountered Boolean"`.
+
+  Some users might prefer to insert `modifyFailure` themselves to
+  customize error messages, which previously prevented the use of
+  `(.:)`.
+
+* `ToJSON` instances using `genericToEncoding` and `omitNothingFields`
+  no longer produces invalid JSON.
+
 ### 0.11.2.0
 
 * Enable `PolyKinds` to generalize `Proxy`, `Tagged`, and `Const` instances.
