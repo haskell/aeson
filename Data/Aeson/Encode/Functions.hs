@@ -10,6 +10,5 @@ import Data.Aeson.Types.Class
 import Data.ByteString.Builder (Builder)
 import Data.Monoid ((<>))
 
-builder :: ToJSON a => a -> Builder
-builder = fromEncoding . toEncoding
+
 {-# INLINE builder #-}

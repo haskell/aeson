@@ -80,19 +80,20 @@ library
 
   other-modules:
     Data.Aeson.Encode.Builder
-    Data.Aeson.Encode.Functions
     Data.Aeson.Functions
     Data.Aeson.Parser.Internal
     Data.Aeson.Parser.Time
-    Data.Aeson.Types.Class
+    Data.Aeson.Types.FromJSON
     Data.Aeson.Types.Generic
-    Data.Aeson.Types.Instances
-    Data.Aeson.Types.Instances.Tuple
+    Data.Aeson.Types.ToJSON
+    Data.Aeson.Types.Class
     Data.Aeson.Types.Internal
 
   build-depends:
     attoparsec >= 0.13.0.1,
     base >= 4.5 && < 5,
+    base-compat >= 0.9.1 && <0.10,
+    time-locale-compat >=0.1.1 && <0.2,
     bytestring >= 0.10.4.0,
     containers,
     deepseq,

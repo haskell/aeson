@@ -94,12 +94,14 @@ module Data.Aeson.Types
     , defaultTaggedObject
     ) where
 
-import Data.Aeson.Types.Generic ()
-import Data.Aeson.Types.Instances
+import Prelude ()
+import Prelude.Compat
+
+import Data.Aeson.Types.Class
 import Data.Aeson.Types.Internal
 import Data.Aeson.Encoding (Encoding, unsafeToEncoding, fromEncoding, Series, pairs)
 
-import Data.Foldable (Foldable, toList)
+import Data.Foldable (toList)
 
 -- | Encode a 'Foldable' as a JSON array.
 foldable :: (Foldable t, ToJSON a) => t a -> Encoding

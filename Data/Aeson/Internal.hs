@@ -22,5 +22,5 @@ module Data.Aeson.Internal
     , iparse
     ) where
 
-import Data.Aeson.Types.Instances (ifromJSON)
 import Data.Aeson.Types.Internal
+import Data.Aeson.Types.FromJSON (ifromJSON)
