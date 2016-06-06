@@ -87,7 +87,7 @@ module Data.Aeson.Types.Instances
 
 import Data.Aeson.Types.Instances.Tuple ()
 
-import Data.Aeson.Encoding (Encoding (..), emptyArray_, dict, tuple, (>*<))
+import Data.Aeson.Encoding.Internal (Encoding (..), emptyArray_, dict, tuple, (>*<))
 
 import Control.Applicative (Const(..))
 import Data.Aeson.Encode.Functions (builder)

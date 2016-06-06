@@ -12,10 +12,9 @@
 -- Tuple instances
 module Data.Aeson.Types.Instances.Tuple () where
 
-import Data.Aeson.Encoding (tuple, (>*<))
+import Data.Aeson.Encoding.Internal (tuple, (>*<))
 import Data.Aeson.Types.Class
 import Data.Aeson.Types.Internal
-import Data.Monoid ((<>))
 
 import qualified Data.Vector as V
 import qualified Data.Vector.Mutable as VM (unsafeNew, unsafeWrite)

@@ -16,6 +16,7 @@ library
   exposed-modules:
     Data.Aeson
     Data.Aeson.Encoding
+    Data.Aeson.Encoding.Internal
     Data.Aeson.Encode
     Data.Aeson.Encode.Builder
     Data.Aeson.Encode.Functions

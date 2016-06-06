@@ -140,7 +140,7 @@ import Prelude             ( head )
 import Text.Printf         ( printf )
 import Text.Show           ( show )
 import qualified Data.Aeson as A
-import qualified Data.Aeson.Encoding as E
+import qualified Data.Aeson.Encoding.Internal as E
 import qualified Data.HashMap.Strict as H ( lookup, toList )
 import qualified Data.Map as M ( fromList, findWithDefault )
 import qualified Data.Text as T ( Text, pack, unpack )

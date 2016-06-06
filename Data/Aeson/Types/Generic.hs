@@ -24,8 +24,8 @@ module Data.Aeson.Types.Generic ( ) where
 import Control.Applicative ((<|>))
 import Control.Monad ((<=<))
 import Control.Monad.ST (ST)
-import Data.Aeson.Encoding (Encoding, (>*<))
-import qualified Data.Aeson.Encoding as E
+import Data.Aeson.Encoding.Internal (Encoding, (>*<))
+import qualified Data.Aeson.Encoding.Internal as E
 import Data.Aeson.Types.Instances
 import Data.Aeson.Types.Internal
 import Data.Bits (unsafeShiftR)
