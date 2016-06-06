@@ -4,12 +4,6 @@ build-type:          Simple
 
 cabal-version:       >=1.8
 
-flag old-locale
-  description: If false then depend on time >= 1.5.
-               .
-               If true then depend on time < 1.5 together with old-locale.
-  default: False
-
 library
   hs-source-dirs: .. .
 
@@ -63,11 +57,6 @@ library
   if !impl(ghc >= 8.0)
     -- `Data.Semigroup` is available in base only since GHC 8.0 / base 4.9
     build-depends: semigroups >= 0.16.1 && < 0.19
-
-  if flag(old-locale)
-    build-depends: time < 1.5, old-locale
-  else
-    build-depends: time >= 1.5
 
   include-dirs: ../include
 
