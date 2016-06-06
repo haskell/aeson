@@ -24,13 +24,11 @@ module Data.Aeson.Types.Generic ( ) where
 import Control.Applicative ((<|>))
 import Control.Monad ((<=<))
 import Control.Monad.ST (ST)
-import Data.Aeson.Encode.Builder (emptyArray_)
-import Data.Aeson.Encode.Functions (builder)
+import Data.Aeson.Encoding.Internal (Encoding, (>*<))
+import qualified Data.Aeson.Encoding.Internal as E
 import Data.Aeson.Types.Instances
 import Data.Aeson.Types.Internal
 import Data.Bits (unsafeShiftR)
-import Data.ByteString.Builder as B
-import qualified Data.ByteString.Lazy as BSL (null)
 import Data.DList (DList, toList, empty)
 import Data.Maybe (fromMaybe)
 import Data.Monoid ((<>))
@@ -101,28 +99,27 @@ instance (ToJSON a) => GToEncoding (K1 i a) where
 
 instance GToEncoding U1 where
     -- Empty constructors are encoded to an empty array:
-    gToEncoding _opts _ = emptyArray_
+    gToEncoding _opts _ = E.emptyArray_
 
 instance (ConsToEncoding a) => GToEncoding (C1 c a) where
     -- Constructors need to be encoded differently depending on whether they're
     -- a record or not. This distinction is made by 'consToEncoding':
-    gToEncoding opts = Encoding . consToEncoding opts . unM1
+    gToEncoding opts = consToEncoding opts . unM1
 
 instance ( EncodeProduct a, EncodeProduct b ) => GToEncoding (a :*: b) where
     -- Products are encoded to an array. Here we allocate a mutable vector of
     -- the same size as the product and write the product's elements to it using
     -- 'encodeProduct':
-    gToEncoding opts p = Encoding $
-                         B.char7 '[' <> encodeProduct opts p <> B.char7 ']'
+    gToEncoding opts p = E.tuple $ encodeProduct opts p
 
 instance ( AllNullary    (a :+: b) allNullary
          , SumToEncoding (a :+: b) allNullary ) => GToEncoding (a :+: b) where
     -- If all constructors of a sum datatype are nullary and the
     -- 'allNullaryToStringTag' option is set they are encoded to
     -- strings.  This distinction is made by 'sumToEncoding':
-    gToEncoding opts = Encoding .
-                       (unTagged :: Tagged allNullary B.Builder -> B.Builder) .
-                       sumToEncoding opts
+    gToEncoding opts
+        = (unTagged :: Tagged allNullary Encoding -> Encoding)
+        . sumToEncoding opts
 
 --------------------------------------------------------------------------------
 
@@ -157,14 +154,14 @@ nonAllNullarySumToJSON opts =
 --------------------------------------------------------------------------------
 
 class SumToEncoding f allNullary where
-    sumToEncoding :: Options -> f a -> Tagged allNullary B.Builder
+    sumToEncoding :: Options -> f a -> Tagged allNullary Encoding
 
 instance ( GetConName               f
          , TaggedObjectEnc          f
          , ObjectWithSingleFieldEnc f
          , TwoElemArrayEnc          f ) => SumToEncoding f True where
     sumToEncoding opts
-        | allNullaryToStringTag opts = Tagged . builder .
+        | allNullaryToStringTag opts = Tagged . toEncoding .
                                        constructorTagModifier opts . getConName
         | otherwise = Tagged . nonAllNullarySumToEncoding opts
 
@@ -176,7 +173,7 @@ instance ( TwoElemArrayEnc          f
 nonAllNullarySumToEncoding :: ( TwoElemArrayEnc          f
                               , TaggedObjectEnc          f
                               , ObjectWithSingleFieldEnc f
-                              ) => Options -> f a -> B.Builder
+                              ) => Options -> f a -> Encoding
 nonAllNullarySumToEncoding opts =
     case sumEncoding opts of
       TaggedObject{..}      ->
@@ -221,7 +218,7 @@ instance (GToJSON f) => TaggedObjectPairs' f False where
 --------------------------------------------------------------------------------
 
 class TaggedObjectEnc f where
-    taggedObjectEnc :: Options -> String -> String -> f a -> B.Builder
+    taggedObjectEnc :: Options -> String -> String -> f a -> Encoding
 
 instance ( TaggedObjectEnc a
          , TaggedObjectEnc b ) => TaggedObjectEnc (a :+: b) where
@@ -234,27 +231,27 @@ instance ( IsRecord         a isRecord
          , TaggedObjectEnc' a isRecord
          , Constructor c ) => TaggedObjectEnc (C1 c a) where
     taggedObjectEnc opts tagFieldName contentsFieldName v =
-        B.char7 '{' <>
-        (builder tagFieldName <>
-         B.char7 ':' <>
-         builder (constructorTagModifier opts (conName (undefined :: t c a p)))) <>
-        ((unTagged :: Tagged isRecord B.Builder -> B.Builder) .
+        E.openCurly <>
+        (toEncoding tagFieldName <>
+         E.colon <>
+         toEncoding (constructorTagModifier opts (conName (undefined :: t c a p)))) <>
+        ((unTagged :: Tagged isRecord Encoding -> Encoding) .
          taggedObjectEnc' opts contentsFieldName . unM1 $ v) <>
-        B.char7 '}'
+        E.closeCurly
 
 class TaggedObjectEnc' f isRecord where
-    taggedObjectEnc' :: Options -> String -> f a -> Tagged isRecord B.Builder
+    taggedObjectEnc' :: Options -> String -> f a -> Tagged isRecord Encoding
 
 instance OVERLAPPING_ TaggedObjectEnc' U1 False where
     taggedObjectEnc' _ _ _ = Tagged mempty
 
 instance (RecordToEncoding f) => TaggedObjectEnc' f True where
-    taggedObjectEnc' opts _ = Tagged . (B.char7 ',' <>) . fst . recordToEncoding opts
+    taggedObjectEnc' opts _ = Tagged . (E.comma <>) . fst . recordToEncoding opts
 
 instance (GToEncoding f) => TaggedObjectEnc' f False where
     taggedObjectEnc' opts contentsFieldName =
-        Tagged . (\z -> B.char7 ',' <> builder contentsFieldName <> B.char7 ':' <> z) .
-        gbuilder opts
+        Tagged . (\z -> E.comma <> toEncoding contentsFieldName <> E.colon <> z) .
+        gToEncoding opts
 
 --------------------------------------------------------------------------------
 
@@ -290,7 +287,7 @@ instance ( GToJSON a, ConsToJSON a
 --------------------------------------------------------------------------------
 
 class TwoElemArrayEnc f where
-    twoElemArrayEnc :: Options -> f a -> B.Builder
+    twoElemArrayEnc :: Options -> f a -> Encoding
 
 instance (TwoElemArrayEnc a, TwoElemArrayEnc b) => TwoElemArrayEnc (a :+: b) where
     twoElemArrayEnc opts (L1 x) = twoElemArrayEnc opts x
@@ -298,9 +295,9 @@ instance (TwoElemArrayEnc a, TwoElemArrayEnc b) => TwoElemArrayEnc (a :+: b) whe
 
 instance ( GToEncoding a, ConsToEncoding a
          , Constructor c ) => TwoElemArrayEnc (C1 c a) where
-    twoElemArrayEnc opts x = fromEncoding . tuple $
-      builder (constructorTagModifier opts (conName (undefined :: t c a p))) >*<
-      gbuilder opts x
+    twoElemArrayEnc opts x = E.tuple $
+      toEncoding (constructorTagModifier opts (conName (undefined :: t c a p))) >*<
+      gToEncoding opts x
 
 --------------------------------------------------------------------------------
 
@@ -329,15 +326,15 @@ instance GToJSON f => ConsToJSON' f False where
 --------------------------------------------------------------------------------
 
 class ConsToEncoding f where
-    consToEncoding :: Options -> f a -> B.Builder
+    consToEncoding :: Options -> f a -> Encoding
 
 class ConsToEncoding' f isRecord where
     consToEncoding' :: Options -> Bool -- ^ Are we a record with one field?
-                    -> f a -> Tagged isRecord B.Builder
+                    -> f a -> Tagged isRecord Encoding 
 
 instance ( IsRecord        f isRecord
          , ConsToEncoding' f isRecord ) => ConsToEncoding f where
-    consToEncoding opts = (unTagged :: Tagged isRecord B.Builder -> B.Builder)
+    consToEncoding opts = (unTagged :: Tagged isRecord Encoding -> Encoding)
                           . consToEncoding' opts (isUnary (undefined :: f a))
 
 instance (RecordToEncoding f) => ConsToEncoding' f True where
@@ -345,10 +342,10 @@ instance (RecordToEncoding f) => ConsToEncoding' f True where
       let (enc, mbVal) = recordToEncoding opts x
       in case (unwrapUnaryRecords opts, isUn, mbVal) of
            (True, True, Just val) -> Tagged val
-           _ -> Tagged $ B.char7 '{' <> enc <> B.char7 '}'
+           _ -> Tagged $ E.wrapObject enc 
 
 instance GToEncoding f => ConsToEncoding' f False where
-    consToEncoding' opts _ = Tagged . gbuilder opts
+    consToEncoding' opts _ = Tagged . gToEncoding opts
 
 --------------------------------------------------------------------------------
 
@@ -379,16 +376,16 @@ class RecordToEncoding f where
     -- 1st element: whole thing
     -- 2nd element: in case the record has only 1 field, just the value
     --              of the field (without the key); 'Nothing' otherwise
-    recordToEncoding :: Options -> f a -> (B.Builder, Maybe B.Builder)
+    recordToEncoding :: Options -> f a -> (Encoding, Maybe Encoding)
 
 instance (RecordToEncoding a, RecordToEncoding b) => RecordToEncoding (a :*: b) where
     recordToEncoding opts (a :*: b) | omitNothingFields opts =
-      (mconcat $ intersperse (B.char7 ',') $
-        filter (not . BSL.null . B.toLazyByteString)
+      (mconcat $ intersperse E.comma $
+        filter (not . E.nullEncoding)
         [fst (recordToEncoding opts a), fst (recordToEncoding opts b)]
       , Nothing)
     recordToEncoding opts (a :*: b) =
-      (fst (recordToEncoding opts a) <> B.char7 ',' <>
+      (fst (recordToEncoding opts a) <> E.comma <>
        fst (recordToEncoding opts b),
        Nothing)
 
@@ -401,11 +398,11 @@ instance OVERLAPPING_ (Selector s, ToJSON a) =>
                                   , K1 Nothing <- k1 = (mempty, Nothing)
     recordToEncoding opts m1 = fieldToEncoding opts m1
 
-fieldToEncoding :: (Selector s, GToEncoding a) => Options -> S1 s a p -> (B.Builder, Maybe B.Builder)
+fieldToEncoding :: (Selector s, GToEncoding a) => Options -> S1 s a p -> (Encoding, Maybe Encoding)
 fieldToEncoding opts m1 =
-  let keyBuilder = builder (fieldLabelModifier opts $ selName m1)
-      valueBuilder = gbuilder opts (unM1 m1)
-  in  (keyBuilder <> B.char7 ':' <> valueBuilder, Just valueBuilder)
+  let keyBuilder = toEncoding (fieldLabelModifier opts $ selName m1)
+      valueBuilder = gToEncoding opts (unM1 m1)
+  in  (keyBuilder <> E.colon <> valueBuilder, Just valueBuilder)
 
 --------------------------------------------------------------------------------
 
@@ -433,20 +430,20 @@ instance OVERLAPPABLE_ (GToJSON a) => WriteProduct a where
 --------------------------------------------------------------------------------
 
 class EncodeProduct f where
-    encodeProduct :: Options -> f a -> B.Builder
+    encodeProduct :: Options -> f a -> Encoding 
 
 instance ( EncodeProduct a
          , EncodeProduct b ) => EncodeProduct (a :*: b) where
     encodeProduct opts (a :*: b) | omitNothingFields opts =
-        mconcat $ intersperse (B.char7 ',') $
-        filter (not . BSL.null . B.toLazyByteString)
+        mconcat $ intersperse E.comma $
+        filter (not . E.nullEncoding)
         [encodeProduct opts a, encodeProduct opts b]
     encodeProduct opts (a :*: b) = encodeProduct opts a <>
-                                   B.char7 ',' <>
+                                   E.comma <>
                                    encodeProduct opts b
 
 instance OVERLAPPABLE_ (GToEncoding a) => EncodeProduct a where
-    encodeProduct opts = gbuilder opts
+    encodeProduct opts = gToEncoding opts
 
 --------------------------------------------------------------------------------
 
@@ -468,7 +465,7 @@ instance ( GToJSON a, ConsToJSON a
 --------------------------------------------------------------------------------
 
 class ObjectWithSingleFieldEnc f where
-    objectWithSingleFieldEnc :: Options -> f a -> B.Builder
+    objectWithSingleFieldEnc :: Options -> f a -> Encoding
 
 instance ( ObjectWithSingleFieldEnc a
          , ObjectWithSingleFieldEnc b ) => ObjectWithSingleFieldEnc (a :+: b) where
@@ -478,15 +475,13 @@ instance ( ObjectWithSingleFieldEnc a
 instance ( GToEncoding a, ConsToEncoding a
          , Constructor c ) => ObjectWithSingleFieldEnc (C1 c a) where
     objectWithSingleFieldEnc opts v =
-      B.char7 '{' <>
-      builder (constructorTagModifier opts
-               (conName (undefined :: t c a p))) <>
-      B.char7 ':' <>
-      gbuilder opts v <>
-      B.char7 '}'
-
-gbuilder :: GToEncoding f => Options -> f a -> Builder
-gbuilder opts = fromEncoding . gToEncoding opts
+      E.openCurly <>
+      toEncoding
+          (constructorTagModifier opts
+          (conName (undefined :: t c a p))) <>
+      E.colon <>
+      gToEncoding opts v <>
+      E.closeCurly
 
 --------------------------------------------------------------------------------
 -- Generic parseJSON

@@ -1,5 +1,5 @@
 #!/usr/bin/env stack
-{- stack --resolver=lts-5.9 runghc
+{- stack --resolver=lts-6.0 runghc
       --package mtl
       --package dlist
 -}
@@ -45,9 +45,9 @@ tuple n = fold $ flip execState DList.empty $ do
     t ["    liftToEncoding2 ", toPrev, " _ ", toLast, " _ ", vs', " = tuple $" ]
     forM_ (zip [0..] vs) $ \(i, v) -> t . ("        " :) $ case i of
 
-        _ | i == n - 1 -> [ "fromEncoding (", toLast, " ", v, ")" ]
-        _ | i == n - 2 -> [ "fromEncoding (", toPrev, " ", v, ") >*<" ]
-        _ | otherwise  -> [ "builder ", v, " >*<" ]
+        _ | i == n - 1 -> [ toLast, " ", v ]
+        _ | i == n - 2 -> [ toPrev, " ", v, " >*<" ]
+        _ | otherwise  -> [ "toEncoding ", v, " >*<" ]
     t ["    {-# INLINE liftToEncoding2 #-}" ]
     t []
 

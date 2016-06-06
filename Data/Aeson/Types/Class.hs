@@ -1,5 +1,5 @@
-{-# LANGUAGE CPP, GADTs, DefaultSignatures, FlexibleContexts, DeriveFunctor,
-    ScopedTypeVariables #-}
+{-# LANGUAGE CPP, GADTs, DefaultSignatures, FlexibleInstances, FlexibleContexts, DeriveFunctor,
+    ScopedTypeVariables, TypeSynonymInstances #-}
 
 -- |
 -- Module:      Data.Aeson.Types.Class
@@ -55,12 +55,12 @@ module Data.Aeson.Types.Class
     ) where
 
 import Data.Aeson.Types.Internal
+import Data.Aeson.Encoding.Internal (Encoding, Series)
 import Data.Monoid ((<>))
 import Data.Text (Text)
 import GHC.Generics (Generic, Rep, from, to)
-import Data.Aeson.Encode.Builder (emptyArray_)
-import qualified Data.ByteString.Builder as B
-import qualified Data.Aeson.Encode.Builder as E
+import qualified Data.Aeson.Encoding.Internal as E
+import qualified Data.Aeson.Encode.Builder as EB
 import qualified Data.Vector as V
 
 #if !MIN_VERSION_base(4,8,0)
@@ -208,7 +208,7 @@ class ToJSON a where
     -- @
 
     toEncoding :: a -> Encoding
-    toEncoding = Encoding . E.encodeToBuilder . toJSON
+    toEncoding = E.Encoding . EB.encodeToBuilder . toJSON
     {-# INLINE toEncoding #-}
 
     toJSONList :: [a] -> Value
@@ -216,12 +216,7 @@ class ToJSON a where
     {-# INLINE toJSONList #-}
 
     toEncodingList :: [a] -> Encoding
-    toEncodingList [] = emptyArray_
-    toEncodingList (x:xs) = Encoding $
-        B.char7 '[' <> builder x <> commas xs <> B.char7 ']'
-      where
-        commas  = foldr (\v vs -> B.char7 ',' <> builder v <> vs) mempty
-        builder = fromEncoding . toEncoding
+    toEncodingList = listEncoding toEncoding
     {-# INLINE toEncodingList #-}
 
 -- | A type that can be converted from JSON, with the possibility of
@@ -324,6 +319,14 @@ class FromJSON a where
 class KeyValue kv where
     (.=) :: ToJSON v => Text -> v -> kv
     infixr 8 .=
+
+instance KeyValue Series where
+    name .= value = E.Value $ E.text name <> E.colon <> toEncoding value
+    {-# INLINE (.=) #-}
+
+instance KeyValue Pair where
+    name .= value = (name, toJSON value)
+    {-# INLINE (.=) #-}
 
 -------------------------------------------------------------------------------
 --  Classes and types for map keys
@@ -525,11 +528,7 @@ toEncoding2 = liftToEncoding2 toEncoding toEncodingList toEncoding toEncodingLis
 -------------------------------------------------------------------------------
 
 listEncoding :: (a -> Encoding) -> [a] -> Encoding
-listEncoding _  []     = emptyArray_
-listEncoding to' (x:xs) = Encoding $
-                B.char7 '[' <> fromEncoding (to' x) <> commas xs <> B.char7 ']'
-      where commas = foldr (\v vs -> B.char7 ',' <> fromEncoding (to' v) <> vs) mempty
-{-# INLINE listEncoding #-}
+listEncoding = E.list
 
 listValue :: (a -> Value) -> [a] -> Value
 listValue f = Array . V.fromList . map f

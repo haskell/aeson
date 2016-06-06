@@ -10,16 +10,14 @@
 -- Portability: portable
 --
 -- Tuple instances
-module Data.Aeson.Types.Instances.Tuple (tuple, (>*<)) where
+module Data.Aeson.Types.Instances.Tuple () where
 
-import Data.Aeson.Encode.Functions (builder)
+import Data.Aeson.Encoding.Internal (tuple, (>*<))
 import Data.Aeson.Types.Class
 import Data.Aeson.Types.Internal
-import Data.Monoid ((<>))
 
 import qualified Data.Vector as V
 import qualified Data.Vector.Mutable as VM (unsafeNew, unsafeWrite)
-import qualified Data.ByteString.Builder as B
 
 #if MIN_VERSION_base(4,8,0)
 #else
@@ -28,15 +26,6 @@ import Control.Applicative ((<$>), (<*>))
 
 parseJSONElemAtIndex :: (Value -> Parser a) -> Int -> V.Vector Value -> Parser a
 parseJSONElemAtIndex p idx ary = p (V.unsafeIndex ary idx) <?> Index idx
-
-(>*<) :: B.Builder -> B.Builder -> B.Builder
-a >*< b = a <> B.char7 ',' <> b
-{-# INLINE (>*<) #-}
-infixr 6 >*<
-
-tuple :: B.Builder -> Encoding
-tuple b = Encoding (B.char7 '[' <> b <> B.char7 ']')
-{-# INLINE tuple #-}
 
 -- Local copy of withArray
 withArray :: String -> (Array -> Parser a) -> Value -> Parser a
@@ -57,8 +46,8 @@ instance ToJSON2 ((,) ) where
     {-# INLINE liftToJSON2 #-}
 
     liftToEncoding2 toA _ toB _ (a, b) = tuple $
-        fromEncoding (toA a) >*<
-        fromEncoding (toB b)
+        toA a >*<
+        toB b
     {-# INLINE liftToEncoding2 #-}
 
 instance (ToJSON a) => ToJSON1 ((,) a) where
@@ -102,9 +91,9 @@ instance (ToJSON a) => ToJSON2 ((,,) a) where
     {-# INLINE liftToJSON2 #-}
 
     liftToEncoding2 toB _ toC _ (a, b, c) = tuple $
-        builder a >*<
-        fromEncoding (toB b) >*<
-        fromEncoding (toC c)
+        toEncoding a >*<
+        toB b >*<
+        toC c
     {-# INLINE liftToEncoding2 #-}
 
 instance (ToJSON a, ToJSON b) => ToJSON1 ((,,) a b) where
@@ -150,10 +139,10 @@ instance (ToJSON a, ToJSON b) => ToJSON2 ((,,,) a b) where
     {-# INLINE liftToJSON2 #-}
 
     liftToEncoding2 toC _ toD _ (a, b, c, d) = tuple $
-        builder a >*<
-        builder b >*<
-        fromEncoding (toC c) >*<
-        fromEncoding (toD d)
+        toEncoding a >*<
+        toEncoding b >*<
+        toC c >*<
+        toD d
     {-# INLINE liftToEncoding2 #-}
 
 instance (ToJSON a, ToJSON b, ToJSON c) => ToJSON1 ((,,,) a b c) where
@@ -201,11 +190,11 @@ instance (ToJSON a, ToJSON b, ToJSON c) => ToJSON2 ((,,,,) a b c) where
     {-# INLINE liftToJSON2 #-}
 
     liftToEncoding2 toD _ toE _ (a, b, c, d, e) = tuple $
-        builder a >*<
-        builder b >*<
-        builder c >*<
-        fromEncoding (toD d) >*<
-        fromEncoding (toE e)
+        toEncoding a >*<
+        toEncoding b >*<
+        toEncoding c >*<
+        toD d >*<
+        toE e
     {-# INLINE liftToEncoding2 #-}
 
 instance (ToJSON a, ToJSON b, ToJSON c, ToJSON d) => ToJSON1 ((,,,,) a b c d) where
@@ -255,12 +244,12 @@ instance (ToJSON a, ToJSON b, ToJSON c, ToJSON d) => ToJSON2 ((,,,,,) a b c d) w
     {-# INLINE liftToJSON2 #-}
 
     liftToEncoding2 toE _ toF _ (a, b, c, d, e, f) = tuple $
-        builder a >*<
-        builder b >*<
-        builder c >*<
-        builder d >*<
-        fromEncoding (toE e) >*<
-        fromEncoding (toF f)
+        toEncoding a >*<
+        toEncoding b >*<
+        toEncoding c >*<
+        toEncoding d >*<
+        toE e >*<
+        toF f
     {-# INLINE liftToEncoding2 #-}
 
 instance (ToJSON a, ToJSON b, ToJSON c, ToJSON d, ToJSON e) => ToJSON1 ((,,,,,) a b c d e) where
@@ -312,13 +301,13 @@ instance (ToJSON a, ToJSON b, ToJSON c, ToJSON d, ToJSON e) => ToJSON2 ((,,,,,,)
     {-# INLINE liftToJSON2 #-}
 
     liftToEncoding2 toF _ toG _ (a, b, c, d, e, f, g) = tuple $
-        builder a >*<
-        builder b >*<
-        builder c >*<
-        builder d >*<
-        builder e >*<
-        fromEncoding (toF f) >*<
-        fromEncoding (toG g)
+        toEncoding a >*<
+        toEncoding b >*<
+        toEncoding c >*<
+        toEncoding d >*<
+        toEncoding e >*<
+        toF f >*<
+        toG g
     {-# INLINE liftToEncoding2 #-}
 
 instance (ToJSON a, ToJSON b, ToJSON c, ToJSON d, ToJSON e, ToJSON f) => ToJSON1 ((,,,,,,) a b c d e f) where
@@ -372,14 +361,14 @@ instance (ToJSON a, ToJSON b, ToJSON c, ToJSON d, ToJSON e, ToJSON f) => ToJSON2
     {-# INLINE liftToJSON2 #-}
 
     liftToEncoding2 toG _ toH _ (a, b, c, d, e, f, g, h) = tuple $
-        builder a >*<
-        builder b >*<
-        builder c >*<
-        builder d >*<
-        builder e >*<
-        builder f >*<
-        fromEncoding (toG g) >*<
-        fromEncoding (toH h)
+        toEncoding a >*<
+        toEncoding b >*<
+        toEncoding c >*<
+        toEncoding d >*<
+        toEncoding e >*<
+        toEncoding f >*<
+        toG g >*<
+        toH h
     {-# INLINE liftToEncoding2 #-}
 
 instance (ToJSON a, ToJSON b, ToJSON c, ToJSON d, ToJSON e, ToJSON f, ToJSON g) => ToJSON1 ((,,,,,,,) a b c d e f g) where
@@ -435,15 +424,15 @@ instance (ToJSON a, ToJSON b, ToJSON c, ToJSON d, ToJSON e, ToJSON f, ToJSON g) 
     {-# INLINE liftToJSON2 #-}
 
     liftToEncoding2 toH _ toI _ (a, b, c, d, e, f, g, h, i) = tuple $
-        builder a >*<
-        builder b >*<
-        builder c >*<
-        builder d >*<
-        builder e >*<
-        builder f >*<
-        builder g >*<
-        fromEncoding (toH h) >*<
-        fromEncoding (toI i)
+        toEncoding a >*<
+        toEncoding b >*<
+        toEncoding c >*<
+        toEncoding d >*<
+        toEncoding e >*<
+        toEncoding f >*<
+        toEncoding g >*<
+        toH h >*<
+        toI i
     {-# INLINE liftToEncoding2 #-}
 
 instance (ToJSON a, ToJSON b, ToJSON c, ToJSON d, ToJSON e, ToJSON f, ToJSON g, ToJSON h) => ToJSON1 ((,,,,,,,,) a b c d e f g h) where
@@ -501,16 +490,16 @@ instance (ToJSON a, ToJSON b, ToJSON c, ToJSON d, ToJSON e, ToJSON f, ToJSON g, 
     {-# INLINE liftToJSON2 #-}
 
     liftToEncoding2 toI _ toJ _ (a, b, c, d, e, f, g, h, i, j) = tuple $
-        builder a >*<
-        builder b >*<
-        builder c >*<
-        builder d >*<
-        builder e >*<
-        builder f >*<
-        builder g >*<
-        builder h >*<
-        fromEncoding (toI i) >*<
-        fromEncoding (toJ j)
+        toEncoding a >*<
+        toEncoding b >*<
+        toEncoding c >*<
+        toEncoding d >*<
+        toEncoding e >*<
+        toEncoding f >*<
+        toEncoding g >*<
+        toEncoding h >*<
+        toI i >*<
+        toJ j
     {-# INLINE liftToEncoding2 #-}
 
 instance (ToJSON a, ToJSON b, ToJSON c, ToJSON d, ToJSON e, ToJSON f, ToJSON g, ToJSON h, ToJSON i) => ToJSON1 ((,,,,,,,,,) a b c d e f g h i) where
@@ -570,17 +559,17 @@ instance (ToJSON a, ToJSON b, ToJSON c, ToJSON d, ToJSON e, ToJSON f, ToJSON g, 
     {-# INLINE liftToJSON2 #-}
 
     liftToEncoding2 toJ _ toK _ (a, b, c, d, e, f, g, h, i, j, k) = tuple $
-        builder a >*<
-        builder b >*<
-        builder c >*<
-        builder d >*<
-        builder e >*<
-        builder f >*<
-        builder g >*<
-        builder h >*<
-        builder i >*<
-        fromEncoding (toJ j) >*<
-        fromEncoding (toK k)
+        toEncoding a >*<
+        toEncoding b >*<
+        toEncoding c >*<
+        toEncoding d >*<
+        toEncoding e >*<
+        toEncoding f >*<
+        toEncoding g >*<
+        toEncoding h >*<
+        toEncoding i >*<
+        toJ j >*<
+        toK k
     {-# INLINE liftToEncoding2 #-}
 
 instance (ToJSON a, ToJSON b, ToJSON c, ToJSON d, ToJSON e, ToJSON f, ToJSON g, ToJSON h, ToJSON i, ToJSON j) => ToJSON1 ((,,,,,,,,,,) a b c d e f g h i j) where
@@ -642,18 +631,18 @@ instance (ToJSON a, ToJSON b, ToJSON c, ToJSON d, ToJSON e, ToJSON f, ToJSON g, 
     {-# INLINE liftToJSON2 #-}
 
     liftToEncoding2 toK _ toL _ (a, b, c, d, e, f, g, h, i, j, k, l) = tuple $
-        builder a >*<
-        builder b >*<
-        builder c >*<
-        builder d >*<
-        builder e >*<
-        builder f >*<
-        builder g >*<
-        builder h >*<
-        builder i >*<
-        builder j >*<
-        fromEncoding (toK k) >*<
-        fromEncoding (toL l)
+        toEncoding a >*<
+        toEncoding b >*<
+        toEncoding c >*<
+        toEncoding d >*<
+        toEncoding e >*<
+        toEncoding f >*<
+        toEncoding g >*<
+        toEncoding h >*<
+        toEncoding i >*<
+        toEncoding j >*<
+        toK k >*<
+        toL l
     {-# INLINE liftToEncoding2 #-}
 
 instance (ToJSON a, ToJSON b, ToJSON c, ToJSON d, ToJSON e, ToJSON f, ToJSON g, ToJSON h, ToJSON i, ToJSON j, ToJSON k) => ToJSON1 ((,,,,,,,,,,,) a b c d e f g h i j k) where
@@ -717,19 +706,19 @@ instance (ToJSON a, ToJSON b, ToJSON c, ToJSON d, ToJSON e, ToJSON f, ToJSON g, 
     {-# INLINE liftToJSON2 #-}
 
     liftToEncoding2 toL _ toM _ (a, b, c, d, e, f, g, h, i, j, k, l, m) = tuple $
-        builder a >*<
-        builder b >*<
-        builder c >*<
-        builder d >*<
-        builder e >*<
-        builder f >*<
-        builder g >*<
-        builder h >*<
-        builder i >*<
-        builder j >*<
-        builder k >*<
-        fromEncoding (toL l) >*<
-        fromEncoding (toM m)
+        toEncoding a >*<
+        toEncoding b >*<
+        toEncoding c >*<
+        toEncoding d >*<
+        toEncoding e >*<
+        toEncoding f >*<
+        toEncoding g >*<
+        toEncoding h >*<
+        toEncoding i >*<
+        toEncoding j >*<
+        toEncoding k >*<
+        toL l >*<
+        toM m
     {-# INLINE liftToEncoding2 #-}
 
 instance (ToJSON a, ToJSON b, ToJSON c, ToJSON d, ToJSON e, ToJSON f, ToJSON g, ToJSON h, ToJSON i, ToJSON j, ToJSON k, ToJSON l) => ToJSON1 ((,,,,,,,,,,,,) a b c d e f g h i j k l) where
@@ -795,20 +784,20 @@ instance (ToJSON a, ToJSON b, ToJSON c, ToJSON d, ToJSON e, ToJSON f, ToJSON g, 
     {-# INLINE liftToJSON2 #-}
 
     liftToEncoding2 toM _ toN _ (a, b, c, d, e, f, g, h, i, j, k, l, m, n) = tuple $
-        builder a >*<
-        builder b >*<
-        builder c >*<
-        builder d >*<
-        builder e >*<
-        builder f >*<
-        builder g >*<
-        builder h >*<
-        builder i >*<
-        builder j >*<
-        builder k >*<
-        builder l >*<
-        fromEncoding (toM m) >*<
-        fromEncoding (toN n)
+        toEncoding a >*<
+        toEncoding b >*<
+        toEncoding c >*<
+        toEncoding d >*<
+        toEncoding e >*<
+        toEncoding f >*<
+        toEncoding g >*<
+        toEncoding h >*<
+        toEncoding i >*<
+        toEncoding j >*<
+        toEncoding k >*<
+        toEncoding l >*<
+        toM m >*<
+        toN n
     {-# INLINE liftToEncoding2 #-}
 
 instance (ToJSON a, ToJSON b, ToJSON c, ToJSON d, ToJSON e, ToJSON f, ToJSON g, ToJSON h, ToJSON i, ToJSON j, ToJSON k, ToJSON l, ToJSON m) => ToJSON1 ((,,,,,,,,,,,,,) a b c d e f g h i j k l m) where
@@ -876,21 +865,21 @@ instance (ToJSON a, ToJSON b, ToJSON c, ToJSON d, ToJSON e, ToJSON f, ToJSON g, 
     {-# INLINE liftToJSON2 #-}
 
     liftToEncoding2 toN _ toO _ (a, b, c, d, e, f, g, h, i, j, k, l, m, n, o) = tuple $
-        builder a >*<
-        builder b >*<
-        builder c >*<
-        builder d >*<
-        builder e >*<
-        builder f >*<
-        builder g >*<
-        builder h >*<
-        builder i >*<
-        builder j >*<
-        builder k >*<
-        builder l >*<
-        builder m >*<
-        fromEncoding (toN n) >*<
-        fromEncoding (toO o)
+        toEncoding a >*<
+        toEncoding b >*<
+        toEncoding c >*<
+        toEncoding d >*<
+        toEncoding e >*<
+        toEncoding f >*<
+        toEncoding g >*<
+        toEncoding h >*<
+        toEncoding i >*<
+        toEncoding j >*<
+        toEncoding k >*<
+        toEncoding l >*<
+        toEncoding m >*<
+        toN n >*<
+        toO o
     {-# INLINE liftToEncoding2 #-}
 
 instance (ToJSON a, ToJSON b, ToJSON c, ToJSON d, ToJSON e, ToJSON f, ToJSON g, ToJSON h, ToJSON i, ToJSON j, ToJSON k, ToJSON l, ToJSON m, ToJSON n) => ToJSON1 ((,,,,,,,,,,,,,,) a b c d e f g h i j k l m n) where
@@ -935,5 +924,3 @@ instance (FromJSON a, FromJSON b, FromJSON c, FromJSON d, FromJSON e, FromJSON f
 instance (FromJSON a, FromJSON b, FromJSON c, FromJSON d, FromJSON e, FromJSON f, FromJSON g, FromJSON h, FromJSON i, FromJSON j, FromJSON k, FromJSON l, FromJSON m, FromJSON n, FromJSON o) => FromJSON (a, b, c, d, e, f, g, h, i, j, k, l, m, n, o) where
     parseJSON = parseJSON2
     {-# INLINE parseJSON #-}
-
-

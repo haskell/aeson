@@ -28,16 +28,26 @@ module Data.Aeson.Encode
     ) where
 
 import Data.Aeson.Encode.Builder (encodeToBuilder)
-import Data.Aeson.Encode.Functions (encode)
-import Data.Aeson.Types (Value(..))
+import Data.Aeson.Types (Value(..), ToJSON (..))
+import Data.Aeson.Encoding (fromEncoding)
 import Data.Monoid ((<>))
 import Data.Scientific (FPFormat(..), Scientific, base10Exponent)
 import Data.Text.Lazy.Builder
 import Data.Text.Lazy.Builder.Scientific (formatScientificBuilder)
+
 import Numeric (showHex)
+import qualified Data.ByteString.Builder as B
 import qualified Data.HashMap.Strict as H
 import qualified Data.Text as T
 import qualified Data.Vector as V
+import qualified Data.ByteString.Lazy as L
+
+-- | Efficiently serialize a JSON value as a lazy 'L.ByteString'.
+--
+-- This is implemented in terms of the 'ToJSON' class's 'toEncoding' method.
+encode :: ToJSON a => a -> L.ByteString
+encode = B.toLazyByteString . fromEncoding . toEncoding
+{-# INLINE encode #-}
 
 -- | Encode a JSON 'Value' to a "Data.Text" 'Builder', which can be
 -- embedded efficiently in a text-based protocol.

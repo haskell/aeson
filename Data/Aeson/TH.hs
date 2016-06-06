@@ -107,7 +107,7 @@ import Data.Aeson.Types ( Value(..), Parser
                         , defaultOptions
                         , defaultTaggedObject
                         )
-import Data.Aeson.Types.Internal (Encoding(..), (<?>), JSONPathElement(Key))
+import Data.Aeson.Types.Internal ((<?>), JSONPathElement(Key))
 import Control.Monad       ( liftM2, return, mapM, fail )
 import Data.Bool           ( Bool(False, True), otherwise, (&&), not )
 import Data.Either         ( Either(Left, Right) )
@@ -140,8 +140,7 @@ import Prelude             ( head )
 import Text.Printf         ( printf )
 import Text.Show           ( show )
 import qualified Data.Aeson as A
-import qualified Data.Aeson.Encode.Builder as E
-import qualified Data.Aeson.Encode.Functions as E
+import qualified Data.Aeson.Encoding.Internal as E
 import qualified Data.HashMap.Strict as H ( lookup, toList )
 import qualified Data.Map as M ( fromList, findWithDefault )
 import qualified Data.Text as T ( Text, pack, unpack )
@@ -291,7 +290,7 @@ consToEncoding opts cons = do
     matches
         | allNullaryToStringTag opts && all isNullary cons =
               [ match (conP conName [])
-                (normalB $ [|Encoding|] `appE` encStr opts conName) []
+                (normalB $ encStr opts conName) []
               | con <- cons
               , let conName = getConName con
               ]
@@ -458,23 +457,23 @@ isMaybe _                            = False
 infixr 6 <^>
 
 (<:>) :: ExpQ -> ExpQ -> ExpQ
-(<:>) a b = a <^> [|E.char7 ':'|] <^> b
+(<:>) a b = a <^> [|E.colon|] <^> b
 infixr 5 <:>
 
 (<%>) :: ExpQ -> ExpQ -> ExpQ
-(<%>) a b = a <^> [|E.char7 ','|] <^> b
+(<%>) a b = a <^> [|E.comma|] <^> b
 infixr 4 <%>
 
 array :: ExpQ -> ExpQ
-array exp = [|Encoding|] `appE` ([|E.char7 '['|] <^> exp <^> [|E.char7 ']'|])
+array exp = [|E.wrapArray|] `appE` exp
 
 object :: ExpQ -> ExpQ
-object exp = [|Encoding|] `appE` ([|E.char7 '{'|] <^> exp <^> [|E.char7 '}'|])
+object exp = [|E.wrapObject|] `appE` exp 
 
 sumToEncoding :: Options -> Bool -> Name -> Q Exp -> Q Exp
 sumToEncoding opts multiCons conName exp
     | multiCons =
-        let fexp = [|fromEncoding|] `appE` exp in
+        let fexp = exp in
         case sumEncoding opts of
           TwoElemArray ->
             array (encStr opts conName <%> fexp)
@@ -514,7 +513,7 @@ argsToEncoding opts multiCons (NormalC conName ts) = do
             [e] -> return ([|toEncoding|] `appE` varE e)
             -- Multiple arguments are converted to a JSON array.
             es  ->
-              return (array (foldr1 (<%>) [[|E.builder|] `appE` varE x | x <- es]))
+              return (array (foldr1 (<%>) [[|toEncoding|] `appE` varE x | x <- es]))
     match (conP conName $ map varP args)
           (normalB $ sumToEncoding opts multiCons conName js)
           []
@@ -528,7 +527,7 @@ argsToEncoding opts multiCons (RecC conName ts) = case (unwrapUnaryRecords opts,
     let exp = object objBody
 
         objBody = [|mconcat|] `appE`
-                  ([|intersperse (E.char7 ',')|] `appE` pairs)
+                  ([|intersperse E.comma|] `appE` pairs)
         pairs | omitNothingFields opts = infixApp maybeFields
                                                   [|(<>)|]
                                                   restFields
@@ -546,16 +545,16 @@ argsToEncoding opts multiCons (RecC conName ts) = case (unwrapUnaryRecords opts,
             infixApp
               (infixApp
                 (infixE
-                  (Just $ toFieldName field <^> [|E.char7 ':'|])
+                  (Just $ toFieldName field <^> [|E.colon|])
                   [|(<>)|]
                   Nothing)
                 [|(.)|]
-                [|E.builder|])
+                [|toEncoding|])
               [|(<$>)|]
               (varE arg)
 
         toPair (arg, (field, _, _)) =
-          toFieldName field <:> [|E.builder|] `appE` varE arg
+          toFieldName field <:> [|toEncoding|] `appE` varE arg
 
         toFieldName field = [|E.text|] `appE`
                             ([|T.pack|] `appE` fieldLabelExp opts field)
@@ -565,13 +564,13 @@ argsToEncoding opts multiCons (RecC conName ts) = case (unwrapUnaryRecords opts,
           $ if multiCons
             then case sumEncoding opts of
                    TwoElemArray -> array $
-                     encStr opts conName <%> [|fromEncoding|] `appE` exp
+                     encStr opts conName <%>  exp
                    TaggedObject{tagFieldName} -> object $
                      ([|E.text (T.pack tagFieldName)|] <:>
                       encStr opts conName) <%>
                      objBody
                    ObjectWithSingleField -> object $
-                     encStr opts conName <:> [|fromEncoding|] `appE` exp
+                     encStr opts conName <:> exp
             else exp
           ) []
 

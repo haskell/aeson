@@ -36,7 +36,7 @@ module Data.Aeson.Encode.Builder
     ) where
 
 import Data.Aeson.Internal.Time
-import Data.Aeson.Types.Internal (Encoding(..), Value(..))
+import Data.Aeson.Types.Internal (Value (..))
 import Data.ByteString.Builder as B
 import Data.ByteString.Builder.Prim as BP
 import Data.ByteString.Builder.Scientific (scientificBuilder)
@@ -76,7 +76,7 @@ bool = BP.primBounded (BP.condB id (ascii4 ('t',('r',('u','e'))))
 -- | Encode a JSON array.
 array :: V.Vector Value -> Builder
 array v
-  | V.null v  = emptyArray__
+  | V.null v  = emptyArray_
   | otherwise = B.char8 '[' <>
                 encodeToBuilder (V.unsafeHead v) <>
                 V.foldr withComma (B.char8 ']') (V.unsafeTail v)
@@ -87,7 +87,7 @@ array v
 object :: HMS.HashMap T.Text Value -> Builder
 object m = case HMS.toList m of
     (x:xs) -> B.char8 '{' <> one x <> foldr withComma (B.char8 '}') xs
-    _      -> emptyObject__
+    _      -> emptyObject_
   where
     withComma a z = B.char8 ',' <> one a <> z
     one (k,v)     = text k <> B.char8 ':' <> encodeToBuilder v
@@ -98,7 +98,7 @@ text t = B.char8 '"' <> unquoted t <> B.char8 '"'
 
 -- | Encode a JSON string, without enclosing quotes.
 unquoted :: T.Text -> Builder
-unquoted t = TE.encodeUtf8BuilderEscaped escapeAscii t
+unquoted = TE.encodeUtf8BuilderEscaped escapeAscii
 
 -- | Add quotes surrounding a builder
 quote :: Builder -> Builder
@@ -135,17 +135,11 @@ number s
   where
     e = base10Exponent s
 
-emptyArray_ :: Encoding
-emptyArray_ = Encoding emptyArray__
+emptyArray_ :: Builder
+emptyArray_ = BP.primBounded (ascii2 ('[',']')) ()
 
-emptyArray__ :: Builder
-emptyArray__ = BP.primBounded (ascii2 ('[',']')) ()
-
-emptyObject_ :: Encoding
-emptyObject_ = Encoding emptyObject__
-
-emptyObject__ :: Builder
-emptyObject__ = BP.primBounded (ascii2 ('{','}')) ()
+emptyObject_ :: Builder
+emptyObject_ = BP.primBounded (ascii2 ('{','}')) ()
 
 ascii2 :: (Char, Char) -> BP.BoundedPrim a
 ascii2 cs = BP.liftFixedToBounded $ (const cs) BP.>$< BP.char7 >*< BP.char7
