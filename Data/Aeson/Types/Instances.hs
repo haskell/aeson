@@ -56,9 +56,14 @@ module Data.Aeson.Types.Instances
     , GFromJSON(..)
     , GToJSON(..)
     , GToEncoding(..)
+    , Zero
+    , One
     , genericToJSON
+    , genericLiftToJSON
     , genericToEncoding
+    , genericLiftToEncoding
     , genericParseJSON
+    , genericLiftParseJSON
 
     -- * Types
     , DotNetTime(..)
@@ -76,6 +81,7 @@ module Data.Aeson.Types.Instances
     , ifromJSON
     , (.:)
     , (.:?)
+    , parseOptionalFieldWith
     , (.:!)
     , (.!=)
     , typeMismatch
@@ -1406,10 +1412,16 @@ obj .: key = case H.lookup key obj of
 -- from an object without affecting its validity.  If the key and
 -- value are mandatory, use '.:' instead.
 (.:?) :: (FromJSON a) => Object -> Text -> Parser (Maybe a)
-obj .:? key = case H.lookup key obj of
-               Nothing -> pure Nothing
-               Just v  -> parseJSON v <?> Key key
+obj .:? key = parseOptionalFieldWith parseJSON obj key
 {-# INLINE (.:?) #-}
+
+parseOptionalFieldWith :: (Value -> Parser (Maybe a))
+                       -> Object -> Text -> Parser (Maybe a)
+parseOptionalFieldWith pj obj key =
+    case H.lookup key obj of
+     Nothing -> pure Nothing
+     Just v  -> pj v <?> Key key
+{-# INLINE parseOptionalFieldWith #-}
 
 -- | Like '.:?', but the resulting parser will fail,
 -- if the key is present but is 'Null'.

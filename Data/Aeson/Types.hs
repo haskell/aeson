@@ -61,9 +61,14 @@ module Data.Aeson.Types
     , GFromJSON(..)
     , GToJSON(..)
     , GToEncoding(..)
+    , Zero
+    , One
     , genericToJSON
+    , genericLiftToJSON
     , genericToEncoding
+    , genericLiftToEncoding
     , genericParseJSON
+    , genericLiftParseJSON
 
     -- * Inspecting @'Value's@
     , withObject

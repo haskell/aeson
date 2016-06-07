@@ -1,5 +1,13 @@
-{-# LANGUAGE CPP, GADTs, DefaultSignatures, FlexibleInstances, FlexibleContexts, DeriveFunctor,
-    ScopedTypeVariables, TypeSynonymInstances #-}
+{-# LANGUAGE CPP #-}
+{-# LANGUAGE DefaultSignatures #-}
+{-# LANGUAGE DeriveFunctor #-}
+{-# LANGUAGE EmptyDataDecls #-}
+{-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE GADTs #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE TypeSynonymInstances #-}
 
 -- |
 -- Module:      Data.Aeson.Types.Class
@@ -32,9 +40,14 @@ module Data.Aeson.Types.Class
     , GFromJSON(..)
     , GToJSON(..)
     , GToEncoding(..)
+    , Zero
+    , One
     , genericToJSON
+    , genericLiftToJSON
     , genericToEncoding
+    , genericLiftToEncoding
     , genericParseJSON
+    , genericLiftParseJSON
     -- * Classes and types for map keys
     , ToJSONKey(..)
     , ToJSONKeyFunction(..)
@@ -57,8 +70,9 @@ module Data.Aeson.Types.Class
 import Data.Aeson.Types.Internal
 import Data.Aeson.Encoding.Internal (Encoding, Series)
 import Data.Monoid ((<>))
+import Data.Proxy (Proxy(..))
 import Data.Text (Text)
-import GHC.Generics (Generic, Rep, from, to)
+import GHC.Generics (Generic(..), Generic1(..))
 import qualified Data.Aeson.Encoding.Internal as E
 import qualified Data.Aeson.Encode.Builder as EB
 import qualified Data.Vector as V
@@ -80,43 +94,89 @@ coerce' :: a -> b
 coerce' = unsafeCoerce
 #endif
 
--- | Class of generic representation types ('Rep') that can be converted to
+-- | Class of generic representation types that can be converted to
 -- JSON.
-class GToJSON f where
+class GToJSON arity f where
     -- | This method (applied to 'defaultOptions') is used as the
-    -- default generic implementation of 'toJSON'.
-    gToJSON :: Options -> f a -> Value
+    -- default generic implementation of 'toJSON' (if the @arity@ is 'Zero')
+    -- or 'liftToJSON' (if the @arity@ is 'One').
+    gToJSON :: Options -> Proxy arity
+            -> (a -> Value) -> ([a] -> Value) -> f a -> Value
 
--- | Class of generic representation types ('Rep') that can be converted to
+-- | Class of generic representation types that can be converted to
 -- a JSON 'Encoding'.
-class GToEncoding f where
+class GToEncoding arity f where
     -- | This method (applied to 'defaultOptions') can be used as the
-    -- default generic implementation of 'toEncoding'.
-    gToEncoding :: Options -> f a -> Encoding
+    -- default generic implementation of 'toEncoding' (if the @arity@ is 'Zero')
+    -- or 'liftToEncoding' (if the @arity@ is 'One').
+    gToEncoding :: Options -> Proxy arity
+                -> (a -> Encoding) -> ([a] -> Encoding) -> f a -> Encoding
 
--- | Class of generic representation types ('Rep') that can be converted from JSON.
-class GFromJSON f where
+-- | Class of generic representation types that can be converted from JSON.
+class GFromJSON arity f where
     -- | This method (applied to 'defaultOptions') is used as the
-    -- default generic implementation of 'parseJSON'.
-    gParseJSON :: Options -> Value -> Parser (f a)
+    -- default generic implementation of 'parseJSON' (if the @arity@ is 'Zero')
+    -- or 'liftParseJSON' (if the @arity@ is 'One').
+    gParseJSON :: Options -> Proxy arity
+               -> (Value -> Parser a) -> (Value -> Parser [a])
+               -> Value -> Parser (f a)
+
+-- | A type-level indicator that 'ToJSON' or 'FromJSON' is being derived generically.
+data Zero
+
+-- | A type-level indicator that 'ToJSON1' or 'FromJSON1' is being derived generically.
+data One
+
+proxyZero :: Proxy Zero
+proxyZero = Proxy
+
+proxyOne :: Proxy One
+proxyOne  = Proxy
 
 -- | A configurable generic JSON creator. This function applied to
 -- 'defaultOptions' is used as the default for 'toJSON' when the type
 -- is an instance of 'Generic'.
-genericToJSON :: (Generic a, GToJSON (Rep a)) => Options -> a -> Value
-genericToJSON opts = gToJSON opts . from
+genericToJSON :: (Generic a, GToJSON Zero (Rep a))
+              => Options -> a -> Value
+genericToJSON opts = gToJSON opts proxyZero undefined undefined . from
+
+-- | A configurable generic JSON creator. This function applied to
+-- 'defaultOptions' is used as the default for 'liftToJSON' when the type
+-- is an instance of 'Generic1'.
+genericLiftToJSON :: (Generic1 f, GToJSON One (Rep1 f))
+                  => Options -> (a -> Value) -> ([a] -> Value)
+                  -> f a -> Value
+genericLiftToJSON opts tj tjl = gToJSON opts proxyOne tj tjl . from1
 
 -- | A configurable generic JSON encoder. This function applied to
 -- 'defaultOptions' is used as the default for 'toEncoding' when the type
 -- is an instance of 'Generic'.
-genericToEncoding :: (Generic a, GToEncoding (Rep a)) => Options -> a -> Encoding
-genericToEncoding opts = gToEncoding opts . from
+genericToEncoding :: (Generic a, GToEncoding Zero (Rep a))
+                  => Options -> a -> Encoding
+genericToEncoding opts = gToEncoding opts proxyZero undefined undefined . from
+
+-- | A configurable generic JSON encoder. This function applied to
+-- 'defaultOptions' is used as the default for 'liftToEncoding' when the type
+-- is an instance of 'Generic1'.
+genericLiftToEncoding :: (Generic1 f, GToEncoding One (Rep1 f))
+                      => Options -> (a -> Encoding) -> ([a] -> Encoding)
+                      -> f a -> Encoding
+genericLiftToEncoding opts te tel = gToEncoding opts proxyOne te tel . from1
 
 -- | A configurable generic JSON decoder. This function applied to
 -- 'defaultOptions' is used as the default for 'parseJSON' when the
 -- type is an instance of 'Generic'.
-genericParseJSON :: (Generic a, GFromJSON (Rep a)) => Options -> Value -> Parser a
-genericParseJSON opts = fmap to . gParseJSON opts
+genericParseJSON :: (Generic a, GFromJSON Zero (Rep a))
+                 => Options -> Value -> Parser a
+genericParseJSON opts = fmap to . gParseJSON opts proxyZero undefined undefined
+
+-- | A configurable generic JSON decoder. This function applied to
+-- 'defaultOptions' is used as the default for 'liftParseJSON' when the
+-- type is an instance of 'Generic1'.
+genericLiftParseJSON :: (Generic1 f, GFromJSON One (Rep1 f))
+                     => Options -> (Value -> Parser a) -> (Value -> Parser [a])
+                     -> Value -> Parser (f a)
+genericLiftParseJSON opts pj pjl = fmap to1 . gParseJSON opts proxyOne pj pjl
 
 -- | A type that can be converted to JSON.
 --
@@ -186,7 +246,7 @@ class ToJSON a where
     -- | Convert a Haskell value to a JSON-friendly intermediate type.
     toJSON     :: a -> Value
 
-    default toJSON :: (Generic a, GToJSON (Rep a)) => a -> Value
+    default toJSON :: (Generic a, GToJSON Zero (Rep a)) => a -> Value
     toJSON = genericToJSON defaultOptions
 
     -- | Encode a Haskell value as JSON.
@@ -296,7 +356,7 @@ class ToJSON a where
 class FromJSON a where
     parseJSON :: Value -> Parser a
 
-    default parseJSON :: (Generic a, GFromJSON (Rep a)) => Value -> Parser a
+    default parseJSON :: (Generic a, GFromJSON Zero (Rep a)) => Value -> Parser a
     parseJSON = genericParseJSON defaultOptions
 
     parseJSONList :: Value -> Parser [a]
@@ -448,10 +508,50 @@ typeMismatch expected actual =
 -------------------------------------------------------------------------------
 
 -- | Lifting of the 'FromJSON' class to unary type constructors.
+--
+-- Instead of manually writing your 'FromJSON1' instance, there are two options
+-- to do it automatically:
+--
+-- * "Data.Aeson.TH" provides Template Haskell functions which will derive an
+-- instance at compile time. The generated instance is optimized for your type
+-- so will probably be more efficient than the following two options:
+--
+-- * The compiler can provide a default generic implementation for
+-- 'liftParseJSON'.
+--
+-- To use the second, simply add a @deriving 'Generic1'@ clause to your
+-- datatype and declare a 'FromJSON1' instance for your datatype without giving
+-- a definition for 'liftParseJSON'.
+--
+-- For example:
+--
+-- @
+-- {-\# LANGUAGE DeriveGeneric \#-}
+--
+-- import "GHC.Generics"
+--
+-- data Pair a b = Pair { pairFst :: a, pairSnd :: b } deriving 'Generic1'
+--
+-- instance FromJSON a => FromJSON1 (Pair a)
+-- @
+--
+-- If @DefaultSignatures@ doesn't give exactly the results you want,
+-- you can customize the generic decoding with only a tiny amount of
+-- effort, using 'genericLiftParseJSON' with your preferred 'Options':
+--
+-- @
+-- instance FromJSON a => FromJSON1 (Pair a) where
+--     liftParseJSON = 'genericLiftParseJSON' 'defaultOptions'
+-- @
 class FromJSON1 f where
     liftParseJSON :: (Value -> Parser a) -> (Value -> Parser [a]) -> Value -> Parser (f a)
+
+    default liftParseJSON :: (Generic1 f, GFromJSON One (Rep1 f))
+                          => (Value -> Parser a) -> (Value -> Parser [a]) -> Value -> Parser (f a)
+    liftParseJSON = genericLiftParseJSON defaultOptions
+
     liftParseJSONList :: (Value -> Parser a) -> (Value -> Parser [a]) -> Value -> Parser [f a]
-    liftParseJSONList f g v = listParser (liftParseJSON f g) v 
+    liftParseJSONList f g v = listParser (liftParseJSON f g) v
 
 -- | Lift the standard 'parseJSON' function through the type constructor.
 parseJSON1 :: (FromJSON1 f, FromJSON a) => Value -> Parser (f a)
@@ -459,13 +559,60 @@ parseJSON1 = liftParseJSON parseJSON parseJSONList
 {-# INLINE parseJSON1 #-}
 
 -- | Lifting of the 'ToJSON' class to unary type constructors.
+--
+-- Instead of manually writing your 'ToJSON1' instance, there are two options
+-- to do it automatically:
+--
+-- * "Data.Aeson.TH" provides Template Haskell functions which will derive an
+-- instance at compile time. The generated instance is optimized for your type
+-- so will probably be more efficient than the following two options:
+--
+-- * The compiler can provide a default generic implementation for
+-- 'toJSON1'.
+--
+-- To use the second, simply add a @deriving 'Generic1'@ clause to your
+-- datatype and declare a 'ToJSON1' instance for your datatype without giving
+-- definitions for 'liftToJSON' or 'liftToEncoding'.
+--
+-- For example:
+--
+-- @
+-- {-\# LANGUAGE DeriveGeneric \#-}
+--
+-- import "GHC.Generics"
+--
+-- data Pair = Pair { pairFst :: a, pairSnd :: b } deriving 'Generic1'
+--
+-- instance ToJSON a => ToJSON1 (Pair a)
+-- @
+--
+-- If @DefaultSignatures@ doesn't give exactly the results you want,
+-- you can customize the generic encoding with only a tiny amount of
+-- effort, using 'genericLiftToJSON' and 'genericLiftToEncoding' with
+-- your preferred 'Options':
+--
+-- @
+-- instance ToJSON a => ToJSON1 (Pair a) where
+--     liftToJSON     = 'genericLiftToJSON' 'defaultOptions'
+--     liftToEncoding = 'genericLiftToEncoding' 'defaultOptions'
+-- @
 class ToJSON1 f where
     liftToJSON :: (a -> Value) -> ([a] -> Value) -> f a -> Value
+
+    default liftToJSON :: (Generic1 f, GToJSON One (Rep1 f))
+                       => (a -> Value) -> ([a] -> Value) -> f a -> Value
+    liftToJSON = genericLiftToJSON defaultOptions
+
     liftToJSONList :: (a -> Value) -> ([a] -> Value) -> [f a] -> Value
     liftToJSONList f g = listValue (liftToJSON f g)
 
-    -- | Unfortunately there cannot be a default implementation of 'liftToEncoding'.
     liftToEncoding :: (a -> Encoding) -> ([a] -> Encoding) -> f a -> Encoding
+
+    default liftToEncoding :: (Generic1 f, GToEncoding One (Rep1 f))
+                           => (a -> Encoding) -> ([a] -> Encoding)
+                           -> f a -> Encoding
+    liftToEncoding = genericLiftToEncoding defaultOptions
+
     liftToEncodingList :: (a -> Encoding) -> ([a] -> Encoding) -> [f a] -> Encoding
     liftToEncodingList f g = listEncoding (liftToEncoding f g)
 
@@ -481,6 +628,12 @@ toEncoding1 = liftToEncoding toEncoding toEncodingList
 
 
 -- | Lifting of the 'FromJSON' class to binary type constructors.
+--
+-- Instead of manually writing your 'FromJSON2' instance, "Data.Aeson.TH"
+-- provides Template Haskell functions which will derive an instance at compile time.
+
+-- The compiler cannot provide a default generic implementation for 'liftParseJSON2',
+-- unlike 'parseJSON' and 'liftParseJSON'.
 class FromJSON2 f where
     liftParseJSON2
         :: (Value -> Parser a)
@@ -488,11 +641,11 @@ class FromJSON2 f where
         -> (Value -> Parser b)
         -> (Value -> Parser [b])
         -> Value -> Parser (f a b)
-    liftParseJSONList2 
-        :: (Value -> Parser a) 
-        -> (Value -> Parser [a]) 
-        -> (Value -> Parser b) 
-        -> (Value -> Parser [b]) 
+    liftParseJSONList2
+        :: (Value -> Parser a)
+        -> (Value -> Parser [a])
+        -> (Value -> Parser b)
+        -> (Value -> Parser [b])
         -> Value -> Parser [f a b]
     liftParseJSONList2 fa ga fb gb v = case v of
         Array vals -> fmap V.toList (V.mapM (liftParseJSON2 fa ga fb gb) vals)
@@ -504,6 +657,12 @@ parseJSON2 = liftParseJSON2 parseJSON parseJSONList parseJSON parseJSONList
 {-# INLINE parseJSON2 #-}
 
 -- | Lifting of the 'ToJSON' class to binary type constructors.
+--
+-- Instead of manually writing your 'ToJSON2' instance, "Data.Aeson.TH"
+-- provides Template Haskell functions which will derive an instance at compile time.
+--
+-- The compiler cannot provide a default generic implementation for 'liftToJSON2',
+-- unlike 'toJSON' and 'liftToJSON'.
 class ToJSON2 f where
     liftToJSON2 :: (a -> Value) -> ([a] -> Value) -> (b -> Value) -> ([b] -> Value) -> f a b -> Value
     liftToJSONList2 :: (a -> Value) -> ([a] -> Value) -> (b -> Value) -> ([b] -> Value) -> [f a b] -> Value
