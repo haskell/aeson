@@ -1369,6 +1369,24 @@ instance ToJSON Scientific where
     {-# INLINE toEncoding #-}
 
 -------------------------------------------------------------------------------
+-- DList
+-------------------------------------------------------------------------------
+
+instance ToJSON1 DList.DList where
+    liftToJSON t _ = listValue t . toList
+    {-# INLINE liftToJSON #-}
+
+    liftToEncoding t _ = listEncoding t . toList
+    {-# INLINE liftToEncoding #-}
+
+instance (ToJSON a) => ToJSON (DList.DList a) where
+    toJSON = toJSON1
+    {-# INLINE toJSON #-}
+
+    toEncoding = toEncoding1
+    {-# INLINE toEncoding #-}
+
+-------------------------------------------------------------------------------
 -- containers
 -------------------------------------------------------------------------------
 

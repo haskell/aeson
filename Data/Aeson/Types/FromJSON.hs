@@ -104,6 +104,7 @@ import GHC.Generics
 import Numeric.Natural              (Natural)
 import Text.ParserCombinators.ReadP (readP_to_S)
 
+import qualified Data.DList            as DList
 import qualified Data.HashMap.Strict   as H
 import qualified Data.HashSet          as HashSet
 import qualified Data.IntMap           as IntMap
@@ -1144,6 +1145,20 @@ instance (FromJSON a) => FromJSON (NonEmpty a) where
 
 instance FromJSON Scientific where
     parseJSON = withScientific "Scientific" pure
+    {-# INLINE parseJSON #-}
+
+-------------------------------------------------------------------------------
+-- DList
+-------------------------------------------------------------------------------
+
+instance FromJSON1 DList.DList where
+    liftParseJSON p _ = withArray "DList a" $
+      fmap DList.fromList .
+      Tr.sequence . zipWith (parseIndexedJSON p) [0..] . V.toList
+    {-# INLINE liftParseJSON #-}
+
+instance (FromJSON a) => FromJSON (DList.DList a) where
+    parseJSON = parseJSON1
     {-# INLINE parseJSON #-}
 
 -------------------------------------------------------------------------------
