@@ -1388,10 +1388,16 @@ instance FromJSONKey b => FromJSONKey (Tagged a b) where
 instance FromJSONKey Text where
     fromJSONKey = fromJSONKeyCoerce
 
+instance FromJSONKey Bool where
+    fromJSONKey = FromJSONKeyTextParser $ \t -> case t of
+        "true"  -> pure True
+        "false" -> pure False
+        _       -> fail $ "Cannot parse key into Bool: " ++ T.unpack t
+
 instance FromJSONKey Int where
     -- not sure if there if there is already a helper in
     -- aeson for doing this.
-    fromJSONKey = FromJSONKeyTextParser $ \t -> case TR.decimal t of
+    fromJSONKey = FromJSONKeyTextParser $ \t -> case TR.signed TR.decimal t of
       Left err -> fail err
       Right (v,t2) -> if T.null t2
         then return v
