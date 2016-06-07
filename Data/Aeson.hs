@@ -103,12 +103,12 @@ module Data.Aeson
     , json'
     ) where
 
+import Data.Aeson.Types.FromJSON (ifromJSON)
 import Data.Aeson.Encode (encode)
 import Data.Aeson.Parser.Internal (decodeWith, decodeStrictWith,
                                    eitherDecodeWith, eitherDecodeStrictWith,
                                    jsonEOF, json, jsonEOF', json')
 import Data.Aeson.Types
-import Data.Aeson.Types.Instances (ifromJSON)
 import Data.Aeson.Types.Internal (JSONPath, formatError)
 import qualified Data.ByteString as B
 import qualified Data.ByteString.Lazy as L

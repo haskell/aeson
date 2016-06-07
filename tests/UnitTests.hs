@@ -23,6 +23,7 @@ import Data.Sequence (Seq)
 import Data.Tagged (Tagged(..))
 import Data.Time (UTCTime)
 import Data.Time.Format (parseTime)
+import Data.Time.Locale.Compat (defaultTimeLocale)
 import GHC.Generics (Generic)
 import Test.Framework (Test, testGroup)
 import Test.Framework.Providers.HUnit (testCase)
@@ -33,12 +34,6 @@ import qualified Data.Text.Lazy.Builder as TLB
 import qualified Data.Text.Lazy.Encoding as TLE
 import qualified Data.Text.Lazy as LT
 import qualified Data.Text.Lazy.Encoding as LT
-
-#if MIN_VERSION_time(1,5,0)
-import Data.Time.Format (defaultTimeLocale)
-#else
-import System.Locale (defaultTimeLocale)
-#endif
 
 tests :: Test
 tests = testGroup "unit" [

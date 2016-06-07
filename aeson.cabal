@@ -58,12 +58,6 @@ flag developer
   default: False
   manual: True
 
-flag old-locale
-  description: If false then depend on time >= 1.5.
-               .
-               If true then depend on time < 1.5 together with old-locale.
-  default: False
-
 library
   default-language: Haskell2010
 
@@ -80,19 +74,19 @@ library
 
   other-modules:
     Data.Aeson.Encode.Builder
-    Data.Aeson.Encode.Functions
     Data.Aeson.Functions
     Data.Aeson.Parser.Internal
     Data.Aeson.Parser.Time
-    Data.Aeson.Types.Class
+    Data.Aeson.Types.FromJSON
     Data.Aeson.Types.Generic
-    Data.Aeson.Types.Instances
-    Data.Aeson.Types.Instances.Tuple
+    Data.Aeson.Types.ToJSON
+    Data.Aeson.Types.Class
     Data.Aeson.Types.Internal
 
   build-depends:
     attoparsec >= 0.13.0.1,
     base >= 4.5 && < 5,
+    base-compat >= 0.9.1 && <0.10,
     bytestring >= 0.10.4.0,
     containers,
     deepseq,
@@ -103,6 +97,8 @@ library
     tagged >=0.8.3 && <0.9,
     template-haskell >= 2.7,
     text >= 1.1.1.0,
+    time,
+    time-locale-compat >=0.1.1 && <0.2,
     unordered-containers >= 0.2.5.0,
     vector >= 0.8
 
@@ -116,11 +112,6 @@ library
   if !impl(ghc >= 7.10)
     -- `Numeric.Natural` is available in base only since GHC 7.10 / base 4.8
     build-depends: nats >=1 && <1.2
-
-  if flag(old-locale)
-    build-depends: time < 1.5, old-locale
-  else
-    build-depends: time >= 1.5
 
   if flag(developer)
     ghc-options: -Werror
@@ -170,17 +161,13 @@ test-suite tests
     test-framework-quickcheck2,
     text,
     time,
+    time-locale-compat,
     unordered-containers,
     vector,
     quickcheck-instances >=0.3.12
 
   if !impl(ghc >= 8.0)
     build-depends: semigroups >= 0.16.1 && < 0.19
-
-  if flag(old-locale)
-    build-depends: time < 1.5, old-locale
-  else
-    build-depends: time >= 1.5
 
   if !impl(ghc >= 7.10)
     build-depends: nats >=1 && <1.2

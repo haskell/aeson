@@ -29,6 +29,7 @@ module Data.Aeson.Types.Internal
     , Pair
     , Object
     , emptyObject
+
     -- * Type conversion
     , Parser
     , Result(..)

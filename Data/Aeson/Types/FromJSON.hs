@@ -1,0 +1,1633 @@
+{-# LANGUAGE CPP                   #-}
+{-# LANGUAGE DataKinds             #-}
+{-# LANGUAGE DefaultSignatures     #-}
+{-# LANGUAGE FlexibleContexts      #-}
+{-# LANGUAGE FlexibleInstances     #-}
+{-# LANGUAGE GADTs                 #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE NamedFieldPuns        #-}
+{-# LANGUAGE OverloadedStrings     #-}
+{-# LANGUAGE RecordWildCards       #-}
+{-# LANGUAGE ScopedTypeVariables   #-}
+{-# LANGUAGE TypeOperators         #-}
+{-# LANGUAGE TypeSynonymInstances  #-}
+{-# LANGUAGE UndecidableInstances  #-}
+{-# LANGUAGE ViewPatterns          #-}
+
+#if __GLASGOW_HASKELL__ >= 706
+{-# LANGUAGE PolyKinds             #-}
+#endif
+
+#include "overlapping-compat.h"
+
+-- TODO: Drop this when we remove support for Data.Attoparsec.Number
+{-# OPTIONS_GHC -fno-warn-deprecations #-}
+
+module Data.Aeson.Types.FromJSON (
+    -- * Core JSON classes
+      FromJSON(..)
+    -- * Liftings to unary and binary type constructors
+    , FromJSON1(..)
+    , parseJSON1
+    , FromJSON2(..)
+    , parseJSON2
+    -- * Generic JSON classes
+    , GFromJSON(..)
+    , genericParseJSON
+    -- * Classes and types for map keys
+    , FromJSONKey(..)
+    , FromJSONKeyFunction(..)
+    , fromJSONKeyCoerce
+    , coerceFromJSONKeyFunction
+    , mapFromJSONKeyFunction
+
+    -- * List functions
+    , listParser
+
+      -- * Inspecting @'Value's@
+    , withObject
+    , withText
+    , withArray
+    , withNumber
+    , withScientific
+    , withBool
+
+    -- * Functions
+    , fromJSON
+    , ifromJSON
+    , (.:)
+    , (.:?)
+    , (.:!)
+    , (.!=)
+    , typeMismatch
+    ) where
+
+import Prelude        ()
+import Prelude.Compat hiding (foldr)
+
+import Data.Aeson.Functions      (mapKey)
+import Data.Aeson.Types.Generic
+import Data.Aeson.Types.Internal
+
+import qualified Data.Aeson.Parser.Time as Time
+
+import Control.Applicative          (Const (..), (<|>))
+import Control.Monad                ((<=<))
+import Data.Attoparsec.Number       (Number (..))
+import Data.Bits                    (unsafeShiftR)
+import Data.Fixed                   (Fixed, HasResolution)
+import Data.Functor.Identity        (Identity (..))
+import Data.Hashable                (Hashable (..))
+import Data.Int                     (Int16, Int32, Int64, Int8)
+import Data.List.NonEmpty           (NonEmpty (..))
+import Data.Maybe                   (fromMaybe)
+import Data.Monoid                  (Dual (..), First (..), Last (..), (<>))
+import Data.Proxy                   (Proxy (..))
+import Data.Ratio                   (Ratio, (%))
+import Data.Scientific              (Scientific)
+import Data.Tagged                  (Tagged (..))
+import Data.Text                    (Text, pack, unpack)
+import Data.Time                    (Day, LocalTime, NominalDiffTime, TimeOfDay,
+                                     UTCTime, ZonedTime)
+import Data.Time.Format             (parseTime)
+import Data.Time.Locale.Compat      (defaultTimeLocale)
+import Data.Traversable             as Tr (sequence)
+import Data.Vector                  (Vector)
+import Data.Version                 (Version, parseVersion)
+import Data.Word                    (Word16, Word32, Word64, Word8)
+import Foreign.Storable             (Storable)
+import GHC.Generics
+import Numeric.Natural              (Natural)
+import Text.ParserCombinators.ReadP (readP_to_S)
+
+import qualified Data.HashMap.Strict   as H
+import qualified Data.HashSet          as HashSet
+import qualified Data.IntMap           as IntMap
+import qualified Data.IntSet           as IntSet
+import qualified Data.Map              as M
+import qualified Data.Scientific       as Scientific
+import qualified Data.Sequence         as Seq
+import qualified Data.Set              as Set
+import qualified Data.Text             as T
+import qualified Data.Text.Lazy        as LT
+import qualified Data.Text.Read        as TR
+import qualified Data.Tree             as Tree
+import qualified Data.Vector           as V
+import qualified Data.Vector.Generic   as VG
+import qualified Data.Vector.Primitive as VP
+import qualified Data.Vector.Storable  as VS
+import qualified Data.Vector.Unboxed   as VU
+
+import Unsafe.Coerce (unsafeCoerce)
+
+-- Coercible derivations aren't as powerful on GHC 7.8, though supported.
+#ifndef HAS_COERCIBLE
+#define HAS_COERCIBLE (__GLASGOW_HASKELL__ >= 709)
+#endif
+
+#if HAS_COERCIBLE
+import Data.Coerce (Coercible, coerce)
+coerce' :: Coercible a b => a -> b
+coerce' = coerce
+#else
+coerce' :: a -> b
+coerce' = unsafeCoerce
+#endif
+
+parseIndexedJSON :: (Value -> Parser a) -> Int -> Value -> Parser a
+parseIndexedJSON p idx value = p value <?> Index idx
+{-# INLINE parseIndexedJSON #-}
+
+parseIndexedJSONPair :: (Value -> Parser a) -> (Value -> Parser b) -> Int -> Value -> Parser (a, b)
+parseIndexedJSONPair keyParser valParser idx value = p value <?> Index idx
+  where
+    p = withArray "(k,v)" $ \ab ->
+        let n = V.length ab
+        in if n == 2
+             then (,) <$> parseJSONElemAtIndex keyParser 0 ab
+                      <*> parseJSONElemAtIndex valParser 1 ab
+             else fail $ "cannot unpack array of length " ++
+                         show n ++ " into a pair"
+{-# INLINE parseIndexedJSONPair #-}
+
+parseJSONElemAtIndex :: (Value -> Parser a) -> Int -> V.Vector Value -> Parser a
+parseJSONElemAtIndex p idx ary = p (V.unsafeIndex ary idx) <?> Index idx
+
+scientificToNumber :: Scientific -> Number
+scientificToNumber s
+    | e < 0     = D $ Scientific.toRealFloat s
+    | otherwise = I $ c * 10 ^ e
+  where
+    e = Scientific.base10Exponent s
+    c = Scientific.coefficient s
+{-# INLINE scientificToNumber #-}
+
+parseRealFloat :: RealFloat a => String -> Value -> Parser a
+parseRealFloat _        (Number s) = pure $ Scientific.toRealFloat s
+parseRealFloat _        Null       = pure (0/0)
+parseRealFloat expected v          = typeMismatch expected v
+{-# INLINE parseRealFloat #-}
+
+parseIntegral :: Integral a => String -> Value -> Parser a
+parseIntegral expected = withScientific expected $ pure . truncate
+{-# INLINE parseIntegral #-}
+
+-------------------------------------------------------------------------------
+-- Generics
+-------------------------------------------------------------------------------
+
+-- | Class of generic representation types ('Rep') that can be converted from JSON.
+class GFromJSON f where
+    -- | This method (applied to 'defaultOptions') is used as the
+    -- default generic implementation of 'parseJSON'.
+    gParseJSON :: Options -> Value -> Parser (f a)
+
+-- | A configurable generic JSON decoder. This function applied to
+-- 'defaultOptions' is used as the default for 'parseJSON' when the
+-- type is an instance of 'Generic'.
+genericParseJSON :: (Generic a, GFromJSON (Rep a)) => Options -> Value -> Parser a
+genericParseJSON opts = fmap to . gParseJSON opts
+
+-------------------------------------------------------------------------------
+-- Class
+-------------------------------------------------------------------------------
+
+-- | A type that can be converted from JSON, with the possibility of
+-- failure.
+--
+-- In many cases, you can get the compiler to generate parsing code
+-- for you (see below).  To begin, let's cover writing an instance by
+-- hand.
+--
+-- There are various reasons a conversion could fail.  For example, an
+-- 'Object' could be missing a required key, an 'Array' could be of
+-- the wrong size, or a value could be of an incompatible type.
+--
+-- The basic ways to signal a failed conversion are as follows:
+--
+-- * 'empty' and 'mzero' work, but are terse and uninformative
+--
+-- * 'fail' yields a custom error message
+--
+-- * 'typeMismatch' produces an informative message for cases when the
+-- value encountered is not of the expected type
+--
+-- An example type and instance:
+--
+-- @
+-- \-- Allow ourselves to write 'Text' literals.
+-- {-\# LANGUAGE OverloadedStrings #-}
+--
+-- data Coord = Coord { x :: Double, y :: Double }
+--
+-- instance FromJSON Coord where
+--   parseJSON ('Object' v) = Coord    '<$>'
+--                          v '.:' \"x\" '<*>'
+--                          v '.:' \"y\"
+--
+--   \-- We do not expect a non-'Object' value here.
+--   \-- We could use 'mzero' to fail, but 'typeMismatch'
+--   \-- gives a much more informative error message.
+--   parseJSON invalid    = 'typeMismatch' \"Coord\" invalid
+-- @
+--
+-- Instead of manually writing your 'FromJSON' instance, there are two options
+-- to do it automatically:
+--
+-- * "Data.Aeson.TH" provides Template Haskell functions which will derive an
+-- instance at compile time. The generated instance is optimized for your type
+-- so will probably be more efficient than the following two options:
+--
+-- * The compiler can provide a default generic implementation for
+-- 'parseJSON'.
+--
+-- To use the second, simply add a @deriving 'Generic'@ clause to your
+-- datatype and declare a 'FromJSON' instance for your datatype without giving
+-- a definition for 'parseJSON'.
+--
+-- For example, the previous example can be simplified to just:
+--
+-- @
+-- {-\# LANGUAGE DeriveGeneric \#-}
+--
+-- import "GHC.Generics"
+--
+-- data Coord = Coord { x :: Double, y :: Double } deriving 'Generic'
+--
+-- instance FromJSON Coord
+-- @
+--
+-- If @DefaultSignatures@ doesn't give exactly the results you want,
+-- you can customize the generic decoding with only a tiny amount of
+-- effort, using 'genericParseJSON' with your preferred 'Options':
+--
+-- @
+-- instance FromJSON Coord where
+--     parseJSON = 'genericParseJSON' 'defaultOptions'
+-- @
+
+class FromJSON a where
+    parseJSON :: Value -> Parser a
+
+    default parseJSON :: (Generic a, GFromJSON (Rep a)) => Value -> Parser a
+    parseJSON = genericParseJSON defaultOptions
+
+    parseJSONList :: Value -> Parser [a]
+    parseJSONList (Array a)
+        = sequence
+        . zipWith (parseIndexedJSON parseJSON) [0..]
+        . V.toList
+        $ a
+
+    parseJSONList v = typeMismatch "[a]" v
+
+
+-------------------------------------------------------------------------------
+--  Classes and types for map keys
+-------------------------------------------------------------------------------
+
+class FromJSONKey a where
+    fromJSONKey :: FromJSONKeyFunction a
+    default fromJSONKey :: FromJSON a => FromJSONKeyFunction a
+    fromJSONKey = FromJSONKeyValue parseJSON
+    fromJSONKeyList :: FromJSONKeyFunction [a]
+    default fromJSONKeyList :: FromJSON a => FromJSONKeyFunction [a]
+    fromJSONKeyList = FromJSONKeyValue parseJSON
+
+-- | With GHC 7.8 + we carry around 'Coercible Text a' dictionary,
+-- to have even some amount of safety net.
+-- Unfortunately we cannot enforce that 'Hashable' instance agree on the type level
+--
+-- ATM this type is intentionally not exported. FromJSONKeyFunction can be inspected,
+-- but cannot be constructed.
+data CoerceText a where
+#if HAS_COERCIBLE
+    CoerceText :: Coercible Text a => CoerceText a
+#else
+    CoerceText :: CoerceText a
+#endif
+
+data FromJSONKeyFunction a
+    = FromJSONKeyCoerce (CoerceText a)
+    | FromJSONKeyText (Text -> a)
+    | FromJSONKeyTextParser (Text -> Parser a)
+    | FromJSONKeyValue (Value -> Parser a)
+
+instance Functor FromJSONKeyFunction where
+    fmap h (FromJSONKeyCoerce CoerceText) = FromJSONKeyText (h . coerce')
+    fmap h (FromJSONKeyText f)            = FromJSONKeyText (h . f)
+    fmap h (FromJSONKeyTextParser f)      = FromJSONKeyTextParser (fmap h . f)
+    fmap h (FromJSONKeyValue f)           = FromJSONKeyValue (fmap h . f)
+
+-- | Construct 'FromJSONKeyFunction' for types coercible from 'Text'. This
+-- conversion is still unsafe, as 'Hashable' and 'Eq' instances of @a@ should be
+-- compatible with 'Text' i.e. hash values be equal for wrapped values as well.
+fromJSONKeyCoerce ::
+#if HAS_COERCIBLE
+    Coercible Text a =>
+#endif
+    FromJSONKeyFunction a
+fromJSONKeyCoerce = FromJSONKeyCoerce CoerceText
+
+coerceFromJSONKeyFunction ::
+#if HAS_COERCIBLE
+    Coercible a b =>
+#endif
+    FromJSONKeyFunction a -> FromJSONKeyFunction b
+coerceFromJSONKeyFunction (FromJSONKeyCoerce CoerceText) = FromJSONKeyCoerce CoerceText
+coerceFromJSONKeyFunction (FromJSONKeyText f)            = FromJSONKeyText (coerce' . f)
+coerceFromJSONKeyFunction (FromJSONKeyTextParser f)      = FromJSONKeyTextParser (fmap coerce' . f)
+coerceFromJSONKeyFunction (FromJSONKeyValue f)           = FromJSONKeyValue (fmap coerce' . f)
+
+{-# RULES
+  "FromJSONKeyCoerce: fmap id"     forall (x :: FromJSONKeyFunction a).
+                                   fmap id x = x
+  #-}
+#if HAS_COERCIBLE
+{-# RULES
+  "FromJSONKeyCoerce: fmap coerce" forall x .
+                                   fmap coerce x = coerceFromJSONKeyFunction x
+  #-}
+#endif
+
+mapFromJSONKeyFunction :: (a -> b) -> FromJSONKeyFunction a -> FromJSONKeyFunction b
+mapFromJSONKeyFunction = fmap
+
+-------------------------------------------------------------------------------
+-- Functions needed for documentation
+-------------------------------------------------------------------------------
+
+-- | Fail parsing due to a type mismatch, with a descriptive message.
+--
+-- Example usage:
+--
+-- @
+-- instance FromJSON Coord where
+--   parseJSON ('Object' v) = {- type matches, life is good -}
+--   parseJSON wat        = 'typeMismatch' \"Coord\" wat
+-- @
+typeMismatch :: String -- ^ The name of the type you are trying to parse.
+             -> Value  -- ^ The actual value encountered.
+             -> Parser a
+typeMismatch expected actual =
+    fail $ "expected " ++ expected ++ ", encountered " ++ name
+  where
+    name = case actual of
+             Object _ -> "Object"
+             Array _  -> "Array"
+             String _ -> "String"
+             Number _ -> "Number"
+             Bool _   -> "Boolean"
+             Null     -> "Null"
+
+-------------------------------------------------------------------------------
+-- Lifings of FromJSON and ToJSON to unary and binary type constructors
+-------------------------------------------------------------------------------
+
+-- | Lifting of the 'FromJSON' class to unary type constructors.
+class FromJSON1 f where
+    liftParseJSON :: (Value -> Parser a) -> (Value -> Parser [a]) -> Value -> Parser (f a)
+    liftParseJSONList :: (Value -> Parser a) -> (Value -> Parser [a]) -> Value -> Parser [f a]
+    liftParseJSONList f g v = listParser (liftParseJSON f g) v
+
+-- | Lift the standard 'parseJSON' function through the type constructor.
+parseJSON1 :: (FromJSON1 f, FromJSON a) => Value -> Parser (f a)
+parseJSON1 = liftParseJSON parseJSON parseJSONList
+{-# INLINE parseJSON1 #-}
+
+
+-- | Lifting of the 'FromJSON' class to binary type constructors.
+class FromJSON2 f where
+    liftParseJSON2
+        :: (Value -> Parser a)
+        -> (Value -> Parser [a])
+        -> (Value -> Parser b)
+        -> (Value -> Parser [b])
+        -> Value -> Parser (f a b)
+    liftParseJSONList2
+        :: (Value -> Parser a)
+        -> (Value -> Parser [a])
+        -> (Value -> Parser b)
+        -> (Value -> Parser [b])
+        -> Value -> Parser [f a b]
+    liftParseJSONList2 fa ga fb gb v = case v of
+        Array vals -> fmap V.toList (V.mapM (liftParseJSON2 fa ga fb gb) vals)
+        _ -> typeMismatch "[a]" v
+
+-- | Lift the standard 'parseJSON' function through the type constructor.
+parseJSON2 :: (FromJSON2 f, FromJSON a, FromJSON b) => Value -> Parser (f a b)
+parseJSON2 = liftParseJSON2 parseJSON parseJSONList parseJSON parseJSONList
+{-# INLINE parseJSON2 #-}
+
+-------------------------------------------------------------------------------
+-- List functions
+-------------------------------------------------------------------------------
+
+listParser :: (Value -> Parser a) -> Value -> Parser [a]
+listParser f (Array xs) = fmap V.toList (V.mapM f xs)
+listParser _ v          = typeMismatch "[a]" v
+{-# INLINE listParser #-}
+
+-------------------------------------------------------------------------------
+-- [] instances
+-------------------------------------------------------------------------------
+
+instance FromJSON1 [] where
+    liftParseJSON _ p' = p'
+    {-# INLINE liftParseJSON #-}
+
+instance (FromJSON a) => FromJSON [a] where
+    parseJSON = parseJSON1
+
+-------------------------------------------------------------------------------
+-- Functions
+-------------------------------------------------------------------------------
+
+-- | @withObject expected f value@ applies @f@ to the 'Object' when @value@ is an @Object@
+--   and fails using @'typeMismatch' expected@ otherwise.
+withObject :: String -> (Object -> Parser a) -> Value -> Parser a
+withObject _        f (Object obj) = f obj
+withObject expected _ v            = typeMismatch expected v
+{-# INLINE withObject #-}
+
+-- | @withText expected f value@ applies @f@ to the 'Text' when @value@ is a @String@
+--   and fails using @'typeMismatch' expected@ otherwise.
+withText :: String -> (Text -> Parser a) -> Value -> Parser a
+withText _        f (String txt) = f txt
+withText expected _ v            = typeMismatch expected v
+{-# INLINE withText #-}
+
+-- | @withArray expected f value@ applies @f@ to the 'Array' when @value@ is an @Array@
+--   and fails using @'typeMismatch' expected@ otherwise.
+withArray :: String -> (Array -> Parser a) -> Value -> Parser a
+withArray _        f (Array arr) = f arr
+withArray expected _ v           = typeMismatch expected v
+{-# INLINE withArray #-}
+
+-- | @withNumber expected f value@ applies @f@ to the 'Number' when @value@ is a 'Number'.
+--   and fails using @'typeMismatch' expected@ otherwise.
+withNumber :: String -> (Number -> Parser a) -> Value -> Parser a
+withNumber expected f = withScientific expected (f . scientificToNumber)
+{-# INLINE withNumber #-}
+{-# DEPRECATED withNumber "Use withScientific instead" #-}
+
+-- | @withScientific expected f value@ applies @f@ to the 'Scientific' number when @value@ is a 'Number'.
+--   and fails using @'typeMismatch' expected@ otherwise.
+withScientific :: String -> (Scientific -> Parser a) -> Value -> Parser a
+withScientific _        f (Number scientific) = f scientific
+withScientific expected _ v                   = typeMismatch expected v
+{-# INLINE withScientific #-}
+
+-- | @withBool expected f value@ applies @f@ to the 'Bool' when @value@ is a @Bool@
+--   and fails using @'typeMismatch' expected@ otherwise.
+withBool :: String -> (Bool -> Parser a) -> Value -> Parser a
+withBool _        f (Bool arr) = f arr
+withBool expected _ v          = typeMismatch expected v
+{-# INLINE withBool #-}
+
+-- | Convert a value from JSON, failing if the types do not match.
+fromJSON :: (FromJSON a) => Value -> Result a
+fromJSON = parse parseJSON
+{-# INLINE fromJSON #-}
+
+-- | Convert a value from JSON, failing if the types do not match.
+ifromJSON :: (FromJSON a) => Value -> IResult a
+ifromJSON = iparse parseJSON
+{-# INLINE ifromJSON #-}
+
+-- | Retrieve the value associated with the given key of an 'Object'.
+-- The result is 'empty' if the key is not present or the value cannot
+-- be converted to the desired type.
+--
+-- This accessor is appropriate if the key and value /must/ be present
+-- in an object for it to be valid.  If the key and value are
+-- optional, use '.:?' instead.
+(.:) :: (FromJSON a) => Object -> Text -> Parser a
+obj .: key = case H.lookup key obj of
+               Nothing -> fail $ "key " ++ show key ++ " not present"
+               Just v  -> parseJSON v <?> Key key
+{-# INLINE (.:) #-}
+
+-- | Retrieve the value associated with the given key of an 'Object'.
+-- The result is 'Nothing' if the key is not present, or 'empty' if
+-- the value cannot be converted to the desired type.
+--
+-- This accessor is most useful if the key and value can be absent
+-- from an object without affecting its validity.  If the key and
+-- value are mandatory, use '.:' instead.
+(.:?) :: (FromJSON a) => Object -> Text -> Parser (Maybe a)
+obj .:? key = case H.lookup key obj of
+               Nothing -> pure Nothing
+               Just v  -> parseJSON v <?> Key key
+{-# INLINE (.:?) #-}
+
+-- | Like '.:?', but the resulting parser will fail,
+-- if the key is present but is 'Null'.
+(.:!) :: (FromJSON a) => Object -> Text -> Parser (Maybe a)
+obj .:! key = case H.lookup key obj of
+               Nothing -> pure Nothing
+               Just v  -> Just <$> parseJSON v <?> Key key
+{-# INLINE (.:!) #-}
+
+-- | Helper for use in combination with '.:?' to provide default
+-- values for optional JSON object fields.
+--
+-- This combinator is most useful if the key and value can be absent
+-- from an object without affecting its validity and we know a default
+-- value to assign in that case.  If the key and value are mandatory,
+-- use '.:' instead.
+--
+-- Example usage:
+--
+-- @ v1 <- o '.:?' \"opt_field_with_dfl\" .!= \"default_val\"
+-- v2 <- o '.:'  \"mandatory_field\"
+-- v3 <- o '.:?' \"opt_field2\"
+-- @
+(.!=) :: Parser (Maybe a) -> a -> Parser a
+pmval .!= val = fromMaybe val <$> pmval
+{-# INLINE (.!=) #-}
+
+--------------------------------------------------------------------------------
+-- Generic parseJSON
+-------------------------------------------------------------------------------
+
+instance OVERLAPPABLE_ (GFromJSON a) => GFromJSON (M1 i c a) where
+    -- Meta-information, which is not handled elsewhere, is just added to the
+    -- parsed value:
+    gParseJSON opts = fmap M1 . gParseJSON opts
+
+instance (FromJSON a) => GFromJSON (K1 i a) where
+    -- Constant values are decoded using their FromJSON instance:
+    gParseJSON _opts = fmap K1 . parseJSON
+
+instance GFromJSON U1 where
+    -- Empty constructors are expected to be encoded as an empty array:
+    gParseJSON _opts v
+        | isEmptyArray v = pure U1
+        | otherwise      = typeMismatch "unit constructor (U1)" v
+
+instance (ConsFromJSON a) => GFromJSON (C1 c a) where
+    -- Constructors need to be decoded differently depending on whether they're
+    -- a record or not. This distinction is made by consParseJSON:
+    gParseJSON opts = fmap M1 . consParseJSON opts
+
+instance ( FromProduct a, FromProduct b
+         , ProductSize a, ProductSize b ) => GFromJSON (a :*: b) where
+    -- Products are expected to be encoded to an array. Here we check whether we
+    -- got an array of the same size as the product, then parse each of the
+    -- product's elements using parseProduct:
+    gParseJSON opts = withArray "product (:*:)" $ \arr ->
+      let lenArray = V.length arr
+          lenProduct = (unTagged2 :: Tagged2 (a :*: b) Int -> Int)
+                       productSize in
+      if lenArray == lenProduct
+      then parseProduct opts arr 0 lenProduct
+      else fail $ "When expecting a product of " ++ show lenProduct ++
+                  " values, encountered an Array of " ++ show lenArray ++
+                  " elements instead"
+
+instance ( AllNullary (a :+: b) allNullary
+         , ParseSum   (a :+: b) allNullary ) => GFromJSON   (a :+: b) where
+    -- If all constructors of a sum datatype are nullary and the
+    -- 'allNullaryToStringTag' option is set they are expected to be
+    -- encoded as strings.  This distinction is made by 'parseSum':
+    gParseJSON opts = (unTagged :: Tagged allNullary (Parser ((a :+: b) d)) ->
+                                                     (Parser ((a :+: b) d)))
+                    . parseSum opts
+
+--------------------------------------------------------------------------------
+
+class ParseSum f allNullary where
+    parseSum :: Options -> Value -> Tagged allNullary (Parser (f a))
+
+instance ( SumFromString    (a :+: b)
+         , FromPair         (a :+: b)
+         , FromTaggedObject (a :+: b) ) => ParseSum (a :+: b) True where
+    parseSum opts
+        | allNullaryToStringTag opts = Tagged . parseAllNullarySum    opts
+        | otherwise                  = Tagged . parseNonAllNullarySum opts
+
+instance ( FromPair         (a :+: b)
+         , FromTaggedObject (a :+: b) ) => ParseSum (a :+: b) False where
+    parseSum opts = Tagged . parseNonAllNullarySum opts
+
+--------------------------------------------------------------------------------
+
+parseAllNullarySum :: SumFromString f => Options -> Value -> Parser (f a)
+parseAllNullarySum opts = withText "Text" $ \key ->
+                            maybe (notFound key) return $
+                              parseSumFromString opts key
+
+class SumFromString f where
+    parseSumFromString :: Options -> Text -> Maybe (f a)
+
+instance (SumFromString a, SumFromString b) => SumFromString (a :+: b) where
+    parseSumFromString opts key = (L1 <$> parseSumFromString opts key) <|>
+                                  (R1 <$> parseSumFromString opts key)
+
+instance (Constructor c) => SumFromString (C1 c U1) where
+    parseSumFromString opts key | key == name = Just $ M1 U1
+                                | otherwise   = Nothing
+        where
+          name = pack $ constructorTagModifier opts $
+                          conName (undefined :: t c U1 p)
+
+--------------------------------------------------------------------------------
+
+parseNonAllNullarySum :: ( FromPair                       (a :+: b)
+                         , FromTaggedObject               (a :+: b)
+                         ) => Options -> Value -> Parser ((a :+: b) c)
+parseNonAllNullarySum opts =
+    case sumEncoding opts of
+      TaggedObject{..} ->
+          withObject "Object" $ \obj -> do
+            tag <- obj .: pack tagFieldName
+            fromMaybe (notFound tag) $
+              parseFromTaggedObject opts contentsFieldName obj tag
+
+      ObjectWithSingleField ->
+          withObject "Object" $ \obj ->
+            case H.toList obj of
+              [pair@(tag, _)] -> fromMaybe (notFound tag) $
+                                   parsePair opts pair
+              _ -> fail "Object doesn't have a single field"
+
+      TwoElemArray ->
+          withArray "Array" $ \arr ->
+            if V.length arr == 2
+            then case V.unsafeIndex arr 0 of
+                   String tag -> fromMaybe (notFound tag) $
+                                   parsePair opts (tag, V.unsafeIndex arr 1)
+                   _ -> fail "First element is not a String"
+            else fail "Array doesn't have 2 elements"
+
+--------------------------------------------------------------------------------
+
+class FromTaggedObject f where
+    parseFromTaggedObject :: Options -> String -> Object -> Text
+                          -> Maybe (Parser (f a))
+
+instance (FromTaggedObject a, FromTaggedObject b) =>
+    FromTaggedObject (a :+: b) where
+        parseFromTaggedObject opts contentsFieldName obj tag =
+            (fmap L1 <$> parseFromTaggedObject opts contentsFieldName obj tag) <|>
+            (fmap R1 <$> parseFromTaggedObject opts contentsFieldName obj tag)
+
+instance ( FromTaggedObject' f
+         , Constructor c ) => FromTaggedObject (C1 c f) where
+    parseFromTaggedObject opts contentsFieldName obj tag
+        | tag == name = Just $ M1 <$> parseFromTaggedObject'
+                                        opts contentsFieldName obj
+        | otherwise = Nothing
+        where
+          name = pack $ constructorTagModifier opts $
+                          conName (undefined :: t c f p)
+
+--------------------------------------------------------------------------------
+
+class FromTaggedObject' f where
+    parseFromTaggedObject' :: Options -> String -> Object -> Parser (f a)
+
+class FromTaggedObject'' f isRecord where
+    parseFromTaggedObject'' :: Options -> String -> Object
+                            -> Tagged isRecord (Parser (f a))
+
+instance ( IsRecord             f isRecord
+         , FromTaggedObject''   f isRecord
+         ) => FromTaggedObject' f where
+    parseFromTaggedObject' opts contentsFieldName =
+        (unTagged :: Tagged isRecord (Parser (f a)) -> Parser (f a)) .
+        parseFromTaggedObject'' opts contentsFieldName
+
+instance (FromRecord f) => FromTaggedObject'' f True where
+    parseFromTaggedObject'' opts _ = Tagged . parseRecord opts Nothing
+
+instance (GFromJSON f) => FromTaggedObject'' f False where
+    parseFromTaggedObject'' opts contentsFieldName = Tagged .
+      (gParseJSON opts <=< (.: pack contentsFieldName))
+
+instance OVERLAPPING_ FromTaggedObject'' U1 False where
+    parseFromTaggedObject'' _ _ _ = Tagged (pure U1)
+
+--------------------------------------------------------------------------------
+
+class ConsFromJSON f where
+    consParseJSON  :: Options -> Value -> Parser (f a)
+
+class ConsFromJSON' f isRecord where
+    consParseJSON' :: Options -> (Maybe Text) -- ^ A dummy label
+                                           --   (Nothing to use proper label)
+                   -> Value -> Tagged isRecord (Parser (f a))
+
+instance ( IsRecord        f isRecord
+         , ConsFromJSON'   f isRecord
+         ) => ConsFromJSON f where
+    consParseJSON opts v = let
+      (v2,lab) = case (unwrapUnaryRecords opts,isUnary (undefined :: f a)) of
+                       -- use a dummy object with a dummy label
+        (True,True) -> ((object [(pack "dummy",v)]),Just $ pack "dummy")
+        _ ->(v,Nothing)
+      in (unTagged :: Tagged isRecord (Parser (f a)) -> Parser (f a))
+                       $ consParseJSON' opts lab v2
+
+
+instance (FromRecord f) => ConsFromJSON' f True where
+    consParseJSON' opts mlab = Tagged . (withObject "record (:*:)"
+                                $ parseRecord opts mlab)
+
+instance (GFromJSON f) => ConsFromJSON' f False where
+    consParseJSON' opts _ = Tagged . gParseJSON opts
+
+--------------------------------------------------------------------------------
+
+class FromRecord f where
+    parseRecord :: Options -> (Maybe Text) -- ^ A dummy label
+                                           --   (Nothing to use proper label)
+                 -> Object -> Parser (f a)
+
+instance (FromRecord a, FromRecord b) => FromRecord (a :*: b) where
+    parseRecord opts _ obj = (:*:) <$> parseRecord opts Nothing obj
+                                   <*> parseRecord opts Nothing obj
+
+instance (Selector s, GFromJSON a) => FromRecord (S1 s a) where
+    parseRecord opts lab = (<?> Key label) . gParseJSON opts <=< (.: label)
+        where
+          label = fromMaybe defLabel lab
+          defLabel = pack . fieldLabelModifier opts $
+                       selName (undefined :: t s a p)
+
+instance OVERLAPPING_ (Selector s, FromJSON a) =>
+  FromRecord (S1 s (K1 i (Maybe a))) where
+    parseRecord _ (Just lab) obj = (M1 . K1) <$> obj .:? lab
+    parseRecord opts Nothing obj = (M1 . K1) <$> obj .:? pack label
+        where
+          label = fieldLabelModifier opts $
+                    selName (undefined :: t s (K1 i (Maybe a)) p)
+
+--------------------------------------------------------------------------------
+
+class FromProduct f where
+    parseProduct :: Options -> Array -> Int -> Int -> Parser (f a)
+
+instance (FromProduct a, FromProduct b) => FromProduct (a :*: b) where
+    parseProduct opts arr ix len =
+        (:*:) <$> parseProduct opts arr ix  lenL
+              <*> parseProduct opts arr ixR lenR
+        where
+          lenL = len `unsafeShiftR` 1
+          ixR  = ix + lenL
+          lenR = len - lenL
+
+instance (GFromJSON a) => FromProduct (S1 s a) where
+    parseProduct opts arr ix _ = gParseJSON opts $ V.unsafeIndex arr ix
+
+--------------------------------------------------------------------------------
+
+class FromPair f where
+    parsePair :: Options -> Pair -> Maybe (Parser (f a))
+
+instance (FromPair a, FromPair b) => FromPair (a :+: b) where
+    parsePair opts pair = (fmap L1 <$> parsePair opts pair) <|>
+                          (fmap R1 <$> parsePair opts pair)
+
+instance (Constructor c, GFromJSON a, ConsFromJSON a) => FromPair (C1 c a) where
+    parsePair opts (tag, value)
+        | tag == tag' = Just $ gParseJSON opts value
+        | otherwise   = Nothing
+        where
+          tag' = pack $ constructorTagModifier opts $
+                          conName (undefined :: t c a p)
+
+--------------------------------------------------------------------------------
+
+notFound :: Text -> Parser a
+notFound key = fail $ "The key \"" ++ unpack key ++ "\" was not found"
+{-# INLINE notFound #-}
+
+-------------------------------------------------------------------------------
+-- Instances
+-------------------------------------------------------------------------------
+
+-------------------------------------------------------------------------------
+-- base
+-------------------------------------------------------------------------------
+
+instance FromJSON1 Identity where
+    liftParseJSON p _ a = Identity <$> p a
+    {-# INLINE liftParseJSON #-}
+
+instance (FromJSON a) => FromJSON (Identity a) where
+    parseJSON = parseJSON1
+    {-# INLINE parseJSON #-}
+
+instance FromJSON2 Const where
+    liftParseJSON2 p _ _ _ = fmap Const . p
+    {-# INLINE liftParseJSON2 #-}
+
+instance FromJSON a => FromJSON1 (Const a) where
+    liftParseJSON _ _ = fmap Const . parseJSON
+    {-# INLINE liftParseJSON #-}
+
+instance FromJSON a => FromJSON (Const a b) where
+    {-# INLINE parseJSON #-}
+    parseJSON = fmap Const . parseJSON
+
+
+instance FromJSON1 Maybe where
+    liftParseJSON _ _ Null = pure Nothing
+    liftParseJSON p _ a    = Just <$> p a
+    {-# INLINE liftParseJSON #-}
+
+instance (FromJSON a) => FromJSON (Maybe a) where
+    parseJSON = parseJSON1
+    {-# INLINE parseJSON #-}
+
+
+
+instance FromJSON2 Either where
+    liftParseJSON2 pA _ pB _ (Object (H.toList -> [(key, value)]))
+        | key == left  = Left  <$> pA value <?> Key left
+        | key == right = Right <$> pB value <?> Key right
+
+    liftParseJSON2 _ _ _ _ _ = fail $
+        "expected an object with a single property " ++
+        "where the property key should be either " ++
+        "\"Left\" or \"Right\""
+    {-# INLINE liftParseJSON2 #-}
+
+instance (FromJSON a) => FromJSON1 (Either a) where
+    liftParseJSON = liftParseJSON2 parseJSON parseJSONList
+    {-# INLINE liftParseJSON #-}
+
+instance (FromJSON a, FromJSON b) => FromJSON (Either a b) where
+    parseJSON = parseJSON2
+    {-# INLINE parseJSON #-}
+
+left, right :: Text
+left  = "Left"
+right = "Right"
+
+
+instance FromJSON Bool where
+    parseJSON = withBool "Bool" pure
+    {-# INLINE parseJSON #-}
+
+instance FromJSON Ordering where
+  parseJSON = withText "Ordering" $ \s ->
+    case s of
+      "LT" -> return LT
+      "EQ" -> return EQ
+      "GT" -> return GT
+      _ -> fail "Parsing Ordering value failed: expected \"LT\", \"EQ\", or \"GT\""
+
+instance FromJSON () where
+    parseJSON = withArray "()" $ \v ->
+                  if V.null v
+                    then pure ()
+                    else fail "Expected an empty array"
+    {-# INLINE parseJSON #-}
+
+instance FromJSON Char where
+    parseJSON = withText "Char" $ \t ->
+                  if T.compareLength t 1 == EQ
+                    then pure $ T.head t
+                    else fail "Expected a string of length 1"
+    {-# INLINE parseJSON #-}
+
+    parseJSONList = withText "String" $ pure . T.unpack
+    {-# INLINE parseJSONList #-}
+
+instance FromJSON Double where
+    parseJSON = parseRealFloat "Double"
+    {-# INLINE parseJSON #-}
+
+instance FromJSON Number where
+    parseJSON (Number s) = pure $ scientificToNumber s
+    parseJSON Null       = pure (D (0/0))
+    parseJSON v          = typeMismatch "Number" v
+    {-# INLINE parseJSON #-}
+
+instance FromJSON Float where
+    parseJSON = parseRealFloat "Float"
+    {-# INLINE parseJSON #-}
+
+instance FromJSON (Ratio Integer) where
+    parseJSON = withObject "Rational" $ \obj ->
+                  (%) <$> obj .: "numerator"
+                      <*> obj .: "denominator"
+    {-# INLINE parseJSON #-}
+
+-- | /WARNING:/ Only parse fixed-precision numbers from trusted input
+-- since an attacker could easily fill up the memory of the target
+-- system by specifying a scientific number with a big exponent like
+-- @1e1000000000@.
+instance HasResolution a => FromJSON (Fixed a) where
+    parseJSON = withScientific "Fixed" $ pure . realToFrac
+    {-# INLINE parseJSON #-}
+
+instance FromJSON Int where
+    parseJSON = parseIntegral "Int"
+    {-# INLINE parseJSON #-}
+
+-- | /WARNING:/ Only parse Integers from trusted input since an
+-- attacker could easily fill up the memory of the target system by
+-- specifying a scientific number with a big exponent like
+-- @1e1000000000@.
+instance FromJSON Integer where
+    parseJSON = withScientific "Integral" $ pure . truncate
+    {-# INLINE parseJSON #-}
+
+instance FromJSON Natural where
+    parseJSON = withScientific "Natural" $ \s ->
+      if Scientific.coefficient s < 0
+        then fail $ "Expected a Natural number but got the negative number: " <> show s
+        else pure $ truncate s
+
+instance FromJSON Int8 where
+    parseJSON = parseIntegral "Int8"
+    {-# INLINE parseJSON #-}
+
+instance FromJSON Int16 where
+    parseJSON = parseIntegral "Int16"
+    {-# INLINE parseJSON #-}
+
+instance FromJSON Int32 where
+    parseJSON = parseIntegral "Int32"
+    {-# INLINE parseJSON #-}
+
+instance FromJSON Int64 where
+    parseJSON = parseIntegral "Int64"
+    {-# INLINE parseJSON #-}
+
+instance FromJSON Word where
+    parseJSON = parseIntegral "Word"
+    {-# INLINE parseJSON #-}
+
+instance FromJSON Word8 where
+    parseJSON = parseIntegral "Word8"
+    {-# INLINE parseJSON #-}
+
+instance FromJSON Word16 where
+    parseJSON = parseIntegral "Word16"
+    {-# INLINE parseJSON #-}
+
+instance FromJSON Word32 where
+    parseJSON = parseIntegral "Word32"
+    {-# INLINE parseJSON #-}
+
+instance FromJSON Word64 where
+    parseJSON = parseIntegral "Word64"
+    {-# INLINE parseJSON #-}
+
+instance FromJSON Text where
+    parseJSON = withText "Text" pure
+    {-# INLINE parseJSON #-}
+
+instance FromJSON LT.Text where
+    parseJSON = withText "Lazy Text" $ pure . LT.fromStrict
+    {-# INLINE parseJSON #-}
+
+instance FromJSON Version where
+    {-# INLINE parseJSON #-}
+    parseJSON = withText "Version" $ go . readP_to_S parseVersion . unpack
+      where
+        go [(v,[])] = return v
+        go (_ : xs) = go xs
+        go _        = fail $ "could not parse Version"
+
+-------------------------------------------------------------------------------
+-- semigroups NonEmpty
+-------------------------------------------------------------------------------
+
+instance FromJSON1 NonEmpty where
+    liftParseJSON p _ = withArray "NonEmpty a" $
+        (>>= ne) . Tr.sequence . zipWith (parseIndexedJSON p) [0..] . V.toList
+      where
+        ne []     = fail "Expected a NonEmpty but got an empty list"
+        ne (x:xs) = pure (x :| xs)
+    {-# INLINE liftParseJSON #-}
+
+instance (FromJSON a) => FromJSON (NonEmpty a) where
+    parseJSON = parseJSON1
+    {-# INLINE parseJSON #-}
+
+-------------------------------------------------------------------------------
+-- scientific
+-------------------------------------------------------------------------------
+
+instance FromJSON Scientific where
+    parseJSON = withScientific "Scientific" pure
+    {-# INLINE parseJSON #-}
+
+-------------------------------------------------------------------------------
+-- containers
+-------------------------------------------------------------------------------
+
+instance FromJSON1 Seq.Seq where
+    liftParseJSON p _ = withArray "Seq a" $
+      fmap Seq.fromList .
+      Tr.sequence . zipWith (parseIndexedJSON p) [0..] . V.toList
+    {-# INLINE liftParseJSON #-}
+
+instance (FromJSON a) => FromJSON (Seq.Seq a) where
+    parseJSON = parseJSON1
+    {-# INLINE parseJSON #-}
+
+
+instance (Ord a, FromJSON a) => FromJSON (Set.Set a) where
+    parseJSON = fmap Set.fromList . parseJSON
+    {-# INLINE parseJSON #-}
+
+
+instance FromJSON IntSet.IntSet where
+    parseJSON = fmap IntSet.fromList . parseJSON
+    {-# INLINE parseJSON #-}
+
+
+instance FromJSON1 IntMap.IntMap where
+    liftParseJSON p pl = fmap IntMap.fromList . liftParseJSON p' pl'
+      where
+        p'  = liftParseJSON2     parseJSON parseJSONList p pl
+        pl' = liftParseJSONList2 parseJSON parseJSONList p pl
+    {-# INLINE liftParseJSON #-}
+
+instance FromJSON a => FromJSON (IntMap.IntMap a) where
+    parseJSON = fmap IntMap.fromList . parseJSON
+    {-# INLINE parseJSON #-}
+
+
+instance (FromJSONKey k, Ord k) => FromJSON1 (M.Map k) where
+    liftParseJSON p _ = case fromJSONKey of
+        FromJSONKeyCoerce _-> withObject "Map k v" $
+            fmap (H.foldrWithKey (M.insert . unsafeCoerce) M.empty) . H.traverseWithKey (\k v -> p v <?> Key k)
+        FromJSONKeyText f -> withObject "Map k v" $
+            fmap (H.foldrWithKey (M.insert . f) M.empty) . H.traverseWithKey (\k v -> p v <?> Key k)
+        FromJSONKeyTextParser f -> withObject "Map k v" $
+            H.foldrWithKey (\k v m -> M.insert <$> f k <*> (p v <?> Key k) <*> m) (pure M.empty)
+        FromJSONKeyValue f -> withArray "Map k v" $ \arr ->
+            M.fromList <$> (Tr.sequence .
+                zipWith (parseIndexedJSONPair f p) [0..] . V.toList $ arr)
+    {-# INLINE liftParseJSON #-}
+
+instance (FromJSONKey k, Ord k, FromJSON v) => FromJSON (M.Map k v) where
+    parseJSON = parseJSON1
+    {-# INLINE parseJSON #-}
+
+
+instance FromJSON1 Tree.Tree where
+    liftParseJSON p pl = go
+      where
+        go v = uncurry Tree.Node <$> liftParseJSON2 p pl p' pl' v
+
+        p' = liftParseJSON go (listParser go)
+        pl'= liftParseJSONList go (listParser go)
+
+instance (FromJSON v) => FromJSON (Tree.Tree v) where
+    parseJSON = parseJSON1
+    {-# INLINE parseJSON #-}
+
+-------------------------------------------------------------------------------
+-- vector
+-------------------------------------------------------------------------------
+
+instance FromJSON1 Vector where
+    liftParseJSON p _ = withArray "Vector a" $
+        V.mapM (uncurry $ parseIndexedJSON p) . V.indexed
+    {-# INLINE liftParseJSON #-}
+
+instance (FromJSON a) => FromJSON (Vector a) where
+    parseJSON = parseJSON1
+    {-# INLINE parseJSON #-}
+
+
+vectorParseJSON :: (FromJSON a, VG.Vector w a) => String -> Value -> Parser (w a)
+vectorParseJSON s = withArray s $ fmap V.convert . V.mapM (uncurry $ parseIndexedJSON parseJSON) . V.indexed
+{-# INLINE vectorParseJSON #-}
+
+instance (Storable a, FromJSON a) => FromJSON (VS.Vector a) where
+    parseJSON = vectorParseJSON "Data.Vector.Storable.Vector a"
+
+instance (VP.Prim a, FromJSON a) => FromJSON (VP.Vector a) where
+    parseJSON = vectorParseJSON "Data.Vector.Primitive.Vector a"
+    {-# INLINE parseJSON #-}
+
+instance (VG.Vector VU.Vector a, FromJSON a) => FromJSON (VU.Vector a) where
+    parseJSON = vectorParseJSON "Data.Vector.Unboxed.Vector a"
+    {-# INLINE parseJSON #-}
+
+-------------------------------------------------------------------------------
+-- unordered-containers
+-------------------------------------------------------------------------------
+
+instance (Eq a, Hashable a, FromJSON a) => FromJSON (HashSet.HashSet a) where
+    parseJSON = fmap HashSet.fromList . parseJSON
+    {-# INLINE parseJSON #-}
+
+
+instance (FromJSONKey k, Eq k, Hashable k) => FromJSON1 (H.HashMap k) where
+    liftParseJSON p _ = case fromJSONKey of
+        FromJSONKeyCoerce _ -> withObject "HashMap ~Text v" $
+            uc . H.traverseWithKey (\k v -> p v <?> Key k)
+        FromJSONKeyText f -> withObject "HashMap k v" $
+            fmap (mapKey f) . H.traverseWithKey (\k v -> p v <?> Key k)
+        FromJSONKeyTextParser f -> withObject "HashMap k v" $
+            H.foldrWithKey (\k v m -> H.insert <$> f k <*> (p v <?> Key k) <*> m) (pure H.empty)
+        FromJSONKeyValue f -> withArray "Map k v" $ \arr ->
+            H.fromList <$> (Tr.sequence .
+                zipWith (parseIndexedJSONPair f p) [0..] . V.toList $ arr)
+      where
+        uc :: Parser (H.HashMap Text v) -> Parser (H.HashMap k v)
+        uc = unsafeCoerce
+
+instance (FromJSON v, FromJSONKey k, Eq k, Hashable k) => FromJSON (H.HashMap k v) where
+    parseJSON = parseJSON1
+    {-# INLINE parseJSON #-}
+
+-------------------------------------------------------------------------------
+-- aeson
+-------------------------------------------------------------------------------
+
+instance FromJSON Value where
+    parseJSON = pure
+    {-# INLINE parseJSON #-}
+
+instance FromJSON DotNetTime where
+    parseJSON = withText "DotNetTime" $ \t ->
+        let (s,m) = T.splitAt (T.length t - 5) t
+            t'    = T.concat [s,".",m]
+        in case parseTime defaultTimeLocale "/Date(%s%Q)/" (unpack t') of
+             Just d -> pure (DotNetTime d)
+             _      -> fail "could not parse .NET time"
+    {-# INLINE parseJSON #-}
+
+-------------------------------------------------------------------------------
+-- time
+-------------------------------------------------------------------------------
+
+instance FromJSON Day where
+    parseJSON = withText "Day" (Time.run Time.day)
+
+instance FromJSON TimeOfDay where
+    parseJSON = withText "TimeOfDay" (Time.run Time.timeOfDay)
+
+instance FromJSON LocalTime where
+    parseJSON = withText "LocalTime" (Time.run Time.localTime)
+
+instance FromJSON ZonedTime where
+    parseJSON = withText "ZonedTime" (Time.run Time.zonedTime)
+
+instance FromJSON UTCTime where
+    parseJSON = withText "UTCTime" (Time.run Time.utcTime)
+
+-- | /WARNING:/ Only parse lengths of time from trusted input
+-- since an attacker could easily fill up the memory of the target
+-- system by specifying a scientific number with a big exponent like
+-- @1e1000000000@.
+instance FromJSON NominalDiffTime where
+    parseJSON = withScientific "NominalDiffTime" $ pure . realToFrac
+    {-# INLINE parseJSON #-}
+
+-------------------------------------------------------------------------------
+-- base Monoid/Semigroup
+-------------------------------------------------------------------------------
+
+instance FromJSON1 Dual where
+    liftParseJSON p _ = fmap Dual . p
+    {-# INLINE liftParseJSON #-}
+
+instance FromJSON a => FromJSON (Dual a) where
+    parseJSON = parseJSON1
+    {-# INLINE parseJSON #-}
+
+
+instance FromJSON1 First where
+    liftParseJSON p p' = fmap First . liftParseJSON p p'
+    {-# INLINE liftParseJSON #-}
+
+instance FromJSON a => FromJSON (First a) where
+    parseJSON = parseJSON1
+    {-# INLINE parseJSON #-}
+
+
+instance FromJSON1 Last where
+    liftParseJSON p p' = fmap Last . liftParseJSON p p'
+    {-# INLINE liftParseJSON #-}
+
+instance FromJSON a => FromJSON (Last a) where
+    parseJSON = parseJSON1
+    {-# INLINE parseJSON #-}
+
+-------------------------------------------------------------------------------
+-- tagged
+-------------------------------------------------------------------------------
+
+instance FromJSON (Proxy a) where
+    {-# INLINE parseJSON #-}
+    parseJSON Null = pure Proxy
+    parseJSON v    = typeMismatch "Proxy" v
+
+
+instance FromJSON1 (Tagged a) where
+    liftParseJSON p _ = fmap Tagged . p
+    {-# INLINE liftParseJSON #-}
+
+instance FromJSON b => FromJSON (Tagged a b) where
+    parseJSON = parseJSON1
+    {-# INLINE parseJSON #-}
+
+instance FromJSONKey b => FromJSONKey (Tagged a b) where
+    fromJSONKey = coerceFromJSONKeyFunction (fromJSONKey :: FromJSONKeyFunction b)
+    fromJSONKeyList = (fmap . fmap) Tagged fromJSONKeyList
+
+-------------------------------------------------------------------------------
+-- Instances for converting from map keys
+-------------------------------------------------------------------------------
+
+instance FromJSONKey Text where
+    fromJSONKey = fromJSONKeyCoerce
+
+instance FromJSONKey Int where
+    -- not sure if there if there is already a helper in
+    -- aeson for doing this.
+    fromJSONKey = FromJSONKeyTextParser $ \t -> case TR.decimal t of
+      Left err -> fail err
+      Right (v,t2) -> if T.null t2
+        then return v
+        else fail "Was not an integer, had extra stuff."
+
+instance (FromJSON a, FromJSON b) => FromJSONKey (a,b)
+instance (FromJSON a, FromJSON b, FromJSON c) => FromJSONKey (a,b,c)
+instance (FromJSON a, FromJSON b, FromJSON c, FromJSON d) => FromJSONKey (a,b,c,d)
+
+instance FromJSONKey Char where
+    fromJSONKey = FromJSONKeyTextParser $ \t ->
+        if T.length t == 1
+            then return (T.index t 0)
+            else typeMismatch "Expected Char but String didn't contain exactly one character" (String t)
+    fromJSONKeyList = FromJSONKeyText T.unpack
+
+instance (FromJSONKey a, FromJSON a) => FromJSONKey [a] where
+    fromJSONKey = fromJSONKeyList
+
+instance (FromJSONKey a, FromJSON a) => FromJSONKey (Identity a) where
+    fromJSONKey = mapFromJSONKeyFunction Identity fromJSONKey
+
+-------------------------------------------------------------------------------
+-- Tuple instances, see tuple-instances-from.hs
+-------------------------------------------------------------------------------
+
+instance FromJSON2 ((,) ) where
+    liftParseJSON2 pA _ pB _ = withArray "(a, b)" $ \t ->
+        let n = V.length t
+        in if n == 2
+            then (,)
+                <$> parseJSONElemAtIndex pA 0 t
+                <*> parseJSONElemAtIndex pB 1 t
+            else fail $ "cannot unpack array of length " ++ show n ++ " into a tuple of length 2"
+    {-# INLINE liftParseJSON2 #-}
+
+instance (FromJSON a) => FromJSON1 ((,) a) where
+    liftParseJSON = liftParseJSON2 parseJSON parseJSONList
+    {-# INLINE liftParseJSON #-}
+
+instance (FromJSON a, FromJSON b) => FromJSON (a, b) where
+    parseJSON = parseJSON2
+    {-# INLINE parseJSON #-}
+
+
+instance (FromJSON a) => FromJSON2 ((,,) a) where
+    liftParseJSON2 pB _ pC _ = withArray "(a, b, c)" $ \t ->
+        let n = V.length t
+        in if n == 3
+            then (,,)
+                <$> parseJSONElemAtIndex parseJSON 0 t
+                <*> parseJSONElemAtIndex pB 1 t
+                <*> parseJSONElemAtIndex pC 2 t
+            else fail $ "cannot unpack array of length " ++ show n ++ " into a tuple of length 3"
+    {-# INLINE liftParseJSON2 #-}
+
+instance (FromJSON a, FromJSON b) => FromJSON1 ((,,) a b) where
+    liftParseJSON = liftParseJSON2 parseJSON parseJSONList
+    {-# INLINE liftParseJSON #-}
+
+instance (FromJSON a, FromJSON b, FromJSON c) => FromJSON (a, b, c) where
+    parseJSON = parseJSON2
+    {-# INLINE parseJSON #-}
+
+
+instance (FromJSON a, FromJSON b) => FromJSON2 ((,,,) a b) where
+    liftParseJSON2 pC _ pD _ = withArray "(a, b, c, d)" $ \t ->
+        let n = V.length t
+        in if n == 4
+            then (,,,)
+                <$> parseJSONElemAtIndex parseJSON 0 t
+                <*> parseJSONElemAtIndex parseJSON 1 t
+                <*> parseJSONElemAtIndex pC 2 t
+                <*> parseJSONElemAtIndex pD 3 t
+            else fail $ "cannot unpack array of length " ++ show n ++ " into a tuple of length 4"
+    {-# INLINE liftParseJSON2 #-}
+
+instance (FromJSON a, FromJSON b, FromJSON c) => FromJSON1 ((,,,) a b c) where
+    liftParseJSON = liftParseJSON2 parseJSON parseJSONList
+    {-# INLINE liftParseJSON #-}
+
+instance (FromJSON a, FromJSON b, FromJSON c, FromJSON d) => FromJSON (a, b, c, d) where
+    parseJSON = parseJSON2
+    {-# INLINE parseJSON #-}
+
+
+instance (FromJSON a, FromJSON b, FromJSON c) => FromJSON2 ((,,,,) a b c) where
+    liftParseJSON2 pD _ pE _ = withArray "(a, b, c, d, e)" $ \t ->
+        let n = V.length t
+        in if n == 5
+            then (,,,,)
+                <$> parseJSONElemAtIndex parseJSON 0 t
+                <*> parseJSONElemAtIndex parseJSON 1 t
+                <*> parseJSONElemAtIndex parseJSON 2 t
+                <*> parseJSONElemAtIndex pD 3 t
+                <*> parseJSONElemAtIndex pE 4 t
+            else fail $ "cannot unpack array of length " ++ show n ++ " into a tuple of length 5"
+    {-# INLINE liftParseJSON2 #-}
+
+instance (FromJSON a, FromJSON b, FromJSON c, FromJSON d) => FromJSON1 ((,,,,) a b c d) where
+    liftParseJSON = liftParseJSON2 parseJSON parseJSONList
+    {-# INLINE liftParseJSON #-}
+
+instance (FromJSON a, FromJSON b, FromJSON c, FromJSON d, FromJSON e) => FromJSON (a, b, c, d, e) where
+    parseJSON = parseJSON2
+    {-# INLINE parseJSON #-}
+
+
+instance (FromJSON a, FromJSON b, FromJSON c, FromJSON d) => FromJSON2 ((,,,,,) a b c d) where
+    liftParseJSON2 pE _ pF _ = withArray "(a, b, c, d, e, f)" $ \t ->
+        let n = V.length t
+        in if n == 6
+            then (,,,,,)
+                <$> parseJSONElemAtIndex parseJSON 0 t
+                <*> parseJSONElemAtIndex parseJSON 1 t
+                <*> parseJSONElemAtIndex parseJSON 2 t
+                <*> parseJSONElemAtIndex parseJSON 3 t
+                <*> parseJSONElemAtIndex pE 4 t
+                <*> parseJSONElemAtIndex pF 5 t
+            else fail $ "cannot unpack array of length " ++ show n ++ " into a tuple of length 6"
+    {-# INLINE liftParseJSON2 #-}
+
+instance (FromJSON a, FromJSON b, FromJSON c, FromJSON d, FromJSON e) => FromJSON1 ((,,,,,) a b c d e) where
+    liftParseJSON = liftParseJSON2 parseJSON parseJSONList
+    {-# INLINE liftParseJSON #-}
+
+instance (FromJSON a, FromJSON b, FromJSON c, FromJSON d, FromJSON e, FromJSON f) => FromJSON (a, b, c, d, e, f) where
+    parseJSON = parseJSON2
+    {-# INLINE parseJSON #-}
+
+
+instance (FromJSON a, FromJSON b, FromJSON c, FromJSON d, FromJSON e) => FromJSON2 ((,,,,,,) a b c d e) where
+    liftParseJSON2 pF _ pG _ = withArray "(a, b, c, d, e, f, g)" $ \t ->
+        let n = V.length t
+        in if n == 7
+            then (,,,,,,)
+                <$> parseJSONElemAtIndex parseJSON 0 t
+                <*> parseJSONElemAtIndex parseJSON 1 t
+                <*> parseJSONElemAtIndex parseJSON 2 t
+                <*> parseJSONElemAtIndex parseJSON 3 t
+                <*> parseJSONElemAtIndex parseJSON 4 t
+                <*> parseJSONElemAtIndex pF 5 t
+                <*> parseJSONElemAtIndex pG 6 t
+            else fail $ "cannot unpack array of length " ++ show n ++ " into a tuple of length 7"
+    {-# INLINE liftParseJSON2 #-}
+
+instance (FromJSON a, FromJSON b, FromJSON c, FromJSON d, FromJSON e, FromJSON f) => FromJSON1 ((,,,,,,) a b c d e f) where
+    liftParseJSON = liftParseJSON2 parseJSON parseJSONList
+    {-# INLINE liftParseJSON #-}
+
+instance (FromJSON a, FromJSON b, FromJSON c, FromJSON d, FromJSON e, FromJSON f, FromJSON g) => FromJSON (a, b, c, d, e, f, g) where
+    parseJSON = parseJSON2
+    {-# INLINE parseJSON #-}
+
+
+instance (FromJSON a, FromJSON b, FromJSON c, FromJSON d, FromJSON e, FromJSON f) => FromJSON2 ((,,,,,,,) a b c d e f) where
+    liftParseJSON2 pG _ pH _ = withArray "(a, b, c, d, e, f, g, h)" $ \t ->
+        let n = V.length t
+        in if n == 8
+            then (,,,,,,,)
+                <$> parseJSONElemAtIndex parseJSON 0 t
+                <*> parseJSONElemAtIndex parseJSON 1 t
+                <*> parseJSONElemAtIndex parseJSON 2 t
+                <*> parseJSONElemAtIndex parseJSON 3 t
+                <*> parseJSONElemAtIndex parseJSON 4 t
+                <*> parseJSONElemAtIndex parseJSON 5 t
+                <*> parseJSONElemAtIndex pG 6 t
+                <*> parseJSONElemAtIndex pH 7 t
+            else fail $ "cannot unpack array of length " ++ show n ++ " into a tuple of length 8"
+    {-# INLINE liftParseJSON2 #-}
+
+instance (FromJSON a, FromJSON b, FromJSON c, FromJSON d, FromJSON e, FromJSON f, FromJSON g) => FromJSON1 ((,,,,,,,) a b c d e f g) where
+    liftParseJSON = liftParseJSON2 parseJSON parseJSONList
+    {-# INLINE liftParseJSON #-}
+
+instance (FromJSON a, FromJSON b, FromJSON c, FromJSON d, FromJSON e, FromJSON f, FromJSON g, FromJSON h) => FromJSON (a, b, c, d, e, f, g, h) where
+    parseJSON = parseJSON2
+    {-# INLINE parseJSON #-}
+
+
+instance (FromJSON a, FromJSON b, FromJSON c, FromJSON d, FromJSON e, FromJSON f, FromJSON g) => FromJSON2 ((,,,,,,,,) a b c d e f g) where
+    liftParseJSON2 pH _ pI _ = withArray "(a, b, c, d, e, f, g, h, i)" $ \t ->
+        let n = V.length t
+        in if n == 9
+            then (,,,,,,,,)
+                <$> parseJSONElemAtIndex parseJSON 0 t
+                <*> parseJSONElemAtIndex parseJSON 1 t
+                <*> parseJSONElemAtIndex parseJSON 2 t
+                <*> parseJSONElemAtIndex parseJSON 3 t
+                <*> parseJSONElemAtIndex parseJSON 4 t
+                <*> parseJSONElemAtIndex parseJSON 5 t
+                <*> parseJSONElemAtIndex parseJSON 6 t
+                <*> parseJSONElemAtIndex pH 7 t
+                <*> parseJSONElemAtIndex pI 8 t
+            else fail $ "cannot unpack array of length " ++ show n ++ " into a tuple of length 9"
+    {-# INLINE liftParseJSON2 #-}
+
+instance (FromJSON a, FromJSON b, FromJSON c, FromJSON d, FromJSON e, FromJSON f, FromJSON g, FromJSON h) => FromJSON1 ((,,,,,,,,) a b c d e f g h) where
+    liftParseJSON = liftParseJSON2 parseJSON parseJSONList
+    {-# INLINE liftParseJSON #-}
+
+instance (FromJSON a, FromJSON b, FromJSON c, FromJSON d, FromJSON e, FromJSON f, FromJSON g, FromJSON h, FromJSON i) => FromJSON (a, b, c, d, e, f, g, h, i) where
+    parseJSON = parseJSON2
+    {-# INLINE parseJSON #-}
+
+
+instance (FromJSON a, FromJSON b, FromJSON c, FromJSON d, FromJSON e, FromJSON f, FromJSON g, FromJSON h) => FromJSON2 ((,,,,,,,,,) a b c d e f g h) where
+    liftParseJSON2 pI _ pJ _ = withArray "(a, b, c, d, e, f, g, h, i, j)" $ \t ->
+        let n = V.length t
+        in if n == 10
+            then (,,,,,,,,,)
+                <$> parseJSONElemAtIndex parseJSON 0 t
+                <*> parseJSONElemAtIndex parseJSON 1 t
+                <*> parseJSONElemAtIndex parseJSON 2 t
+                <*> parseJSONElemAtIndex parseJSON 3 t
+                <*> parseJSONElemAtIndex parseJSON 4 t
+                <*> parseJSONElemAtIndex parseJSON 5 t
+                <*> parseJSONElemAtIndex parseJSON 6 t
+                <*> parseJSONElemAtIndex parseJSON 7 t
+                <*> parseJSONElemAtIndex pI 8 t
+                <*> parseJSONElemAtIndex pJ 9 t
+            else fail $ "cannot unpack array of length " ++ show n ++ " into a tuple of length 10"
+    {-# INLINE liftParseJSON2 #-}
+
+instance (FromJSON a, FromJSON b, FromJSON c, FromJSON d, FromJSON e, FromJSON f, FromJSON g, FromJSON h, FromJSON i) => FromJSON1 ((,,,,,,,,,) a b c d e f g h i) where
+    liftParseJSON = liftParseJSON2 parseJSON parseJSONList
+    {-# INLINE liftParseJSON #-}
+
+instance (FromJSON a, FromJSON b, FromJSON c, FromJSON d, FromJSON e, FromJSON f, FromJSON g, FromJSON h, FromJSON i, FromJSON j) => FromJSON (a, b, c, d, e, f, g, h, i, j) where
+    parseJSON = parseJSON2
+    {-# INLINE parseJSON #-}
+
+
+instance (FromJSON a, FromJSON b, FromJSON c, FromJSON d, FromJSON e, FromJSON f, FromJSON g, FromJSON h, FromJSON i) => FromJSON2 ((,,,,,,,,,,) a b c d e f g h i) where
+    liftParseJSON2 pJ _ pK _ = withArray "(a, b, c, d, e, f, g, h, i, j, k)" $ \t ->
+        let n = V.length t
+        in if n == 11
+            then (,,,,,,,,,,)
+                <$> parseJSONElemAtIndex parseJSON 0 t
+                <*> parseJSONElemAtIndex parseJSON 1 t
+                <*> parseJSONElemAtIndex parseJSON 2 t
+                <*> parseJSONElemAtIndex parseJSON 3 t
+                <*> parseJSONElemAtIndex parseJSON 4 t
+                <*> parseJSONElemAtIndex parseJSON 5 t
+                <*> parseJSONElemAtIndex parseJSON 6 t
+                <*> parseJSONElemAtIndex parseJSON 7 t
+                <*> parseJSONElemAtIndex parseJSON 8 t
+                <*> parseJSONElemAtIndex pJ 9 t
+                <*> parseJSONElemAtIndex pK 10 t
+            else fail $ "cannot unpack array of length " ++ show n ++ " into a tuple of length 11"
+    {-# INLINE liftParseJSON2 #-}
+
+instance (FromJSON a, FromJSON b, FromJSON c, FromJSON d, FromJSON e, FromJSON f, FromJSON g, FromJSON h, FromJSON i, FromJSON j) => FromJSON1 ((,,,,,,,,,,) a b c d e f g h i j) where
+    liftParseJSON = liftParseJSON2 parseJSON parseJSONList
+    {-# INLINE liftParseJSON #-}
+
+instance (FromJSON a, FromJSON b, FromJSON c, FromJSON d, FromJSON e, FromJSON f, FromJSON g, FromJSON h, FromJSON i, FromJSON j, FromJSON k) => FromJSON (a, b, c, d, e, f, g, h, i, j, k) where
+    parseJSON = parseJSON2
+    {-# INLINE parseJSON #-}
+
+
+instance (FromJSON a, FromJSON b, FromJSON c, FromJSON d, FromJSON e, FromJSON f, FromJSON g, FromJSON h, FromJSON i, FromJSON j) => FromJSON2 ((,,,,,,,,,,,) a b c d e f g h i j) where
+    liftParseJSON2 pK _ pL _ = withArray "(a, b, c, d, e, f, g, h, i, j, k, l)" $ \t ->
+        let n = V.length t
+        in if n == 12
+            then (,,,,,,,,,,,)
+                <$> parseJSONElemAtIndex parseJSON 0 t
+                <*> parseJSONElemAtIndex parseJSON 1 t
+                <*> parseJSONElemAtIndex parseJSON 2 t
+                <*> parseJSONElemAtIndex parseJSON 3 t
+                <*> parseJSONElemAtIndex parseJSON 4 t
+                <*> parseJSONElemAtIndex parseJSON 5 t
+                <*> parseJSONElemAtIndex parseJSON 6 t
+                <*> parseJSONElemAtIndex parseJSON 7 t
+                <*> parseJSONElemAtIndex parseJSON 8 t
+                <*> parseJSONElemAtIndex parseJSON 9 t
+                <*> parseJSONElemAtIndex pK 10 t
+                <*> parseJSONElemAtIndex pL 11 t
+            else fail $ "cannot unpack array of length " ++ show n ++ " into a tuple of length 12"
+    {-# INLINE liftParseJSON2 #-}
+
+instance (FromJSON a, FromJSON b, FromJSON c, FromJSON d, FromJSON e, FromJSON f, FromJSON g, FromJSON h, FromJSON i, FromJSON j, FromJSON k) => FromJSON1 ((,,,,,,,,,,,) a b c d e f g h i j k) where
+    liftParseJSON = liftParseJSON2 parseJSON parseJSONList
+    {-# INLINE liftParseJSON #-}
+
+instance (FromJSON a, FromJSON b, FromJSON c, FromJSON d, FromJSON e, FromJSON f, FromJSON g, FromJSON h, FromJSON i, FromJSON j, FromJSON k, FromJSON l) => FromJSON (a, b, c, d, e, f, g, h, i, j, k, l) where
+    parseJSON = parseJSON2
+    {-# INLINE parseJSON #-}
+
+
+instance (FromJSON a, FromJSON b, FromJSON c, FromJSON d, FromJSON e, FromJSON f, FromJSON g, FromJSON h, FromJSON i, FromJSON j, FromJSON k) => FromJSON2 ((,,,,,,,,,,,,) a b c d e f g h i j k) where
+    liftParseJSON2 pL _ pM _ = withArray "(a, b, c, d, e, f, g, h, i, j, k, l, m)" $ \t ->
+        let n = V.length t
+        in if n == 13
+            then (,,,,,,,,,,,,)
+                <$> parseJSONElemAtIndex parseJSON 0 t
+                <*> parseJSONElemAtIndex parseJSON 1 t
+                <*> parseJSONElemAtIndex parseJSON 2 t
+                <*> parseJSONElemAtIndex parseJSON 3 t
+                <*> parseJSONElemAtIndex parseJSON 4 t
+                <*> parseJSONElemAtIndex parseJSON 5 t
+                <*> parseJSONElemAtIndex parseJSON 6 t
+                <*> parseJSONElemAtIndex parseJSON 7 t
+                <*> parseJSONElemAtIndex parseJSON 8 t
+                <*> parseJSONElemAtIndex parseJSON 9 t
+                <*> parseJSONElemAtIndex parseJSON 10 t
+                <*> parseJSONElemAtIndex pL 11 t
+                <*> parseJSONElemAtIndex pM 12 t
+            else fail $ "cannot unpack array of length " ++ show n ++ " into a tuple of length 13"
+    {-# INLINE liftParseJSON2 #-}
+
+instance (FromJSON a, FromJSON b, FromJSON c, FromJSON d, FromJSON e, FromJSON f, FromJSON g, FromJSON h, FromJSON i, FromJSON j, FromJSON k, FromJSON l) => FromJSON1 ((,,,,,,,,,,,,) a b c d e f g h i j k l) where
+    liftParseJSON = liftParseJSON2 parseJSON parseJSONList
+    {-# INLINE liftParseJSON #-}
+
+instance (FromJSON a, FromJSON b, FromJSON c, FromJSON d, FromJSON e, FromJSON f, FromJSON g, FromJSON h, FromJSON i, FromJSON j, FromJSON k, FromJSON l, FromJSON m) => FromJSON (a, b, c, d, e, f, g, h, i, j, k, l, m) where
+    parseJSON = parseJSON2
+    {-# INLINE parseJSON #-}
+
+
+instance (FromJSON a, FromJSON b, FromJSON c, FromJSON d, FromJSON e, FromJSON f, FromJSON g, FromJSON h, FromJSON i, FromJSON j, FromJSON k, FromJSON l) => FromJSON2 ((,,,,,,,,,,,,,) a b c d e f g h i j k l) where
+    liftParseJSON2 pM _ pN _ = withArray "(a, b, c, d, e, f, g, h, i, j, k, l, m, n)" $ \t ->
+        let n = V.length t
+        in if n == 14
+            then (,,,,,,,,,,,,,)
+                <$> parseJSONElemAtIndex parseJSON 0 t
+                <*> parseJSONElemAtIndex parseJSON 1 t
+                <*> parseJSONElemAtIndex parseJSON 2 t
+                <*> parseJSONElemAtIndex parseJSON 3 t
+                <*> parseJSONElemAtIndex parseJSON 4 t
+                <*> parseJSONElemAtIndex parseJSON 5 t
+                <*> parseJSONElemAtIndex parseJSON 6 t
+                <*> parseJSONElemAtIndex parseJSON 7 t
+                <*> parseJSONElemAtIndex parseJSON 8 t
+                <*> parseJSONElemAtIndex parseJSON 9 t
+                <*> parseJSONElemAtIndex parseJSON 10 t
+                <*> parseJSONElemAtIndex parseJSON 11 t
+                <*> parseJSONElemAtIndex pM 12 t
+                <*> parseJSONElemAtIndex pN 13 t
+            else fail $ "cannot unpack array of length " ++ show n ++ " into a tuple of length 14"
+    {-# INLINE liftParseJSON2 #-}
+
+instance (FromJSON a, FromJSON b, FromJSON c, FromJSON d, FromJSON e, FromJSON f, FromJSON g, FromJSON h, FromJSON i, FromJSON j, FromJSON k, FromJSON l, FromJSON m) => FromJSON1 ((,,,,,,,,,,,,,) a b c d e f g h i j k l m) where
+    liftParseJSON = liftParseJSON2 parseJSON parseJSONList
+    {-# INLINE liftParseJSON #-}
+
+instance (FromJSON a, FromJSON b, FromJSON c, FromJSON d, FromJSON e, FromJSON f, FromJSON g, FromJSON h, FromJSON i, FromJSON j, FromJSON k, FromJSON l, FromJSON m, FromJSON n) => FromJSON (a, b, c, d, e, f, g, h, i, j, k, l, m, n) where
+    parseJSON = parseJSON2
+    {-# INLINE parseJSON #-}
+
+
+instance (FromJSON a, FromJSON b, FromJSON c, FromJSON d, FromJSON e, FromJSON f, FromJSON g, FromJSON h, FromJSON i, FromJSON j, FromJSON k, FromJSON l, FromJSON m) => FromJSON2 ((,,,,,,,,,,,,,,) a b c d e f g h i j k l m) where
+    liftParseJSON2 pN _ pO _ = withArray "(a, b, c, d, e, f, g, h, i, j, k, l, m, n, o)" $ \t ->
+        let n = V.length t
+        in if n == 15
+            then (,,,,,,,,,,,,,,)
+                <$> parseJSONElemAtIndex parseJSON 0 t
+                <*> parseJSONElemAtIndex parseJSON 1 t
+                <*> parseJSONElemAtIndex parseJSON 2 t
+                <*> parseJSONElemAtIndex parseJSON 3 t
+                <*> parseJSONElemAtIndex parseJSON 4 t
+                <*> parseJSONElemAtIndex parseJSON 5 t
+                <*> parseJSONElemAtIndex parseJSON 6 t
+                <*> parseJSONElemAtIndex parseJSON 7 t
+                <*> parseJSONElemAtIndex parseJSON 8 t
+                <*> parseJSONElemAtIndex parseJSON 9 t
+                <*> parseJSONElemAtIndex parseJSON 10 t
+                <*> parseJSONElemAtIndex parseJSON 11 t
+                <*> parseJSONElemAtIndex parseJSON 12 t
+                <*> parseJSONElemAtIndex pN 13 t
+                <*> parseJSONElemAtIndex pO 14 t
+            else fail $ "cannot unpack array of length " ++ show n ++ " into a tuple of length 15"
+    {-# INLINE liftParseJSON2 #-}
+
+instance (FromJSON a, FromJSON b, FromJSON c, FromJSON d, FromJSON e, FromJSON f, FromJSON g, FromJSON h, FromJSON i, FromJSON j, FromJSON k, FromJSON l, FromJSON m, FromJSON n) => FromJSON1 ((,,,,,,,,,,,,,,) a b c d e f g h i j k l m n) where
+    liftParseJSON = liftParseJSON2 parseJSON parseJSONList
+    {-# INLINE liftParseJSON #-}
+
+instance (FromJSON a, FromJSON b, FromJSON c, FromJSON d, FromJSON e, FromJSON f, FromJSON g, FromJSON h, FromJSON i, FromJSON j, FromJSON k, FromJSON l, FromJSON m, FromJSON n, FromJSON o) => FromJSON (a, b, c, d, e, f, g, h, i, j, k, l, m, n, o) where
+    parseJSON = parseJSON2
+    {-# INLINE parseJSON #-}
