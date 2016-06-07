@@ -318,17 +318,52 @@ instance KeyValue Pair where
 --  Classes and types for map keys
 -------------------------------------------------------------------------------
 
+-- | Typeclass for types that can be used as the key of a map-like container
+--   (like 'Map' or 'HashMap'). For example, since 'Text' has a 'ToJSONKey'
+--   instance and 'Char' has a 'ToJSON' instance, we can encode a value of 
+--   type 'Map' 'Text' 'Char':
+--
+--   >>> LBC8.putStrLn $ encode $ Map.fromList [("foo" :: Text, 'a')]
+--   {"foo":"a"}
+--
+--   Since 'Int' also has a 'ToJSONKey' instance, we can similarly write:
+--
+--   >>> LBC8.putStrLn $ encode $ Map.fromList [(5 :: Int, 'a')]
+--   {"5":"a"}
+--
+--   JSON documents only accept strings as object keys. For any type
+--   from @base@ that has a natural textual representation, it can be
+--   expected that its 'ToJSONKey' instance will choose that representation.
+--
+--   For data types that lack a natural textual representation, an alternative
+--   is provided. The map-like container is represented as a JSON array
+--   instead of a JSON object. Each value in the array is an array with
+--   exactly two values. The first is the key and the second is the value.
+--
+--   For example, values of type '[Text]' cannot be encoded to a
+--   string, so a 'Map' with keys of type '[Text]' is encoded as follows:
+--
+--   >>> LBC8.putStrLn $ encode $ Map.fromList [(["foo","bar","baz" :: Text], 'a')]
+--   [[["foo","bar","baz"],"a"]]
+--
+--   The default implementation of 'ToJSONKey' will choose this method of
+--   encoding a key, using the 'ToJSON' instance of the type.
 class ToJSONKey a where
+    -- | Provides a way to use a data type as the key for a map-like
+    --   container.
     toJSONKey :: ToJSONKeyFunction a
     default toJSONKey :: ToJSON a => ToJSONKeyFunction a
     toJSONKey = ToJSONKeyValue (toJSON, toEncoding)
+    -- | This is similar in spirit to the 'showsList' method of 'Show'.
+    --   It makes it possible to give 'String' keys special treatment
+    --   without using @OverlappingInstances@.
     toJSONKeyList :: ToJSONKeyFunction [a]
     default toJSONKeyList :: ToJSON a => ToJSONKeyFunction [a]
     toJSONKeyList = ToJSONKeyValue (toJSON, toEncoding)
 
 data ToJSONKeyFunction a
-    = ToJSONKeyText (a -> Text, a -> Encoding)
-    | ToJSONKeyValue (a -> Value, a -> Encoding)
+    = ToJSONKeyText (a -> Text, a -> Encoding) -- ^ key is encoded to string, produces object
+    | ToJSONKeyValue (a -> Value, a -> Encoding) -- ^ key is encoded to value, produces array
 
 contramapToJSONKeyFunction :: (b -> a) -> ToJSONKeyFunction a -> ToJSONKeyFunction b
 contramapToJSONKeyFunction h x = case x of
