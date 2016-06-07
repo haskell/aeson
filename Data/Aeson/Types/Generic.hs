@@ -26,6 +26,7 @@
 module Data.Aeson.Types.Generic where
 
 import GHC.Generics
+import Data.Proxy (Proxy (..))
 
 --------------------------------------------------------------------------------
 
@@ -43,22 +44,28 @@ instance OVERLAPPING_ IsRecord (M1 S NoSelector f) False
 #endif
 instance (IsRecord f isRecord) => IsRecord (M1 S c f) isRecord
 instance IsRecord (K1 i c) True
+instance IsRecord Par1 True
+instance IsRecord (f :.: g) True
 instance IsRecord U1 False
   where isUnary = const False
 
 --------------------------------------------------------------------------------
 
 class AllNullary (f :: * -> *) allNullary | f -> allNullary
+
 instance ( AllNullary a allNullaryL
          , AllNullary b allNullaryR
          , And allNullaryL allNullaryR allNullary
          ) => AllNullary (a :+: b) allNullary
 instance AllNullary a allNullary => AllNullary (M1 i c a) allNullary
 instance AllNullary (a :*: b) False
+instance AllNullary (a :.: b) False
 instance AllNullary (K1 i c) False
+instance AllNullary Par1 False
 instance AllNullary U1 True
 
 newtype Tagged2 (s :: * -> *) b = Tagged2 {unTagged2 :: b}
+
 --------------------------------------------------------------------------------
 
 data True
@@ -70,6 +77,20 @@ instance And True  True  True
 instance And False False False
 instance And False True  False
 instance And True  False False
+
+--------------------------------------------------------------------------------
+
+-- | A type-level indicator that 'ToJSON' or 'FromJSON' is being derived generically.
+data Zero
+
+-- | A type-level indicator that 'ToJSON1' or 'FromJSON1' is being derived generically.
+data One
+
+proxyZero :: Proxy Zero
+proxyZero = Proxy
+
+proxyOne :: Proxy One
+proxyOne  = Proxy
 
 --------------------------------------------------------------------------------
 

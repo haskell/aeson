@@ -1,5 +1,13 @@
-{-# LANGUAGE CPP, GADTs, DefaultSignatures, FlexibleInstances, FlexibleContexts, DeriveFunctor,
-    ScopedTypeVariables, TypeSynonymInstances #-}
+{-# LANGUAGE CPP #-}
+{-# LANGUAGE DefaultSignatures #-}
+{-# LANGUAGE DeriveFunctor #-}
+{-# LANGUAGE EmptyDataDecls #-}
+{-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE GADTs #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE TypeSynonymInstances #-}
 
 -- |
 -- Module:      Data.Aeson.Types.Class
@@ -32,9 +40,14 @@ module Data.Aeson.Types.Class
     , GFromJSON(..)
     , GToJSON(..)
     , GToEncoding(..)
+    , Zero
+    , One
     , genericToJSON
+    , genericLiftToJSON
     , genericToEncoding
+    , genericLiftToEncoding
     , genericParseJSON
+    , genericLiftParseJSON
     -- * Classes and types for map keys
     , ToJSONKey(..)
     , ToJSONKeyFunction(..)
@@ -72,3 +85,4 @@ module Data.Aeson.Types.Class
 
 import Data.Aeson.Types.FromJSON
 import Data.Aeson.Types.ToJSON
+import Data.Aeson.Types.Generic (One, Zero)
