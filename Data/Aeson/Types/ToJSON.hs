@@ -61,7 +61,7 @@ import Data.Aeson.Functions         (mapHashKeyVal, mapKeyVal)
 import Data.Aeson.Types.Generic
 import Data.Aeson.Types.Internal
 
-import qualified Data.Aeson.Encode.Builder    as EB
+-- We need internal here for generic deriving
 import qualified Data.Aeson.Encoding.Internal as E
 
 import Control.Applicative     (Const (..))
@@ -92,7 +92,7 @@ import Foreign.Storable        (Storable)
 import GHC.Generics
 import Numeric.Natural         (Natural)
 
-import qualified Data.ByteString.Builder    as B
+import qualified Data.ByteString.Builder    as B (toLazyByteString)
 import qualified Data.ByteString.Lazy       as L
 import qualified Data.DList                 as DList
 import qualified Data.HashMap.Strict        as H
@@ -114,9 +114,6 @@ import qualified Data.Vector.Mutable        as VM
 import qualified Data.Vector.Primitive      as VP
 import qualified Data.Vector.Storable       as VS
 import qualified Data.Vector.Unboxed        as VU
-
-builder :: ToJSON a => a -> B.Builder
-builder = fromEncoding . toEncoding
 
 toJSONPair :: (a -> Value) -> (b -> Value) -> (a, b) -> Value
 toJSONPair keySerialiser valSerializer (a, b) = Array $ V.create $ do
@@ -278,7 +275,7 @@ class ToJSON a where
     -- @
 
     toEncoding :: a -> Encoding
-    toEncoding = E.Encoding . EB.encodeToBuilder . toJSON
+    toEncoding = E.value . toJSON
     {-# INLINE toEncoding #-}
 
     toJSONList :: [a] -> Value
@@ -299,7 +296,7 @@ class KeyValue kv where
     infixr 8 .=
 
 instance KeyValue Series where
-    name .= value = E.Value $ E.text name <> E.colon <> toEncoding value
+    name .= value = E.pair name (toEncoding value)
     {-# INLINE (.=) #-}
 
 instance KeyValue Pair where
@@ -1081,7 +1078,7 @@ instance ToJSON1 Maybe where
     {-# INLINE liftToJSON #-}
 
     liftToEncoding t _ (Just a) = t a
-    liftToEncoding _  _ Nothing  = Encoding EB.null_
+    liftToEncoding _  _ Nothing  = E.null_
     {-# INLINE liftToEncoding #-}
 
 instance (ToJSON a) => ToJSON (Maybe a) where
@@ -1097,15 +1094,9 @@ instance ToJSON2 Either where
     liftToJSON2 _toA _  toB _ (Right b) = Object $ H.singleton right (toB b)
     {-# INLINE liftToJSON2 #-}
 
-    liftToEncoding2  toA _ _toB _ (Left a) =
-        Encoding (B.shortByteString "{\"Left\":")
-        <> toA a
-        <> Encoding (B.char7 '}')
+    liftToEncoding2  toA _ _toB _ (Left a) = E.pairs $ E.pair "Left" $ toA a
 
-    liftToEncoding2 _toA _ toB _ (Right b) =
-        Encoding (B.shortByteString "{\"Right\":")
-        <> toB b
-        <> Encoding (B.char7 '}')
+    liftToEncoding2 _toA _ toB _ (Right b) = E.pairs $ E.pair "Right" $ toB b
     {-# INLINE liftToEncoding2 #-}
 
 instance (ToJSON a) => ToJSON1 (Either a) where
@@ -1166,10 +1157,10 @@ instance ToJSON Char where
     toJSONList = String . T.pack
     {-# INLINE toJSONList #-}
 
-    toEncoding = Encoding . EB.string . (:[])
+    toEncoding = E.string . (:[])
     {-# INLINE toEncoding #-}
 
-    toEncodingList = Encoding . EB.string
+    toEncodingList = E.string
     {-# INLINE toEncodingList #-}
 
 
@@ -1390,9 +1381,7 @@ instance ToJSON LT.Text where
     toJSON = String . LT.toStrict
     {-# INLINE toJSON #-}
 
-    toEncoding t = Encoding $
-      B.char7 '"' <>
-      LT.foldrChunks (\x xs -> EB.unquoted x <> xs) (B.char7 '"') t
+    toEncoding = E.lazyText
     {-# INLINE toEncoding #-}
 
 instance ToJSON Version where
@@ -1401,7 +1390,6 @@ instance ToJSON Version where
 
     toEncoding = toEncoding . showVersion
     {-# INLINE toEncoding #-}
-
 
 -------------------------------------------------------------------------------
 -- semigroups NonEmpty
@@ -1575,13 +1563,7 @@ instance ToJSON1 Vector where
     liftToJSON t _ = Array . V.map t
     {-# INLINE liftToJSON #-}
 
-    liftToEncoding t _ xs
-        | V.null xs = emptyArray_
-        | otherwise = Encoding $
-            B.char7 '[' <> fromEncoding (t (V.unsafeHead xs)) <>
-            V.foldr go (B.char7 ']') (V.unsafeTail xs)
-          where
-            go v b = B.char7 ',' <> fromEncoding (t v) <> b
+    liftToEncoding t _ =  listEncoding t . V.toList
     {-# INLINE liftToEncoding #-}
 
 instance (ToJSON a) => ToJSON (Vector a) where
@@ -1592,12 +1574,7 @@ instance (ToJSON a) => ToJSON (Vector a) where
     {-# INLINE toEncoding #-}
 
 encodeVector :: (ToJSON a, VG.Vector v a) => v a -> Encoding
-encodeVector xs
-  | VG.null xs = emptyArray_
-  | otherwise  = Encoding $
-                 B.char7 '[' <> builder (VG.unsafeHead xs) <>
-                 VG.foldr go (B.char7 ']') (VG.unsafeTail xs)
-    where go v b = B.char7 ',' <> builder v <> b
+encodeVector = listEncoding toEncoding . VG.toList
 {-# INLINE encodeVector #-}
 
 vectorToJSON :: (VG.Vector v a, ToJSON a) => v a -> Value
@@ -1676,7 +1653,7 @@ instance ToJSON Value where
     toJSON a = a
     {-# INLINE toJSON #-}
 
-    toEncoding = Encoding . EB.encodeToBuilder
+    toEncoding = E.value
     {-# INLINE toEncoding #-}
 
 instance ToJSON DotNetTime where
@@ -1688,55 +1665,50 @@ dotNetTime :: DotNetTime -> String
 dotNetTime (DotNetTime t) = secs ++ formatMillis t ++ ")/"
   where secs  = formatTime defaultTimeLocale "/Date(%s" t
 
+formatMillis :: (FormatTime t) => t -> String
+formatMillis = take 3 . formatTime defaultTimeLocale "%q"
+
 -------------------------------------------------------------------------------
 -- time
 -------------------------------------------------------------------------------
 
 instance ToJSON Day where
-    toJSON       = stringEncoding
-    toEncoding z = Encoding (EB.quote $ EB.day z)
+    toJSON     = stringEncoding . E.day
+    toEncoding = E.day
 
 
 instance ToJSON TimeOfDay where
-    toJSON       = stringEncoding
-    toEncoding z = Encoding (EB.quote $ EB.timeOfDay z)
+    toJSON     = stringEncoding . E.timeOfDay
+    toEncoding = E.timeOfDay
 
 
 instance ToJSON LocalTime where
-    toJSON       = stringEncoding
-    toEncoding z = Encoding (EB.quote $ EB.localTime z)
+    toJSON     = stringEncoding . E.localTime
+    toEncoding = E.localTime
 
 instance ToJSON ZonedTime where
-    toJSON = stringEncoding
-
-    toEncoding z = Encoding (EB.quote $ EB.zonedTime z)
-
-formatMillis :: (FormatTime t) => t -> String
-formatMillis = take 3 . formatTime defaultTimeLocale "%q"
+    toJSON     = stringEncoding . E.zonedTime
+    toEncoding = E.zonedTime
 
 instance ToJSON UTCTime where
-    toJSON = stringEncoding
-
-    toEncoding t = Encoding (EB.quote $ EB.utcTime t)
+    toJSON     = stringEncoding . E.utcTime
+    toEncoding = E.utcTime
 
 -- | Encode something t a JSON string.
---
--- TODO: remove me, this is a hack
-stringEncoding :: (ToJSON a) => a -> Value
+stringEncoding :: Encoding -> Value
 stringEncoding = String
     . T.dropAround (== '"')
     . T.decodeLatin1
     . L.toStrict
     . B.toLazyByteString
     . fromEncoding
-    . toEncoding
 {-# INLINE stringEncoding #-}
 
 instance ToJSON NominalDiffTime where
     toJSON = Number . realToFrac
     {-# INLINE toJSON #-}
 
-    toEncoding = Encoding . EB.scientific . realToFrac
+    toEncoding = E.scientific . realToFrac
     {-# INLINE toEncoding #-}
 
 -------------------------------------------------------------------------------
@@ -1795,7 +1767,7 @@ instance ToJSON (Proxy a) where
     toJSON _ = Null
     {-# INLINE toJSON #-}
 
-    toEncoding _ = Encoding EB.null_
+    toEncoding _ = E.null_
     {-# INLINE toEncoding #-}
 
 

@@ -6,12 +6,15 @@ module Data.Aeson.Encoding
     , unsafeToEncoding
     , Series
     , pairs
+    , pair
     -- * Predicates
     , nullEncoding
     -- * Encoding constructors
     , emptyArray_
     , emptyObject_
     , text
+    , lazyText
+    , string
     , list
     , dict
     , null_
@@ -25,6 +28,16 @@ module Data.Aeson.Encoding
     , int8Text, int16Text, int32Text, int64Text, intText
     , word8Text, word16Text, word32Text, word64Text, wordText
     , integerText, floatText, doubleText, scientificText
+
+    -- ** Time
+    , day
+    , localTime
+    , utcTime
+    , timeOfDay
+    , zonedTime
+
+    -- ** value
+    , value
     ) where
 
 import Data.Aeson.Encoding.Internal

@@ -1,7 +1,7 @@
 {-# LANGUAGE DeriveDataTypeable         #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
-{-# LANGUAGE RankNTypes                 #-}
 {-# LANGUAGE OverloadedStrings          #-}
+{-# LANGUAGE RankNTypes                 #-}
 module Data.Aeson.Encoding.Internal
     (
     -- * Encoding
@@ -9,6 +9,7 @@ module Data.Aeson.Encoding.Internal
     , unsafeToEncoding
     , Series (..) -- TODO: don't export constructor
     , pairs
+    , pair
     -- * Predicates
     , nullEncoding
     -- * Encoding constructors
@@ -19,6 +20,8 @@ module Data.Aeson.Encoding.Internal
     , null_
     , bool
     , text
+    , lazyText
+    , string
     , list
     , dict
     , tuple
@@ -31,6 +34,14 @@ module Data.Aeson.Encoding.Internal
     , int8Text, int16Text, int32Text, int64Text, intText
     , word8Text, word16Text, word32Text, word64Text, wordText
     , integerText, floatText, doubleText, scientificText
+    -- ** Time
+    , day
+    , localTime
+    , utcTime
+    , timeOfDay
+    , zonedTime
+    -- ** value
+    , value
     -- ** JSON tokens
     , comma, colon, openBracket, closeBracket, openCurly, closeCurly
     ) where
@@ -44,12 +55,17 @@ import Data.Int
 import Data.Scientific              (Scientific)
 import Data.Semigroup               (Semigroup ((<>)))
 import Data.Text                    (Text)
+import Data.Time                    (Day, LocalTime, TimeOfDay, UTCTime,
+                                     ZonedTime)
 import Data.Typeable                (Typeable)
 import Data.Word
+
+import Data.Aeson.Types.Internal (Value)
 
 import qualified Data.Aeson.Encode.Builder as EB
 import qualified Data.ByteString.Builder   as B
 import qualified Data.ByteString.Lazy      as BSL
+import qualified Data.Text.Lazy            as LT
 
 -- | An encoding of a JSON value.
 newtype Encoding = Encoding {
@@ -88,6 +104,9 @@ instance Ord Encoding where
 data Series = Empty
             | Value Encoding
             deriving (Typeable)
+
+pair :: Text -> Encoding -> Series
+pair name val = Value $ text name <> colon <> val
 
 instance Semigroup Series where
     Empty   <> a = a
@@ -173,6 +192,14 @@ tuple b = Encoding (char7 '[' <> fromEncoding b <> char7 ']')
 
 text :: Text -> Encoding
 text = Encoding . EB.text
+
+lazyText :: LT.Text -> Encoding
+lazyText t = Encoding $
+    B.char7 '"' <>
+    LT.foldrChunks (\x xs -> EB.unquoted x <> xs) (B.char7 '"') t
+
+string :: String -> Encoding
+string = Encoding . EB.string
 
 -------------------------------------------------------------------------------
 -- chars
@@ -284,3 +311,29 @@ doubleText = Encoding . EB.quote . B.doubleDec
 
 scientificText :: Scientific -> Encoding
 scientificText = Encoding . EB.quote . EB.scientific
+
+-------------------------------------------------------------------------------
+-- time
+-------------------------------------------------------------------------------
+
+day :: Day -> Encoding
+day = Encoding . EB.quote . EB.day
+
+localTime :: LocalTime -> Encoding
+localTime = Encoding . EB.quote . EB.localTime
+
+utcTime :: UTCTime -> Encoding
+utcTime = Encoding . EB.quote . EB.utcTime
+
+timeOfDay :: TimeOfDay -> Encoding
+timeOfDay = Encoding . EB.quote . EB.timeOfDay
+
+zonedTime :: ZonedTime -> Encoding
+zonedTime = Encoding . EB.quote . EB.zonedTime
+
+-------------------------------------------------------------------------------
+-- Value
+-------------------------------------------------------------------------------
+
+value :: Value -> Encoding
+value = Encoding . EB.encodeToBuilder
