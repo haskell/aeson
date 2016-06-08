@@ -346,8 +346,58 @@ instance KeyValue Pair where
 --   >>> LBC8.putStrLn $ encode $ Map.fromList [(["foo","bar","baz" :: Text], 'a')]
 --   [[["foo","bar","baz"],"a"]]
 --
---   The default implementation of 'ToJSONKey' will choose this method of
+--   The default implementation of 'ToJSONKey' chooses this method of
 --   encoding a key, using the 'ToJSON' instance of the type.
+--
+--   To use your own data type as the key in a map, all that is needed
+--   is to write a 'ToJSONKey' (and possibly a 'FromJSONKey') instance
+--   for it. If the type cannot be trivially converted to and from 'Text',
+--   it is recommended that 'ToJSONKeyValue' is used. Since the default
+--   implementations of the typeclass methods can build this from a
+--   'ToJSON' instance, there is nothing that needs to be written:
+--
+--   > data Foo = Foo { fooAge :: Int, fooName :: Text }
+--   >   deriving (Eq,Ord,Generic)
+--   > instance ToJSON Foo
+--   > instance ToJSONKey Foo
+--
+--   That's it. We can now write:
+--
+--   >>> let m = Map.fromList [(Foo 4 "bar",'a'),(Foo 6 "arg",'b')]
+--   >>> LBC8.putStrLn $ encode m
+--   [[{"fooName":"bar","fooAge":4},"a"],[{"fooName":"arg","fooAge":6},"b"]]
+--   
+--   The next case to consider is if we have a type that is a
+--   newtype wrapper around 'Text'. The recommended approach is to use
+--   generalized newtype deriving:
+--
+--   > newtype RecordId = RecordId { getRecordId :: Text}
+--   >   deriving (Eq,Ord,ToJSONKey)
+--   
+--   Then we may write:
+--   
+--   >>> LBC8.putStrLn $ encode $ Map.fromList [(RecordId "abc",'a')]
+--   {"abc":"a"}
+--
+--   Simple sum types are a final case worth considering. Suppose we have:
+--
+--   > data Color = Red | Green | Blue | Black
+--   >   deriving (Show,Read,Eq,Ord)
+--
+--   It is possible to get the 'ToJSONKey' instance for free as we did
+--   with 'Foo'. However, in this case, we have a natural way to go to
+--   and from 'Text' that does not require any escape sequences. So, in
+--   this example, 'ToJSONKeyText' will be used instead of 'ToJSONKeyValue'.
+--   At the moment, there are no conveniences for this situation. The
+--   'Show' instance can be used to help write 'ToJSONKey', but this will 
+--   be inefficient since it uses 'String' as an intermediate step:
+--
+--   > instance ToJSONKey Color where
+--   >   toJSONKey = ToJSONKeyText f g
+--   >     where f = Text.pack . show
+--   >           g = text . Text.pack . show 
+--   >           -- text function is from Data.Aeson.Encoding
+--
 class ToJSONKey a where
     -- | Provides a way to use a data type as the key for a map-like
     --   container.
