@@ -1,4 +1,4 @@
-{-# LANGUAGE CPP, DeriveGeneric, OverloadedStrings, ScopedTypeVariables, TemplateHaskell #-}
+{-# LANGUAGE CPP, DeriveGeneric, OverloadedStrings, ScopedTypeVariables, TemplateHaskell, GeneralizedNewtypeDeriving #-}
 #if __GLASGOW_HASKELL__ >= 708
 {-# LANGUAGE DataKinds #-}
 #endif
@@ -7,9 +7,12 @@
 
 module UnitTests (ioTests, tests) where
 
+import Prelude ()
+import Prelude.Compat
+
 import Control.Applicative (Const(..))
 import Control.Monad (forM)
-import Data.Aeson (decode, eitherDecode, encode, genericToJSON, genericToEncoding, object, FromJSON(..), withObject, (.=), (.:), (.:?), (.:!))
+import Data.Aeson (FromJSONKeyFunction(..), FromJSONKey(..), decode, eitherDecode, encode, genericToJSON, genericToEncoding, object, FromJSON(..), withObject, (.=), (.:), (.:?), (.:!))
 import Data.Aeson.Encode (encodeToTextBuilder)
 import Data.Aeson.Internal (JSONPathElement(..), formatError)
 import Data.Aeson.TH (deriveJSON)
@@ -21,6 +24,7 @@ import Data.Maybe (fromMaybe)
 import Data.Proxy (Proxy(..))
 import Data.Sequence (Seq)
 import Data.Tagged (Tagged(..))
+import Data.Text (Text)
 import Data.Time (UTCTime)
 import Data.Time.Format (parseTime)
 import Data.Time.Locale.Compat (defaultTimeLocale)
@@ -69,6 +73,7 @@ tests = testGroup "unit" [
   , testGroup "Hashable laws" $ fmap (testCase "-") hashableLaws
   , testGroup "Issue #351" $ fmap (testCase "-") issue351
   , testGroup "Nullary constructors" $ fmap (testCase "-") nullaryConstructors
+  , testGroup "FromJSONKey" $ fmap (testCase "-") fromJSONKeyAssertions
   ]
 
 roundTripCamel :: String -> Assertion
@@ -289,6 +294,48 @@ hashableLaws = [
   where
   a = object ["223" .= False, "807882556" .= True]
   b = object ["807882556" .= True, "223" .= False]
+
+-------------------------------------------------------------------------------
+-- ToJSONKey
+-------------------------------------------------------------------------------
+
+newtype MyText = MyText Text
+    deriving (FromJSONKey)
+
+newtype MyText' = MyText' Text
+
+instance FromJSONKey MyText' where
+    fromJSONKey = fmap MyText' fromJSONKey
+    fromJSONKeyList = error "not used"
+
+fromJSONKeyAssertions :: [Assertion]
+fromJSONKeyAssertions =
+    [ assertIsCoerce  "Text"            (fromJSONKey :: FromJSONKeyFunction Text)
+    , assertIsCoerce  "Tagged Int Text" (fromJSONKey :: FromJSONKeyFunction (Tagged Int Text))
+    , assertIsCoerce  "MyText"          (fromJSONKey :: FromJSONKeyFunction MyText)
+
+-- Why this doesn't work on older GHC?
+#if __GLASGOW_HASKELL__ >= 710
+    , assertIsCoerce' "MyText'"         (fromJSONKey :: FromJSONKeyFunction MyText')
+#endif
+    ]
+  where
+    assertIsCoerce _ (FromJSONKeyCoerce _) = pure ()
+    assertIsCoerce n _                     = assertFailure n
+
+#if __GLASGOW_HASKELL__ >= 710
+    assertIsCoerce' _ (FromJSONKeyCoerce _) = pure ()
+    assertIsCoerce' n _                     = pickWithRules (assertFailure n) (pure ())
+
+-- | Pick the first when RULES are enabled, e.g. optimisations are on
+pickWithRules
+    :: a -- ^ Pick this when RULES are on
+    -> a -- ^ use this otherwise
+    -> a
+pickWithRules _ = id
+{-# NOINLINE pickWithRules #-}
+{-# RULES "pickWithRules/rule" [0] forall x. pickWithRules x = const x #-}
+#endif
 
 ------------------------------------------------------------------------------
 -- Regressions

@@ -2,6 +2,9 @@
 
 module Properties where
 
+import Prelude ()
+import Prelude.Compat
+
 import Control.Applicative (Const)
 import Data.Aeson (eitherDecode)
 import Data.Aeson.Encode (encode)
