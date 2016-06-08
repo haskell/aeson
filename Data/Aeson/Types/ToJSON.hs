@@ -107,8 +107,6 @@ import qualified Data.Set                   as Set
 import qualified Data.Text                  as T
 import qualified Data.Text.Encoding         as T
 import qualified Data.Text.Lazy             as LT
-import qualified Data.Text.Lazy.Builder     as LTB
-import qualified Data.Text.Lazy.Builder.Int as LTBI
 import qualified Data.Tree                  as Tree
 import qualified Data.Vector                as V
 import qualified Data.Vector.Generic        as VG
@@ -133,12 +131,6 @@ realFloatToJSON d
     | isNaN d || isInfinite d = Null
     | otherwise = Number $ Scientific.fromFloatDigits d
 {-# INLINE realFloatToJSON #-}
-
-realFloatToEncoding :: RealFloat a => a -> Encoding
-realFloatToEncoding d
-    | isNaN d || isInfinite d = Encoding EB.null_
-    | otherwise               = toEncoding (Scientific.fromFloatDigits d)
-{-# INLINE realFloatToEncoding #-}
 
 -------------------------------------------------------------------------------
 -- Generics
@@ -1139,8 +1131,14 @@ instance ToJSON Bool where
     toJSON = Bool
     {-# INLINE toJSON #-}
 
-    toEncoding = Encoding . EB.bool
+    toEncoding = E.bool
     {-# INLINE toEncoding #-}
+
+instance ToJSONKey Bool where
+    toJSONKey = ToJSONKeyText
+        ( (\x -> if x then "true" else "false")
+        , (\x -> toEncoding $ if x then ("true" :: Text) else "false")
+        )
 
 
 instance ToJSON Ordering where
@@ -1179,8 +1177,12 @@ instance ToJSON Double where
     toJSON = realFloatToJSON
     {-# INLINE toJSON #-}
 
-    toEncoding = realFloatToEncoding
+    toEncoding = E.double
     {-# INLINE toEncoding #-}
+
+instance ToJSONKey Double where
+    toJSONKey = toJSONKeyTextEnc E.doubleText
+    {-# INLINE toJSONKey #-}
 
 
 instance ToJSON Number where
@@ -1197,20 +1199,23 @@ instance ToJSON Float where
     toJSON = realFloatToJSON
     {-# INLINE toJSON #-}
 
-    toEncoding = realFloatToEncoding
+    toEncoding = E.float
     {-# INLINE toEncoding #-}
 
+instance ToJSONKey Float where
+    toJSONKey = toJSONKeyTextEnc E.floatText
+    {-# INLINE toJSONKey #-}
 
-instance ToJSON (Ratio Integer) where
+
+instance (ToJSON a, Integral a) => ToJSON (Ratio a) where
     toJSON r = object [ "numerator"   .= numerator   r
                       , "denominator" .= denominator r
                       ]
     {-# INLINE toJSON #-}
 
-    toEncoding r = Encoding $
-      B.shortByteString "{\"numerator\":" <> builder (numerator r) <>
-      B.shortByteString ",\"denominator\":" <> builder (denominator r) <>
-      B.char7 '}'
+    toEncoding r = E.pairs $
+        "numerator" .= numerator r <>
+        "denominator" .= denominator r
     {-# INLINE toEncoding #-}
 
 
@@ -1218,23 +1223,36 @@ instance HasResolution a => ToJSON (Fixed a) where
     toJSON = Number . realToFrac
     {-# INLINE toJSON #-}
 
-    toEncoding = Encoding . EB.number . realToFrac
+    toEncoding = E.scientific . realToFrac
     {-# INLINE toEncoding #-}
+
+instance HasResolution a => ToJSONKey (Fixed a) where
+    toJSONKey = toJSONKeyTextEnc (E.scientificText . realToFrac)
+    {-# INLINE toJSONKey #-}
 
 
 instance ToJSON Int where
     toJSON = Number . fromIntegral
     {-# INLINE toJSON #-}
 
-    toEncoding = Encoding . B.intDec
+    toEncoding = E.int
     {-# INLINE toEncoding #-}
+
+instance ToJSONKey Int where
+    toJSONKey = toJSONKeyTextEnc E.intText
+    {-# INLINE toJSONKey #-}
+
 
 instance ToJSON Integer where
     toJSON = Number . fromInteger
     {-# INLINE toJSON #-}
 
-    toEncoding = Encoding . B.integerDec
+    toEncoding = E.integer
     {-# INLINE toEncoding #-}
+
+instance ToJSONKey Integer where
+    toJSONKey = toJSONKeyTextEnc E.integerText
+    {-# INLINE toJSONKey #-}
 
 
 instance ToJSON Natural where
@@ -1244,83 +1262,129 @@ instance ToJSON Natural where
     toEncoding = toEncoding . toInteger
     {-# INLINE toEncoding #-}
 
+instance ToJSONKey Natural where
+    toJSONKey = toJSONKeyTextEnc (E.integerText . toInteger)
+    {-# INLINE toJSONKey #-}
+
 
 instance ToJSON Int8 where
     toJSON = Number . fromIntegral
     {-# INLINE toJSON #-}
 
-    toEncoding = Encoding . B.int8Dec
+    toEncoding = E.int8
     {-# INLINE toEncoding #-}
+
+instance ToJSONKey Int8 where
+    toJSONKey = toJSONKeyTextEnc E.int8Text
+    {-# INLINE toJSONKey #-}
 
 
 instance ToJSON Int16 where
     toJSON = Number . fromIntegral
     {-# INLINE toJSON #-}
 
-    toEncoding = Encoding . B.int16Dec
+    toEncoding = E.int16
     {-# INLINE toEncoding #-}
+
+instance ToJSONKey Int16 where
+    toJSONKey = toJSONKeyTextEnc E.int16Text
+    {-# INLINE toJSONKey #-}
 
 
 instance ToJSON Int32 where
     toJSON = Number . fromIntegral
     {-# INLINE toJSON #-}
 
-    toEncoding = Encoding . B.int32Dec
+    toEncoding = E.int32
     {-# INLINE toEncoding #-}
+
+instance ToJSONKey Int32 where
+    toJSONKey = toJSONKeyTextEnc E.int32Text
+    {-# INLINE toJSONKey #-}
 
 
 instance ToJSON Int64 where
     toJSON = Number . fromIntegral
     {-# INLINE toJSON #-}
 
-    toEncoding = Encoding . B.int64Dec
+    toEncoding = E.int64
     {-# INLINE toEncoding #-}
+
+instance ToJSONKey Int64 where
+    toJSONKey = toJSONKeyTextEnc E.int64Text
+    {-# INLINE toJSONKey #-}
 
 
 instance ToJSON Word where
     toJSON = Number . fromIntegral
     {-# INLINE toJSON #-}
 
-    toEncoding = Encoding . B.wordDec
+    toEncoding = E.word
     {-# INLINE toEncoding #-}
+
+instance ToJSONKey Word where
+    toJSONKey = toJSONKeyTextEnc E.wordText
+    {-# INLINE toJSONKey #-}
 
 
 instance ToJSON Word8 where
     toJSON = Number . fromIntegral
     {-# INLINE toJSON #-}
 
-    toEncoding = Encoding . B.word8Dec
+    toEncoding = E.word8
     {-# INLINE toEncoding #-}
+
+instance ToJSONKey Word8 where
+    toJSONKey = toJSONKeyTextEnc E.word8Text
+    {-# INLINE toJSONKey #-}
 
 
 instance ToJSON Word16 where
     toJSON = Number . fromIntegral
     {-# INLINE toJSON #-}
 
-    toEncoding = Encoding . B.word16Dec
+    toEncoding = E.word16
     {-# INLINE toEncoding #-}
+
+instance ToJSONKey Word16 where
+    toJSONKey = toJSONKeyTextEnc E.word16Text
+    {-# INLINE toJSONKey #-}
 
 
 instance ToJSON Word32 where
     toJSON = Number . fromIntegral
     {-# INLINE toJSON #-}
 
-    toEncoding = Encoding . B.word32Dec
+    toEncoding = E.word32
     {-# INLINE toEncoding #-}
+
+instance ToJSONKey Word32 where
+    toJSONKey = toJSONKeyTextEnc E.word32Text
+    {-# INLINE toJSONKey #-}
+
 
 instance ToJSON Word64 where
     toJSON = Number . fromIntegral
     {-# INLINE toJSON #-}
 
-    toEncoding = Encoding . B.word64Dec
+    toEncoding = E.word64
     {-# INLINE toEncoding #-}
+
+instance ToJSONKey Word64 where
+    toJSONKey = toJSONKeyTextEnc E.word64Text
+    {-# INLINE toJSONKey #-}
+
 
 instance ToJSON Text where
     toJSON = String
     {-# INLINE toJSON #-}
 
-    toEncoding = Encoding . EB.text
+    toEncoding = E.text
     {-# INLINE toEncoding #-}
+
+instance ToJSONKey Text where
+    toJSONKey = ToJSONKeyText (id, toEncoding)
+    {-# INLINE toJSONKey #-}
 
 instance ToJSON LT.Text where
     toJSON = String . LT.toStrict
@@ -1365,8 +1429,11 @@ instance ToJSON Scientific where
     toJSON = Number
     {-# INLINE toJSON #-}
 
-    toEncoding = Encoding . EB.number
+    toEncoding = E.scientific
     {-# INLINE toEncoding #-}
+
+instance ToJSONKey Scientific where
+    toJSONKey = toJSONKeyTextEnc E.scientificText
 
 -------------------------------------------------------------------------------
 -- DList
@@ -1669,7 +1736,7 @@ instance ToJSON NominalDiffTime where
     toJSON = Number . realToFrac
     {-# INLINE toJSON #-}
 
-    toEncoding = Encoding . EB.number . realToFrac
+    toEncoding = Encoding . EB.scientific . realToFrac
     {-# INLINE toEncoding #-}
 
 -------------------------------------------------------------------------------
@@ -1755,21 +1822,14 @@ instance ToJSONKey b => ToJSONKey (Tagged a b) where
 -- Instances for converting t map keys
 -------------------------------------------------------------------------------
 
-instance ToJSONKey Text where
-    toJSONKey = ToJSONKeyText (id,toEncoding)
-
-
-instance ToJSONKey Bool where
-    toJSONKey = ToJSONKeyText
-        ( (\x -> if x then "true" else "false")
-        , (\x -> Encoding $ if x then "\"true\"" else "\"false\"")
-        )
-
-instance ToJSONKey Int where
-    toJSONKey = ToJSONKeyText
-        ( LT.toStrict . LTB.toLazyText . LTBI.decimal
-        , \x -> Encoding $ B.char7 '"' <> fromEncoding (toEncoding x) <> B.char7 '"'
-        )
+-- | TODO: Move ToJSONKEyFunction to .Types(.Internal),
+-- export and document this function from there
+toJSONKeyTextEnc :: (a -> Encoding) -> ToJSONKeyFunction a
+toJSONKeyTextEnc e = ToJSONKeyText
+    -- TODO: dropAround is also used in stringEncoding, which is unfortunate atm
+    ( T.dropAround (== '"') . T.decodeLatin1 . L.toStrict . B.toLazyByteString . fromEncoding . e
+    , e
+    )
 
 instance (ToJSON a, ToJSON b) => ToJSONKey (a,b)
 instance (ToJSON a, ToJSON b, ToJSON c) => ToJSONKey (a,b,c)

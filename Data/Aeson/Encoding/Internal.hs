@@ -1,9 +1,11 @@
-{-# LANGUAGE CPP, GeneralizedNewtypeDeriving, DeriveDataTypeable, RankNTypes #-}
+{-# LANGUAGE DeriveDataTypeable         #-}
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE RankNTypes                 #-}
+{-# LANGUAGE OverloadedStrings          #-}
 module Data.Aeson.Encoding.Internal
     (
     -- * Encoding
       Encoding (..) -- TODO: export fromEncoding for now
-    , fromEncoding
     , unsafeToEncoding
     , Series (..) -- TODO: don't export constructor
     , pairs
@@ -14,27 +16,40 @@ module Data.Aeson.Encoding.Internal
     , emptyObject_
     , wrapArray
     , wrapObject
+    , null_
+    , bool
     , text
     , list
     , dict
     , tuple
     , (>*<)
-    -- ** chars
+    -- ** Decimal numbers
+    , int8, int16, int32, int64, int
+    , word8, word16, word32, word64, word
+    , integer, float, double, scientific
+    -- ** Decimal numbers as Text
+    , int8Text, int16Text, int32Text, int64Text, intText
+    , word8Text, word16Text, word32Text, word64Text, wordText
+    , integerText, floatText, doubleText, scientificText
+    -- ** JSON tokens
     , comma, colon, openBracket, closeBracket, openCurly, closeCurly
     ) where
 
-#if !MIN_VERSION_base(4,8,0)
-import Data.Monoid (Monoid(..))
-#endif
+import Prelude        ()
+import Prelude.Compat
 
-import Data.Text (Text)
-import Data.ByteString.Builder (Builder, char7, toLazyByteString)
-import Data.Semigroup (Semigroup((<>)))
+import Data.ByteString.Builder      (Builder, char7, toLazyByteString)
 import Data.ByteString.Builder.Prim (primBounded)
-import Data.Typeable (Typeable)
+import Data.Int
+import Data.Scientific              (Scientific)
+import Data.Semigroup               (Semigroup ((<>)))
+import Data.Text                    (Text)
+import Data.Typeable                (Typeable)
+import Data.Word
 
-import qualified Data.ByteString.Lazy as BSL
-import qualified Data.Aeson.Encode.Builder as B
+import qualified Data.Aeson.Encode.Builder as EB
+import qualified Data.ByteString.Builder   as B
+import qualified Data.ByteString.Lazy      as BSL
 
 -- | An encoding of a JSON value.
 newtype Encoding = Encoding {
@@ -90,16 +105,23 @@ nullEncoding :: Encoding -> Bool
 nullEncoding = BSL.null . toLazyByteString . fromEncoding
 
 emptyArray_ :: Encoding
-emptyArray_ = Encoding B.emptyArray_
+emptyArray_ = Encoding EB.emptyArray_
 
 emptyObject_ :: Encoding
-emptyObject_ = Encoding B.emptyObject_
+emptyObject_ = Encoding EB.emptyObject_
 
 wrapArray :: Encoding -> Encoding
 wrapArray e = openBracket <> e <> closeBracket
 
 wrapObject :: Encoding -> Encoding
 wrapObject e = openCurly <> e <> closeCurly
+
+null_ :: Encoding
+null_ = Encoding EB.null_
+
+bool :: Bool -> Encoding
+bool True = Encoding "true"
+bool False = Encoding "false"
 
 -- | Encode a series of key/value pairs, separated by commas.
 pairs :: Series -> Encoding
@@ -109,7 +131,7 @@ pairs = brackets '{' '}'
 brackets :: Char -> Char -> Series -> Encoding
 brackets begin end (Value v) = Encoding $
                                char7 begin <> fromEncoding v <> char7 end
-brackets begin end Empty     = Encoding (primBounded (B.ascii2 (begin,end)) ())
+brackets begin end Empty     = Encoding (primBounded (EB.ascii2 (begin,end)) ())
 
 list :: (a -> Encoding) -> [a] -> Encoding
 list _  []     = emptyArray_
@@ -150,7 +172,7 @@ tuple b = Encoding (char7 '[' <> fromEncoding b <> char7 ']')
 {-# INLINE tuple #-}
 
 text :: Text -> Encoding
-text = Encoding . B.text
+text = Encoding . EB.text
 
 -------------------------------------------------------------------------------
 -- chars
@@ -164,3 +186,101 @@ closeBracket = Encoding $ char7 ']'
 openCurly    = Encoding $ char7 '{'
 closeCurly   = Encoding $ char7 '}'
 
+-------------------------------------------------------------------------------
+-- Decimal numbers
+-------------------------------------------------------------------------------
+
+int8 :: Int8 -> Encoding
+int8 = Encoding . B.int8Dec
+
+int16 :: Int16 -> Encoding
+int16 = Encoding . B.int16Dec
+
+int32 :: Int32 -> Encoding
+int32 = Encoding . B.int32Dec
+
+int64 :: Int64 -> Encoding
+int64 = Encoding . B.int64Dec
+
+int :: Int -> Encoding
+int = Encoding . B.intDec
+
+word8 :: Word8 -> Encoding
+word8 = Encoding . B.word8Dec
+
+word16 :: Word16 -> Encoding
+word16 = Encoding . B.word16Dec
+
+word32 :: Word32 -> Encoding
+word32 = Encoding . B.word32Dec
+
+word64 :: Word64 -> Encoding
+word64 = Encoding . B.word64Dec
+
+word :: Word -> Encoding
+word = Encoding . B.wordDec
+
+integer :: Integer -> Encoding
+integer = Encoding . B.integerDec
+
+float :: Float -> Encoding
+float = realFloatToEncoding $ Encoding . B.floatDec
+
+double :: Double -> Encoding
+double = realFloatToEncoding $ Encoding . B.doubleDec
+
+scientific :: Scientific -> Encoding
+scientific = Encoding . EB.scientific
+
+realFloatToEncoding :: RealFloat a => (a -> Encoding) -> a -> Encoding
+realFloatToEncoding e d
+    | isNaN d || isInfinite d = null_
+    | otherwise               = e d
+{-# INLINE realFloatToEncoding #-}
+
+-------------------------------------------------------------------------------
+-- Decimal numbers as Text
+-------------------------------------------------------------------------------
+
+int8Text :: Int8 -> Encoding
+int8Text = Encoding . EB.quote . B.int8Dec
+
+int16Text :: Int16 -> Encoding
+int16Text = Encoding . EB.quote . B.int16Dec
+
+int32Text :: Int32 -> Encoding
+int32Text = Encoding . EB.quote . B.int32Dec
+
+int64Text :: Int64 -> Encoding
+int64Text = Encoding . EB.quote . B.int64Dec
+
+intText :: Int -> Encoding
+intText = Encoding . EB.quote . B.intDec
+
+word8Text :: Word8 -> Encoding
+word8Text = Encoding . EB.quote . B.word8Dec
+
+word16Text :: Word16 -> Encoding
+word16Text = Encoding . EB.quote . B.word16Dec
+
+word32Text :: Word32 -> Encoding
+word32Text = Encoding . EB.quote . B.word32Dec
+
+word64Text :: Word64 -> Encoding
+word64Text = Encoding . EB.quote . B.word64Dec
+
+wordText :: Word -> Encoding
+wordText = Encoding . EB.quote . B.wordDec
+
+integerText :: Integer -> Encoding
+integerText = Encoding . EB.quote . B.integerDec
+
+-- | TODO: check infinite and nan?
+floatText :: Float -> Encoding
+floatText = Encoding . EB.quote . B.floatDec
+
+doubleText :: Double -> Encoding
+doubleText = Encoding . EB.quote . B.doubleDec
+
+scientificText :: Scientific -> Encoding
+scientificText = Encoding . EB.quote . EB.scientific
