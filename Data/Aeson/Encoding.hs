@@ -1,7 +1,13 @@
+-- |
+--
+-- Functions in this module return well-formed 'Encoding''.
+-- Polymorphic variants, which return @'Encoding' a@, return a textual JSON
+-- value, so it can be used as both @'Encoding'' 'Text'@ and @'Encoding' = 'Encoding'' 'Value'@.
 module Data.Aeson.Encoding
     (
     -- * Encoding
       Encoding
+    , Encoding'
     , encodingToLazyByteString 
     , fromEncoding
     , unsafeToEncoding

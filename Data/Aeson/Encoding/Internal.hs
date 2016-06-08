@@ -1,14 +1,16 @@
-{-# LANGUAGE DeriveDataTypeable         #-}
-{-# LANGUAGE GeneralizedNewtypeDeriving #-}
-{-# LANGUAGE OverloadedStrings          #-}
-{-# LANGUAGE RankNTypes                 #-}
+{-# LANGUAGE DeriveDataTypeable #-}
+{-# LANGUAGE EmptyDataDecls     #-}
+{-# LANGUAGE OverloadedStrings  #-}
+{-# LANGUAGE RankNTypes         #-}
 module Data.Aeson.Encoding.Internal
     (
     -- * Encoding
-      Encoding (..) -- TODO: export fromEncoding for now
-    , encodingToLazyByteString 
+      Encoding' (..)
+    , Encoding
+    , encodingToLazyByteString
     , unsafeToEncoding
-    , Series (..) -- TODO: don't export constructor
+    , retagEncoding
+    , Series (..)
     , pairs
     , pair
     -- * Predicates
@@ -16,8 +18,8 @@ module Data.Aeson.Encoding.Internal
     -- * Encoding constructors
     , emptyArray_
     , emptyObject_
-    , wrapArray
     , wrapObject
+    , wrapArray
     , null_
     , bool
     , text
@@ -27,6 +29,10 @@ module Data.Aeson.Encoding.Internal
     , dict
     , tuple
     , (>*<)
+    , InArray
+    , empty
+    , (><)
+    , econcat
     -- ** Decimal numbers
     , int8, int16, int32, int64, int
     , word8, word16, word32, word64, word
@@ -69,33 +75,42 @@ import qualified Data.ByteString.Lazy        as BSL
 import qualified Data.Text.Lazy              as LT
 
 -- | An encoding of a JSON value.
-newtype Encoding = Encoding {
+--
+-- @tag@ represents which kind of JSON the Encoding is encoding to,
+-- we reuse 'Text' and 'Value' as tags here.
+newtype Encoding' tag = Encoding {
       fromEncoding :: Builder
       -- ^ Acquire the underlying bytestring builder.
-    } deriving (Semigroup,Monoid,Typeable)
+    } deriving (Typeable)
+
+-- | Often used synonnym for 'Encoding''.
+type Encoding = Encoding' Value
 
 -- | Make Encoding from Builder.
 --
 -- Use with care! You have to make sure that the passed Builder
 -- is a valid JSON Encoding!
-unsafeToEncoding :: Builder -> Encoding
+unsafeToEncoding :: Builder -> Encoding' a
 unsafeToEncoding = Encoding
 
-encodingToLazyByteString :: Encoding -> BSL.ByteString
+encodingToLazyByteString :: Encoding' a -> BSL.ByteString
 encodingToLazyByteString = toLazyByteString . fromEncoding
 {-# INLINE encodingToLazyByteString #-}
+
+retagEncoding :: Encoding' a -> Encoding' b
+retagEncoding = Encoding . fromEncoding
 
 -------------------------------------------------------------------------------
 -- Encoding instances
 -------------------------------------------------------------------------------
 
-instance Show Encoding where
+instance Show (Encoding' a) where
     show (Encoding e) = show (toLazyByteString e)
 
-instance Eq Encoding where
+instance Eq (Encoding' a) where
     Encoding a == Encoding b = toLazyByteString a == toLazyByteString b
 
-instance Ord Encoding where
+instance Ord (Encoding' a) where
     compare (Encoding a) (Encoding b) =
       compare (toLazyByteString a) (toLazyByteString b)
 
@@ -107,25 +122,22 @@ instance Ord Encoding where
 --
 -- > toEncoding (Person name age) = pairs ("name" .= name <> "age" .= age)
 data Series = Empty
-            | Value Encoding
+            | Value (Encoding' Series)
             deriving (Typeable)
 
 pair :: Text -> Encoding -> Series
-pair name val = Value $ text name <> colon <> val
+pair name val = Value $ retagEncoding $ text name >< colon >< val
 
 instance Semigroup Series where
-    Empty   <> a = a
-    Value a <> b =
-        Value $
-        a <> case b of
-               Empty   -> mempty
-               Value c -> Encoding (char7 ',') <> c
+    Empty   <> a       = a
+    a       <> Empty   = a
+    Value a <> Value b = Value (a >< comma >< b)
 
 instance Monoid Series where
     mempty  = Empty
     mappend = (<>)
 
-nullEncoding :: Encoding -> Bool
+nullEncoding :: Encoding' a -> Bool
 nullEncoding = BSL.null . toLazyByteString . fromEncoding
 
 emptyArray_ :: Encoding
@@ -134,11 +146,11 @@ emptyArray_ = Encoding EB.emptyArray_
 emptyObject_ :: Encoding
 emptyObject_ = Encoding EB.emptyObject_
 
-wrapArray :: Encoding -> Encoding
-wrapArray e = openBracket <> e <> closeBracket
+wrapArray :: Encoding' a -> Encoding
+wrapArray e = retagEncoding $ openBracket >< e >< closeBracket
 
-wrapObject :: Encoding -> Encoding
-wrapObject e = openCurly <> e <> closeCurly
+wrapObject :: Encoding' a -> Encoding
+wrapObject e = retagEncoding $ openCurly >< e >< closeCurly
 
 null_ :: Encoding
 null_ = Encoding EB.null_
@@ -167,7 +179,7 @@ list to' (x:xs) = Encoding $
 
 -- | Encode as JSON object
 dict
-    :: (k -> Encoding)                                -- ^ key encoding
+    :: (k -> Encoding' Text)                     -- ^ key encoding
     -> (v -> Encoding)                                -- ^ value encoding
     -> (forall a. (k -> v -> a -> a) -> a -> m -> a)  -- ^ @foldrWithKey@ - indexed fold
     -> m                                              -- ^ container
@@ -175,14 +187,28 @@ dict
 dict encodeKey encodeVal foldrWithKey = brackets '{' '}' . foldrWithKey go mempty
   where
     go k v c = Value (encodeKV k v) <> c
-    encodeKV k v = encodeKey k <> Encoding (char7 ':') <> encodeVal v
+    encodeKV k v = retagEncoding (encodeKey k) >< colon >< retagEncoding (encodeVal v)
 {-# INLINE dict #-}
+
+-- | Type tag for tuples contents, see 'tuple'.
+data InArray
 
 infixr 6 >*<
 -- | See 'tuple'.
-(>*<) :: Encoding -> Encoding -> Encoding
+(>*<) :: Encoding' a -> Encoding' b -> Encoding' InArray
 Encoding a >*< Encoding b = Encoding $ a <> char7 ',' <> b
 {-# INLINE (>*<) #-}
+
+empty :: Encoding' a
+empty = Encoding mempty
+
+econcat :: [Encoding' a] -> Encoding' a
+econcat = foldr (><) empty
+
+infixr 6 ><
+(><) :: Encoding' a -> Encoding' a -> Encoding' a
+Encoding a >< Encoding b = Encoding (a <> b)
+{-# INLINE (><) #-}
 
 -- | Encode as a tuple.
 --
@@ -191,26 +217,26 @@ Encoding a >*< Encoding b = Encoding $ a <> char7 ',' <> b
 --     toEncoding a >*<
 --     toEncoding b >*<
 --     toEncoding c
-tuple :: Encoding -> Encoding
-tuple b = Encoding (char7 '[' <> fromEncoding b <> char7 ']')
+tuple :: Encoding' InArray -> Encoding
+tuple b = retagEncoding $ openBracket >< b >< closeBracket
 {-# INLINE tuple #-}
 
-text :: Text -> Encoding
+text :: Text -> Encoding' a
 text = Encoding . EB.text
 
-lazyText :: LT.Text -> Encoding
+lazyText :: LT.Text -> Encoding' a
 lazyText t = Encoding $
     B.char7 '"' <>
     LT.foldrChunks (\x xs -> EB.unquoted x <> xs) (B.char7 '"') t
 
-string :: String -> Encoding
+string :: String -> Encoding' a
 string = Encoding . EB.string
 
 -------------------------------------------------------------------------------
 -- chars
 -------------------------------------------------------------------------------
 
-comma, colon, openBracket, closeBracket, openCurly, closeCurly :: Encoding
+comma, colon, openBracket, closeBracket, openCurly, closeCurly :: Encoding' a
 comma        = Encoding $ char7 ','
 colon        = Encoding $ char7 ':'
 openBracket  = Encoding $ char7 '['
@@ -274,66 +300,65 @@ realFloatToEncoding e d
 -- Decimal numbers as Text
 -------------------------------------------------------------------------------
 
-int8Text :: Int8 -> Encoding
+int8Text :: Int8 -> Encoding' a
 int8Text = Encoding . EB.quote . B.int8Dec
 
-int16Text :: Int16 -> Encoding
+int16Text :: Int16 -> Encoding' a
 int16Text = Encoding . EB.quote . B.int16Dec
 
-int32Text :: Int32 -> Encoding
+int32Text :: Int32 -> Encoding' a
 int32Text = Encoding . EB.quote . B.int32Dec
 
-int64Text :: Int64 -> Encoding
+int64Text :: Int64 -> Encoding' a
 int64Text = Encoding . EB.quote . B.int64Dec
 
-intText :: Int -> Encoding
+intText :: Int -> Encoding' a
 intText = Encoding . EB.quote . B.intDec
 
-word8Text :: Word8 -> Encoding
+word8Text :: Word8 -> Encoding' a
 word8Text = Encoding . EB.quote . B.word8Dec
 
-word16Text :: Word16 -> Encoding
+word16Text :: Word16 -> Encoding' a
 word16Text = Encoding . EB.quote . B.word16Dec
 
-word32Text :: Word32 -> Encoding
+word32Text :: Word32 -> Encoding' a
 word32Text = Encoding . EB.quote . B.word32Dec
 
-word64Text :: Word64 -> Encoding
+word64Text :: Word64 -> Encoding' a
 word64Text = Encoding . EB.quote . B.word64Dec
 
-wordText :: Word -> Encoding
+wordText :: Word -> Encoding' a
 wordText = Encoding . EB.quote . B.wordDec
 
-integerText :: Integer -> Encoding
+integerText :: Integer -> Encoding' a
 integerText = Encoding . EB.quote . B.integerDec
 
--- | TODO: check infinite and nan?
-floatText :: Float -> Encoding
+floatText :: Float -> Encoding' a
 floatText = Encoding . EB.quote . B.floatDec
 
-doubleText :: Double -> Encoding
+doubleText :: Double -> Encoding' a
 doubleText = Encoding . EB.quote . B.doubleDec
 
-scientificText :: Scientific -> Encoding
+scientificText :: Scientific -> Encoding' a
 scientificText = Encoding . EB.quote . EB.scientific
 
 -------------------------------------------------------------------------------
 -- time
 -------------------------------------------------------------------------------
 
-day :: Day -> Encoding
+day :: Day -> Encoding' a
 day = Encoding . EB.quote . EB.day
 
-localTime :: LocalTime -> Encoding
+localTime :: LocalTime -> Encoding' a
 localTime = Encoding . EB.quote . EB.localTime
 
-utcTime :: UTCTime -> Encoding
+utcTime :: UTCTime -> Encoding' a
 utcTime = Encoding . EB.quote . EB.utcTime
 
-timeOfDay :: TimeOfDay -> Encoding
+timeOfDay :: TimeOfDay -> Encoding' a
 timeOfDay = Encoding . EB.quote . EB.timeOfDay
 
-zonedTime :: ZonedTime -> Encoding
+zonedTime :: ZonedTime -> Encoding' a
 zonedTime = Encoding . EB.quote . EB.zonedTime
 
 -------------------------------------------------------------------------------

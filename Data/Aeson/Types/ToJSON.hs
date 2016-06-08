@@ -55,8 +55,8 @@ module Data.Aeson.Types.ToJSON (
 import Prelude        ()
 import Prelude.Compat
 
-import Data.Aeson.Encoding.Internal  (Encoding (..), Series, dict, emptyArray_,
-                                      tuple, (>*<))
+import Data.Aeson.Encoding.Internal  (Encoding, Encoding', Series, dict,
+                                      emptyArray_, tuple, (>*<), (><))
 import Data.Aeson.Internal.Functions (mapHashKeyVal, mapKeyVal)
 import Data.Aeson.Types.Generic
 import Data.Aeson.Types.Internal
@@ -92,7 +92,6 @@ import Foreign.Storable        (Storable)
 import GHC.Generics
 import Numeric.Natural         (Natural)
 
-import qualified Data.ByteString.Builder as B (toLazyByteString)
 import qualified Data.ByteString.Lazy    as L
 import qualified Data.DList              as DList
 import qualified Data.HashMap.Strict     as H
@@ -423,7 +422,7 @@ class ToJSONKey a where
     toJSONKeyList = ToJSONKeyValue (toJSON, toEncoding)
 
 data ToJSONKeyFunction a
-    = ToJSONKeyText (a -> Text, a -> Encoding) -- ^ key is encoded to string, produces object
+    = ToJSONKeyText (a -> Text, a -> Encoding' Text) -- ^ key is encoded to string, produces object
     | ToJSONKeyValue (a -> Value, a -> Encoding) -- ^ key is encoded to value, produces array
 
 contramapToJSONKeyFunction :: (b -> a) -> ToJSONKeyFunction a -> ToJSONKeyFunction b
@@ -672,7 +671,7 @@ instance ( AllNullary           (a :+: b) allNullary
     -- 'allNullaryToStringTag' option is set they are encoded to
     -- strings.  This distinction is made by 'sumToEncoding':
     gToEncoding opts pa te tel
-        = (unTagged :: Tagged allNullary Encoding -> Encoding)
+        = (unTagged :: Tagged allNullary (Encoding) -> Encoding)
         . sumToEncoding opts pa te tel
 
 instance (ToJSON1 f, GToEncoding One g) => GToEncoding One (f :.: g) where
@@ -724,7 +723,7 @@ nonAllNullarySumToJSON opts pa tj tjl =
 class SumToEncoding arity f allNullary where
     sumToEncoding :: Options -> Proxy arity
                   -> (a -> Encoding) -> ([a] -> Encoding)
-                  -> f a -> Tagged allNullary Encoding
+                  -> f a -> Tagged allNullary (Encoding)
 
 instance ( GetConName                     f
          , TaggedObjectEnc          arity f
@@ -818,29 +817,28 @@ instance ( IsRecord               a isRecord
          , Constructor c
          ) => TaggedObjectEnc arity (C1 c a) where
     taggedObjectEnc opts pa tagFieldName contentsFieldName te tel v =
-        E.openCurly <>
-        (toEncoding tagFieldName <>
-         E.colon <>
-         toEncoding (constructorTagModifier opts (conName (undefined :: t c a p)))) <>
-        ((unTagged :: Tagged isRecord Encoding -> Encoding) .
-         taggedObjectEnc' opts pa contentsFieldName te tel . unM1 $ v) <>
-        E.closeCurly
+        E.wrapObject $
+            (E.string tagFieldName ><
+             E.colon ><
+             toEncoding (constructorTagModifier opts (conName (undefined :: t c a p)))) ><
+            ((unTagged :: Tagged isRecord (Encoding) -> Encoding) .
+             taggedObjectEnc' opts pa contentsFieldName te tel . unM1 $ v)
 
 class TaggedObjectEnc' arity f isRecord where
     taggedObjectEnc' :: Options -> Proxy arity
                      -> String -> (a -> Encoding) -> ([a] -> Encoding)
-                     -> f a -> Tagged isRecord Encoding
+                     -> f a -> Tagged isRecord (Encoding)
 
 instance OVERLAPPING_ TaggedObjectEnc' arity U1 False where
-    taggedObjectEnc' _ _ _ _ _ _ = Tagged mempty
+    taggedObjectEnc' _ _ _ _ _ _ = Tagged E.empty
 
 instance (RecordToEncoding arity f) => TaggedObjectEnc' arity f True where
-    taggedObjectEnc' opts pa _ te tel = Tagged . (E.comma <>) . fst
+    taggedObjectEnc' opts pa _ te tel = Tagged . (E.comma ><) . fst
                                                . recordToEncoding opts pa te tel
 
 instance (GToEncoding arity f) => TaggedObjectEnc' arity f False where
     taggedObjectEnc' opts pa contentsFieldName te tel =
-        Tagged . (\z -> E.comma <> toEncoding contentsFieldName <> E.colon <> z) .
+        Tagged . (\z -> E.comma >< toEncoding contentsFieldName >< E.colon >< z) .
         gToEncoding opts pa te tel
 
 --------------------------------------------------------------------------------
@@ -942,13 +940,13 @@ class ConsToEncoding' arity f isRecord where
     consToEncoding' :: Options -> Proxy arity
                     -> Bool -- ^ Are we a record with one field?
                     -> (a -> Encoding) -> ([a] -> Encoding)
-                    -> f a -> Tagged isRecord Encoding
+                    -> f a -> Tagged isRecord (Encoding)
 
 instance ( IsRecord                f isRecord
          , ConsToEncoding'   arity f isRecord
          ) => ConsToEncoding arity f where
     consToEncoding opts pa te tel =
-        (unTagged :: Tagged isRecord Encoding -> Encoding)
+        (unTagged :: Tagged isRecord (Encoding) -> (Encoding))
       . consToEncoding' opts pa (isUnary (undefined :: f a)) te tel
 
 instance (RecordToEncoding arity f) => ConsToEncoding' arity f True where
@@ -999,21 +997,22 @@ class RecordToEncoding arity f where
     --              of the field (without the key); 'Nothing' otherwise
     recordToEncoding :: Options -> Proxy arity
                      -> (a -> Encoding) -> ([a] -> Encoding)
-                     -> f a -> (Encoding, Maybe Encoding)
+                     -> f a -> (Encoding, Maybe (Encoding))
 
 instance ( RecordToEncoding    arity a
          , RecordToEncoding    arity b
          ) => RecordToEncoding arity (a :*: b) where
     recordToEncoding opts pa te tel (a :*: b) | omitNothingFields opts =
-      (mconcat $ intersperse E.comma $
+      (E.econcat $ intersperse E.comma $
         filter (not . E.nullEncoding)
         [ fst (recordToEncoding opts pa te tel a)
         , fst (recordToEncoding opts pa te tel b) ]
       , Nothing)
     recordToEncoding opts pa te tel (a :*: b) =
-      (fst (recordToEncoding opts pa te tel a) <> E.comma <>
+      (fst (recordToEncoding opts pa te tel a) >< E.comma ><
        fst (recordToEncoding opts pa te tel b),
        Nothing)
+
 
 instance (Selector s, GToEncoding arity a) => RecordToEncoding arity (S1 s a) where
     recordToEncoding = fieldToEncoding
@@ -1021,17 +1020,17 @@ instance (Selector s, GToEncoding arity a) => RecordToEncoding arity (S1 s a) wh
 instance OVERLAPPING_ (Selector s, ToJSON a) =>
   RecordToEncoding arity (S1 s (K1 i (Maybe a))) where
     recordToEncoding opts _ _ _ (M1 k1) | omitNothingFields opts
-                                        , K1 Nothing <- k1 = (mempty, Nothing)
+                                        , K1 Nothing <- k1 = (E.empty, Nothing)
     recordToEncoding opts pa te tel m1 = fieldToEncoding opts pa te tel m1
 
 fieldToEncoding :: (Selector s, GToEncoding arity a)
                 => Options -> Proxy arity
                 -> (p -> Encoding) -> ([p] -> Encoding)
-                -> S1 s a p -> (Encoding, Maybe Encoding)
+                -> S1 s a p -> (Encoding, Maybe (Encoding))
 fieldToEncoding opts pa te tel m1 =
   let keyBuilder = toEncoding (fieldLabelModifier opts $ selName m1)
       valueBuilder = gToEncoding opts pa te tel (unM1 m1)
-  in  (keyBuilder <> E.colon <> valueBuilder, Just valueBuilder)
+  in  (keyBuilder >< E.colon >< valueBuilder, Just valueBuilder)
 
 --------------------------------------------------------------------------------
 
@@ -1066,21 +1065,20 @@ instance OVERLAPPABLE_ (GToJSON arity a) => WriteProduct arity a where
 class EncodeProduct arity f where
     encodeProduct :: Options -> Proxy arity
                   -> (a -> Encoding) -> ([a] -> Encoding)
-                  -> f a -> Encoding
+                  -> f a -> Encoding' E.InArray
 
 instance ( EncodeProduct    arity a
          , EncodeProduct    arity b
          ) => EncodeProduct arity (a :*: b) where
     encodeProduct opts pa te tel (a :*: b) | omitNothingFields opts =
-        mconcat $ intersperse E.comma $
+        E.econcat $ intersperse E.comma $
         filter (not . E.nullEncoding)
         [encodeProduct opts pa te tel a, encodeProduct opts pa te tel b]
-    encodeProduct opts pa te tel (a :*: b) = encodeProduct opts pa te tel a <>
-                                             E.comma <>
+    encodeProduct opts pa te tel (a :*: b) = encodeProduct opts pa te tel a >*<
                                              encodeProduct opts pa te tel b
 
 instance OVERLAPPABLE_ (GToEncoding arity a) => EncodeProduct arity a where
-    encodeProduct opts = gToEncoding opts
+    encodeProduct opts pa te tel a = E.retagEncoding $ gToEncoding opts pa te tel a
 
 --------------------------------------------------------------------------------
 
@@ -1126,12 +1124,12 @@ instance ( GToEncoding    arity a
          , Constructor c
          ) => ObjectWithSingleFieldEnc arity (C1 c a) where
     objectWithSingleFieldEnc opts pa te tel v =
-      E.openCurly <>
+      E.openCurly ><
       toEncoding
           (constructorTagModifier opts
-          (conName (undefined :: t c a p))) <>
-      E.colon <>
-      gToEncoding opts pa te tel v <>
+          (conName (undefined :: t c a p))) ><
+      E.colon ><
+      gToEncoding opts pa te tel v ><
       E.closeCurly
 
 -------------------------------------------------------------------------------
@@ -1235,7 +1233,7 @@ instance ToJSON Bool where
 instance ToJSONKey Bool where
     toJSONKey = ToJSONKeyText
         ( (\x -> if x then "true" else "false")
-        , (\x -> toEncoding $ if x then ("true" :: Text) else "false")
+        , (\x -> E.text $ if x then "true"else "false")
         )
 
 
@@ -1481,7 +1479,7 @@ instance ToJSON Text where
     {-# INLINE toEncoding #-}
 
 instance ToJSONKey Text where
-    toJSONKey = ToJSONKeyText (id, toEncoding)
+    toJSONKey = ToJSONKeyText (id, E.text)
     {-# INLINE toJSONKey #-}
 
 instance ToJSON LT.Text where
@@ -1819,13 +1817,12 @@ instance ToJSONKey UTCTime where
     toJSONKey = toJSONKeyTextEnc E.utcTime
 
 -- | Encode something t a JSON string.
-stringEncoding :: Encoding -> Value
+stringEncoding :: Encoding' Text -> Value
 stringEncoding = String
     . T.dropAround (== '"')
     . T.decodeLatin1
     . L.toStrict
-    . B.toLazyByteString
-    . fromEncoding
+    . E.encodingToLazyByteString
 {-# INLINE stringEncoding #-}
 
 instance ToJSON NominalDiffTime where
@@ -1920,10 +1917,10 @@ instance ToJSONKey b => ToJSONKey (Tagged a b) where
 
 -- | TODO: Move ToJSONKEyFunction to .Types(.Internal),
 -- export and document this function from there
-toJSONKeyTextEnc :: (a -> Encoding) -> ToJSONKeyFunction a
+toJSONKeyTextEnc :: (a -> Encoding' Text) -> ToJSONKeyFunction a
 toJSONKeyTextEnc e = ToJSONKeyText
     -- TODO: dropAround is also used in stringEncoding, which is unfortunate atm
-    ( T.dropAround (== '"') . T.decodeLatin1 . L.toStrict . B.toLazyByteString . fromEncoding . e
+    ( T.dropAround (== '"') . T.decodeLatin1 . L.toStrict . E.encodingToLazyByteString . e
     , e
     )
 
@@ -1932,8 +1929,8 @@ instance (ToJSON a, ToJSON b, ToJSON c) => ToJSONKey (a,b,c)
 instance (ToJSON a, ToJSON b, ToJSON c, ToJSON d) => ToJSONKey (a,b,c,d)
 
 instance ToJSONKey Char where
-    toJSONKey = ToJSONKeyText (T.singleton, toEncoding)
-    toJSONKeyList = ToJSONKeyText (T.pack, toEncoding . T.pack)
+    toJSONKey = ToJSONKeyText (T.singleton, E.string . (:[]))
+    toJSONKeyList = ToJSONKeyText (T.pack, E.text . T.pack)
 
 instance (ToJSONKey a, ToJSON a) => ToJSONKey [a] where
     toJSONKey = toJSONKeyList

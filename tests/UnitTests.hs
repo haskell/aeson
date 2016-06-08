@@ -13,7 +13,6 @@ import Prelude.Compat
 import Control.Applicative (Const(..))
 import Control.Monad (forM)
 import Data.Aeson (FromJSONKeyFunction(..), FromJSONKey(..), decode, eitherDecode, encode, genericToJSON, genericToEncoding, object, FromJSON(..), withObject, (.=), (.:), (.:?), (.:!))
-import Data.Aeson (decode, eitherDecode, encode, genericToJSON, genericToEncoding, object, FromJSON(..), withObject, (.=), (.:), (.:?), (.:!))
 import Data.Aeson.Text (encodeToTextBuilder)
 import Data.Aeson.Internal (JSONPathElement(..), formatError)
 import Data.Aeson.TH (deriveJSON)
