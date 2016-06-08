@@ -7,6 +7,9 @@
 
 module Instances where
 
+import Prelude ()
+import Prelude.Compat
+
 import Types
 import Data.Function (on)
 import Control.Monad
@@ -17,11 +20,11 @@ import Data.Time (ZonedTime(..), TimeZone(..))
 import Data.List.NonEmpty (NonEmpty(..))
 import Data.Version
 import Data.Aeson.Types
-import Control.Applicative (Const(..))
+import Control.Applicative (Const(..), empty)
 import Data.Tagged (Tagged(..))
 import Data.Proxy (Proxy(..))
-import Control.Applicative
 import Functions
+import qualified Data.DList as DList
 
 import Data.Orphans ()
 import Test.QuickCheck.Instances ()
@@ -171,3 +174,6 @@ instance Arbitrary b => Arbitrary (Tagged a b) where
 
 instance Arbitrary a => Arbitrary (Const a b) where
     arbitrary = Const <$> arbitrary
+
+instance Arbitrary a => Arbitrary (DList.DList a) where
+    arbitrary = DList.fromList <$> arbitrary

@@ -35,6 +35,9 @@ import qualified Data.Text.Lazy.Encoding as TLE
 import qualified Data.Text.Lazy as LT
 import qualified Data.Text.Lazy.Encoding as LT
 
+import qualified Data.Sequence as Seq
+import qualified Data.DList as DList
+
 tests :: Test
 tests = testGroup "unit" [
     testGroup "camelCase" [
@@ -240,6 +243,8 @@ jsonEncoding = [
   , assertEqual "Const Char Int" "\"c\"" $ encode (Const 'c' :: Const Char Int)
   , assertEqual "Tuple" "[1,2]" $ encode ((1, 2) :: (Int, Int))
   , assertEqual "NonEmpty" "[1,2,3]" $ encode (1 :| [2, 3] :: NonEmpty Int)
+  , assertEqual "Seq" "[1,2,3]" $ encode (Seq.fromList [1, 2, 3] ::  Seq.Seq Int)
+  , assertEqual "DList" "[1,2,3]" $ encode (DList.fromList [1, 2, 3] :: DList.DList Int)
   , assertEqual "()" "[]" $ encode ()
   ]
 

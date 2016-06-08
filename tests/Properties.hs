@@ -10,6 +10,11 @@ import Data.Aeson.Parser (value)
 import Data.Aeson.Types
 import Data.ByteString.Builder (toLazyByteString)
 import Data.Int (Int8)
+import Data.Sequence (Seq)
+import Data.DList (DList)
+import Data.Hashable (Hashable)
+import Data.HashMap.Strict (HashMap)
+import Data.Map (Map)
 import Data.List.NonEmpty (NonEmpty)
 import Data.Time (Day, LocalTime, NominalDiffTime, TimeOfDay, UTCTime,
                   ZonedTime)
@@ -63,6 +68,12 @@ roundTripNoEnc eq _ i =
 
 roundTripEq :: (Eq a, FromJSON a, ToJSON a, Show a) => a -> a -> Property
 roundTripEq x y = roundTripEnc (===) x y .&&. roundTripNoEnc (===) x y
+
+-- We test keys by encoding HashMap and Map with it
+roundTripKey
+    :: (Ord a, Hashable a, FromJSONKey a, ToJSONKey a, Show a)
+    => a -> HashMap a Int -> Map a Int -> Property
+roundTripKey _ h m = roundTripEq h h .&&. roundTripEq m m
 
 infix 4 ==~
 (==~) :: (ApproxEq a, Show a) => a -> a -> Property
@@ -152,12 +163,22 @@ tests = testGroup "properties" [
     , testProperty "Proxy" $ roundTripEq (undefined :: Proxy Int)
     , testProperty "Tagged" $ roundTripEq (undefined :: Tagged Int Char)
     , testProperty "Const" $ roundTripEq (undefined :: Const Int Char)
+    , testProperty "DList" $ roundTripEq (undefined :: DList Int)
+    , testProperty "Seq" $ roundTripEq (undefined :: Seq Int)
     , testGroup "ghcGenerics" [
         testProperty "OneConstructor" $ roundTripEq OneConstructor
       , testProperty "Product2" $ roundTripEq (undefined :: Product2 Int Bool)
       , testProperty "Product6" $ roundTripEq (undefined :: P6)
       , testProperty "Sum4" $ roundTripEq (undefined :: S4)
       ]
+    ]
+  , testGroup "roundTrip Key"
+    [ testProperty "Bool" $ roundTripKey True
+    , testProperty "Text" $ roundTripKey (undefined :: T.Text)
+    , testProperty "String" $ roundTripKey (undefined :: String)
+    , testProperty "Int" $ roundTripKey (undefined :: Int)
+    , testProperty "[Text]" $ roundTripKey (undefined :: [T.Text])
+    , testProperty "(Int,Char)" $ roundTripKey (undefined :: (Int,Char))
     ]
   , testGroup "toFromJSON" [
       testProperty "Integer" (toFromJSON :: Integer -> Property)
