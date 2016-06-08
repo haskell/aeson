@@ -73,7 +73,9 @@ import Data.Aeson.Functions      (mapKey)
 import Data.Aeson.Types.Generic
 import Data.Aeson.Types.Internal
 
-import qualified Data.Aeson.Parser.Time as Time
+import qualified Data.Aeson.Parser.Time           as Time
+import qualified Data.Attoparsec.ByteString.Char8 as A (endOfInput, parseOnly,
+                                                        scientific)
 
 import Control.Applicative          (Const (..), (<|>))
 import Control.Monad                ((<=<))
@@ -114,8 +116,8 @@ import qualified Data.Scientific       as Scientific
 import qualified Data.Sequence         as Seq
 import qualified Data.Set              as Set
 import qualified Data.Text             as T
+import qualified Data.Text.Encoding    as T
 import qualified Data.Text.Lazy        as LT
-import qualified Data.Text.Read        as TR
 import qualified Data.Tree             as Tree
 import qualified Data.Vector           as V
 import qualified Data.Vector.Generic   as VG
@@ -176,6 +178,15 @@ parseRealFloat expected v          = typeMismatch expected v
 parseIntegral :: Integral a => String -> Value -> Parser a
 parseIntegral expected = withScientific expected $ pure . truncate
 {-# INLINE parseIntegral #-}
+
+parseScientificText :: Text -> Parser Scientific
+parseScientificText
+    = either fail pure
+    . A.parseOnly (A.scientific <* A.endOfInput)
+    . T.encodeUtf8
+
+parseIntegralText :: Integral a => Text -> Parser a
+parseIntegralText t = truncate <$> parseScientificText t
 
 parseOptionalFieldWith :: (Value -> Parser (Maybe a))
                        -> Object -> Text -> Parser (Maybe a)
@@ -1000,6 +1011,12 @@ instance FromJSON Bool where
     parseJSON = withBool "Bool" pure
     {-# INLINE parseJSON #-}
 
+instance FromJSONKey Bool where
+    fromJSONKey = FromJSONKeyTextParser $ \t -> case t of
+        "true"  -> pure True
+        "false" -> pure False
+        _       -> fail $ "Cannot parse key into Bool: " ++ T.unpack t
+
 instance FromJSON Ordering where
   parseJSON = withText "Ordering" $ \s ->
     case s of
@@ -1029,6 +1046,13 @@ instance FromJSON Double where
     parseJSON = parseRealFloat "Double"
     {-# INLINE parseJSON #-}
 
+instance FromJSONKey Double where
+    fromJSONKey = FromJSONKeyTextParser $ \t -> case t of
+        "NaN"       -> pure (0/0)
+        "Infinity"  -> pure (1/0)
+        "-Infinity" -> pure (negate 1/0)
+        _           -> Scientific.toRealFloat <$> parseScientificText t
+
 instance FromJSON Number where
     parseJSON (Number s) = pure $ scientificToNumber s
     parseJSON Null       = pure (D (0/0))
@@ -1039,7 +1063,14 @@ instance FromJSON Float where
     parseJSON = parseRealFloat "Float"
     {-# INLINE parseJSON #-}
 
-instance FromJSON (Ratio Integer) where
+instance FromJSONKey Float where
+    fromJSONKey = FromJSONKeyTextParser $ \t -> case t of
+        "NaN"       -> pure (0/0)
+        "Infinity"  -> pure (1/0)
+        "-Infinity" -> pure (negate 1/0)
+        _           -> Scientific.toRealFloat <$> parseScientificText t
+
+instance (FromJSON a, Integral a) => FromJSON (Ratio a) where
     parseJSON = withObject "Rational" $ \obj ->
                   (%) <$> obj .: "numerator"
                       <*> obj .: "denominator"
@@ -1057,6 +1088,9 @@ instance FromJSON Int where
     parseJSON = parseIntegral "Int"
     {-# INLINE parseJSON #-}
 
+instance FromJSONKey Int where
+    fromJSONKey = FromJSONKeyTextParser parseIntegralText
+
 -- | /WARNING:/ Only parse Integers from trusted input since an
 -- attacker could easily fill up the memory of the target system by
 -- specifying a scientific number with a big exponent like
@@ -1065,8 +1099,17 @@ instance FromJSON Integer where
     parseJSON = withScientific "Integral" $ pure . truncate
     {-# INLINE parseJSON #-}
 
+instance FromJSONKey Integer where
+    fromJSONKey = FromJSONKeyTextParser parseIntegralText
+
 instance FromJSON Natural where
     parseJSON = withScientific "Natural" $ \s ->
+      if Scientific.coefficient s < 0
+        then fail $ "Expected a Natural number but got the negative number: " <> show s
+        else pure $ truncate s
+
+instance FromJSONKey Natural where
+    fromJSONKey = FromJSONKeyTextParser $ \t -> parseScientificText t >>= \s ->
       if Scientific.coefficient s < 0
         then fail $ "Expected a Natural number but got the negative number: " <> show s
         else pure $ truncate s
@@ -1075,41 +1118,71 @@ instance FromJSON Int8 where
     parseJSON = parseIntegral "Int8"
     {-# INLINE parseJSON #-}
 
+instance FromJSONKey Int8 where
+    fromJSONKey = FromJSONKeyTextParser parseIntegralText
+
 instance FromJSON Int16 where
     parseJSON = parseIntegral "Int16"
     {-# INLINE parseJSON #-}
+
+instance FromJSONKey Int16 where
+    fromJSONKey = FromJSONKeyTextParser parseIntegralText
 
 instance FromJSON Int32 where
     parseJSON = parseIntegral "Int32"
     {-# INLINE parseJSON #-}
 
+instance FromJSONKey Int32 where
+    fromJSONKey = FromJSONKeyTextParser parseIntegralText
+
 instance FromJSON Int64 where
     parseJSON = parseIntegral "Int64"
     {-# INLINE parseJSON #-}
+
+instance FromJSONKey Int64 where
+    fromJSONKey = FromJSONKeyTextParser parseIntegralText
 
 instance FromJSON Word where
     parseJSON = parseIntegral "Word"
     {-# INLINE parseJSON #-}
 
+instance FromJSONKey Word where
+    fromJSONKey = FromJSONKeyTextParser parseIntegralText
+
 instance FromJSON Word8 where
     parseJSON = parseIntegral "Word8"
     {-# INLINE parseJSON #-}
+
+instance FromJSONKey Word8 where
+    fromJSONKey = FromJSONKeyTextParser parseIntegralText
 
 instance FromJSON Word16 where
     parseJSON = parseIntegral "Word16"
     {-# INLINE parseJSON #-}
 
+instance FromJSONKey Word16 where
+    fromJSONKey = FromJSONKeyTextParser parseIntegralText
+
 instance FromJSON Word32 where
     parseJSON = parseIntegral "Word32"
     {-# INLINE parseJSON #-}
+
+instance FromJSONKey Word32 where
+    fromJSONKey = FromJSONKeyTextParser parseIntegralText
 
 instance FromJSON Word64 where
     parseJSON = parseIntegral "Word64"
     {-# INLINE parseJSON #-}
 
+instance FromJSONKey Word64 where
+    fromJSONKey = FromJSONKeyTextParser parseIntegralText
+
 instance FromJSON Text where
     parseJSON = withText "Text" pure
     {-# INLINE parseJSON #-}
+
+instance FromJSONKey Text where
+    fromJSONKey = fromJSONKeyCoerce
 
 instance FromJSON LT.Text where
     parseJSON = withText "Lazy Text" $ pure . LT.fromStrict
@@ -1384,24 +1457,6 @@ instance FromJSONKey b => FromJSONKey (Tagged a b) where
 -------------------------------------------------------------------------------
 -- Instances for converting from map keys
 -------------------------------------------------------------------------------
-
-instance FromJSONKey Text where
-    fromJSONKey = fromJSONKeyCoerce
-
-instance FromJSONKey Bool where
-    fromJSONKey = FromJSONKeyTextParser $ \t -> case t of
-        "true"  -> pure True
-        "false" -> pure False
-        _       -> fail $ "Cannot parse key into Bool: " ++ T.unpack t
-
-instance FromJSONKey Int where
-    -- not sure if there if there is already a helper in
-    -- aeson for doing this.
-    fromJSONKey = FromJSONKeyTextParser $ \t -> case TR.signed TR.decimal t of
-      Left err -> fail err
-      Right (v,t2) -> if T.null t2
-        then return v
-        else fail "Was not an integer, had extra stuff."
 
 instance (FromJSON a, FromJSON b) => FromJSONKey (a,b)
 instance (FromJSON a, FromJSON b, FromJSON c) => FromJSONKey (a,b,c)

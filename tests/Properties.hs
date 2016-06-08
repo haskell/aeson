@@ -18,6 +18,7 @@ import Data.DList (DList)
 import Data.Hashable (Hashable)
 import Data.HashMap.Strict (HashMap)
 import Data.Map (Map)
+import Data.Ratio (Ratio)
 import Data.List.NonEmpty (NonEmpty)
 import Data.Time (Day, LocalTime, NominalDiffTime, TimeOfDay, UTCTime,
                   ZonedTime)
@@ -82,9 +83,6 @@ infix 4 ==~
 (==~) :: (ApproxEq a, Show a) => a -> a -> Property
 x ==~ y =
   counterexample (show x ++ " /= " ++ show y) (x =~ y)
-
-roundTripApproxEq :: (ApproxEq a, FromJSON a, ToJSON a, Show a) => a -> a -> Property
-roundTripApproxEq x y = roundTripEnc (==~) x y .&&. roundTripNoEnc (==~) x y
 
 toFromJSON :: (Arbitrary a, Eq a, FromJSON a, ToJSON a, Show a) => a -> Property
 toFromJSON x = case ifromJSON (toJSON x) of
@@ -155,7 +153,7 @@ tests = testGroup "properties" [
     , testProperty "Text" $ roundTripEq T.empty
     , testProperty "Foo" $ roundTripEq (undefined :: Foo)
     , testProperty "Day" $ roundTripEq (undefined :: Day)
-    , testProperty "DotNetTime" $ roundTripApproxEq (undefined :: DotNetTime)
+    , testProperty "DotNetTime" $ roundTripEq (undefined :: Approx DotNetTime)
     , testProperty "LocalTime" $ roundTripEq (undefined :: LocalTime)
     , testProperty "TimeOfDay" $ roundTripEq (undefined :: TimeOfDay)
     , testProperty "UTCTime" $ roundTripEq (undefined :: UTCTime)
@@ -168,6 +166,8 @@ tests = testGroup "properties" [
     , testProperty "Const" $ roundTripEq (undefined :: Const Int Char)
     , testProperty "DList" $ roundTripEq (undefined :: DList Int)
     , testProperty "Seq" $ roundTripEq (undefined :: Seq Int)
+    , testProperty "Rational" $ roundTripEq (undefined :: Rational)
+    , testProperty "Ratio Int" $ roundTripEq (undefined :: Ratio Int)
     , testGroup "ghcGenerics" [
         testProperty "OneConstructor" $ roundTripEq OneConstructor
       , testProperty "Product2" $ roundTripEq (undefined :: Product2 Int Bool)
@@ -182,6 +182,10 @@ tests = testGroup "properties" [
     , testProperty "Int" $ roundTripKey (undefined :: Int)
     , testProperty "[Text]" $ roundTripKey (undefined :: [T.Text])
     , testProperty "(Int,Char)" $ roundTripKey (undefined :: (Int,Char))
+    , testProperty "Integer" $ roundTripKey (undefined :: Integer)
+    , testProperty "Natural" $ roundTripKey (undefined :: Natural)
+    , testProperty "Float" $ roundTripKey (undefined :: Float)
+    , testProperty "Double" $ roundTripKey (undefined :: Double)
     ]
   , testGroup "toFromJSON" [
       testProperty "Integer" (toFromJSON :: Integer -> Property)

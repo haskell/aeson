@@ -24,7 +24,7 @@ module Data.Aeson.Encode.Builder
     , string
     , unquoted
     , quote
-    , number
+    , scientific
     , day
     , localTime
     , utcTime
@@ -59,7 +59,7 @@ import qualified Data.Vector as V
 encodeToBuilder :: Value -> Builder
 encodeToBuilder Null       = null_
 encodeToBuilder (Bool b)   = bool b
-encodeToBuilder (Number n) = number n
+encodeToBuilder (Number n) = scientific n
 encodeToBuilder (String s) = text s
 encodeToBuilder (Array v)  = array v
 encodeToBuilder (Object m) = object m
@@ -128,8 +128,8 @@ c2w :: Char -> Word8
 c2w c = fromIntegral (ord c)
 
 -- | Encode a JSON number.
-number :: Scientific -> Builder
-number s
+scientific :: Scientific -> Builder
+scientific s
     | e < 0     = scientificBuilder s
     | otherwise = B.integerDec (coefficient s * 10 ^ e)
   where

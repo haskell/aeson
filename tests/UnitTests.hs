@@ -41,6 +41,7 @@ import qualified Data.Text.Lazy.Encoding as LT
 
 import qualified Data.Sequence as Seq
 import qualified Data.DList as DList
+import qualified Data.HashMap.Strict as HM
 
 tests :: Test
 tests = testGroup "unit" [
@@ -251,6 +252,13 @@ jsonEncoding = [
   , assertEqual "Seq" "[1,2,3]" $ encode (Seq.fromList [1, 2, 3] ::  Seq.Seq Int)
   , assertEqual "DList" "[1,2,3]" $ encode (DList.fromList [1, 2, 3] :: DList.DList Int)
   , assertEqual "()" "[]" $ encode ()
+  , assertEqual "HashMap Int Int" "{\"0\":1,\"2\":3}" $ encode (HM.fromList [(0,1),(2,3)] :: HM.HashMap Int Int)
+  , assertEqual "nan :: Double" "null" $ encode (0/0 :: Double)
+  , assertEqual "inf :: Double" "null" $ encode (1/0 :: Double)
+  -- Three separate cases, as ordering in HashMap is not defined
+  , assertEqual "HashMap Float Int, NaN" "{\"NaN\":1}" $ encode (HM.singleton (0/0) 1 :: HM.HashMap Float Int)
+  , assertEqual "HashMap Float Int, Infinity" "{\"Infinity\":1}" $ encode (HM.singleton (1/0) 1 :: HM.HashMap Float Int)
+  , assertEqual "HashMap Float Int, +Infinity" "{\"-Infinity\":1}" $ encode (HM.singleton (negate 1/0) 1 :: HM.HashMap Float Int)
   ]
 
 jsonDecoding :: [Assertion]
