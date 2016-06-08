@@ -28,6 +28,9 @@ import qualified Data.DList as DList
 
 import Data.Orphans ()
 import Test.QuickCheck.Instances ()
+#if MIN_VERSION_base(4,7,0)
+import Data.Hashable.Time ()
+#endif
 
 #if !MIN_VERSION_base(4,8,0) && !MIN_VERSION_QuickCheck(2,8,3)
 import Numeric.Natural

@@ -1676,23 +1676,40 @@ instance ToJSON Day where
     toJSON     = stringEncoding . E.day
     toEncoding = E.day
 
+instance ToJSONKey Day where
+    toJSONKey = toJSONKeyTextEnc E.day
+
 
 instance ToJSON TimeOfDay where
     toJSON     = stringEncoding . E.timeOfDay
     toEncoding = E.timeOfDay
+
+instance ToJSONKey TimeOfDay where
+    toJSONKey = toJSONKeyTextEnc E.timeOfDay
 
 
 instance ToJSON LocalTime where
     toJSON     = stringEncoding . E.localTime
     toEncoding = E.localTime
 
+instance ToJSONKey LocalTime where
+    toJSONKey = toJSONKeyTextEnc E.localTime
+
+
 instance ToJSON ZonedTime where
     toJSON     = stringEncoding . E.zonedTime
     toEncoding = E.zonedTime
 
+instance ToJSONKey ZonedTime where
+    toJSONKey = toJSONKeyTextEnc E.zonedTime
+
+
 instance ToJSON UTCTime where
     toJSON     = stringEncoding . E.utcTime
     toEncoding = E.utcTime
+
+instance ToJSONKey UTCTime where
+    toJSONKey = toJSONKeyTextEnc E.utcTime
 
 -- | Encode something t a JSON string.
 stringEncoding :: Encoding -> Value
