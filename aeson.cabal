@@ -174,7 +174,9 @@ test-suite tests
     quickcheck-instances >=0.3.12
 
   if !impl(ghc >= 8.0)
-    build-depends: semigroups >= 0.16.1 && < 0.19
+    build-depends:
+      semigroups >= 0.16.1 && < 0.19,
+      transformers >= 0.2.2.0
 
   if !impl(ghc >= 7.10)
     build-depends: nats >=1 && <1.2

@@ -1,4 +1,4 @@
-{-# LANGUAGE CPP, DeriveGeneric, OverloadedStrings, ScopedTypeVariables, TemplateHaskell, GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE CPP, GADTs, DeriveGeneric, OverloadedStrings, ScopedTypeVariables, TemplateHaskell, GeneralizedNewtypeDeriving #-}
 #if __GLASGOW_HASKELL__ >= 708
 {-# LANGUAGE DataKinds #-}
 #endif
@@ -10,6 +10,9 @@ module UnitTests (ioTests, tests) where
 import Prelude ()
 import Prelude.Compat
 
+import Types (I, Compose3, Compose3', Approx(..))
+import Instances ()
+
 import Control.Applicative (Const(..))
 import Control.Monad (forM)
 import Data.Aeson (FromJSONKeyFunction(..), FromJSONKey(..), decode, eitherDecode, encode, genericToJSON, genericToEncoding, object, FromJSON(..), withObject, (.=), (.:), (.:?), (.:!))
@@ -20,6 +23,8 @@ import Data.Aeson.Types (ToJSON(..), Value, camelTo, camelTo2, defaultOptions, o
 import Data.Char (toUpper)
 import Data.Hashable (hash)
 import Data.List.NonEmpty (NonEmpty(..))
+import Data.Functor.Compose (Compose (..))
+import Data.Functor.Identity (Identity (..))
 import Data.Maybe (fromMaybe)
 import Data.Proxy (Proxy(..))
 import Data.Sequence (Seq)
@@ -70,6 +75,7 @@ tests = testGroup "unit" [
   , testGroup ".:, .:?, .:!" $ fmap (testCase "-") dotColonMark
   , testGroup "To JSON representation" $ fmap (testCase "-") jsonEncoding
   , testGroup "From JSON representation" $ fmap (testCase "-") jsonDecoding
+  , testGroup "To/From JSON representation" $ fmap assertJsonExample jsonExamples
   , testGroup "JSONPath" $ fmap (testCase "-") jsonPath
   , testGroup "Hashable laws" $ fmap (testCase "-") hashableLaws
   , testGroup "Issue #351" $ fmap (testCase "-") issue351
@@ -234,31 +240,88 @@ dotColonMark = [
 -----------------------------------------------------------------------------
 
 jsonEncoding :: [Assertion]
-jsonEncoding = [
-    assertEqual "Either Left" "{\"Left\":1}" $ encode (Left 1 :: Either Int Int)
-  , assertEqual "Either Right" "{\"Right\":1}" $ encode (Right 1 :: Either Int Int)
-  , assertEqual "Nothing"  "null" $ encode (Nothing :: Maybe Int)
-  , assertEqual "Just"  "1" $ encode (Just 1 :: Maybe Int)
-  , assertEqual "Just Nothing" "null" $ encode (Just Nothing :: Maybe (Maybe Int))
-  , assertEqual "Proxy Int" "null" $ encode (Proxy :: Proxy Int)
-  , assertEqual "Tagged Char Int" "1" $ encode (Tagged 1 :: Tagged Char Int)
+jsonEncoding =
+  [
+  -- https://github.com/bos/aeson/issues/376
+    assertEqual "Just Nothing" "null" $ encode (Just Nothing :: Maybe (Maybe Int))
+  -- infinities cannot be recovered, null is decoded as NaN
+  , assertEqual "inf :: Double" "null" $ encode (Approx $ 1/0 :: Approx Double)
+  ]
+
+data Example where
+    Example
+        :: (Eq a, Show a, ToJSON a, FromJSON a)
+        => String -> L.ByteString -> a -> Example
+
+assertJsonExample :: Example -> Test
+assertJsonExample (Example name bs val) = testCase name $ do
+    assertEqual "encode" bs         (encode val)
+    assertEqual "decode" (Just val) (decode bs)
+
+jsonExamples :: [Example]
+jsonExamples =
+  [
+    Example "Either Left" "{\"Left\":1}"  (Left 1 :: Either Int Int)
+  , Example "Either Right" "{\"Right\":1}"  (Right 1 :: Either Int Int)
+  , Example "Nothing"  "null"  (Nothing :: Maybe Int)
+  , Example "Just"  "1"  (Just 1 :: Maybe Int)
+  , Example "Proxy Int" "null"  (Proxy :: Proxy Int)
+  , Example "Tagged Char Int" "1"  (Tagged 1 :: Tagged Char Int)
 #if __GLASGOW_HASKELL__ >= 708
     -- Test Tagged instance is polykinded
-  , assertEqual "Tagged 123 Int" "1" $ encode (Tagged 1 :: Tagged 123 Int)
+  , Example "Tagged 123 Int" "1"  (Tagged 1 :: Tagged 123 Int)
 #endif
-  , assertEqual "Const Char Int" "\"c\"" $ encode (Const 'c' :: Const Char Int)
-  , assertEqual "Tuple" "[1,2]" $ encode ((1, 2) :: (Int, Int))
-  , assertEqual "NonEmpty" "[1,2,3]" $ encode (1 :| [2, 3] :: NonEmpty Int)
-  , assertEqual "Seq" "[1,2,3]" $ encode (Seq.fromList [1, 2, 3] ::  Seq.Seq Int)
-  , assertEqual "DList" "[1,2,3]" $ encode (DList.fromList [1, 2, 3] :: DList.DList Int)
-  , assertEqual "()" "[]" $ encode ()
-  , assertEqual "HashMap Int Int" "{\"0\":1,\"2\":3}" $ encode (HM.fromList [(0,1),(2,3)] :: HM.HashMap Int Int)
-  , assertEqual "nan :: Double" "null" $ encode (0/0 :: Double)
-  , assertEqual "inf :: Double" "null" $ encode (1/0 :: Double)
+  , Example "Const Char Int" "\"c\""  (Const 'c' :: Const Char Int)
+  , Example "Tuple" "[1,2]"  ((1, 2) :: (Int, Int))
+  , Example "NonEmpty" "[1,2,3]"  (1 :| [2, 3] :: NonEmpty Int)
+  , Example "Seq" "[1,2,3]"  (Seq.fromList [1, 2, 3] ::  Seq.Seq Int)
+  , Example "DList" "[1,2,3]"  (DList.fromList [1, 2, 3] :: DList.DList Int)
+  , Example "()" "[]"  ()
+  , Example "HashMap Int Int" "{\"0\":1,\"2\":3}"  (HM.fromList [(0,1),(2,3)] :: HM.HashMap Int Int)
+  , Example "nan :: Double" "null"  (Approx $ 0/0 :: Approx Double)
   -- Three separate cases, as ordering in HashMap is not defined
-  , assertEqual "HashMap Float Int, NaN" "{\"NaN\":1}" $ encode (HM.singleton (0/0) 1 :: HM.HashMap Float Int)
-  , assertEqual "HashMap Float Int, Infinity" "{\"Infinity\":1}" $ encode (HM.singleton (1/0) 1 :: HM.HashMap Float Int)
-  , assertEqual "HashMap Float Int, +Infinity" "{\"-Infinity\":1}" $ encode (HM.singleton (negate 1/0) 1 :: HM.HashMap Float Int)
+  , Example "HashMap Float Int, NaN" "{\"NaN\":1}"  (Approx $ HM.singleton (0/0) 1 :: Approx (HM.HashMap Float Int))
+  , Example "HashMap Float Int, Infinity" "{\"Infinity\":1}"  (HM.singleton (1/0) 1 :: HM.HashMap Float Int)
+  , Example "HashMap Float Int, +Infinity" "{\"-Infinity\":1}"  (HM.singleton (negate 1/0) 1 :: HM.HashMap Float Int)
+
+  -- Functors
+  , Example "Identity Int" "1"  (pure 1 :: Identity Int)
+
+  , Example "Identity Char" "\"x\""      (pure 'x' :: Identity Char)
+  , Example "Identity String" "\"foo\""  (pure "foo" :: Identity String)
+  , Example "[Identity Char]" "\"xy\""   ([pure 'x', pure 'y'] :: [Identity Char])
+
+  , Example "Maybe Char" "\"x\""              (pure 'x' :: Maybe Char)
+  , Example "Maybe String" "\"foo\""          (pure "foo" :: Maybe String)
+  , Example "Maybe [Identity Char]" "\"xy\""  (pure [pure 'x', pure 'y'] :: Maybe [Identity Char])
+
+  , Example "Compose I  I  Int" "1"      (pure 1 :: Compose I I   Int)
+  , Example "Compose I  [] Int" "[1]"    (pure 1 :: Compose I []  Int)
+  , Example "Compose [] I  Int" "[1]"    (pure 1 :: Compose [] I  Int)
+  , Example "Compose [] [] Int" "[[1]]"  (pure 1 :: Compose [] [] Int)
+
+  , Example "Compose I  I  Char" "\"x\""    (pure 'x' :: Compose I  I  Char)
+  , Example "Compose I  [] Char" "\"x\""    (pure 'x' :: Compose I  [] Char)
+  , Example "Compose [] I  Char" "\"x\""    (pure 'x' :: Compose [] I  Char)
+  , Example "Compose [] [] Char" "[\"x\"]"  (pure 'x' :: Compose [] [] Char)
+
+  , Example "Compose3 I  I  I  Char" "\"x\""      (pure 'x' :: Compose3 I  I  I  Char)
+  , Example "Compose3 I  I  [] Char" "\"x\""      (pure 'x' :: Compose3 I  I  [] Char)
+  , Example "Compose3 I  [] I  Char" "\"x\""      (pure 'x' :: Compose3 I  [] I  Char)
+  , Example "Compose3 I  [] [] Char" "[\"x\"]"    (pure 'x' :: Compose3 I  [] [] Char)
+  , Example "Compose3 [] I  I  Char" "\"x\""      (pure 'x' :: Compose3 [] I  I  Char)
+  , Example "Compose3 [] I  [] Char" "[\"x\"]"    (pure 'x' :: Compose3 [] I  [] Char)
+  , Example "Compose3 [] [] I  Char" "[\"x\"]"    (pure 'x' :: Compose3 [] [] I  Char)
+  , Example "Compose3 [] [] [] Char" "[[\"x\"]]"  (pure 'x' :: Compose3 [] [] [] Char)
+
+  , Example "Compose3' I  I  I  Char" "\"x\""      (pure 'x' :: Compose3' I  I  I  Char)
+  , Example "Compose3' I  I  [] Char" "\"x\""      (pure 'x' :: Compose3' I  I  [] Char)
+  , Example "Compose3' I  [] I  Char" "\"x\""      (pure 'x' :: Compose3' I  [] I  Char)
+  , Example "Compose3' I  [] [] Char" "[\"x\"]"    (pure 'x' :: Compose3' I  [] [] Char)
+  , Example "Compose3' [] I  I  Char" "\"x\""      (pure 'x' :: Compose3' [] I  I  Char)
+  , Example "Compose3' [] I  [] Char" "[\"x\"]"    (pure 'x' :: Compose3' [] I  [] Char)
+  , Example "Compose3' [] [] I  Char" "[\"x\"]"    (pure 'x' :: Compose3' [] [] I  Char)
+  , Example "Compose3' [] [] [] Char" "[[\"x\"]]"  (pure 'x' :: Compose3' [] [] [] Char)
   ]
 
 jsonDecoding :: [Assertion]

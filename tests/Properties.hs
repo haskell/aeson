@@ -1,5 +1,8 @@
 {-# LANGUAGE CPP, OverloadedStrings, ScopedTypeVariables #-}
 
+-- For Arbitrary Compose
+{-# LANGUAGE FlexibleContexts #-}
+
 module Properties where
 
 import Prelude ()
@@ -16,6 +19,7 @@ import Data.Sequence (Seq)
 import Data.DList (DList)
 import Data.Hashable (Hashable)
 import Data.HashMap.Strict (HashMap)
+import Data.Functor.Compose (Compose (..))
 import Data.Map (Map)
 import Data.Ratio (Ratio)
 import Data.List.NonEmpty (NonEmpty)
@@ -137,6 +141,7 @@ isObjectWithSingleField _            = False
 
 --------------------------------------------------------------------------------
 
+
 tests :: Test
 tests = testGroup "properties" [
   testGroup "encode" [
@@ -169,6 +174,41 @@ tests = testGroup "properties" [
     , testProperty "Seq" $ roundTripEq (undefined :: Seq Int)
     , testProperty "Rational" $ roundTripEq (undefined :: Rational)
     , testProperty "Ratio Int" $ roundTripEq (undefined :: Ratio Int)
+    , testGroup "functors"
+      [ testProperty "Identity Char" $ roundTripEq (undefined :: I Int)
+
+      , testProperty "Identity Char" $ roundTripEq (undefined :: I Char)
+      , testProperty "Identity [Char]" $ roundTripEq (undefined :: I [Char])
+      , testProperty "[Identity Char]" $ roundTripEq (undefined :: [I Char])
+
+      , testProperty "Compose I  I  Int" $ roundTripEq (undefined :: Compose I  I  Int)
+      , testProperty "Compose [] I  Int" $ roundTripEq (undefined :: Compose [] I  Int)
+      , testProperty "Compose I  [] Int" $ roundTripEq (undefined :: Compose I  [] Int)
+      , testProperty "Compose [] [] Int" $ roundTripEq (undefined :: Compose [] [] Int)
+
+      , testProperty "Compose I  I  Char" $ roundTripEq (undefined :: Compose I  I  Char)
+      , testProperty "Compose [] I  Char" $ roundTripEq (undefined :: Compose [] I  Char)
+      , testProperty "Compose I  [] Char" $ roundTripEq (undefined :: Compose I  [] Char)
+      , testProperty "Compose [] [] Char" $ roundTripEq (undefined :: Compose [] [] Char)
+
+      , testProperty "Compose3 I  I  I  Char" $ roundTripEq (undefined :: Compose3 I  I  I  Char)
+      , testProperty "Compose3 I  [] I  Char" $ roundTripEq (undefined :: Compose3 I  [] I  Char)
+      , testProperty "Compose3 I  I  [] Char" $ roundTripEq (undefined :: Compose3 I  I  [] Char)
+      , testProperty "Compose3 I  [] [] Char" $ roundTripEq (undefined :: Compose3 I  [] [] Char)
+      , testProperty "Compose3 [] I  I  Char" $ roundTripEq (undefined :: Compose3 [] I  I  Char)
+      , testProperty "Compose3 [] [] I  Char" $ roundTripEq (undefined :: Compose3 [] [] I  Char)
+      , testProperty "Compose3 [] I  [] Char" $ roundTripEq (undefined :: Compose3 [] I  [] Char)
+      , testProperty "Compose3 [] [] [] Char" $ roundTripEq (undefined :: Compose3 [] [] [] Char)
+
+      , testProperty "Compose3' I  I  I  Char" $ roundTripEq (undefined :: Compose3' I  I  I  Char)
+      , testProperty "Compose3' I  [] I  Char" $ roundTripEq (undefined :: Compose3' I  [] I  Char)
+      , testProperty "Compose3' I  I  [] Char" $ roundTripEq (undefined :: Compose3' I  I  [] Char)
+      , testProperty "Compose3' I  [] [] Char" $ roundTripEq (undefined :: Compose3' I  [] [] Char)
+      , testProperty "Compose3' [] I  I  Char" $ roundTripEq (undefined :: Compose3' [] I  I  Char)
+      , testProperty "Compose3' [] [] I  Char" $ roundTripEq (undefined :: Compose3' [] [] I  Char)
+      , testProperty "Compose3' [] I  [] Char" $ roundTripEq (undefined :: Compose3' [] I  [] Char)
+      , testProperty "Compose3' [] [] [] Char" $ roundTripEq (undefined :: Compose3' [] [] [] Char)
+      ]
     , testGroup "ghcGenerics" [
         testProperty "OneConstructor" $ roundTripEq OneConstructor
       , testProperty "Product2" $ roundTripEq (undefined :: Product2 Int Bool)

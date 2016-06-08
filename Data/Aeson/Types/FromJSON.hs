@@ -82,6 +82,7 @@ import Control.Monad                ((<=<))
 import Data.Attoparsec.Number       (Number (..))
 import Data.Bits                    (unsafeShiftR)
 import Data.Fixed                   (Fixed, HasResolution)
+import Data.Functor.Compose         (Compose (..))
 import Data.Functor.Identity        (Identity (..))
 import Data.Hashable                (Hashable (..))
 import Data.Int                     (Int16, Int32, Int64, Int8)
@@ -961,13 +962,6 @@ notFound key = fail $ "The key \"" ++ unpack key ++ "\" was not found"
 -- base
 -------------------------------------------------------------------------------
 
-instance FromJSON1 Identity where
-    liftParseJSON p _ a = Identity <$> p a
-    {-# INLINE liftParseJSON #-}
-
-instance (FromJSON a) => FromJSON (Identity a) where
-    parseJSON = parseJSON1
-    {-# INLINE parseJSON #-}
 
 instance FromJSON2 Const where
     liftParseJSON2 p _ _ _ = fmap Const . p
@@ -1257,6 +1251,48 @@ instance (FromJSON a) => FromJSON (DList.DList a) where
     {-# INLINE parseJSON #-}
 
 -------------------------------------------------------------------------------
+-- tranformers - Functors
+-------------------------------------------------------------------------------
+
+instance FromJSON1 Identity where
+    liftParseJSON p _ a = Identity <$> p a
+    {-# INLINE liftParseJSON #-}
+
+    liftParseJSONList _ p a = fmap Identity <$> p a
+    {-# INLINE liftParseJSONList #-}
+
+instance (FromJSON a) => FromJSON (Identity a) where
+    parseJSON = parseJSON1
+    {-# INLINE parseJSON #-}
+
+    parseJSONList = liftParseJSONList parseJSON parseJSONList
+    {-# INLINE parseJSONList #-}
+
+instance (FromJSONKey a, FromJSON a) => FromJSONKey (Identity a) where
+    fromJSONKey = mapFromJSONKeyFunction Identity fromJSONKey
+
+
+instance (FromJSON1 f, FromJSON1 g) => FromJSON1 (Compose f g) where
+    liftParseJSON p pl a = Compose <$> liftParseJSON g gl a
+      where
+        g  = liftParseJSON p pl
+        gl = liftParseJSONList p pl
+    {-# INLINE liftParseJSON #-}
+
+    liftParseJSONList p pl a = map Compose <$> liftParseJSONList g gl a
+      where
+        g  = liftParseJSON p pl
+        gl = liftParseJSONList p pl
+    {-# INLINE liftParseJSONList #-}
+
+instance (FromJSON1 f, FromJSON1 g, FromJSON a) => FromJSON (Compose f g a) where
+    parseJSON = parseJSON1
+    {-# INLINE parseJSON #-}
+
+    parseJSONList = liftParseJSONList parseJSON parseJSONList
+    {-# INLINE parseJSONList #-}
+
+-------------------------------------------------------------------------------
 -- containers
 -------------------------------------------------------------------------------
 
@@ -1513,9 +1549,6 @@ instance FromJSONKey Char where
 
 instance (FromJSONKey a, FromJSON a) => FromJSONKey [a] where
     fromJSONKey = fromJSONKeyList
-
-instance (FromJSONKey a, FromJSON a) => FromJSONKey (Identity a) where
-    fromJSONKey = mapFromJSONKeyFunction Identity fromJSONKey
 
 -------------------------------------------------------------------------------
 -- Tuple instances, see tuple-instances-from.hs
