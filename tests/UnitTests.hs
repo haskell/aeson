@@ -47,6 +47,7 @@ import qualified Data.Text.Lazy.Encoding as LT
 import qualified Data.Sequence as Seq
 import qualified Data.DList as DList
 import qualified Data.HashMap.Strict as HM
+import qualified Data.Map as M
 
 tests :: Test
 tests = testGroup "unit" [
@@ -277,8 +278,14 @@ jsonExamples =
   , Example "Seq" "[1,2,3]"  (Seq.fromList [1, 2, 3] ::  Seq.Seq Int)
   , Example "DList" "[1,2,3]"  (DList.fromList [1, 2, 3] :: DList.DList Int)
   , Example "()" "[]"  ()
-  , Example "HashMap Int Int" "{\"0\":1,\"2\":3}"  (HM.fromList [(0,1),(2,3)] :: HM.HashMap Int Int)
+
+  , Example "HashMap Int Int"          "{\"0\":1,\"2\":3}"  (HM.fromList [(0,1),(2,3)] :: HM.HashMap Int Int)
+  , Example "Map Int Int"              "{\"0\":1,\"2\":3}"  (M.fromList [(0,1),(2,3)] :: M.Map Int Int)
+  , Example "Map (Tagged Int Int) Int" "{\"0\":1,\"2\":3}"  (M.fromList [(Tagged 0,1),(Tagged 2,3)] :: M.Map (Tagged Int Int) Int)
+  , Example "Map [Int] Int"            "[[[0],1],[[2],3]]"  (M.fromList [([0],1),([2],3)] :: M.Map [Int] Int)
+
   , Example "nan :: Double" "null"  (Approx $ 0/0 :: Approx Double)
+
   -- Three separate cases, as ordering in HashMap is not defined
   , Example "HashMap Float Int, NaN" "{\"NaN\":1}"  (Approx $ HM.singleton (0/0) 1 :: Approx (HM.HashMap Float Int))
   , Example "HashMap Float Int, Infinity" "{\"Infinity\":1}"  (HM.singleton (1/0) 1 :: HM.HashMap Float Int)
