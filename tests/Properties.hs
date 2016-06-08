@@ -6,8 +6,7 @@ import Prelude ()
 import Prelude.Compat
 
 import Control.Applicative (Const)
-import Data.Aeson (eitherDecode)
-import Data.Aeson.Encode (encode)
+import Data.Aeson (eitherDecode, encode)
 import Data.Aeson.Internal (IResult(..), formatError, ifromJSON, iparse)
 import Data.Aeson.Parser (value)
 import Data.Aeson.Types

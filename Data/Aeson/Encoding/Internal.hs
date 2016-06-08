@@ -6,6 +6,7 @@ module Data.Aeson.Encoding.Internal
     (
     -- * Encoding
       Encoding (..) -- TODO: export fromEncoding for now
+    , encodingToLazyByteString 
     , unsafeToEncoding
     , Series (..) -- TODO: don't export constructor
     , pairs
@@ -62,10 +63,10 @@ import Data.Word
 
 import Data.Aeson.Types.Internal (Value)
 
-import qualified Data.Aeson.Encode.Builder as EB
-import qualified Data.ByteString.Builder   as B
-import qualified Data.ByteString.Lazy      as BSL
-import qualified Data.Text.Lazy            as LT
+import qualified Data.Aeson.Encoding.Builder as EB
+import qualified Data.ByteString.Builder     as B
+import qualified Data.ByteString.Lazy        as BSL
+import qualified Data.Text.Lazy              as LT
 
 -- | An encoding of a JSON value.
 newtype Encoding = Encoding {
@@ -79,6 +80,10 @@ newtype Encoding = Encoding {
 -- is a valid JSON Encoding!
 unsafeToEncoding :: Builder -> Encoding
 unsafeToEncoding = Encoding
+
+encodingToLazyByteString :: Encoding -> BSL.ByteString
+encodingToLazyByteString = toLazyByteString . fromEncoding
+{-# INLINE encodingToLazyByteString #-}
 
 -------------------------------------------------------------------------------
 -- Encoding instances

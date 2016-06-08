@@ -2,6 +2,7 @@ module Data.Aeson.Encoding
     (
     -- * Encoding
       Encoding
+    , encodingToLazyByteString 
     , fromEncoding
     , unsafeToEncoding
     , Series

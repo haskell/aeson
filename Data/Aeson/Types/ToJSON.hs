@@ -55,9 +55,9 @@ module Data.Aeson.Types.ToJSON (
 import Prelude        ()
 import Prelude.Compat
 
-import Data.Aeson.Encoding.Internal (Encoding (..), Series, dict, emptyArray_,
-                                     tuple, (>*<))
-import Data.Aeson.Functions         (mapHashKeyVal, mapKeyVal)
+import Data.Aeson.Encoding.Internal  (Encoding (..), Series, dict, emptyArray_,
+                                      tuple, (>*<))
+import Data.Aeson.Internal.Functions (mapHashKeyVal, mapKeyVal)
 import Data.Aeson.Types.Generic
 import Data.Aeson.Types.Internal
 
@@ -92,35 +92,31 @@ import Foreign.Storable        (Storable)
 import GHC.Generics
 import Numeric.Natural         (Natural)
 
-import qualified Data.ByteString.Builder    as B (toLazyByteString)
-import qualified Data.ByteString.Lazy       as L
-import qualified Data.DList                 as DList
-import qualified Data.HashMap.Strict        as H
-import qualified Data.HashSet               as HashSet
-import qualified Data.IntMap                as IntMap
-import qualified Data.IntSet                as IntSet
-import qualified Data.List.NonEmpty         as NE
-import qualified Data.Map                   as M
-import qualified Data.Scientific            as Scientific
-import qualified Data.Sequence              as Seq
-import qualified Data.Set                   as Set
-import qualified Data.Text                  as T
-import qualified Data.Text.Encoding         as T
-import qualified Data.Text.Lazy             as LT
-import qualified Data.Tree                  as Tree
-import qualified Data.Vector                as V
-import qualified Data.Vector.Generic        as VG
-import qualified Data.Vector.Mutable        as VM
-import qualified Data.Vector.Primitive      as VP
-import qualified Data.Vector.Storable       as VS
-import qualified Data.Vector.Unboxed        as VU
+import qualified Data.ByteString.Builder as B (toLazyByteString)
+import qualified Data.ByteString.Lazy    as L
+import qualified Data.DList              as DList
+import qualified Data.HashMap.Strict     as H
+import qualified Data.HashSet            as HashSet
+import qualified Data.IntMap             as IntMap
+import qualified Data.IntSet             as IntSet
+import qualified Data.List.NonEmpty      as NE
+import qualified Data.Map                as M
+import qualified Data.Scientific         as Scientific
+import qualified Data.Sequence           as Seq
+import qualified Data.Set                as Set
+import qualified Data.Text               as T
+import qualified Data.Text.Encoding      as T
+import qualified Data.Text.Lazy          as LT
+import qualified Data.Tree               as Tree
+import qualified Data.Vector             as V
+import qualified Data.Vector.Generic     as VG
+import qualified Data.Vector.Mutable     as VM
+import qualified Data.Vector.Primitive   as VP
+import qualified Data.Vector.Storable    as VS
+import qualified Data.Vector.Unboxed     as VU
 
 toJSONPair :: (a -> Value) -> (b -> Value) -> (a, b) -> Value
-toJSONPair keySerialiser valSerializer (a, b) = Array $ V.create $ do
-     mv <- VM.unsafeNew 2
-     VM.unsafeWrite mv 0 (keySerialiser a)
-     VM.unsafeWrite mv 1 (valSerializer b)
-     return mv
+toJSONPair a b = liftToJSON2 a (listValue a) b (listValue b)
 {-# INLINE toJSONPair #-}
 
 realFloatToJSON :: RealFloat a => a -> Value

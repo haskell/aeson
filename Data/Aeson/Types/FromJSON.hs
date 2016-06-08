@@ -69,7 +69,7 @@ module Data.Aeson.Types.FromJSON (
 import Prelude        ()
 import Prelude.Compat hiding (foldr)
 
-import Data.Aeson.Functions      (mapKey)
+import Data.Aeson.Internal.Functions (mapKey)
 import Data.Aeson.Types.Generic
 import Data.Aeson.Types.Internal
 
