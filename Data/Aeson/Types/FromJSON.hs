@@ -1382,17 +1382,37 @@ instance FromJSON DotNetTime where
 instance FromJSON Day where
     parseJSON = withText "Day" (Time.run Time.day)
 
+instance FromJSONKey Day where
+    fromJSONKey = FromJSONKeyTextParser (Time.run Time.day)
+
+
 instance FromJSON TimeOfDay where
     parseJSON = withText "TimeOfDay" (Time.run Time.timeOfDay)
+
+instance FromJSONKey TimeOfDay where
+    fromJSONKey = FromJSONKeyTextParser (Time.run Time.timeOfDay)
+
 
 instance FromJSON LocalTime where
     parseJSON = withText "LocalTime" (Time.run Time.localTime)
 
+instance FromJSONKey LocalTime where
+    fromJSONKey = FromJSONKeyTextParser (Time.run Time.localTime)
+
+
 instance FromJSON ZonedTime where
     parseJSON = withText "ZonedTime" (Time.run Time.zonedTime)
 
+instance FromJSONKey ZonedTime where
+    fromJSONKey = FromJSONKeyTextParser (Time.run Time.zonedTime)
+
+
 instance FromJSON UTCTime where
     parseJSON = withText "UTCTime" (Time.run Time.utcTime)
+
+instance FromJSONKey UTCTime where
+    fromJSONKey = FromJSONKeyTextParser (Time.run Time.utcTime)
+
 
 -- | /WARNING:/ Only parse lengths of time from trusted input
 -- since an attacker could easily fill up the memory of the target

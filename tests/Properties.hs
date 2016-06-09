@@ -1,4 +1,4 @@
-{-# LANGUAGE OverloadedStrings, RecordWildCards, ScopedTypeVariables #-}
+{-# LANGUAGE CPP, OverloadedStrings, ScopedTypeVariables #-}
 
 module Properties where
 
@@ -186,6 +186,12 @@ tests = testGroup "properties" [
     , testProperty "Natural" $ roundTripKey (undefined :: Natural)
     , testProperty "Float" $ roundTripKey (undefined :: Float)
     , testProperty "Double" $ roundTripKey (undefined :: Double)
+#if MIN_VERSION_base(4,7,0)
+    , testProperty "Day" $ roundTripKey (undefined :: Day)
+    , testProperty "LocalTime" $ roundTripKey (undefined :: LocalTime)
+    , testProperty "TimeOfDay" $ roundTripKey (undefined :: TimeOfDay)
+    , testProperty "UTCTime" $ roundTripKey (undefined :: UTCTime)
+#endif
     ]
   , testGroup "toFromJSON" [
       testProperty "Integer" (toFromJSON :: Integer -> Property)
