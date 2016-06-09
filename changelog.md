@@ -1,6 +1,6 @@
 For the latest version of this document, please see [https://github.com/bos/aeson/blob/master/changelog.md](https://github.com/bos/aeson/blob/master/changelog.md).
 
-# 0.12.0.0
+# 1.0.0.0
 
 * Added list specific members to `ToJSON` and `FromJSON` classes. In the same
   way `Read` / `Show` handle lists specifically. This removes need for
