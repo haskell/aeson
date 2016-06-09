@@ -17,6 +17,9 @@ module Data.Aeson.Internal.Time
     , toTimeOfDay64
     ) where
 
+import Prelude ()
+import Prelude.Compat
+
 import Data.Fixed (Pico)
 import Data.Int (Int64)
 import Data.Time

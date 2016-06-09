@@ -25,6 +25,9 @@
 
 module Data.Aeson.Types.Generic where
 
+import Prelude ()
+import Prelude.Compat
+
 import GHC.Generics
 import Data.Proxy (Proxy (..))
 
