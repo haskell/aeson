@@ -1592,6 +1592,7 @@ instance (ToJSON a) => ToJSON (Identity a) where
 
 instance (ToJSONKey a, ToJSON a) => ToJSONKey (Identity a) where
     toJSONKey = contramapToJSONKeyFunction runIdentity toJSONKey
+    toJSONKeyList = contramapToJSONKeyFunction (map runIdentity) toJSONKeyList
 
 
 instance (ToJSON1 f, ToJSON1 g) => ToJSON1 (Compose f g) where

@@ -1269,7 +1269,8 @@ instance (FromJSON a) => FromJSON (Identity a) where
     {-# INLINE parseJSONList #-}
 
 instance (FromJSONKey a, FromJSON a) => FromJSONKey (Identity a) where
-    fromJSONKey = mapFromJSONKeyFunction Identity fromJSONKey
+    fromJSONKey = coerceFromJSONKeyFunction (fromJSONKey :: FromJSONKeyFunction a)
+    fromJSONKeyList = coerceFromJSONKeyFunction (fromJSONKeyList :: FromJSONKeyFunction [a])
 
 
 instance (FromJSON1 f, FromJSON1 g) => FromJSON1 (Compose f g) where

@@ -283,6 +283,8 @@ jsonExamples =
   , Example "Map Int Int"              "{\"0\":1,\"2\":3}"  (M.fromList [(0,1),(2,3)] :: M.Map Int Int)
   , Example "Map (Tagged Int Int) Int" "{\"0\":1,\"2\":3}"  (M.fromList [(Tagged 0,1),(Tagged 2,3)] :: M.Map (Tagged Int Int) Int)
   , Example "Map [Int] Int"            "[[[0],1],[[2],3]]"  (M.fromList [([0],1),([2],3)] :: M.Map [Int] Int)
+  , Example "Map [Char] Int"           "{\"ab\":1,\"cd\":3}"  (M.fromList [("ab",1),("cd",3)] :: M.Map [Char] Int)
+  , Example "Map [I Char] Int"         "{\"ab\":1,\"cd\":3}"  (M.fromList [(map pure "ab",1),(map pure "cd",3)] :: M.Map [I Char] Int)
 
   , Example "nan :: Double" "null"  (Approx $ 0/0 :: Approx Double)
 
