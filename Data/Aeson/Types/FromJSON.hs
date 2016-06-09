@@ -1187,6 +1187,7 @@ instance FromJSON Word64 where
 instance FromJSONKey Word64 where
     fromJSONKey = FromJSONKeyTextParser parseIntegralText
 
+
 instance FromJSON Text where
     parseJSON = withText "Text" pure
     {-# INLINE parseJSON #-}
@@ -1194,17 +1195,28 @@ instance FromJSON Text where
 instance FromJSONKey Text where
     fromJSONKey = fromJSONKeyCoerce
 
+
 instance FromJSON LT.Text where
     parseJSON = withText "Lazy Text" $ pure . LT.fromStrict
     {-# INLINE parseJSON #-}
 
+instance FromJSONKey LT.Text where
+    fromJSONKey = FromJSONKeyText LT.fromStrict
+
+
 instance FromJSON Version where
+    parseJSON = withText "Version" parseVersionText
     {-# INLINE parseJSON #-}
-    parseJSON = withText "Version" $ go . readP_to_S parseVersion . unpack
-      where
-        go [(v,[])] = return v
-        go (_ : xs) = go xs
-        go _        = fail $ "could not parse Version"
+
+instance FromJSONKey Version where
+    fromJSONKey = FromJSONKeyTextParser parseVersionText
+
+parseVersionText :: Text -> Parser Version
+parseVersionText = go . readP_to_S parseVersion . unpack
+  where
+    go [(v,[])] = return v
+    go (_ : xs) = go xs
+    go _        = fail $ "could not parse Version"
 
 -------------------------------------------------------------------------------
 -- semigroups NonEmpty

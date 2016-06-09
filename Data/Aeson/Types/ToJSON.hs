@@ -1502,6 +1502,7 @@ instance ToJSONKey Text where
     toJSONKey = toJSONKeyText id
     {-# INLINE toJSONKey #-}
 
+
 instance ToJSON LT.Text where
     toJSON = String . LT.toStrict
     {-# INLINE toJSON #-}
@@ -1509,12 +1510,19 @@ instance ToJSON LT.Text where
     toEncoding = E.lazyText
     {-# INLINE toEncoding #-}
 
+instance ToJSONKey LT.Text where
+    toJSONKey = toJSONKeyText LT.toStrict
+
+
 instance ToJSON Version where
     toJSON = toJSON . showVersion
     {-# INLINE toJSON #-}
 
     toEncoding = toEncoding . showVersion
     {-# INLINE toEncoding #-}
+
+instance ToJSONKey Version where
+    toJSONKey = toJSONKeyText (T.pack . showVersion)
 
 -------------------------------------------------------------------------------
 -- semigroups NonEmpty

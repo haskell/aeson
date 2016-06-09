@@ -160,7 +160,7 @@ test-suite tests
     dlist,
     generic-deriving >= 1.10 && < 1.11,
     ghc-prim >= 0.2,
-    hashable >= 1.1.2.0,
+    hashable >= 1.2.4.0,
     tagged,
     template-haskell,
     test-framework,
