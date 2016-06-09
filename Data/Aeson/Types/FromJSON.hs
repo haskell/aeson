@@ -127,9 +127,8 @@ import qualified Data.Vector.Unboxed   as VU
 
 import Unsafe.Coerce (unsafeCoerce)
 
--- Coercible derivations aren't as powerful on GHC 7.8, though supported.
 #ifndef HAS_COERCIBLE
-#define HAS_COERCIBLE (__GLASGOW_HASKELL__ >= 709)
+#define HAS_COERCIBLE (__GLASGOW_HASKELL__ >= 707)
 #endif
 
 #if HAS_COERCIBLE
@@ -325,6 +324,7 @@ class FromJSONKey a where
     fromJSONKey :: FromJSONKeyFunction a
     default fromJSONKey :: FromJSON a => FromJSONKeyFunction a
     fromJSONKey = FromJSONKeyValue parseJSON
+
     fromJSONKeyList :: FromJSONKeyFunction [a]
     default fromJSONKeyList :: FromJSON a => FromJSONKeyFunction [a]
     fromJSONKeyList = FromJSONKeyValue parseJSON
@@ -343,10 +343,10 @@ data CoerceText a where
 #endif
 
 data FromJSONKeyFunction a
-    = FromJSONKeyCoerce (CoerceText a)
-    | FromJSONKeyText (Text -> a)
-    | FromJSONKeyTextParser (Text -> Parser a)
-    | FromJSONKeyValue (Value -> Parser a)
+    = FromJSONKeyCoerce !(CoerceText a)
+    | FromJSONKeyText !(Text -> a)
+    | FromJSONKeyTextParser !(Text -> Parser a)
+    | FromJSONKeyValue !(Value -> Parser a)
 
 instance Functor FromJSONKeyFunction where
     fmap h (FromJSONKeyCoerce CoerceText) = FromJSONKeyText (h . coerce')
@@ -357,6 +357,8 @@ instance Functor FromJSONKeyFunction where
 -- | Construct 'FromJSONKeyFunction' for types coercible from 'Text'. This
 -- conversion is still unsafe, as 'Hashable' and 'Eq' instances of @a@ should be
 -- compatible with 'Text' i.e. hash values be equal for wrapped values as well.
+--
+-- On pre GHC 7.8 this is unconstrainted function.
 fromJSONKeyCoerce ::
 #if HAS_COERCIBLE
     Coercible Text a =>
@@ -364,15 +366,22 @@ fromJSONKeyCoerce ::
     FromJSONKeyFunction a
 fromJSONKeyCoerce = FromJSONKeyCoerce CoerceText
 
+-- | Semantically the same as @coerceFromJSONKeyFunction = fmap coerce = coerce@.
+--
+-- See note on 'fromJSONKeyCoerce'.
 coerceFromJSONKeyFunction ::
 #if HAS_COERCIBLE
     Coercible a b =>
 #endif
     FromJSONKeyFunction a -> FromJSONKeyFunction b
+#if HAS_COERCIBLE
+coerceFromJSONKeyFunction = coerce
+#else
 coerceFromJSONKeyFunction (FromJSONKeyCoerce CoerceText) = FromJSONKeyCoerce CoerceText
 coerceFromJSONKeyFunction (FromJSONKeyText f)            = FromJSONKeyText (coerce' . f)
 coerceFromJSONKeyFunction (FromJSONKeyTextParser f)      = FromJSONKeyTextParser (fmap coerce' . f)
 coerceFromJSONKeyFunction (FromJSONKeyValue f)           = FromJSONKeyValue (fmap coerce' . f)
+#endif
 
 {-# RULES
   "FromJSONKeyCoerce: fmap id"     forall (x :: FromJSONKeyFunction a).
@@ -385,6 +394,7 @@ coerceFromJSONKeyFunction (FromJSONKeyValue f)           = FromJSONKeyValue (fma
   #-}
 #endif
 
+-- | Same as 'fmap'. Provided for the consistency with 'ToJSONKeyFunction'.
 mapFromJSONKeyFunction :: (a -> b) -> FromJSONKeyFunction a -> FromJSONKeyFunction b
 mapFromJSONKeyFunction = fmap
 

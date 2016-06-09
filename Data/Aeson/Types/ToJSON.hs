@@ -43,6 +43,7 @@ module Data.Aeson.Types.ToJSON (
     -- * Classes and types for map keys
     , ToJSONKey(..)
     , ToJSONKeyFunction(..)
+    , toJSONKeyText
     , contramapToJSONKeyFunction
     -- * Object key-value pairs
     , KeyValue(..)
@@ -413,22 +414,44 @@ class ToJSONKey a where
     --   container.
     toJSONKey :: ToJSONKeyFunction a
     default toJSONKey :: ToJSON a => ToJSONKeyFunction a
-    toJSONKey = ToJSONKeyValue (toJSON, toEncoding)
+    toJSONKey = ToJSONKeyValue toJSON toEncoding
+
     -- | This is similar in spirit to the 'showsList' method of 'Show'.
     --   It makes it possible to give 'String' keys special treatment
     --   without using @OverlappingInstances@.
     toJSONKeyList :: ToJSONKeyFunction [a]
     default toJSONKeyList :: ToJSON a => ToJSONKeyFunction [a]
-    toJSONKeyList = ToJSONKeyValue (toJSON, toEncoding)
+    toJSONKeyList = ToJSONKeyValue toJSON toEncoding
 
 data ToJSONKeyFunction a
-    = ToJSONKeyText (a -> Text, a -> Encoding' Text) -- ^ key is encoded to string, produces object
-    | ToJSONKeyValue (a -> Value, a -> Encoding) -- ^ key is encoded to value, produces array
+    = ToJSONKeyText !(a -> Text) !(a -> Encoding' Text)
+      -- ^ key is encoded to string, produces object
+    | ToJSONKeyValue !(a -> Value) !(a -> Encoding)
+      -- ^ key is encoded to value, produces array
 
+-- | Helper for creating textual keys.
+--
+-- @
+-- instance 'ToJSONKey' MyKey where
+--     'toJSONKey' = 'toJSONKeyText' myKeyToText
+--       where
+--         myKeyToText = Text.pack . show -- or showt from text-show
+-- @
+toJSONKeyText :: (a -> Text) -> ToJSONKeyFunction a
+toJSONKeyText f = ToJSONKeyText f (E.text . f)
+
+-- | TODO: should this be exported?
+toJSONKeyTextEnc :: (a -> Encoding' Text) -> ToJSONKeyFunction a
+toJSONKeyTextEnc e = ToJSONKeyText tot e
+ where
+    -- TODO: dropAround is also used in stringEncoding, which is unfortunate atm
+    tot = T.dropAround (== '"') . T.decodeLatin1 . L.toStrict . E.encodingToLazyByteString . e
+
+-- | Contravariant map, as 'ToJSONKeyFunction' is a contravariant functor.
 contramapToJSONKeyFunction :: (b -> a) -> ToJSONKeyFunction a -> ToJSONKeyFunction b
 contramapToJSONKeyFunction h x = case x of
-    ToJSONKeyText (f,g) -> ToJSONKeyText (f . h, g . h)
-    ToJSONKeyValue (f,g) -> ToJSONKeyValue (f . h, g . h)
+    ToJSONKeyText  f g -> ToJSONKeyText (f . h) (g . h)
+    ToJSONKeyValue f g -> ToJSONKeyValue (f . h) (g . h)
 
 -------------------------------------------------------------------------------
 -- Lifings of FromJSON and ToJSON to unary and binary type constructors
@@ -1231,10 +1254,7 @@ instance ToJSON Bool where
     {-# INLINE toEncoding #-}
 
 instance ToJSONKey Bool where
-    toJSONKey = ToJSONKeyText
-        ( (\x -> if x then "true" else "false")
-        , (\x -> E.text $ if x then "true"else "false")
-        )
+    toJSONKey = toJSONKeyText $ \x -> if x then "true" else "false"
 
 
 instance ToJSON Ordering where
@@ -1479,7 +1499,7 @@ instance ToJSON Text where
     {-# INLINE toEncoding #-}
 
 instance ToJSONKey Text where
-    toJSONKey = ToJSONKeyText (id, E.text)
+    toJSONKey = toJSONKeyText id
     {-# INLINE toJSONKey #-}
 
 instance ToJSON LT.Text where
@@ -1611,14 +1631,14 @@ instance ToJSON a => ToJSON (IntMap.IntMap a) where
 
 instance ToJSONKey k => ToJSON1 (M.Map k) where
     liftToJSON g _ = case toJSONKey of
-        ToJSONKeyText (f,_) -> Object . mapHashKeyVal f g
-        ToJSONKeyValue (f,_) -> Array . V.fromList . map (toJSONPair f g) . M.toList
+        ToJSONKeyText f _ -> Object . mapHashKeyVal f g
+        ToJSONKeyValue  f _ -> Array . V.fromList . map (toJSONPair f g) . M.toList
     {-# INLINE liftToJSON #-}
 
     -- liftToEncoding :: forall a. (a -> Encoding) -> ([a] -> Encoding) -> M.Map k a -> Encoding
     liftToEncoding g _ = case toJSONKey of
-        ToJSONKeyText (_,f) -> dict f g M.foldrWithKey
-        ToJSONKeyValue (_,f) -> listEncoding (pairEncoding f) . M.toList
+        ToJSONKeyText _ f -> dict f g M.foldrWithKey
+        ToJSONKeyValue _ f -> listEncoding (pairEncoding f) . M.toList
       where
         -- pairEncoding :: (k -> Encoding) -> (k, a) -> Encoding
         pairEncoding f (a, b) = tuple $ f a >*< g b
@@ -1730,14 +1750,14 @@ instance (ToJSON a) => ToJSON (HashSet.HashSet a) where
 
 instance ToJSONKey k => ToJSON1 (H.HashMap k) where
     liftToJSON g _ = case toJSONKey of
-        ToJSONKeyText (f,_) -> Object . mapKeyVal f g
-        ToJSONKeyValue (f,_) -> Array . V.fromList . map (toJSONPair f g) . H.toList
+        ToJSONKeyText f _ -> Object . mapKeyVal f g
+        ToJSONKeyValue f _ -> Array . V.fromList . map (toJSONPair f g) . H.toList
     {-# INLINE liftToJSON #-}
 
     -- liftToEncoding :: forall a. (a -> Encoding) -> ([a] -> Encoding) -> H.HashMap k a -> Encoding
     liftToEncoding g _ = case toJSONKey of
-        ToJSONKeyText (_,f) -> dict f g H.foldrWithKey
-        ToJSONKeyValue (_,f) -> listEncoding (pairEncoding f) . H.toList
+        ToJSONKeyText _ f -> dict f g H.foldrWithKey
+        ToJSONKeyValue _ f -> listEncoding (pairEncoding f) . H.toList
       where
         -- pairEncoding :: (k -> Encoding) -> (k, a) -> Encoding
         pairEncoding f (a, b) = tuple $ f a >*< g b
@@ -1915,22 +1935,13 @@ instance ToJSONKey b => ToJSONKey (Tagged a b) where
 -- Instances for converting t map keys
 -------------------------------------------------------------------------------
 
--- | TODO: Move ToJSONKEyFunction to .Types(.Internal),
--- export and document this function from there
-toJSONKeyTextEnc :: (a -> Encoding' Text) -> ToJSONKeyFunction a
-toJSONKeyTextEnc e = ToJSONKeyText
-    -- TODO: dropAround is also used in stringEncoding, which is unfortunate atm
-    ( T.dropAround (== '"') . T.decodeLatin1 . L.toStrict . E.encodingToLazyByteString . e
-    , e
-    )
-
 instance (ToJSON a, ToJSON b) => ToJSONKey (a,b)
 instance (ToJSON a, ToJSON b, ToJSON c) => ToJSONKey (a,b,c)
 instance (ToJSON a, ToJSON b, ToJSON c, ToJSON d) => ToJSONKey (a,b,c,d)
 
 instance ToJSONKey Char where
-    toJSONKey = ToJSONKeyText (T.singleton, E.string . (:[]))
-    toJSONKeyList = ToJSONKeyText (T.pack, E.text . T.pack)
+    toJSONKey = ToJSONKeyText T.singleton (E.string . (:[]))
+    toJSONKeyList = toJSONKeyText T.pack
 
 instance (ToJSONKey a, ToJSON a) => ToJSONKey [a] where
     toJSONKey = toJSONKeyList

@@ -322,7 +322,6 @@ fromJSONKeyAssertions =
     , assertIsCoerce  "Tagged Int Text" (fromJSONKey :: FromJSONKeyFunction (Tagged Int Text))
     , assertIsCoerce  "MyText"          (fromJSONKey :: FromJSONKeyFunction MyText)
 
--- Why this doesn't work on older GHC?
 #if __GLASGOW_HASKELL__ >= 710
     , assertIsCoerce' "MyText'"         (fromJSONKey :: FromJSONKeyFunction MyText')
 #endif
