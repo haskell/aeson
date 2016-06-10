@@ -161,20 +161,15 @@ bool False = Encoding "false"
 
 -- | Encode a series of key/value pairs, separated by commas.
 pairs :: Series -> Encoding
-pairs = brackets '{' '}'
+pairs (Value v) = openCurly >< retagEncoding v >< closeCurly
+pairs Empty     = emptyObject_
 {-# INLINE pairs #-}
-
-brackets :: Char -> Char -> Series -> Encoding
-brackets begin end (Value v) = Encoding $
-                               char7 begin <> fromEncoding v <> char7 end
-brackets begin end Empty     = Encoding (primBounded (EB.ascii2 (begin,end)) ())
 
 list :: (a -> Encoding) -> [a] -> Encoding
 list _  []     = emptyArray_
-list to' (x:xs) = Encoding $
-    char7 '[' <> fromEncoding (to' x) <> commas xs <> char7 ']'
+list to' (x:xs) = openBracket >< to' x >< commas xs >< closeBracket
   where
-    commas = foldr (\v vs -> char7 ',' <> fromEncoding (to' v) <> vs) mempty
+    commas = foldr (\v vs -> comma >< to' v >< vs) empty
 {-# INLINE list #-}
 
 -- | Encode as JSON object
@@ -184,7 +179,7 @@ dict
     -> (forall a. (k -> v -> a -> a) -> a -> m -> a)  -- ^ @foldrWithKey@ - indexed fold
     -> m                                              -- ^ container
     -> Encoding
-dict encodeKey encodeVal foldrWithKey = brackets '{' '}' . foldrWithKey go mempty
+dict encodeKey encodeVal foldrWithKey = pairs . foldrWithKey go mempty
   where
     go k v c = Value (encodeKV k v) <> c
     encodeKV k v = retagEncoding (encodeKey k) >< colon >< retagEncoding (encodeVal v)
@@ -196,7 +191,7 @@ data InArray
 infixr 6 >*<
 -- | See 'tuple'.
 (>*<) :: Encoding' a -> Encoding' b -> Encoding' InArray
-Encoding a >*< Encoding b = Encoding $ a <> char7 ',' <> b
+a >*< b = retagEncoding a >< comma >< retagEncoding b
 {-# INLINE (>*<) #-}
 
 empty :: Encoding' a
