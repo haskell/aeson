@@ -40,10 +40,13 @@ module Data.Aeson.Types
     -- ** Keys for maps
     , ToJSONKey(..)
     , ToJSONKeyFunction(..)
+    , toJSONKeyText
+    , contramapToJSONKeyFunction
     , FromJSONKey(..)
     , FromJSONKeyFunction(..)
     , fromJSONKeyCoerce
     , coerceFromJSONKeyFunction
+    , mapFromJSONKeyFunction
 
     -- ** Liftings to unary and binary type constructors
     , FromJSON1(..)

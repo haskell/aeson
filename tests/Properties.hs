@@ -6,8 +6,7 @@ import Prelude ()
 import Prelude.Compat
 
 import Control.Applicative (Const)
-import Data.Aeson (eitherDecode)
-import Data.Aeson.Encode (encode)
+import Data.Aeson (eitherDecode, encode)
 import Data.Aeson.Internal (IResult(..), formatError, ifromJSON, iparse)
 import Data.Aeson.Parser (value)
 import Data.Aeson.Types
@@ -37,6 +36,7 @@ import qualified Data.ByteString.Lazy.Char8 as L
 import qualified Data.HashMap.Strict as H
 import qualified Data.Map as Map
 import qualified Data.Text as T
+import qualified Data.Text.Lazy as LT
 import qualified Data.Vector as V
 
 encodeDouble :: Double -> Double -> Property
@@ -151,6 +151,7 @@ tests = testGroup "properties" [
     , testProperty "Integer" $ roundTripEq (1 :: Integer)
     , testProperty "String" $ roundTripEq ("" :: String)
     , testProperty "Text" $ roundTripEq T.empty
+    , testProperty "Lazy Text" $ roundTripEq LT.empty
     , testProperty "Foo" $ roundTripEq (undefined :: Foo)
     , testProperty "Day" $ roundTripEq (undefined :: Day)
     , testProperty "DotNetTime" $ roundTripEq (undefined :: Approx DotNetTime)
@@ -192,6 +193,8 @@ tests = testGroup "properties" [
     , testProperty "TimeOfDay" $ roundTripKey (undefined :: TimeOfDay)
     , testProperty "UTCTime" $ roundTripKey (undefined :: UTCTime)
 #endif
+    , testProperty "Version" $ roundTripKey (undefined :: Version)
+    , testProperty "Lazy Text" $ roundTripKey (undefined :: LT.Text)
     ]
   , testGroup "toFromJSON" [
       testProperty "Integer" (toFromJSON :: Integer -> Property)

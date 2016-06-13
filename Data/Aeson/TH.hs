@@ -141,7 +141,6 @@ import Data.List           ( (++), all, any, find, foldl, foldl'
 import Data.List.NonEmpty  ( NonEmpty((:|)), (<|) )
 import Data.Map            ( Map )
 import Data.Maybe          ( Maybe(Nothing, Just), catMaybes, fromMaybe, mapMaybe )
-import Data.Monoid         ( (<>), mconcat )
 import Data.Set            ( Set )
 import Language.Haskell.TH
 #if MIN_VERSION_template_haskell(2,8,0)
@@ -581,7 +580,7 @@ isMaybe (_, _, (_, _, AppT (ConT t) _)) = t == ''Maybe
 isMaybe _                               = False
 
 (<^>) :: ExpQ -> ExpQ -> ExpQ
-(<^>) a b = infixApp a [|(<>)|] b
+(<^>) a b = infixApp a [|(E.><)|] b
 infixr 6 <^>
 
 (<:>) :: ExpQ -> ExpQ -> ExpQ
@@ -660,10 +659,10 @@ argsToEncoding jc tes opts multiCons (RecC conName ts) = case (unwrapUnaryRecord
     (argTys, tvMap) <- reifyConTys jc tes conName
     let exp = object objBody
 
-        objBody = [|mconcat|] `appE`
+        objBody = [|E.econcat|] `appE`
                   ([|intersperse E.comma|] `appE` pairs)
         pairs | omitNothingFields opts = infixApp maybeFields
-                                                  [|(<>)|]
+                                                  [|(++)|]
                                                   restFields
               | otherwise = listE (map toPair argCons)
 
@@ -680,7 +679,7 @@ argsToEncoding jc tes opts multiCons (RecC conName ts) = case (unwrapUnaryRecord
               (infixApp
                 (infixE
                   (Just $ toFieldName field <^> [|E.colon|])
-                  [|(<>)|]
+                  [|(E.><)|]
                   Nothing)
                 [|(.)|]
                 (dispatchToEncoding jc conName tvMap argTy))

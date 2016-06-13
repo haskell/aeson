@@ -63,18 +63,23 @@ library
 
   exposed-modules:
     Data.Aeson
-    Data.Aeson.Encode
     Data.Aeson.Encoding
-    Data.Aeson.Encoding.Internal
-    Data.Aeson.Internal
-    Data.Aeson.Internal.Time
     Data.Aeson.Parser
+    Data.Aeson.Text
     Data.Aeson.Types
     Data.Aeson.TH
 
+    Data.Aeson.Encoding.Internal
+    Data.Aeson.Internal
+    Data.Aeson.Internal.Time
+
+  -- Deprecated modules
+  exposed-modules:
+    Data.Aeson.Encode
+
   other-modules:
-    Data.Aeson.Encode.Builder
-    Data.Aeson.Functions
+    Data.Aeson.Encoding.Builder
+    Data.Aeson.Internal.Functions
     Data.Aeson.Parser.Internal
     Data.Aeson.Parser.Time
     Data.Aeson.Types.FromJSON
@@ -155,7 +160,7 @@ test-suite tests
     dlist,
     generic-deriving >= 1.10 && < 1.11,
     ghc-prim >= 0.2,
-    hashable >= 1.1.2.0,
+    hashable >= 1.2.4.0,
     tagged,
     template-haskell,
     test-framework,

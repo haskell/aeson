@@ -109,7 +109,7 @@ module Data.Aeson
     ) where
 
 import Data.Aeson.Types.FromJSON (ifromJSON)
-import Data.Aeson.Encode (encode)
+import Data.Aeson.Encoding (encodingToLazyByteString)
 import Data.Aeson.Parser.Internal (decodeWith, decodeStrictWith,
                                    eitherDecodeWith, eitherDecodeStrictWith,
                                    jsonEOF, json, jsonEOF', json')
@@ -117,6 +117,12 @@ import Data.Aeson.Types
 import Data.Aeson.Types.Internal (JSONPath, formatError)
 import qualified Data.ByteString as B
 import qualified Data.ByteString.Lazy as L
+
+-- | Efficiently serialize a JSON value as a lazy 'L.ByteString'.
+--
+-- This is implemented in terms of the 'ToJSON' class's 'toEncoding' method.
+encode :: (ToJSON a) => a -> L.ByteString
+encode = encodingToLazyByteString . toEncoding
 
 -- | Efficiently deserialize a JSON value from a lazy 'L.ByteString'.
 -- If this fails due to incomplete or invalid input, 'Nothing' is

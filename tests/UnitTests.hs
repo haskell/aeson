@@ -13,7 +13,7 @@ import Prelude.Compat
 import Control.Applicative (Const(..))
 import Control.Monad (forM)
 import Data.Aeson (FromJSONKeyFunction(..), FromJSONKey(..), decode, eitherDecode, encode, genericToJSON, genericToEncoding, object, FromJSON(..), withObject, (.=), (.:), (.:?), (.:!))
-import Data.Aeson.Encode (encodeToTextBuilder)
+import Data.Aeson.Text (encodeToTextBuilder)
 import Data.Aeson.Internal (JSONPathElement(..), formatError)
 import Data.Aeson.TH (deriveJSON)
 import Data.Aeson.Types (ToJSON(..), Value, camelTo, camelTo2, defaultOptions, omitNothingFields)
@@ -322,7 +322,6 @@ fromJSONKeyAssertions =
     , assertIsCoerce  "Tagged Int Text" (fromJSONKey :: FromJSONKeyFunction (Tagged Int Text))
     , assertIsCoerce  "MyText"          (fromJSONKey :: FromJSONKeyFunction MyText)
 
--- Why this doesn't work on older GHC?
 #if __GLASGOW_HASKELL__ >= 710
     , assertIsCoerce' "MyText'"         (fromJSONKey :: FromJSONKeyFunction MyText')
 #endif

@@ -51,6 +51,7 @@ module Data.Aeson.Types.Class
     -- * Classes and types for map keys
     , ToJSONKey(..)
     , ToJSONKeyFunction(..)
+    , toJSONKeyText
     , contramapToJSONKeyFunction
     , FromJSONKey(..)
     , FromJSONKeyFunction(..)
