@@ -12,6 +12,12 @@ import Data.Data
 import Data.Text
 import GHC.Generics
 import Test.QuickCheck (Property, counterexample)
+import Data.Functor.Compose (Compose (..))
+import Data.Functor.Identity (Identity (..))
+
+type I = Identity
+type Compose3  f g h = Compose (Compose f g) h
+type Compose3' f g h = Compose f (Compose g h)
 
 data Foo = Foo {
       fooInt :: Int
