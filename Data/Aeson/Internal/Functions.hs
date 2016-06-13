@@ -13,6 +13,9 @@ module Data.Aeson.Internal.Functions
     , mapKey
     ) where
 
+import Prelude ()
+import Prelude.Compat
+
 import Data.Hashable (Hashable)
 import qualified Data.HashMap.Strict as H
 import qualified Data.Map as M

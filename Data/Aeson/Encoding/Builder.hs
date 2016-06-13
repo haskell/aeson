@@ -35,6 +35,9 @@ module Data.Aeson.Encoding.Builder
     , ascii5
     ) where
 
+import Prelude ()
+import Prelude.Compat
+
 import Data.Aeson.Internal.Time
 import Data.Aeson.Types.Internal (Value (..))
 import Data.ByteString.Builder as B

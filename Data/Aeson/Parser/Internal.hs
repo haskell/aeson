@@ -31,6 +31,9 @@ module Data.Aeson.Parser.Internal
     , eitherDecodeStrictWith
     ) where
 
+import Prelude ()
+import Prelude.Compat
+
 import Control.Monad.IO.Class (liftIO)
 import Data.Aeson.Types.Internal (IResult(..), JSONPath, Result(..), Value(..))
 import Data.Attoparsec.ByteString.Char8 (Parser, char, endOfInput, scientific,
@@ -57,10 +60,6 @@ import qualified Data.ByteString.Internal as B
 import qualified Data.ByteString.Lazy as L
 import qualified Data.ByteString.Unsafe as B
 import qualified Data.HashMap.Strict as H
-
-#if !MIN_VERSION_base(4,8,0)
-import Control.Applicative ((*>), (<$>), (<*), pure)
-#endif
 
 #if MIN_VERSION_ghc_prim(0,3,1)
 import GHC.Base (Int#, (==#), isTrue#, orI#, word2Int#)
