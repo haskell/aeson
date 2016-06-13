@@ -321,20 +321,33 @@ class FromJSON a where
 --  Classes and types for map keys
 -------------------------------------------------------------------------------
 
+-- | Read the docs for 'ToJSONKey' first. This class is a conversion 
+--   in the opposite direction. If you have a newtype wrapper around 'Text',
+--   the recommended way to define instances is with generalized newtype deriving:
+--
+--   > newtype SomeId = SomeId { getSomeId :: Text }
+--   >   deriving (Eq,Ord,Hashable,FromJSONKey)
+--
 class FromJSONKey a where
+    -- | Strategy for parsing the key of a map-like container.
     fromJSONKey :: FromJSONKeyFunction a
     default fromJSONKey :: FromJSON a => FromJSONKeyFunction a
     fromJSONKey = FromJSONKeyValue parseJSON
+    -- | This is similar in spirit to the 'readList' method of 'Read'.
+    --   It makes it possible to give 'String' keys special treatment
+    --   without using @OverlappingInstances@. End users should always
+    --   be able to use the default implementation of this method.
     fromJSONKeyList :: FromJSONKeyFunction [a]
     default fromJSONKeyList :: FromJSON a => FromJSONKeyFunction [a]
     fromJSONKeyList = FromJSONKeyValue parseJSON
 
--- | With GHC 7.8 + we carry around 'Coercible Text a' dictionary,
--- to have even some amount of safety net.
--- Unfortunately we cannot enforce that 'Hashable' instance agree on the type level
+-- | With GHC 7.8+ we carry around @'Coercible' 'Text' a@ dictionary,
+-- to give us an assurance that the program will not segfault.
+-- Unfortunately we cannot enforce that the 'Eq' instances or the 
+-- 'Hashable' instances for 'Text' and @a@ agree.
 --
--- ATM this type is intentionally not exported. FromJSONKeyFunction can be inspected,
--- but cannot be constructed.
+-- At the moment this type is intentionally not exported. 'FromJSONKeyFunction' 
+-- can be inspected, but cannot be constructed.
 data CoerceText a where
 #if HAS_COERCIBLE
     CoerceText :: Coercible Text a => CoerceText a
@@ -342,12 +355,19 @@ data CoerceText a where
     CoerceText :: CoerceText a
 #endif
 
+-- | This type is related to 'ToJSONKeyFunction'. If 'FromJSONKeyValue' is used in the
+--   'FromJSONKey' instance, then 'ToJSONKeyValue' should be used in the 'ToJSONKey'
+--   instance. The other three data constructors for this type all correspond to
+--   'ToJSONKeyText'. Strictly speaking, 'FromJSONKeyTextParser' is more powerful than
+--   'FromJSONKeyText', which is in turn more powerful than 'FromJSONKeyCoerce'.
+--   For performance reasons, these exist as three options instead of one.
 data FromJSONKeyFunction a
-    = FromJSONKeyCoerce (CoerceText a)
-    | FromJSONKeyText (Text -> a)
-    | FromJSONKeyTextParser (Text -> Parser a)
-    | FromJSONKeyValue (Value -> Parser a)
+    = FromJSONKeyCoerce (CoerceText a) -- ^ uses 'coerce' ('unsafeCoerce' in older GHCs)
+    | FromJSONKeyText (Text -> a) -- ^ conversion from 'Text' that always succeeds
+    | FromJSONKeyTextParser (Text -> Parser a) -- ^ conversion from 'Text' that may fail
+    | FromJSONKeyValue (Value -> Parser a) -- ^ conversion for non-textual keys
 
+-- | Only law abiding up to interpretation
 instance Functor FromJSONKeyFunction where
     fmap h (FromJSONKeyCoerce CoerceText) = FromJSONKeyText (h . coerce')
     fmap h (FromJSONKeyText f)            = FromJSONKeyText (h . f)
@@ -356,7 +376,9 @@ instance Functor FromJSONKeyFunction where
 
 -- | Construct 'FromJSONKeyFunction' for types coercible from 'Text'. This
 -- conversion is still unsafe, as 'Hashable' and 'Eq' instances of @a@ should be
--- compatible with 'Text' i.e. hash values be equal for wrapped values as well.
+-- compatible with 'Text' i.e. hash values should be equal for wrapped values as well.
+-- This property will always be maintained if the 'Hashable' and 'Eq' instances
+-- are derived with generalized newtype deriving.
 fromJSONKeyCoerce ::
 #if HAS_COERCIBLE
     Coercible Text a =>
