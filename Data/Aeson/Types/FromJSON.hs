@@ -362,10 +362,14 @@ data CoerceText a where
 --   'FromJSONKeyText', which is in turn more powerful than 'FromJSONKeyCoerce'.
 --   For performance reasons, these exist as three options instead of one.
 data FromJSONKeyFunction a
-    = FromJSONKeyCoerce (CoerceText a) -- ^ uses 'coerce' ('unsafeCoerce' in older GHCs)
-    | FromJSONKeyText (Text -> a) -- ^ conversion from 'Text' that always succeeds
-    | FromJSONKeyTextParser (Text -> Parser a) -- ^ conversion from 'Text' that may fail
-    | FromJSONKeyValue (Value -> Parser a) -- ^ conversion for non-textual keys
+    = FromJSONKeyCoerce (CoerceText a)
+      -- ^ uses 'coerce' ('unsafeCoerce' in older GHCs)
+    | FromJSONKeyText (Text -> a)
+      -- ^ conversion from 'Text' that always succeeds
+    | FromJSONKeyTextParser (Text -> Parser a)
+      -- ^ conversion from 'Text' that may fail
+    | FromJSONKeyValue (Value -> Parser a)
+      -- ^ conversion for non-textual keys
 
 -- | Only law abiding up to interpretation
 instance Functor FromJSONKeyFunction where
