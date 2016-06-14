@@ -27,6 +27,7 @@ import Data.Functor.Compose (Compose (..))
 import Data.Functor.Identity (Identity (..))
 import Data.Maybe (fromMaybe)
 import Data.Proxy (Proxy(..))
+import Data.Fixed (Pico)
 import Data.Sequence (Seq)
 import Data.Tagged (Tagged(..))
 import Data.Text (Text)
@@ -39,16 +40,23 @@ import Test.Framework.Providers.HUnit (testCase)
 import Test.HUnit (Assertion, assertFailure, assertEqual)
 import UnitTests.NullaryConstructors (nullaryConstructors)
 import Data.Word (Word8)
+import Data.Scientific (Scientific)
 import qualified Data.ByteString.Lazy.Char8 as L
 import qualified Data.Text.Lazy.Builder as TLB
 import qualified Data.Text.Lazy.Encoding as TLE
 import qualified Data.Text.Lazy as LT
 import qualified Data.Text.Lazy.Encoding as LT
 
-import qualified Data.Sequence as Seq
 import qualified Data.DList as DList
 import qualified Data.HashMap.Strict as HM
+import qualified Data.HashSet as HashSet
+import qualified Data.IntMap as IntMap
+import qualified Data.IntSet as IntSet
 import qualified Data.Map as M
+import qualified Data.Sequence as Seq
+import qualified Data.Set as Set
+import qualified Data.Tree as Tree
+import qualified Data.Vector as Vector
 
 tests :: Test
 tests = testGroup "unit" [
@@ -315,6 +323,21 @@ jsonExamples =
   , Example "Map [I Char] Int"         "{\"ab\":1,\"cd\":3}"  (M.fromList [(map pure "ab",1),(map pure "cd",3)] :: M.Map [I Char] Int)
 
   , Example "nan :: Double" "null"  (Approx $ 0/0 :: Approx Double)
+
+  , Example "Ordering LT" "\"LT\"" LT
+  , Example "Ordering EQ" "\"EQ\"" EQ
+  , Example "Ordering GT" "\"GT\"" GT
+
+  , Example "Float" "3.14" (3.14 :: Float)
+  , Example "Pico" "3.14" (3.14 :: Pico)
+  , Example "Scientific" "3.14" (3.14 :: Scientific)
+
+  , Example "Set Int" "[1,2,3]" (Set.fromList [3, 2, 1] :: Set.Set Int)
+  , Example "IntSet"  "[1,2,3]" (IntSet.fromList [3, 2, 1])
+  , Example "IntMap" "[[1,2],[3,4]]" (IntMap.fromList [(3,4), (1,2)] :: IntMap.IntMap Int)
+  , Example "Vector" "[1,2,3]" (Vector.fromList [1, 2, 3] :: Vector.Vector Int)
+  , Example "HashSet Int" "[1,2,3]" (HashSet.fromList [3, 2, 1] :: HashSet.HashSet Int)
+  , Example "Tree Int" "[1,[[2,[[3,[]],[4,[]]]],[5,[]]]]" (let n = Tree.Node in n 1 [n 2 [n 3 [], n 4 []], n 5 []] :: Tree.Tree Int)
 
   -- Three separate cases, as ordering in HashMap is not defined
   , Example "HashMap Float Int, NaN" "{\"NaN\":1}"  (Approx $ HM.singleton (0/0) 1 :: Approx (HM.HashMap Float Int))

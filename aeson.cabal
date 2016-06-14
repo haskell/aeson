@@ -161,6 +161,7 @@ test-suite tests
     generic-deriving >= 1.10 && < 1.11,
     ghc-prim >= 0.2,
     hashable >= 1.2.4.0,
+    scientific,
     tagged,
     template-haskell,
     test-framework,
