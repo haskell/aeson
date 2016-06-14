@@ -84,6 +84,8 @@ import Data.Bits                    (unsafeShiftR)
 import Data.Fixed                   (Fixed, HasResolution)
 import Data.Functor.Compose         (Compose (..))
 import Data.Functor.Identity        (Identity (..))
+import Data.Functor.Product         (Product (..))
+import Data.Functor.Sum             (Sum (..))
 import Data.Hashable                (Hashable (..))
 import Data.Int                     (Int16, Int32, Int64, Int8)
 import Data.List.NonEmpty           (NonEmpty (..))
@@ -991,6 +993,10 @@ instance FromJSON2 Either where
     liftParseJSON2 pA _ pB _ (Object (H.toList -> [(key, value)]))
         | key == left  = Left  <$> pA value <?> Key left
         | key == right = Right <$> pB value <?> Key right
+      where
+        left, right :: Text
+        left  = "Left"
+        right = "Right"
 
     liftParseJSON2 _ _ _ _ _ = fail $
         "expected an object with a single property " ++
@@ -1006,9 +1012,6 @@ instance (FromJSON a, FromJSON b) => FromJSON (Either a b) where
     parseJSON = parseJSON2
     {-# INLINE parseJSON #-}
 
-left, right :: Text
-left  = "Left"
-right = "Right"
 
 
 instance FromJSON Bool where
@@ -1292,6 +1295,40 @@ instance (FromJSON1 f, FromJSON1 g, FromJSON a) => FromJSON (Compose f g a) wher
 
     parseJSONList = liftParseJSONList parseJSON parseJSONList
     {-# INLINE parseJSONList #-}
+
+
+instance (FromJSON1 f, FromJSON1 g) => FromJSON1 (Product f g) where
+    liftParseJSON p pl a = uncurry Pair <$> liftParseJSON2 px pxl py pyl a
+      where
+        px  = liftParseJSON p pl
+        pxl = liftParseJSONList p pl
+        py  = liftParseJSON p pl
+        pyl = liftParseJSONList p pl
+    {-# INLINE liftParseJSON #-}
+
+instance (FromJSON1 f, FromJSON1 g, FromJSON a) => FromJSON (Product f g a) where
+    parseJSON = parseJSON1
+    {-# INLINE parseJSON #-}
+
+
+instance (FromJSON1 f, FromJSON1 g) => FromJSON1 (Sum f g) where
+    liftParseJSON p pl (Object (H.toList -> [(key, value)]))
+        | key == inl = InL <$> liftParseJSON p pl value <?> Key inl
+        | key == inr = InR <$> liftParseJSON p pl value <?> Key inl
+      where
+        inl, inr :: Text
+        inl = "InL"
+        inr = "InR"
+
+    liftParseJSON _ _ _ = fail $
+        "expected an object with a single property " ++
+        "where the property key should be either " ++
+        "\"InL\" or \"InR\""
+    {-# INLINE liftParseJSON #-}
+
+instance (FromJSON1 f, FromJSON1 g, FromJSON a) => FromJSON (Sum f g a) where
+    parseJSON = parseJSON1
+    {-# INLINE parseJSON #-}
 
 -------------------------------------------------------------------------------
 -- containers
