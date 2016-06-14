@@ -24,6 +24,8 @@ import Data.Char (toUpper)
 import Data.Hashable (hash)
 import Data.List.NonEmpty (NonEmpty(..))
 import Data.Functor.Compose (Compose (..))
+import Data.Functor.Product (Product(..))
+import Data.Functor.Sum (Sum(..))
 import Data.Functor.Identity (Identity (..))
 import Data.Maybe (fromMaybe)
 import Data.Proxy (Proxy(..))
@@ -303,6 +305,14 @@ jsonExamples =
   , Example "Maybe Char" "\"x\""              (pure 'x' :: Maybe Char)
   , Example "Maybe String" "\"foo\""          (pure "foo" :: Maybe String)
   , Example "Maybe [Identity Char]" "\"xy\""  (pure [pure 'x', pure 'y'] :: Maybe [Identity Char])
+
+  , Example "Product I Maybe Int" "[1,2]"         (Pair (pure 1) (pure 2) :: Product I Maybe Int)
+  , Example "Product I Maybe Int" "[1,null]"      (Pair (pure 1) Nothing :: Product I Maybe Int)
+  , Example "Product I [] Char" "[\"a\",\"foo\"]" (Pair (pure 'a') "foo" :: Product I [] Char)
+
+  , Example "Sum I [] Int: InL"  "{\"InL\":1}"       (InL (pure 1) :: Sum I [] Int)
+  , Example "Sum I [] Int: InR"  "{\"InR\":[1,2]}"   (InR [1, 2] :: Sum I [] Int)
+  , Example "Sum I [] Char: InR" "{\"InR\":\"foo\"}" (InR "foo" :: Sum I [] Char)
 
   , Example "Compose I  I  Int" "1"      (pure 1 :: Compose I I   Int)
   , Example "Compose I  [] Int" "[1]"    (pure 1 :: Compose I []  Int)

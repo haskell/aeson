@@ -112,6 +112,7 @@ library
     build-depends:
       semigroups >= 0.16.1 && < 0.19,
       transformers >= 0.2.2.0,
+      transformers-compat >= 0.3,
       fail == 4.9.*
 
   if !impl(ghc >= 7.10)
@@ -176,7 +177,8 @@ test-suite tests
   if !impl(ghc >= 8.0)
     build-depends:
       semigroups >= 0.16.1 && < 0.19,
-      transformers >= 0.2.2.0
+      transformers >= 0.2.2.0,
+      transformers-compat >= 0.3
 
   if !impl(ghc >= 7.10)
     build-depends: nats >=1 && <1.2

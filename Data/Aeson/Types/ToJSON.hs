@@ -74,6 +74,8 @@ import Data.Fixed              (Fixed, HasResolution)
 import Data.Foldable           (toList)
 import Data.Functor.Compose    (Compose (..))
 import Data.Functor.Identity   (Identity (..))
+import Data.Functor.Product    (Product (..))
+import Data.Functor.Sum        (Sum (..))
 import Data.Int                (Int16, Int32, Int64, Int8)
 import Data.List               (intersperse)
 import Data.List.NonEmpty      (NonEmpty (..))
@@ -94,27 +96,27 @@ import Foreign.Storable        (Storable)
 import GHC.Generics
 import Numeric.Natural         (Natural)
 
-import qualified Data.ByteString.Lazy    as L
-import qualified Data.DList              as DList
-import qualified Data.HashMap.Strict     as H
-import qualified Data.HashSet            as HashSet
-import qualified Data.IntMap             as IntMap
-import qualified Data.IntSet             as IntSet
-import qualified Data.List.NonEmpty      as NE
-import qualified Data.Map                as M
-import qualified Data.Scientific         as Scientific
-import qualified Data.Sequence           as Seq
-import qualified Data.Set                as Set
-import qualified Data.Text               as T
-import qualified Data.Text.Encoding      as T
-import qualified Data.Text.Lazy          as LT
-import qualified Data.Tree               as Tree
-import qualified Data.Vector             as V
-import qualified Data.Vector.Generic     as VG
-import qualified Data.Vector.Mutable     as VM
-import qualified Data.Vector.Primitive   as VP
-import qualified Data.Vector.Storable    as VS
-import qualified Data.Vector.Unboxed     as VU
+import qualified Data.ByteString.Lazy  as L
+import qualified Data.DList            as DList
+import qualified Data.HashMap.Strict   as H
+import qualified Data.HashSet          as HashSet
+import qualified Data.IntMap           as IntMap
+import qualified Data.IntSet           as IntSet
+import qualified Data.List.NonEmpty    as NE
+import qualified Data.Map              as M
+import qualified Data.Scientific       as Scientific
+import qualified Data.Sequence         as Seq
+import qualified Data.Set              as Set
+import qualified Data.Text             as T
+import qualified Data.Text.Encoding    as T
+import qualified Data.Text.Lazy        as LT
+import qualified Data.Tree             as Tree
+import qualified Data.Vector           as V
+import qualified Data.Vector.Generic   as VG
+import qualified Data.Vector.Mutable   as VM
+import qualified Data.Vector.Primitive as VP
+import qualified Data.Vector.Storable  as VS
+import qualified Data.Vector.Unboxed   as VU
 
 toJSONPair :: (a -> Value) -> (b -> Value) -> (a, b) -> Value
 toJSONPair a b = liftToJSON2 a (listValue a) b (listValue b)
@@ -1204,8 +1206,8 @@ instance (ToJSON a) => ToJSON (Maybe a) where
 
 
 instance ToJSON2 Either where
-    liftToJSON2  toA _ _toB _ (Left a)  = Object $ H.singleton left  (toA a)
-    liftToJSON2 _toA _  toB _ (Right b) = Object $ H.singleton right (toB b)
+    liftToJSON2  toA _ _toB _ (Left a)  = Object $ H.singleton "Left"  (toA a)
+    liftToJSON2 _toA _  toB _ (Right b) = Object $ H.singleton "Right" (toB b)
     {-# INLINE liftToJSON2 #-}
 
     liftToEncoding2  toA _ _toB _ (Left a) = E.pairs $ E.pair "Left" $ toA a
@@ -1226,10 +1228,6 @@ instance (ToJSON a, ToJSON b) => ToJSON (Either a b) where
 
     toEncoding = toEncoding2
     {-# INLINE toEncoding #-}
-
-left, right :: Text
-left  = "Left"
-right = "Right"
 
 
 instance ToJSON Bool where
@@ -1632,6 +1630,43 @@ instance (ToJSON1 f, ToJSON1 g, ToJSON a) => ToJSON (Compose f g a) where
 
     toEncodingList = liftToEncodingList toEncoding toEncodingList
     {-# INLINE toEncodingList #-}
+
+
+instance (ToJSON1 f, ToJSON1 g) => ToJSON1 (Product f g) where
+    liftToJSON tv tvl (Pair x y) = liftToJSON2 tx txl ty tyl (x, y)
+      where
+        tx = liftToJSON tv tvl
+        txl = liftToJSONList tv tvl
+        ty = liftToJSON tv tvl
+        tyl = liftToJSONList tv tvl
+
+    liftToEncoding te tel (Pair x y) = liftToEncoding2 tx txl ty tyl (x, y)
+      where
+        tx = liftToEncoding te tel
+        txl = liftToEncodingList te tel
+        ty = liftToEncoding te tel
+        tyl = liftToEncodingList te tel
+
+instance (ToJSON1 f, ToJSON1 g, ToJSON a) => ToJSON (Product f g a) where
+    toJSON = toJSON1
+    {-# INLINE toJSON #-}
+
+    toEncoding = toEncoding1
+    {-# INLINE toEncoding #-}
+
+instance (ToJSON1 f, ToJSON1 g) => ToJSON1 (Sum f g) where
+    liftToJSON tv tvl (InL x) = Object $ H.singleton "InL" (liftToJSON tv tvl x)
+    liftToJSON tv tvl (InR y) = Object $ H.singleton "InR" (liftToJSON tv tvl y)
+
+    liftToEncoding te tel (InL x) = E.pairs $ E.pair "InL" $ liftToEncoding te tel x
+    liftToEncoding te tel (InR y) = E.pairs $ E.pair "InR" $ liftToEncoding te tel y
+
+instance (ToJSON1 f, ToJSON1 g, ToJSON a) => ToJSON (Sum f g a) where
+    toJSON = toJSON1
+    {-# INLINE toJSON #-}
+
+    toEncoding = toEncoding1
+    {-# INLINE toEncoding #-}
 
 -------------------------------------------------------------------------------
 -- containers
