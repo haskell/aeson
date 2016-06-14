@@ -38,6 +38,7 @@ import Test.Framework (Test, testGroup)
 import Test.Framework.Providers.HUnit (testCase)
 import Test.HUnit (Assertion, assertFailure, assertEqual)
 import UnitTests.NullaryConstructors (nullaryConstructors)
+import Data.Word (Word8)
 import qualified Data.ByteString.Lazy.Char8 as L
 import qualified Data.Text.Lazy.Builder as TLB
 import qualified Data.Text.Lazy.Encoding as TLE
@@ -277,6 +278,13 @@ jsonDecodingExamples = [
     Example "Nothing"      "null" (Nothing :: Maybe Int)
   , Example "Just"         "1"    (Just 1 :: Maybe Int)
   , Example "Just Nothing" "null" (Nothing :: Maybe (Maybe Int))
+  -- Integral values are truncated, and overflowed
+  -- https://github.com/bos/aeson/issues/317
+  , Example "Word8 3"    "3"    (Just 3 :: Maybe Word8)
+  , Example "Word8 3.00" "3.00" (Just 3 :: Maybe Word8)
+  , Example "Word8 3.14" "3.14" (Just 3 :: Maybe Word8)    -- TODO: should be Nothing
+  , Example "Word8 -1"   "-1"   (Just 255 :: Maybe Word8)  -- TODO: should be Nothing
+  , Example "Word8 300"  "300"  (Just 44 :: Maybe Word8)   -- TODO: should be Nothing
   ]
 
 jsonExamples :: [Example]
