@@ -74,8 +74,8 @@ tests = testGroup "unit" [
       testCase "example 1" $ formatErrorExample
     ]
   , testGroup ".:, .:?, .:!" $ fmap (testCase "-") dotColonMark
-  , testGroup "To JSON representation" $ fmap (testCase "-") jsonEncoding
-  , testGroup "From JSON representation" $ fmap (testCase "-") jsonDecoding
+  , testGroup "To JSON representation" $ fmap assertJsonEncodingExample jsonEncodingExamples
+  , testGroup "From JSON representation" $ fmap assertJsonDecodingExample jsonDecodingExamples
   , testGroup "To/From JSON representation" $ fmap assertJsonExample jsonExamples
   , testGroup "JSONPath" $ fmap (testCase "-") jsonPath
   , testGroup "Hashable laws" $ fmap (testCase "-") hashableLaws
@@ -240,15 +240,6 @@ dotColonMark = [
 -- These tests assert that the JSON serialization doesn't change by accident.
 -----------------------------------------------------------------------------
 
-jsonEncoding :: [Assertion]
-jsonEncoding =
-  [
-  -- https://github.com/bos/aeson/issues/376
-    assertEqual "Just Nothing" "null" $ encode (Just Nothing :: Maybe (Maybe Int))
-  -- infinities cannot be recovered, null is decoded as NaN
-  , assertEqual "inf :: Double" "null" $ encode (Approx $ 1/0 :: Approx Double)
-  ]
-
 data Example where
     Example
         :: (Eq a, Show a, ToJSON a, FromJSON a)
@@ -256,8 +247,37 @@ data Example where
 
 assertJsonExample :: Example -> Test
 assertJsonExample (Example name bs val) = testCase name $ do
-    assertEqual "encode" bs         (encode val)
+    assertEqual "encode"           bs         (encode val)
+    assertEqual "encode/via value" bs         (encode $ toJSON val)
+    assertEqual "decode"           (Just val) (decode bs)
+
+assertJsonEncodingExample :: Example -> Test
+assertJsonEncodingExample (Example name bs val) = testCase name $ do
+    assertEqual "encode"           bs (encode val)
+    assertEqual "encode/via value" bs (encode $ toJSON val)
+
+assertJsonDecodingExample :: Example -> Test
+assertJsonDecodingExample (Example name bs val) = testCase name $
     assertEqual "decode" (Just val) (decode bs)
+
+jsonEncodingExamples :: [Example]
+jsonEncodingExamples =
+  [
+  -- Maybe serialising is lossy
+  -- https://github.com/bos/aeson/issues/376
+    Example "Just Nothing" "null" (Just Nothing :: Maybe (Maybe Int))
+  -- infinities cannot be recovered, null is decoded as NaN
+  , Example "inf :: Double" "null" (Approx $ 1/0 :: Approx Double)
+  ]
+
+jsonDecodingExamples :: [Example]
+jsonDecodingExamples = [
+  -- Maybe serialising is lossy
+  -- https://github.com/bos/aeson/issues/376
+    Example "Nothing"      "null" (Nothing :: Maybe Int)
+  , Example "Just"         "1"    (Just 1 :: Maybe Int)
+  , Example "Just Nothing" "null" (Nothing :: Maybe (Maybe Int))
+  ]
 
 jsonExamples :: [Example]
 jsonExamples =
@@ -333,14 +353,7 @@ jsonExamples =
   , Example "Compose3' [] [] [] Char" "[[\"x\"]]"  (pure 'x' :: Compose3' [] [] [] Char)
   ]
 
-jsonDecoding :: [Assertion]
-jsonDecoding = [
-    assertEqual "Nothing" (Nothing :: Maybe Int) (decode "null")
-  , assertEqual "Just"    (Just 1 :: Maybe Int) (decode "1")
-  , assertEqual "Just Nothing" (Just Nothing :: Maybe (Maybe Int)) (decode "null")
-  , assertEqual "NonEmpty" (Just (1 :| [2, 3]) :: Maybe (NonEmpty Int)) (decode "[1,2,3]")
-  , assertEqual "()" (Just ()) (decode "[]")
-  ]
+
 
 ------------------------------------------------------------------------------
 -- These tests check that JSONPath is tracked correctly
