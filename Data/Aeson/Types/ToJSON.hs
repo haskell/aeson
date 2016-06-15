@@ -413,15 +413,15 @@ instance KeyValue Pair where
 --   maximize performance.
 
 class ToJSONKey a where
-    -- | Provides a way to use a data type as the key for a map-like
-    --   container.
+    -- | Strategy for rendering the key for a map-like container.
     toJSONKey :: ToJSONKeyFunction a
     default toJSONKey :: ToJSON a => ToJSONKeyFunction a
     toJSONKey = ToJSONKeyValue toJSON toEncoding
 
     -- | This is similar in spirit to the 'showsList' method of 'Show'.
     --   It makes it possible to give 'String' keys special treatment
-    --   without using @OverlappingInstances@.
+    --   without using @OverlappingInstances@. End users should always
+    --   be able to use the default implementation of this method.
     toJSONKeyList :: ToJSONKeyFunction [a]
     default toJSONKeyList :: ToJSON a => ToJSONKeyFunction [a]
     toJSONKeyList = ToJSONKeyValue toJSON toEncoding
