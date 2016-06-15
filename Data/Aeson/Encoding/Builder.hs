@@ -1,7 +1,7 @@
 {-# LANGUAGE BangPatterns, OverloadedStrings #-}
 
 -- |
--- Module:      Data.Aeson.Encode.Builder
+-- Module:      Data.Aeson.Encoding.Builder
 -- Copyright:   (c) 2011 MailRank, Inc.
 --              (c) 2013 Simon Meier <iridcode@gmail.com>
 -- License:     BSD3
@@ -11,7 +11,7 @@
 --
 -- Efficiently serialize a JSON value using the UTF-8 encoding.
 
-module Data.Aeson.Encode.Builder
+module Data.Aeson.Encoding.Builder
     (
       encodeToBuilder
     , null_
@@ -34,6 +34,9 @@ module Data.Aeson.Encode.Builder
     , ascii4
     , ascii5
     ) where
+
+import Prelude ()
+import Prelude.Compat
 
 import Data.Aeson.Internal.Time
 import Data.Aeson.Types.Internal (Value (..))

@@ -4,8 +4,8 @@ import Blaze.ByteString.Builder (toLazyByteString)
 import Blaze.ByteString.Builder.Char.Utf8 (fromString)
 import Control.DeepSeq (NFData(rnf))
 import Criterion.Main
-import qualified Data.Aeson.Encode as A
 import qualified Data.Aeson as A
+import qualified Data.Aeson.Text as A
 import qualified Data.ByteString.Lazy as BL
 import qualified Text.JSON as J
 import qualified Data.Text.Lazy          as TL

@@ -69,7 +69,7 @@ module Data.Aeson.Types.FromJSON (
 import Prelude        ()
 import Prelude.Compat hiding (foldr)
 
-import Data.Aeson.Functions      (mapKey)
+import Data.Aeson.Internal.Functions (mapKey)
 import Data.Aeson.Types.Generic
 import Data.Aeson.Types.Internal
 
@@ -82,6 +82,7 @@ import Control.Monad                ((<=<))
 import Data.Attoparsec.Number       (Number (..))
 import Data.Bits                    (unsafeShiftR)
 import Data.Fixed                   (Fixed, HasResolution)
+import Data.Functor.Compose         (Compose (..))
 import Data.Functor.Identity        (Identity (..))
 import Data.Hashable                (Hashable (..))
 import Data.Int                     (Int16, Int32, Int64, Int8)
@@ -127,9 +128,8 @@ import qualified Data.Vector.Unboxed   as VU
 
 import Unsafe.Coerce (unsafeCoerce)
 
--- Coercible derivations aren't as powerful on GHC 7.8, though supported.
 #ifndef HAS_COERCIBLE
-#define HAS_COERCIBLE (__GLASGOW_HASKELL__ >= 709)
+#define HAS_COERCIBLE (__GLASGOW_HASKELL__ >= 707)
 #endif
 
 #if HAS_COERCIBLE
@@ -333,6 +333,7 @@ class FromJSONKey a where
     fromJSONKey :: FromJSONKeyFunction a
     default fromJSONKey :: FromJSON a => FromJSONKeyFunction a
     fromJSONKey = FromJSONKeyValue parseJSON
+
     -- | This is similar in spirit to the 'readList' method of 'Read'.
     --   It makes it possible to give 'String' keys special treatment
     --   without using @OverlappingInstances@. End users should always
@@ -362,13 +363,13 @@ data CoerceText a where
 --   'FromJSONKeyText', which is in turn more powerful than 'FromJSONKeyCoerce'.
 --   For performance reasons, these exist as three options instead of one.
 data FromJSONKeyFunction a
-    = FromJSONKeyCoerce (CoerceText a)
+    = FromJSONKeyCoerce !(CoerceText a)
       -- ^ uses 'coerce' ('unsafeCoerce' in older GHCs)
-    | FromJSONKeyText (Text -> a)
+    | FromJSONKeyText !(Text -> a)
       -- ^ conversion from 'Text' that always succeeds
-    | FromJSONKeyTextParser (Text -> Parser a)
+    | FromJSONKeyTextParser !(Text -> Parser a)
       -- ^ conversion from 'Text' that may fail
-    | FromJSONKeyValue (Value -> Parser a)
+    | FromJSONKeyValue !(Value -> Parser a)
       -- ^ conversion for non-textual keys
 
 -- | Only law abiding up to interpretation
@@ -383,6 +384,9 @@ instance Functor FromJSONKeyFunction where
 -- compatible with 'Text' i.e. hash values should be equal for wrapped values as well.
 -- This property will always be maintained if the 'Hashable' and 'Eq' instances
 -- are derived with generalized newtype deriving.
+-- compatible with 'Text' i.e. hash values be equal for wrapped values as well.
+--
+-- On pre GHC 7.8 this is unconstrainted function.
 fromJSONKeyCoerce ::
 #if HAS_COERCIBLE
     Coercible Text a =>
@@ -390,15 +394,22 @@ fromJSONKeyCoerce ::
     FromJSONKeyFunction a
 fromJSONKeyCoerce = FromJSONKeyCoerce CoerceText
 
+-- | Semantically the same as @coerceFromJSONKeyFunction = fmap coerce = coerce@.
+--
+-- See note on 'fromJSONKeyCoerce'.
 coerceFromJSONKeyFunction ::
 #if HAS_COERCIBLE
     Coercible a b =>
 #endif
     FromJSONKeyFunction a -> FromJSONKeyFunction b
+#if HAS_COERCIBLE
+coerceFromJSONKeyFunction = coerce
+#else
 coerceFromJSONKeyFunction (FromJSONKeyCoerce CoerceText) = FromJSONKeyCoerce CoerceText
 coerceFromJSONKeyFunction (FromJSONKeyText f)            = FromJSONKeyText (coerce' . f)
 coerceFromJSONKeyFunction (FromJSONKeyTextParser f)      = FromJSONKeyTextParser (fmap coerce' . f)
 coerceFromJSONKeyFunction (FromJSONKeyValue f)           = FromJSONKeyValue (fmap coerce' . f)
+#endif
 
 {-# RULES
   "FromJSONKeyCoerce: fmap id"     forall (x :: FromJSONKeyFunction a).
@@ -411,6 +422,7 @@ coerceFromJSONKeyFunction (FromJSONKeyValue f)           = FromJSONKeyValue (fma
   #-}
 #endif
 
+-- | Same as 'fmap'. Provided for the consistency with 'ToJSONKeyFunction'.
 mapFromJSONKeyFunction :: (a -> b) -> FromJSONKeyFunction a -> FromJSONKeyFunction b
 mapFromJSONKeyFunction = fmap
 
@@ -977,13 +989,6 @@ notFound key = fail $ "The key \"" ++ unpack key ++ "\" was not found"
 -- base
 -------------------------------------------------------------------------------
 
-instance FromJSON1 Identity where
-    liftParseJSON p _ a = Identity <$> p a
-    {-# INLINE liftParseJSON #-}
-
-instance (FromJSON a) => FromJSON (Identity a) where
-    parseJSON = parseJSON1
-    {-# INLINE parseJSON #-}
 
 instance FromJSON2 Const where
     liftParseJSON2 p _ _ _ = fmap Const . p
@@ -1203,6 +1208,7 @@ instance FromJSON Word64 where
 instance FromJSONKey Word64 where
     fromJSONKey = FromJSONKeyTextParser parseIntegralText
 
+
 instance FromJSON Text where
     parseJSON = withText "Text" pure
     {-# INLINE parseJSON #-}
@@ -1210,17 +1216,28 @@ instance FromJSON Text where
 instance FromJSONKey Text where
     fromJSONKey = fromJSONKeyCoerce
 
+
 instance FromJSON LT.Text where
     parseJSON = withText "Lazy Text" $ pure . LT.fromStrict
     {-# INLINE parseJSON #-}
 
+instance FromJSONKey LT.Text where
+    fromJSONKey = FromJSONKeyText LT.fromStrict
+
+
 instance FromJSON Version where
+    parseJSON = withText "Version" parseVersionText
     {-# INLINE parseJSON #-}
-    parseJSON = withText "Version" $ go . readP_to_S parseVersion . unpack
-      where
-        go [(v,[])] = return v
-        go (_ : xs) = go xs
-        go _        = fail $ "could not parse Version"
+
+instance FromJSONKey Version where
+    fromJSONKey = FromJSONKeyTextParser parseVersionText
+
+parseVersionText :: Text -> Parser Version
+parseVersionText = go . readP_to_S parseVersion . unpack
+  where
+    go [(v,[])] = return v
+    go (_ : xs) = go xs
+    go _        = fail $ "could not parse Version"
 
 -------------------------------------------------------------------------------
 -- semigroups NonEmpty
@@ -1259,6 +1276,49 @@ instance FromJSON1 DList.DList where
 instance (FromJSON a) => FromJSON (DList.DList a) where
     parseJSON = parseJSON1
     {-# INLINE parseJSON #-}
+
+-------------------------------------------------------------------------------
+-- tranformers - Functors
+-------------------------------------------------------------------------------
+
+instance FromJSON1 Identity where
+    liftParseJSON p _ a = Identity <$> p a
+    {-# INLINE liftParseJSON #-}
+
+    liftParseJSONList _ p a = fmap Identity <$> p a
+    {-# INLINE liftParseJSONList #-}
+
+instance (FromJSON a) => FromJSON (Identity a) where
+    parseJSON = parseJSON1
+    {-# INLINE parseJSON #-}
+
+    parseJSONList = liftParseJSONList parseJSON parseJSONList
+    {-# INLINE parseJSONList #-}
+
+instance (FromJSONKey a, FromJSON a) => FromJSONKey (Identity a) where
+    fromJSONKey = coerceFromJSONKeyFunction (fromJSONKey :: FromJSONKeyFunction a)
+    fromJSONKeyList = coerceFromJSONKeyFunction (fromJSONKeyList :: FromJSONKeyFunction [a])
+
+
+instance (FromJSON1 f, FromJSON1 g) => FromJSON1 (Compose f g) where
+    liftParseJSON p pl a = Compose <$> liftParseJSON g gl a
+      where
+        g  = liftParseJSON p pl
+        gl = liftParseJSONList p pl
+    {-# INLINE liftParseJSON #-}
+
+    liftParseJSONList p pl a = map Compose <$> liftParseJSONList g gl a
+      where
+        g  = liftParseJSON p pl
+        gl = liftParseJSONList p pl
+    {-# INLINE liftParseJSONList #-}
+
+instance (FromJSON1 f, FromJSON1 g, FromJSON a) => FromJSON (Compose f g a) where
+    parseJSON = parseJSON1
+    {-# INLINE parseJSON #-}
+
+    parseJSONList = liftParseJSONList parseJSON parseJSONList
+    {-# INLINE parseJSONList #-}
 
 -------------------------------------------------------------------------------
 -- containers
@@ -1304,7 +1364,7 @@ instance (FromJSONKey k, Ord k) => FromJSON1 (M.Map k) where
         FromJSONKeyText f -> withObject "Map k v" $
             fmap (H.foldrWithKey (M.insert . f) M.empty) . H.traverseWithKey (\k v -> p v <?> Key k)
         FromJSONKeyTextParser f -> withObject "Map k v" $
-            H.foldrWithKey (\k v m -> M.insert <$> f k <*> (p v <?> Key k) <*> m) (pure M.empty)
+            H.foldrWithKey (\k v m -> M.insert <$> f k <?> Key k <*> p v <?> Key k <*> m) (pure M.empty)
         FromJSONKeyValue f -> withArray "Map k v" $ \arr ->
             M.fromList <$> (Tr.sequence .
                 zipWith (parseIndexedJSONPair f p) [0..] . V.toList $ arr)
@@ -1372,7 +1432,7 @@ instance (FromJSONKey k, Eq k, Hashable k) => FromJSON1 (H.HashMap k) where
         FromJSONKeyText f -> withObject "HashMap k v" $
             fmap (mapKey f) . H.traverseWithKey (\k v -> p v <?> Key k)
         FromJSONKeyTextParser f -> withObject "HashMap k v" $
-            H.foldrWithKey (\k v m -> H.insert <$> f k <*> (p v <?> Key k) <*> m) (pure H.empty)
+            H.foldrWithKey (\k v m -> H.insert <$> f k <?> Key k <*> p v <?> Key k <*> m) (pure H.empty)
         FromJSONKeyValue f -> withArray "Map k v" $ \arr ->
             H.fromList <$> (Tr.sequence .
                 zipWith (parseIndexedJSONPair f p) [0..] . V.toList $ arr)
@@ -1517,9 +1577,6 @@ instance FromJSONKey Char where
 
 instance (FromJSONKey a, FromJSON a) => FromJSONKey [a] where
     fromJSONKey = fromJSONKeyList
-
-instance (FromJSONKey a, FromJSON a) => FromJSONKey (Identity a) where
-    fromJSONKey = mapFromJSONKeyFunction Identity fromJSONKey
 
 -------------------------------------------------------------------------------
 -- Tuple instances, see tuple-instances-from.hs

@@ -7,12 +7,14 @@
 -- Stability:   experimental
 -- Portability: portable
 
-module Data.Aeson.Functions
+module Data.Aeson.Internal.Functions
     ( mapHashKeyVal
-    , hashMapKey
     , mapKeyVal
     , mapKey
     ) where
+
+import Prelude ()
+import Prelude.Compat
 
 import Data.Hashable (Hashable)
 import qualified Data.HashMap.Strict as H
@@ -23,12 +25,6 @@ mapHashKeyVal :: (Eq k2, Hashable k2) => (k1 -> k2) -> (v1 -> v2)
               -> M.Map k1 v1 -> H.HashMap k2 v2
 mapHashKeyVal fk kv = M.foldrWithKey (\k v -> H.insert (fk k) (kv v)) H.empty
 {-# INLINE mapHashKeyVal #-}
-
--- | Transform a 'M.Map' into a 'H.HashMap' while transforming the keys.
-hashMapKey :: (Ord k2) => (k1 -> k2)
-           -> H.HashMap k1 v -> M.Map k2 v
-hashMapKey kv = H.foldrWithKey (M.insert . kv) M.empty
-{-# INLINE hashMapKey #-}
 
 -- | Transform the keys and values of a 'H.HashMap'.
 mapKeyVal :: (Eq k2, Hashable k2) => (k1 -> k2) -> (v1 -> v2)

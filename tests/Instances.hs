@@ -1,5 +1,6 @@
 {-# LANGUAGE CPP #-}
 {-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE StandaloneDeriving #-}
@@ -23,8 +24,11 @@ import Data.Aeson.Types
 import Control.Applicative (Const(..), empty)
 import Data.Tagged (Tagged(..))
 import Data.Proxy (Proxy(..))
+import Data.Functor.Identity (Identity (..))
+import Data.Functor.Compose (Compose (..))
 import Functions
 import qualified Data.DList as DList
+import qualified Data.HashMap.Strict as HM
 
 import Data.Orphans ()
 import Test.QuickCheck.Instances ()
@@ -57,8 +61,20 @@ instance ApproxEq UTCTime where
 instance ApproxEq DotNetTime where
     (=~) = (=~) `on` fromDotNetTime
 
+instance ApproxEq Float where
+    a =~ b
+      | isNaN a && isNaN b = True
+      | otherwise          = approxEq a b
+
 instance ApproxEq Double where
-    (=~) = approxEq
+    a =~ b
+      | isNaN a && isNaN b = True
+      | otherwise          = approxEq a b
+
+instance (ApproxEq k, Eq v) => ApproxEq (HM.HashMap k v) where
+    a =~ b = and $ zipWith eq (HM.toList a) (HM.toList b)
+      where
+        eq (x,y) (u,v) = x =~ u && y == v
 
 -- Test-related types.
 
@@ -180,3 +196,10 @@ instance Arbitrary a => Arbitrary (Const a b) where
 
 instance Arbitrary a => Arbitrary (DList.DList a) where
     arbitrary = DList.fromList <$> arbitrary
+
+-- would like to have -- https://github.com/nick8325/quickcheck/issues/73
+instance Arbitrary a => Arbitrary (Identity a) where
+    arbitrary = Identity <$> arbitrary
+
+instance Arbitrary (f (g a)) => Arbitrary (Compose f g a) where
+    arbitrary = Compose <$> arbitrary

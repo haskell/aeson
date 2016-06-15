@@ -60,8 +60,11 @@ module Data.Aeson.Types.Internal
     , DotNetTime(..)
     ) where
 
+import Prelude ()
+import Prelude.Compat
+
 import Control.Arrow (first)
-import Control.Applicative
+import Control.Applicative (Alternative(..))
 import Control.DeepSeq (NFData(..))
 import Control.Monad (MonadPlus(..), ap)
 import qualified Control.Monad.Fail as Fail
@@ -82,12 +85,6 @@ import qualified Data.HashMap.Strict as H
 import qualified Data.Scientific as S
 import qualified Data.Vector as V
 import qualified Language.Haskell.TH.Syntax as TH
-
-#if !MIN_VERSION_base(4,8,0)
-import Data.Foldable (Foldable(..))
-import Data.Monoid (Monoid(..))
-import Data.Traversable (Traversable(..))
-#endif
 
 #if !MIN_VERSION_unordered_containers(0,2,6)
 import Data.List (sort)
