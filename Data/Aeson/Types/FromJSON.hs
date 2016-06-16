@@ -78,7 +78,7 @@ import qualified Data.Attoparsec.ByteString.Char8 as A (endOfInput, parseOnly,
                                                         scientific)
 
 import Control.Applicative          (Const (..), (<|>))
-import Control.Monad                ((<=<))
+import Control.Monad                ((<=<), zipWithM)
 import Data.Attoparsec.Number       (Number (..))
 import Data.Bits                    (unsafeShiftR)
 import Data.Fixed                   (Fixed, HasResolution)
@@ -312,8 +312,7 @@ class FromJSON a where
 
     parseJSONList :: Value -> Parser [a]
     parseJSONList (Array a)
-        = sequence
-        . zipWith (parseIndexedJSON parseJSON) [0..]
+        = zipWithM (parseIndexedJSON parseJSON) [0..]
         . V.toList
         $ a
 
@@ -323,7 +322,7 @@ class FromJSON a where
 --  Classes and types for map keys
 -------------------------------------------------------------------------------
 
--- | Read the docs for 'ToJSONKey' first. This class is a conversion 
+-- | Read the docs for 'ToJSONKey' first. This class is a conversion
 --   in the opposite direction. If you have a newtype wrapper around 'Text',
 --   the recommended way to define instances is with generalized newtype deriving:
 --
@@ -346,10 +345,10 @@ class FromJSONKey a where
 
 -- | With GHC 7.8+ we carry around @'Coercible' 'Text' a@ dictionary,
 -- to give us an assurance that the program will not segfault.
--- Unfortunately we cannot enforce that the 'Eq' instances or the 
+-- Unfortunately we cannot enforce that the 'Eq' instances or the
 -- 'Hashable' instances for 'Text' and @a@ agree.
 --
--- At the moment this type is intentionally not exported. 'FromJSONKeyFunction' 
+-- At the moment this type is intentionally not exported. 'FromJSONKeyFunction'
 -- can be inspected, but cannot be constructed.
 data CoerceText a where
 #if HAS_COERCIBLE
@@ -725,7 +724,7 @@ instance ( AllNullary         (a :+: b) allNullary
     -- encoded as strings.  This distinction is made by 'parseSum':
     gParseJSON opts pa pj pjl =
       (unTagged :: Tagged allNullary (Parser ((a :+: b) d)) ->
-                                     (Parser ((a :+: b) d)))
+                                     Parser ((a :+: b) d))
                  . parseSum opts pa pj pjl
 
 instance (FromJSON1 f, GFromJSON One g) => GFromJSON One (f :.: g) where
@@ -872,8 +871,8 @@ class ConsFromJSON arity f where
 
 class ConsFromJSON' arity f isRecord where
     consParseJSON' :: Options -> Proxy arity
-                   -> (Maybe Text) -- ^ A dummy label
-                                   --   (Nothing to use proper label)
+                   -> Maybe Text -- ^ A dummy label
+                                 --   (Nothing to use proper label)
                    -> (Value -> Parser a) -> (Value -> Parser [a])
                    -> Value -> Tagged isRecord (Parser (f a))
 
@@ -883,15 +882,15 @@ instance ( IsRecord            f isRecord
     consParseJSON opts pa pj pjl v = let
       (v2,lab) = case (unwrapUnaryRecords opts,isUnary (undefined :: f a)) of
                        -- use a dummy object with a dummy label
-        (True,True) -> ((object [(pack "dummy",v)]),Just $ pack "dummy")
+        (True,True) -> (object [(pack "dummy",v)], Just $ pack "dummy")
         _ ->(v,Nothing)
       in (unTagged :: Tagged isRecord (Parser (f a)) -> Parser (f a))
                        $ consParseJSON' opts pa lab pj pjl v2
 
 
 instance (FromRecord arity f) => ConsFromJSON' arity f True where
-    consParseJSON' opts pa mlab pj pjl = Tagged . (withObject "record (:*:)"
-                                          $ parseRecord opts pa mlab pj pjl)
+    consParseJSON' opts pa mlab pj pjl = Tagged . withObject "record (:*:)"
+                                            (parseRecord opts pa mlab pj pjl)
 
 instance (GFromJSON arity f) => ConsFromJSON' arity f False where
     consParseJSON' opts pa _ pj pjl = Tagged . gParseJSON opts pa pj pjl
@@ -900,8 +899,8 @@ instance (GFromJSON arity f) => ConsFromJSON' arity f False where
 
 class FromRecord arity f where
     parseRecord :: Options -> Proxy arity
-                -> (Maybe Text) -- ^ A dummy label
-                                --   (Nothing to use proper label)
+                -> Maybe Text -- ^ A dummy label
+                              --   (Nothing to use proper label)
                 -> (Value -> Parser a) -> (Value -> Parser [a])
                 -> Object -> Parser (f a)
 
@@ -1240,7 +1239,7 @@ parseVersionText = go . readP_to_S parseVersion . unpack
   where
     go [(v,[])] = return v
     go (_ : xs) = go xs
-    go _        = fail $ "could not parse Version"
+    go _        = fail "could not parse Version"
 
 -------------------------------------------------------------------------------
 -- semigroups NonEmpty
@@ -1619,7 +1618,7 @@ instance (FromJSONKey a, FromJSON a) => FromJSONKey [a] where
 -- Tuple instances, see tuple-instances-from.hs
 -------------------------------------------------------------------------------
 
-instance FromJSON2 ((,) ) where
+instance FromJSON2 (,) where
     liftParseJSON2 pA _ pB _ = withArray "(a, b)" $ \t ->
         let n = V.length t
         in if n == 2

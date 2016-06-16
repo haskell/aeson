@@ -1,4 +1,4 @@
-{-# LANGUAGE BangPatterns, OverloadedStrings #-}
+{-# LANGUAGE OverloadedStrings #-}
 
 -- |
 -- Module:      Data.Aeson.Parser

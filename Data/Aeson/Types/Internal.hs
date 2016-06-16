@@ -430,7 +430,7 @@ parseEither m v = runParser (m v) [] onError Right
 -- | Annotate an error message with a
 -- <http://goessner.net/articles/JsonPath/ JSONPath> error location.
 formatError :: JSONPath -> String -> String
-formatError path msg = "Error in " ++ (format "$" path) ++ ": " ++ msg
+formatError path msg = "Error in " ++ format "$" path ++ ": " ++ msg
   where
     format :: String -> JSONPath -> String
     format pfx []                = pfx

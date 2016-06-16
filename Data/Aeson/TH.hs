@@ -479,7 +479,7 @@ argsToValue jc tjs opts multiCons (NormalC conName ts) = do
                                   litE (integerL $ fromIntegral len))
                   stmts = [ noBindS $
                               [|VM.unsafeWrite|] `appE`
-                                (varE mv) `appE`
+                                varE mv `appE`
                                   litE (integerL ix) `appE`
                                     e
                           | (ix, e) <- zip [(0::Integer)..] es
@@ -618,7 +618,7 @@ nullarySumToEncoding opts multiCons conName =
     case sumEncoding opts of
       TaggedObject{tagFieldName} ->
           object $
-          ([|E.text (T.pack tagFieldName)|] <:> encStr opts conName)
+            [|E.text (T.pack tagFieldName)|] <:> encStr opts conName
       _ -> sumToEncoding opts multiCons conName [e|toEncoding ([] :: [()])|]
 
 -- | Generates code to generate the JSON encoding of a single constructor.
@@ -859,7 +859,7 @@ consFromJSON jc tName opts cons = do
                   [ liftM2 (,)
                       (normalG [|otherwise|])
                       ( [|noMatchFail|]
-                        `appE` (litE $ stringL $ show tName)
+                        `appE` litE (stringL $ show tName)
                         `appE` ([|T.unpack|] `appE` varE txt)
                       )
                   ]
@@ -868,7 +868,7 @@ consFromJSON jc tName opts cons = do
       , do other <- newName "other"
            match (varP other)
                  (normalB $ [|noStringFail|]
-                    `appE` (litE $ stringL $ show tName)
+                    `appE` litE (stringL $ show tName)
                     `appE` ([|valueConName|] `appE` varE other)
                  )
                  []
@@ -883,15 +883,15 @@ consFromJSON jc tName opts cons = do
           TwoElemArray ->
             [ do arr <- newName "array"
                  match (conP 'Array [varP arr])
-                       (guardedB $
+                       (guardedB
                         [ liftM2 (,) (normalG $ infixApp ([|V.length|] `appE` varE arr)
                                                          [|(==)|]
                                                          (litE $ integerL 2))
                                      (parse2ElemArray pjs arr)
                         , liftM2 (,) (normalG [|otherwise|])
-                                     (([|not2ElemArray|]
-                                       `appE` (litE $ stringL $ show tName)
-                                       `appE` ([|V.length|] `appE` varE arr)))
+                                     ([|not2ElemArray|]
+                                       `appE` litE (stringL $ show tName)
+                                       `appE` ([|V.length|] `appE` varE arr))
                         ]
                        )
                        []
@@ -899,7 +899,7 @@ consFromJSON jc tName opts cons = do
                  match (varP other)
                        ( normalB
                          $ [|noArrayFail|]
-                             `appE` (litE $ stringL $ show tName)
+                             `appE` litE (stringL $ show tName)
                              `appE` ([|valueConName|] `appE` varE other)
                        )
                        []
@@ -912,7 +912,7 @@ consFromJSON jc tName opts cons = do
              match (varP other)
                    ( normalB
                      $ [|noObjectFail|]
-                         `appE` (litE $ stringL $ show tName)
+                         `appE` litE (stringL $ show tName)
                          `appE` ([|valueConName|] `appE` varE other)
                    )
                    []
@@ -952,7 +952,7 @@ consFromJSON jc tName opts cons = do
                        match (varP other)
                              ( normalB
                                $ [|firstElemNoStringFail|]
-                                     `appE` (litE $ stringL $ show tName)
+                                     `appE` litE (stringL $ show tName)
                                      `appE` ([|valueConName|] `appE` varE other)
                              )
                              []
@@ -969,7 +969,7 @@ consFromJSON jc tName opts cons = do
             , do other <- newName "other"
                  match (varP other)
                        (normalB $ [|wrongPairCountFail|]
-                                  `appE` (litE $ stringL $ show tName)
+                                  `appE` litE (stringL $ show tName)
                                   `appE` ([|show . length|] `appE` varE other)
                        )
                        []
@@ -991,7 +991,7 @@ consFromJSON jc tName opts cons = do
                         [ liftM2 (,)
                                  (normalG [e|otherwise|])
                                  ( varE errorFun
-                                   `appE` (litE $ stringL $ show tName)
+                                   `appE` litE (stringL $ show tName)
                                    `appE` listE (map ( litE
                                                      . stringL
                                                      . constructorTagModifier opts
@@ -1010,13 +1010,13 @@ parseNullaryMatches :: Name -> Name -> [Q Match]
 parseNullaryMatches tName conName =
     [ do arr <- newName "arr"
          match (conP 'Array [varP arr])
-               (guardedB $
+               (guardedB
                 [ liftM2 (,) (normalG $ [|V.null|] `appE` varE arr)
                              ([|pure|] `appE` conE conName)
                 , liftM2 (,) (normalG [|otherwise|])
                              (parseTypeMismatch tName conName
                                 (litE $ stringL "an empty Array")
-                                (infixApp (litE $ stringL $ "Array of length ")
+                                (infixApp (litE $ stringL "Array of length ")
                                           [|(++)|]
                                           ([|show . V.length|] `appE` varE arr)
                                 )
@@ -1055,9 +1055,9 @@ parseRecord jc tvMap argTys opts tName conName ts obj =
     where
       x:xs = [ [|lookupField|]
                `appE` dispatchParseJSON jc conName tvMap argTy
-               `appE` (litE $ stringL $ show tName)
-               `appE` (litE $ stringL $ constructorTagModifier opts $ nameBase conName)
-               `appE` (varE obj)
+               `appE` litE (stringL $ show tName)
+               `appE` litE (stringL $ constructorTagModifier opts $ nameBase conName)
+               `appE` varE obj
                `appE` ( [|T.pack|] `appE` fieldLabelExp opts field
                       )
              | ((field, _, _), argTy) <- zip ts argTys
@@ -1069,7 +1069,7 @@ getValField obj valFieldName matches = do
   doE [ bindS (varP val) $ infixApp (varE obj)
                                     [|(.:)|]
                                     ([|T.pack|] `appE`
-                                       (litE $ stringL valFieldName))
+                                       litE (stringL valFieldName))
       , noBindS $ caseE (varE val) matches
       ]
 
@@ -1172,7 +1172,7 @@ parseProduct jc tvMap argTys tName conName numArgs =
                                 )
                                 ( parseTypeMismatch tName conName
                                     (litE $ stringL $ "Array of length " ++ show numArgs)
-                                    ( infixApp (litE $ stringL $ "Array of length ")
+                                    ( infixApp (litE $ stringL "Array of length ")
                                                [|(++)|]
                                                ([|show . V.length|] `appE` varE arr)
                                     )
@@ -1306,7 +1306,7 @@ deriveJSONClass :: [(JSONFun, JSONClass -> Name -> Options -> [Con] -> Q Exp)]
                 -> Q [Dec]
 deriveJSONClass consFuns jc opts name =
     withType name $ \name' ctxt tvbs cons mbTys ->
-        fmap (:[]) $ fromCons name' ctxt tvbs cons mbTys
+        (:[]) <$> fromCons name' ctxt tvbs cons mbTys
   where
     fromCons :: Name -> Cxt -> [TyVarBndr] -> [Con] -> Maybe [Type] -> Q Dec
     fromCons name' ctxt tvbs cons mbTys = do
@@ -1379,8 +1379,8 @@ dispatchFunByType jc jf conName tvMap list ty = do
     if any (`mentionsName` tyVarNames) lhsArgs
           || itf && any (`mentionsName` tyVarNames) tyArgs
        then outOfPlaceTyVarError jc conName
-       else appsE $ [ varE . jsonFunValOrListName list jf $ toEnum numLastArgs]
-                   ++ zipWith (dispatchFunByType jc jf conName tvMap)
+       else appsE $ varE (jsonFunValOrListName list jf $ toEnum numLastArgs)
+                    : zipWith (dispatchFunByType jc jf conName tvMap)
                               (cycle [False,True])
                               (interleave rhsArgs rhsArgs)
 
@@ -1590,7 +1590,7 @@ buildTypeInstanceFromTys tyConName jc dataCxt varTysOrig isDataFamily = do
 
     -- Check there are enough types to drop and that all of them are either of
     -- kind * or kind k (for some kind variable k). If not, throw an error.
-    when (remainingLength < 0 || any (== NotKindStar) droppedStarKindStati) $
+    when (remainingLength < 0 || elem NotKindStar droppedStarKindStati) $
       derivingKindError jc tyConName
 
     let droppedKindVarNames :: [Name]
@@ -1854,7 +1854,7 @@ reifyConTys jc tpjs conName = do
         -- arguments of a type that it (1) one of the last type variables,
         -- and (2) of a truly polymorphic type.
         jArity = arityInt jc
-        mbTvNames = map varTToName_maybe $
+        mbTvNames = map varTToNameMaybe $
                         NE.drop (NE.length unapResTy - jArity) unapResTy
         -- We use M.fromList to ensure that if there are any duplicate type
         -- variables (as can happen in a GADT), the rightmost type variable gets
@@ -1990,15 +1990,15 @@ tyKind _          = starK
 
 -- | Extract Just the Name from a type variable. If the argument Type is not a
 -- type variable, return Nothing.
-varTToName_maybe :: Type -> Maybe Name
-varTToName_maybe (VarT n)   = Just n
-varTToName_maybe (SigT t _) = varTToName_maybe t
-varTToName_maybe _          = Nothing
+varTToNameMaybe :: Type -> Maybe Name
+varTToNameMaybe (VarT n)   = Just n
+varTToNameMaybe (SigT t _) = varTToNameMaybe t
+varTToNameMaybe _          = Nothing
 
 -- | Extract the Name from a type variable. If the argument Type is not a
 -- type variable, throw an error.
 varTToName :: Type -> Name
-varTToName = fromMaybe (error "Not a type variable!") . varTToName_maybe
+varTToName = fromMaybe (error "Not a type variable!") . varTToNameMaybe
 
 -- | Extracts the name from a constructor.
 getConName :: Con -> Name
@@ -2195,7 +2195,7 @@ canEtaReduce remaining dropped =
 -- | Expands all type synonyms in a type. Written by Dan Rosén in the
 -- @genifunctors@ package (licensed under BSD3).
 expandSyn :: Type -> Q Type
-expandSyn (ForallT tvs ctx t) = fmap (ForallT tvs ctx) $ expandSyn t
+expandSyn (ForallT tvs ctx t) = ForallT tvs ctx <$> expandSyn t
 expandSyn t@AppT{}            = expandSynApp t []
 expandSyn t@ConT{}            = expandSynApp t []
 expandSyn (SigT t k)          = do t' <- expandSyn t

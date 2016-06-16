@@ -697,7 +697,7 @@ instance ( AllNullary           (a :+: b) allNullary
     -- 'allNullaryToStringTag' option is set they are encoded to
     -- strings.  This distinction is made by 'sumToEncoding':
     gToEncoding opts pa te tel
-        = (unTagged :: Tagged allNullary (Encoding) -> Encoding)
+        = (unTagged :: Tagged allNullary Encoding -> Encoding)
         . sumToEncoding opts pa te tel
 
 instance (ToJSON1 f, GToEncoding One g) => GToEncoding One (f :.: g) where
@@ -749,7 +749,7 @@ nonAllNullarySumToJSON opts pa tj tjl =
 class SumToEncoding arity f allNullary where
     sumToEncoding :: Options -> Proxy arity
                   -> (a -> Encoding) -> ([a] -> Encoding)
-                  -> f a -> Tagged allNullary (Encoding)
+                  -> f a -> Tagged allNullary Encoding
 
 instance ( GetConName                     f
          , TaggedObjectEnc          arity f
@@ -847,13 +847,13 @@ instance ( IsRecord               a isRecord
             (E.string tagFieldName ><
              E.colon ><
              toEncoding (constructorTagModifier opts (conName (undefined :: t c a p)))) ><
-            ((unTagged :: Tagged isRecord (Encoding) -> Encoding) .
+            ((unTagged :: Tagged isRecord Encoding -> Encoding) .
              taggedObjectEnc' opts pa contentsFieldName te tel . unM1 $ v)
 
 class TaggedObjectEnc' arity f isRecord where
     taggedObjectEnc' :: Options -> Proxy arity
                      -> String -> (a -> Encoding) -> ([a] -> Encoding)
-                     -> f a -> Tagged isRecord (Encoding)
+                     -> f a -> Tagged isRecord Encoding
 
 instance OVERLAPPING_ TaggedObjectEnc' arity U1 False where
     taggedObjectEnc' _ _ _ _ _ _ = Tagged E.empty
@@ -966,13 +966,13 @@ class ConsToEncoding' arity f isRecord where
     consToEncoding' :: Options -> Proxy arity
                     -> Bool -- ^ Are we a record with one field?
                     -> (a -> Encoding) -> ([a] -> Encoding)
-                    -> f a -> Tagged isRecord (Encoding)
+                    -> f a -> Tagged isRecord Encoding
 
 instance ( IsRecord                f isRecord
          , ConsToEncoding'   arity f isRecord
          ) => ConsToEncoding arity f where
     consToEncoding opts pa te tel =
-        (unTagged :: Tagged isRecord (Encoding) -> (Encoding))
+        (unTagged :: Tagged isRecord Encoding -> Encoding)
       . consToEncoding' opts pa (isUnary (undefined :: f a)) te tel
 
 instance (RecordToEncoding arity f) => ConsToEncoding' arity f True where
@@ -1023,7 +1023,7 @@ class RecordToEncoding arity f where
     --              of the field (without the key); 'Nothing' otherwise
     recordToEncoding :: Options -> Proxy arity
                      -> (a -> Encoding) -> ([a] -> Encoding)
-                     -> f a -> (Encoding, Maybe (Encoding))
+                     -> f a -> (Encoding, Maybe Encoding)
 
 instance ( RecordToEncoding    arity a
          , RecordToEncoding    arity b
@@ -1052,7 +1052,7 @@ instance OVERLAPPING_ (Selector s, ToJSON a) =>
 fieldToEncoding :: (Selector s, GToEncoding arity a)
                 => Options -> Proxy arity
                 -> (p -> Encoding) -> ([p] -> Encoding)
-                -> S1 s a p -> (Encoding, Maybe (Encoding))
+                -> S1 s a p -> (Encoding, Maybe Encoding)
 fieldToEncoding opts pa te tel m1 =
   let keyBuilder = toEncoding (fieldLabelModifier opts $ selName m1)
       valueBuilder = gToEncoding opts pa te tel (unM1 m1)
@@ -2052,7 +2052,7 @@ instance (ToJSONKey a, ToJSON a) => ToJSONKey [a] where
 -- Tuple instances, see tuple-instances-to.hs
 -------------------------------------------------------------------------------
 
-instance ToJSON2 ((,) ) where
+instance ToJSON2 (,) where
     liftToJSON2 toA _ toB _ (a, b) = Array $ V.create $ do
         mv <- VM.unsafeNew 2
         VM.unsafeWrite mv 0 (toA a)

@@ -1,7 +1,4 @@
 {-# LANGUAGE CPP #-}
-{-# LANGUAGE DefaultSignatures #-}
-{-# LANGUAGE DeriveFunctor #-}
-{-# LANGUAGE EmptyDataDecls #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE GADTs #-}

@@ -120,7 +120,7 @@ escapeAscii =
     BP.condB (== c2w '\n'  ) (ascii2 ('\\','n' )) $
     BP.condB (== c2w '\r'  ) (ascii2 ('\\','r' )) $
     BP.condB (== c2w '\t'  ) (ascii2 ('\\','t' )) $
-    (BP.liftFixedToBounded hexEscape) -- fallback for chars < 0x20
+    BP.liftFixedToBounded hexEscape -- fallback for chars < 0x20
   where
     hexEscape :: BP.FixedPrim Word8
     hexEscape = (\c -> ('\\', ('u', fromIntegral c))) BP.>$<
@@ -145,27 +145,27 @@ emptyObject_ :: Builder
 emptyObject_ = BP.primBounded (ascii2 ('{','}')) ()
 
 ascii2 :: (Char, Char) -> BP.BoundedPrim a
-ascii2 cs = BP.liftFixedToBounded $ (const cs) BP.>$< BP.char7 >*< BP.char7
+ascii2 cs = BP.liftFixedToBounded $ const cs BP.>$< BP.char7 >*< BP.char7
 {-# INLINE ascii2 #-}
 
 ascii4 :: (Char, (Char, (Char, Char))) -> BP.BoundedPrim a
-ascii4 cs = BP.liftFixedToBounded $ (const cs) >$<
+ascii4 cs = BP.liftFixedToBounded $ const cs >$<
     BP.char7 >*< BP.char7 >*< BP.char7 >*< BP.char7
 {-# INLINE ascii4 #-}
 
 ascii5 :: (Char, (Char, (Char, (Char, Char)))) -> BP.BoundedPrim a
-ascii5 cs = BP.liftFixedToBounded $ (const cs) >$<
+ascii5 cs = BP.liftFixedToBounded $ const cs >$<
     BP.char7 >*< BP.char7 >*< BP.char7 >*< BP.char7 >*< BP.char7
 {-# INLINE ascii5 #-}
 
 ascii6 :: (Char, (Char, (Char, (Char, (Char, Char))))) -> BP.BoundedPrim a
-ascii6 cs = BP.liftFixedToBounded $ (const cs) >$<
+ascii6 cs = BP.liftFixedToBounded $ const cs >$<
     BP.char7 >*< BP.char7 >*< BP.char7 >*< BP.char7 >*< BP.char7 >*< BP.char7
 {-# INLINE ascii6 #-}
 
 ascii8 :: (Char, (Char, (Char, (Char, (Char, (Char, (Char, Char)))))))
        -> BP.BoundedPrim a
-ascii8 cs = BP.liftFixedToBounded $ (const cs) >$<
+ascii8 cs = BP.liftFixedToBounded $ const cs >$<
     BP.char7 >*< BP.char7 >*< BP.char7 >*< BP.char7 >*<
     BP.char7 >*< BP.char7 >*< BP.char7 >*< BP.char7
 {-# INLINE ascii8 #-}
