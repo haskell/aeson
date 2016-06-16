@@ -57,7 +57,6 @@ import Prelude        ()
 import Prelude.Compat
 
 import Data.ByteString.Builder      (Builder, char7, toLazyByteString)
-import Data.ByteString.Builder.Prim (primBounded)
 import Data.Int
 import Data.Scientific              (Scientific)
 import Data.Semigroup               (Semigroup ((<>)))
