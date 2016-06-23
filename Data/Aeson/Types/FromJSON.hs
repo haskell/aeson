@@ -33,6 +33,7 @@ module Data.Aeson.Types.FromJSON (
     , parseJSON2
     -- * Generic JSON classes
     , GFromJSON(..)
+    , FromArgs(..)
     , genericParseJSON
     , genericLiftParseJSON
     -- * Classes and types for map keys
@@ -207,16 +208,21 @@ class GFromJSON arity f where
     -- | This method (applied to 'defaultOptions') is used as the
     -- default generic implementation of 'parseJSON' (if the @arity@ is 'Zero')
     -- or 'liftParseJSON' (if the @arity@ is 'One').
-    gParseJSON :: Options -> Proxy arity
-               -> (Value -> Parser a) -> (Value -> Parser [a])
-               -> Value -> Parser (f a)
+    gParseJSON :: Options -> FromArgs arity a -> Value -> Parser (f a)
+
+-- | A 'FromArgs' value either stores nothing (for 'FromJSON') or it stores the
+-- two function arguments that decode occurrences of the type parameter (for
+-- 'FromJSON1').
+data FromArgs arity a where
+    NoFromArgs :: FromArgs Zero a
+    From1Args  :: (Value -> Parser a) -> (Value -> Parser [a]) -> FromArgs One a
 
 -- | A configurable generic JSON decoder. This function applied to
 -- 'defaultOptions' is used as the default for 'parseJSON' when the
 -- type is an instance of 'Generic'.
 genericParseJSON :: (Generic a, GFromJSON Zero (Rep a))
                  => Options -> Value -> Parser a
-genericParseJSON opts = fmap to . gParseJSON opts proxyZero undefined undefined
+genericParseJSON opts = fmap to . gParseJSON opts NoFromArgs
 
 -- | A configurable generic JSON decoder. This function applied to
 -- 'defaultOptions' is used as the default for 'liftParseJSON' when the
@@ -224,7 +230,7 @@ genericParseJSON opts = fmap to . gParseJSON opts proxyZero undefined undefined
 genericLiftParseJSON :: (Generic1 f, GFromJSON One (Rep1 f))
                      => Options -> (Value -> Parser a) -> (Value -> Parser [a])
                      -> Value -> Parser (f a)
-genericLiftParseJSON opts pj pjl = fmap to1 . gParseJSON opts proxyOne pj pjl
+genericLiftParseJSON opts pj pjl = fmap to1 . gParseJSON opts (From1Args pj pjl)
 
 -------------------------------------------------------------------------------
 -- Class
@@ -673,32 +679,32 @@ pmval .!= val = fromMaybe val <$> pmval
 instance OVERLAPPABLE_ (GFromJSON arity a) => GFromJSON arity (M1 i c a) where
     -- Meta-information, which is not handled elsewhere, is just added to the
     -- parsed value:
-    gParseJSON opts pa pj pjl = fmap M1 . gParseJSON opts pa pj pjl
+    gParseJSON opts fargs = fmap M1 . gParseJSON opts fargs
 
 instance (FromJSON a) => GFromJSON arity (K1 i a) where
     -- Constant values are decoded using their FromJSON instance:
-    gParseJSON _opts _ _ _ = fmap K1 . parseJSON
+    gParseJSON _opts _ = fmap K1 . parseJSON
 
 instance GFromJSON One Par1 where
     -- Direct occurrences of the last type parameter are decoded with the
     -- function passed in as an argument:
-    gParseJSON _opts _ pj _ = fmap Par1 . pj
+    gParseJSON _opts (From1Args pj _) = fmap Par1 . pj
 
 instance (FromJSON1 f) => GFromJSON One (Rec1 f) where
     -- Recursive occurrences of the last type parameter are decoded using their
     -- FromJSON1 instance:
-    gParseJSON _opts _ pj pjl = fmap Rec1 . liftParseJSON pj pjl
+    gParseJSON _opts (From1Args pj pjl) = fmap Rec1 . liftParseJSON pj pjl
 
 instance GFromJSON arity U1 where
     -- Empty constructors are expected to be encoded as an empty array:
-    gParseJSON _opts _ _ _ v
+    gParseJSON _opts _ v
         | isEmptyArray v = pure U1
         | otherwise      = typeMismatch "unit constructor (U1)" v
 
 instance (ConsFromJSON arity a) => GFromJSON arity (C1 c a) where
     -- Constructors need to be decoded differently depending on whether they're
     -- a record or not. This distinction is made by consParseJSON:
-    gParseJSON opts pa pj pjl = fmap M1 . consParseJSON opts pa pj pjl
+    gParseJSON opts fargs = fmap M1 . consParseJSON opts fargs
 
 instance ( FromProduct arity a, FromProduct arity b
          , ProductSize       a, ProductSize       b
@@ -706,12 +712,12 @@ instance ( FromProduct arity a, FromProduct arity b
     -- Products are expected to be encoded to an array. Here we check whether we
     -- got an array of the same size as the product, then parse each of the
     -- product's elements using parseProduct:
-    gParseJSON opts pa pj pjl = withArray "product (:*:)" $ \arr ->
+    gParseJSON opts fargs = withArray "product (:*:)" $ \arr ->
       let lenArray = V.length arr
           lenProduct = (unTagged2 :: Tagged2 (a :*: b) Int -> Int)
                        productSize in
       if lenArray == lenProduct
-      then parseProduct opts pa arr 0 lenProduct pj pjl
+      then parseProduct opts fargs arr 0 lenProduct
       else fail $ "When expecting a product of " ++ show lenProduct ++
                   " values, encountered an Array of " ++ show lenArray ++
                   " elements instead"
@@ -722,38 +728,37 @@ instance ( AllNullary         (a :+: b) allNullary
     -- If all constructors of a sum datatype are nullary and the
     -- 'allNullaryToStringTag' option is set they are expected to be
     -- encoded as strings.  This distinction is made by 'parseSum':
-    gParseJSON opts pa pj pjl =
+    gParseJSON opts fargs =
       (unTagged :: Tagged allNullary (Parser ((a :+: b) d)) ->
                                      Parser ((a :+: b) d))
-                 . parseSum opts pa pj pjl
+                 . parseSum opts fargs
 
 instance (FromJSON1 f, GFromJSON One g) => GFromJSON One (f :.: g) where
     -- If an occurrence of the last type parameter is nested inside two
     -- composed types, it is decoded by using the outermost type's FromJSON1
     -- instance to generically decode the innermost type:
-    gParseJSON opts pa pj pjl =
-      let gpj = gParseJSON opts pa pj pjl in
+    gParseJSON opts fargs =
+      let gpj = gParseJSON opts fargs in
       fmap Comp1 . liftParseJSON gpj (listParser gpj)
 
 --------------------------------------------------------------------------------
 
 class ParseSum arity f allNullary where
-    parseSum :: Options -> Proxy arity
-             -> (Value -> Parser a) -> (Value -> Parser [a])
+    parseSum :: Options -> FromArgs arity a
              -> Value -> Tagged allNullary (Parser (f a))
 
 instance ( SumFromString          (a :+: b)
          , FromPair         arity (a :+: b)
          , FromTaggedObject arity (a :+: b)
          ) => ParseSum      arity (a :+: b) True where
-    parseSum opts pa pj pjl
+    parseSum opts fargs
         | allNullaryToStringTag opts = Tagged . parseAllNullarySum    opts
-        | otherwise                  = Tagged . parseNonAllNullarySum opts pa pj pjl
+        | otherwise                  = Tagged . parseNonAllNullarySum opts fargs
 
 instance ( FromPair         arity (a :+: b)
          , FromTaggedObject arity (a :+: b)
          ) => ParseSum      arity (a :+: b) False where
-    parseSum opts pa pj pjl = Tagged . parseNonAllNullarySum opts pa pj pjl
+    parseSum opts fargs = Tagged . parseNonAllNullarySum opts fargs
 
 --------------------------------------------------------------------------------
 
@@ -780,22 +785,21 @@ instance (Constructor c) => SumFromString (C1 c U1) where
 
 parseNonAllNullarySum :: ( FromPair         arity (a :+: b)
                          , FromTaggedObject arity (a :+: b)
-                         ) => Options -> Proxy arity
-                           -> (Value -> Parser c) -> (Value -> Parser [c])
+                         ) => Options -> FromArgs arity c
                            -> Value -> Parser ((a :+: b) c)
-parseNonAllNullarySum opts pa pj pjl =
+parseNonAllNullarySum opts fargs =
     case sumEncoding opts of
       TaggedObject{..} ->
           withObject "Object" $ \obj -> do
             tag <- obj .: pack tagFieldName
             fromMaybe (notFound tag) $
-              parseFromTaggedObject opts pa contentsFieldName obj pj pjl tag
+              parseFromTaggedObject opts fargs contentsFieldName obj tag
 
       ObjectWithSingleField ->
           withObject "Object" $ \obj ->
             case H.toList obj of
               [pair@(tag, _)] -> fromMaybe (notFound tag) $
-                                   parsePair opts pa pj pjl pair
+                                   parsePair opts fargs pair
               _ -> fail "Object doesn't have a single field"
 
       TwoElemArray ->
@@ -803,30 +807,29 @@ parseNonAllNullarySum opts pa pj pjl =
             if V.length arr == 2
             then case V.unsafeIndex arr 0 of
                    String tag -> fromMaybe (notFound tag) $
-                                   parsePair opts pa pj pjl (tag, V.unsafeIndex arr 1)
+                                   parsePair opts fargs (tag, V.unsafeIndex arr 1)
                    _ -> fail "First element is not a String"
             else fail "Array doesn't have 2 elements"
 
 --------------------------------------------------------------------------------
 
 class FromTaggedObject arity f where
-    parseFromTaggedObject :: Options -> Proxy arity
+    parseFromTaggedObject :: Options -> FromArgs arity a
                           -> String -> Object
-                          -> (Value -> Parser a) -> (Value -> Parser [a])
                           -> Text -> Maybe (Parser (f a))
 
 instance ( FromTaggedObject arity a, FromTaggedObject arity b) =>
     FromTaggedObject arity (a :+: b) where
-        parseFromTaggedObject opts pa contentsFieldName obj pj pjl tag =
-            (fmap L1 <$> parseFromTaggedObject opts pa contentsFieldName obj pj pjl tag) <|>
-            (fmap R1 <$> parseFromTaggedObject opts pa contentsFieldName obj pj pjl tag)
+        parseFromTaggedObject opts fargs contentsFieldName obj tag =
+            (fmap L1 <$> parseFromTaggedObject opts fargs contentsFieldName obj tag) <|>
+            (fmap R1 <$> parseFromTaggedObject opts fargs contentsFieldName obj tag)
 
 instance ( FromTaggedObject' arity f
          , Constructor c
          ) => FromTaggedObject arity (C1 c f) where
-    parseFromTaggedObject opts pa contentsFieldName obj pj pjl tag
+    parseFromTaggedObject opts fargs contentsFieldName obj tag
         | tag == name = Just $ M1 <$> parseFromTaggedObject'
-                                        opts pa contentsFieldName pj pjl obj
+                                        opts fargs contentsFieldName obj
         | otherwise = Nothing
         where
           name = pack $ constructorTagModifier opts $
@@ -835,87 +838,82 @@ instance ( FromTaggedObject' arity f
 --------------------------------------------------------------------------------
 
 class FromTaggedObject' arity f where
-    parseFromTaggedObject' :: Options -> Proxy arity -> String
-                           -> (Value -> Parser a) -> (Value -> Parser [a])
+    parseFromTaggedObject' :: Options -> FromArgs arity a -> String
                            -> Object -> Parser (f a)
 
 class FromTaggedObject'' arity f isRecord where
-    parseFromTaggedObject'' :: Options -> Proxy arity -> String
-                            -> (Value -> Parser a) -> (Value -> Parser [a])
+    parseFromTaggedObject'' :: Options -> FromArgs arity a -> String
                             -> Object -> Tagged isRecord (Parser (f a))
 
 instance ( IsRecord                   f isRecord
          , FromTaggedObject''   arity f isRecord
          ) => FromTaggedObject' arity f where
-    parseFromTaggedObject' opts pa contentsFieldName pj pjl =
+    parseFromTaggedObject' opts fargs contentsFieldName =
         (unTagged :: Tagged isRecord (Parser (f a)) -> Parser (f a)) .
-        parseFromTaggedObject'' opts pa contentsFieldName pj pjl
+        parseFromTaggedObject'' opts fargs contentsFieldName
 
 instance (FromRecord arity f) => FromTaggedObject'' arity f True where
-    parseFromTaggedObject'' opts pa _ pj pjl =
-      Tagged . parseRecord opts pa Nothing pj pjl
+    parseFromTaggedObject'' opts fargs _ =
+      Tagged . parseRecord opts fargs Nothing
 
 instance (GFromJSON arity f) => FromTaggedObject'' arity f False where
-    parseFromTaggedObject'' opts pa contentsFieldName pj pjl = Tagged .
-      (gParseJSON opts pa pj pjl <=< (.: pack contentsFieldName))
+    parseFromTaggedObject'' opts fargs contentsFieldName = Tagged .
+      (gParseJSON opts fargs <=< (.: pack contentsFieldName))
 
 instance OVERLAPPING_ FromTaggedObject'' arity U1 False where
-    parseFromTaggedObject'' _ _ _ _ _ _ = Tagged (pure U1)
+    parseFromTaggedObject'' _ _ _ _ = Tagged (pure U1)
 
 --------------------------------------------------------------------------------
 
 class ConsFromJSON arity f where
-    consParseJSON  :: Options -> Proxy arity
-                   -> (Value -> Parser a) -> (Value -> Parser [a])
+    consParseJSON  :: Options -> FromArgs arity a
                    -> Value -> Parser (f a)
 
 class ConsFromJSON' arity f isRecord where
-    consParseJSON' :: Options -> Proxy arity
+    consParseJSON' :: Options -> FromArgs arity a
                    -> Maybe Text -- ^ A dummy label
                                  --   (Nothing to use proper label)
-                   -> (Value -> Parser a) -> (Value -> Parser [a])
                    -> Value -> Tagged isRecord (Parser (f a))
 
 instance ( IsRecord            f isRecord
          , ConsFromJSON' arity f isRecord
          ) => ConsFromJSON arity f where
-    consParseJSON opts pa pj pjl v = let
+    consParseJSON opts fargs v = let
       (v2,lab) = case (unwrapUnaryRecords opts,isUnary (undefined :: f a)) of
                        -- use a dummy object with a dummy label
         (True,True) -> (object [(pack "dummy",v)], Just $ pack "dummy")
         _ ->(v,Nothing)
       in (unTagged :: Tagged isRecord (Parser (f a)) -> Parser (f a))
-                       $ consParseJSON' opts pa lab pj pjl v2
+                       $ consParseJSON' opts fargs lab v2
 
 
 instance (FromRecord arity f) => ConsFromJSON' arity f True where
-    consParseJSON' opts pa mlab pj pjl = Tagged . withObject "record (:*:)"
-                                            (parseRecord opts pa mlab pj pjl)
+    consParseJSON' opts fargs mlab = Tagged . withObject "record (:*:)"
+                                        (parseRecord opts fargs mlab)
 
 instance (GFromJSON arity f) => ConsFromJSON' arity f False where
-    consParseJSON' opts pa _ pj pjl = Tagged . gParseJSON opts pa pj pjl
+    consParseJSON' opts fargs _ = Tagged . gParseJSON opts fargs
 
 --------------------------------------------------------------------------------
 
 class FromRecord arity f where
-    parseRecord :: Options -> Proxy arity
+    parseRecord :: Options -> FromArgs arity a
                 -> Maybe Text -- ^ A dummy label
                               --   (Nothing to use proper label)
-                -> (Value -> Parser a) -> (Value -> Parser [a])
                 -> Object -> Parser (f a)
 
 instance ( FromRecord arity a
          , FromRecord arity b
          ) => FromRecord arity (a :*: b) where
-    parseRecord opts pa _ pj pjl obj =
-      (:*:) <$> parseRecord opts pa Nothing pj pjl obj
-            <*> parseRecord opts pa Nothing pj pjl obj
+    parseRecord opts fargs _ obj =
+      (:*:) <$> parseRecord opts fargs Nothing obj
+            <*> parseRecord opts fargs Nothing obj
 
 instance ( Selector s
          , GFromJSON arity a
          ) => FromRecord arity (S1 s a) where
-    parseRecord opts pa lab pj pjl =
-      (<?> Key label) . gParseJSON opts pa pj pjl <=< (.: label)
+    parseRecord opts fargs lab =
+      (<?> Key label) . gParseJSON opts fargs <=< (.: label)
         where
           label = fromMaybe defLabel lab
           defLabel = pack . fieldLabelModifier opts $
@@ -923,8 +921,8 @@ instance ( Selector s
 
 instance OVERLAPPING_ (Selector s, FromJSON a) =>
   FromRecord arity (S1 s (K1 i (Maybe a))) where
-    parseRecord _ _ (Just lab) _ _ obj = (M1 . K1) <$> obj .:? lab
-    parseRecord opts _ Nothing _ _ obj = (M1 . K1) <$> obj .:? pack label
+    parseRecord _ _ (Just lab) obj = (M1 . K1) <$> obj .:? lab
+    parseRecord opts _ Nothing obj = (M1 . K1) <$> obj .:? pack label
         where
           label = fieldLabelModifier opts $
                     selName (undefined :: t s (K1 i (Maybe a)) p)
@@ -932,45 +930,43 @@ instance OVERLAPPING_ (Selector s, FromJSON a) =>
 --------------------------------------------------------------------------------
 
 class FromProduct arity f where
-    parseProduct :: Options -> Proxy arity
+    parseProduct :: Options -> FromArgs arity a
                  -> Array -> Int -> Int
-                 -> (Value -> Parser a) -> (Value -> Parser [a])
                  -> Parser (f a)
 
 instance ( FromProduct    arity a
          , FromProduct    arity b
          ) => FromProduct arity (a :*: b) where
-    parseProduct opts pa arr ix len pj pjl =
-        (:*:) <$> parseProduct opts pa arr ix  lenL pj pjl
-              <*> parseProduct opts pa arr ixR lenR pj pjl
+    parseProduct opts fargs arr ix len =
+        (:*:) <$> parseProduct opts fargs arr ix  lenL
+              <*> parseProduct opts fargs arr ixR lenR
         where
           lenL = len `unsafeShiftR` 1
           ixR  = ix + lenL
           lenR = len - lenL
 
 instance (GFromJSON arity a) => FromProduct arity (S1 s a) where
-    parseProduct opts pa arr ix _ pj pjl =
-      gParseJSON opts pa pj pjl $ V.unsafeIndex arr ix
+    parseProduct opts fargs arr ix _ =
+      gParseJSON opts fargs $ V.unsafeIndex arr ix
 
 --------------------------------------------------------------------------------
 
 class FromPair arity f where
-    parsePair :: Options -> Proxy arity
-              -> (Value -> Parser a) -> (Value -> Parser [a])
+    parsePair :: Options -> FromArgs arity a
               -> Pair -> Maybe (Parser (f a))
 
 instance ( FromPair arity a
          , FromPair arity b
          ) => FromPair arity (a :+: b) where
-    parsePair opts pa pj pjl pair = (fmap L1 <$> parsePair opts pa pj pjl pair) <|>
-                                    (fmap R1 <$> parsePair opts pa pj pjl pair)
+    parsePair opts fargs pair = (fmap L1 <$> parsePair opts fargs pair) <|>
+                                (fmap R1 <$> parsePair opts fargs pair)
 
 instance ( Constructor c
          , GFromJSON    arity a
          , ConsFromJSON arity a
          ) => FromPair arity (C1 c a) where
-    parsePair opts pa pj pjl (tag, value)
-        | tag == tag' = Just $ gParseJSON opts pa pj pjl value
+    parsePair opts fargs (tag, value)
+        | tag == tag' = Just $ gParseJSON opts fargs value
         | otherwise   = Nothing
         where
           tag' = pack $ constructorTagModifier opts $

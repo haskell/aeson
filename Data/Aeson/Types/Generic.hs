@@ -29,7 +29,6 @@ import Prelude ()
 import Prelude.Compat
 
 import GHC.Generics
-import Data.Proxy (Proxy (..))
 
 --------------------------------------------------------------------------------
 
@@ -88,12 +87,6 @@ data Zero
 
 -- | A type-level indicator that 'ToJSON1' or 'FromJSON1' is being derived generically.
 data One
-
-proxyZero :: Proxy Zero
-proxyZero = Proxy
-
-proxyOne :: Proxy One
-proxyOne  = Proxy
 
 --------------------------------------------------------------------------------
 
