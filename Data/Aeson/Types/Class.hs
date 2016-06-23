@@ -35,8 +35,10 @@ module Data.Aeson.Types.Class
     , toEncoding2
     -- * Generic JSON classes
     , GFromJSON(..)
+    , FromArgs(..)
     , GToJSON(..)
     , GToEncoding(..)
+    , ToArgs(..)
     , Zero
     , One
     , genericToJSON

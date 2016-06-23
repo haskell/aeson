@@ -36,6 +36,7 @@ module Data.Aeson.Types.ToJSON (
     -- * Generic JSON classes
     , GToJSON(..)
     , GToEncoding(..)
+    , ToArgs(..)
     , genericToJSON
     , genericToEncoding
     , genericLiftToJSON
@@ -138,8 +139,7 @@ class GToJSON arity f where
     -- | This method (applied to 'defaultOptions') is used as the
     -- default generic implementation of 'toJSON' (if the @arity@ is 'Zero')
     -- or 'liftToJSON' (if the @arity@ is 'One').
-    gToJSON :: Options -> Proxy arity
-            -> (a -> Value) -> ([a] -> Value) -> f a -> Value
+    gToJSON :: Options -> ToArgs Value arity a -> f a -> Value
 
 -- | Class of generic representation types that can be converted to
 -- a JSON 'Encoding'.
@@ -147,15 +147,21 @@ class GToEncoding arity f where
     -- | This method (applied to 'defaultOptions') can be used as the
     -- default generic implementation of 'toEncoding' (if the @arity@ is 'Zero')
     -- or 'liftToEncoding' (if the @arity@ is 'One').
-    gToEncoding :: Options -> Proxy arity
-                -> (a -> Encoding) -> ([a] -> Encoding) -> f a -> Encoding
+    gToEncoding :: Options -> ToArgs Encoding arity a -> f a -> Encoding
+
+-- | A 'ToArgs' value either stores nothing (for 'ToJSON') or it stores the two
+-- function arguments that encode occurrences of the type parameter (for
+-- 'ToJSON1').
+data ToArgs res arity a where
+    NoToArgs :: ToArgs res Zero a
+    To1Args  :: (a -> res) -> ([a] -> res) -> ToArgs res One a
 
 -- | A configurable generic JSON creator. This function applied to
 -- 'defaultOptions' is used as the default for 'toJSON' when the type
 -- is an instance of 'Generic'.
 genericToJSON :: (Generic a, GToJSON Zero (Rep a))
               => Options -> a -> Value
-genericToJSON opts = gToJSON opts proxyZero undefined undefined . from
+genericToJSON opts = gToJSON opts NoToArgs . from
 
 -- | A configurable generic JSON creator. This function applied to
 -- 'defaultOptions' is used as the default for 'liftToJSON' when the type
@@ -163,14 +169,14 @@ genericToJSON opts = gToJSON opts proxyZero undefined undefined . from
 genericLiftToJSON :: (Generic1 f, GToJSON One (Rep1 f))
                   => Options -> (a -> Value) -> ([a] -> Value)
                   -> f a -> Value
-genericLiftToJSON opts tj tjl = gToJSON opts proxyOne tj tjl . from1
+genericLiftToJSON opts tj tjl = gToJSON opts (To1Args tj tjl) . from1
 
 -- | A configurable generic JSON encoder. This function applied to
 -- 'defaultOptions' is used as the default for 'toEncoding' when the type
 -- is an instance of 'Generic'.
 genericToEncoding :: (Generic a, GToEncoding Zero (Rep a))
                   => Options -> a -> Encoding
-genericToEncoding opts = gToEncoding opts proxyZero undefined undefined . from
+genericToEncoding opts = gToEncoding opts NoToArgs . from
 
 -- | A configurable generic JSON encoder. This function applied to
 -- 'defaultOptions' is used as the default for 'liftToEncoding' when the type
@@ -178,7 +184,7 @@ genericToEncoding opts = gToEncoding opts proxyZero undefined undefined . from
 genericLiftToEncoding :: (Generic1 f, GToEncoding One (Rep1 f))
                       => Options -> (a -> Encoding) -> ([a] -> Encoding)
                       -> f a -> Encoding
-genericLiftToEncoding opts te tel = gToEncoding opts proxyOne te tel . from1
+genericLiftToEncoding opts te tel = gToEncoding opts (To1Args te tel) . from1
 
 -------------------------------------------------------------------------------
 -- Class
@@ -595,30 +601,30 @@ instance (ToJSON a) => ToJSON [a] where
 
 instance OVERLAPPABLE_ (GToJSON arity a) => GToJSON arity (M1 i c a) where
     -- Meta-information, which is not handled elsewhere, is ignored:
-    gToJSON opts pa tj tjl = gToJSON opts pa tj tjl . unM1
+    gToJSON opts targs = gToJSON opts targs . unM1
 
 instance (ToJSON a) => GToJSON arity (K1 i a) where
     -- Constant values are encoded using their ToJSON instance:
-    gToJSON _opts _ _ _ = toJSON . unK1
+    gToJSON _opts _ = toJSON . unK1
 
 instance GToJSON One Par1 where
     -- Direct occurrences of the last type parameter are encoded with the
     -- function passed in as an argument:
-    gToJSON _opts _ tj _ = tj . unPar1
+    gToJSON _opts (To1Args tj _) = tj . unPar1
 
 instance (ToJSON1 f) => GToJSON One (Rec1 f) where
     -- Recursive occurrences of the last type parameter are encoded using their
     -- ToJSON1 instance:
-    gToJSON _opts _ tj tjl = liftToJSON tj tjl . unRec1
+    gToJSON _opts (To1Args tj tjl) = liftToJSON tj tjl . unRec1
 
 instance GToJSON arity U1 where
     -- Empty constructors are encoded to an empty array:
-    gToJSON _opts _ _ _ _ = emptyArray
+    gToJSON _opts _ _ = emptyArray
 
 instance (ConsToJSON arity a) => GToJSON arity (C1 c a) where
     -- Constructors need to be encoded differently depending on whether they're
     -- a record or not. This distinction is made by 'consToJSON':
-    gToJSON opts pa tj tjl = consToJSON opts pa tj tjl . unM1
+    gToJSON opts targs = consToJSON opts targs . unM1
 
 instance ( WriteProduct arity a, WriteProduct arity b
          , ProductSize        a, ProductSize        b
@@ -626,10 +632,10 @@ instance ( WriteProduct arity a, WriteProduct arity b
     -- Products are encoded to an array. Here we allocate a mutable vector of
     -- the same size as the product and write the product's elements to it using
     -- 'writeProduct':
-    gToJSON opts pa tj tjl p =
+    gToJSON opts targs p =
         Array $ V.create $ do
           mv <- VM.unsafeNew lenProduct
-          writeProduct opts pa mv 0 lenProduct tj tjl p
+          writeProduct opts targs mv 0 lenProduct p
           return mv
         where
           lenProduct = (unTagged2 :: Tagged2 (a :*: b) Int -> Int)
@@ -641,15 +647,15 @@ instance ( AllNullary       (a :+: b) allNullary
     -- If all constructors of a sum datatype are nullary and the
     -- 'allNullaryToStringTag' option is set they are encoded to
     -- strings.  This distinction is made by 'sumToJSON':
-    gToJSON opts pa tj tjl = (unTagged :: Tagged allNullary Value -> Value)
-                           . sumToJSON opts pa tj tjl
+    gToJSON opts targs = (unTagged :: Tagged allNullary Value -> Value)
+                       . sumToJSON opts targs
 
 instance (ToJSON1 f, GToJSON One g) => GToJSON One (f :.: g) where
     -- If an occurrence of the last type parameter is nested inside two
     -- composed types, it is encoded by using the outermost type's ToJSON1
     -- instance to generically encode the innermost type:
-    gToJSON opts pa tj tjl =
-      let gtj = gToJSON opts pa tj tjl in
+    gToJSON opts targs =
+      let gtj = gToJSON opts targs in
       liftToJSON gtj (listValue gtj) . unComp1
 
 --------------------------------------------------------------------------------
@@ -657,30 +663,30 @@ instance (ToJSON1 f, GToJSON One g) => GToJSON One (f :.: g) where
 
 instance OVERLAPPABLE_ (GToEncoding arity a) => GToEncoding arity (M1 i c a) where
     -- Meta-information, which is not handled elsewhere, is ignored:
-    gToEncoding opts pa te tel = gToEncoding opts pa te tel . unM1
+    gToEncoding opts targs = gToEncoding opts targs . unM1
 
 instance (ToJSON a) => GToEncoding arity (K1 i a) where
     -- Constant values are encoded using their ToJSON instance:
-    gToEncoding _opts _ _ _ = toEncoding . unK1
+    gToEncoding _opts _ = toEncoding . unK1
 
 instance GToEncoding One Par1 where
     -- Direct occurrences of the last type parameter are encoded with the
     -- function passed in as an argument:
-    gToEncoding _opts _ te _ = te . unPar1
+    gToEncoding _opts (To1Args te _) = te . unPar1
 
 instance (ToJSON1 f) => GToEncoding One (Rec1 f) where
     -- Recursive occurrences of the last type parameter are encoded using their
     -- ToEncoding1 instance:
-    gToEncoding _opts _ te tel = liftToEncoding te tel . unRec1
+    gToEncoding _opts (To1Args te tel) = liftToEncoding te tel . unRec1
 
 instance GToEncoding arity U1 where
     -- Empty constructors are encoded to an empty array:
-    gToEncoding _opts _ _ _ _ = E.emptyArray_
+    gToEncoding _opts _ _ = E.emptyArray_
 
 instance (ConsToEncoding arity a) => GToEncoding arity (C1 c a) where
     -- Constructors need to be encoded differently depending on whether they're
     -- a record or not. This distinction is made by 'consToEncoding':
-    gToEncoding opts pa te tel = consToEncoding opts pa te tel . unM1
+    gToEncoding opts targs = consToEncoding opts targs . unM1
 
 instance ( EncodeProduct  arity a
          , EncodeProduct  arity b
@@ -688,7 +694,7 @@ instance ( EncodeProduct  arity a
     -- Products are encoded to an array. Here we allocate a mutable vector of
     -- the same size as the product and write the product's elements to it using
     -- 'encodeProduct':
-    gToEncoding opts pa te tel p = E.tuple $ encodeProduct opts pa te tel p
+    gToEncoding opts targs p = E.tuple $ encodeProduct opts targs p
 
 instance ( AllNullary           (a :+: b) allNullary
          , SumToEncoding  arity (a :+: b) allNullary
@@ -696,23 +702,22 @@ instance ( AllNullary           (a :+: b) allNullary
     -- If all constructors of a sum datatype are nullary and the
     -- 'allNullaryToStringTag' option is set they are encoded to
     -- strings.  This distinction is made by 'sumToEncoding':
-    gToEncoding opts pa te tel
+    gToEncoding opts targs
         = (unTagged :: Tagged allNullary Encoding -> Encoding)
-        . sumToEncoding opts pa te tel
+        . sumToEncoding opts targs
 
 instance (ToJSON1 f, GToEncoding One g) => GToEncoding One (f :.: g) where
     -- If an occurrence of the last type parameter is nested inside two
     -- composed types, it is encoded by using the outermost type's ToJSON1
     -- instance to generically encode the innermost type:
-    gToEncoding opts pa te tel =
-      let gte = gToEncoding opts pa te tel in
+    gToEncoding opts targs =
+      let gte = gToEncoding opts targs in
       liftToEncoding gte (listEncoding gte) . unComp1
 
 --------------------------------------------------------------------------------
 
 class SumToJSON arity f allNullary where
-    sumToJSON :: Options -> Proxy arity
-              -> (a -> Value) -> ([a] -> Value)
+    sumToJSON :: Options -> ToArgs Value arity a
               -> f a -> Tagged allNullary Value
 
 instance ( GetConName                     f
@@ -720,35 +725,33 @@ instance ( GetConName                     f
          , ObjectWithSingleFieldObj arity f
          , TwoElemArrayObj          arity f
          ) => SumToJSON arity f True where
-    sumToJSON opts pa tj tjl
+    sumToJSON opts targs
         | allNullaryToStringTag opts = Tagged . String . pack
                                      . constructorTagModifier opts . getConName
-        | otherwise = Tagged . nonAllNullarySumToJSON opts pa tj tjl
+        | otherwise = Tagged . nonAllNullarySumToJSON opts targs
 
 instance ( TwoElemArrayObj          arity f
          , TaggedObjectPairs        arity f
          , ObjectWithSingleFieldObj arity f
          ) => SumToJSON arity f False where
-    sumToJSON opts pa tj tjl = Tagged . nonAllNullarySumToJSON opts pa tj tjl
+    sumToJSON opts targs = Tagged . nonAllNullarySumToJSON opts targs
 
 nonAllNullarySumToJSON :: ( TwoElemArrayObj          arity f
                           , TaggedObjectPairs        arity f
                           , ObjectWithSingleFieldObj arity f
-                          ) => Options -> Proxy arity
-                            -> (a -> Value) -> ([a] -> Value)
+                          ) => Options -> ToArgs Value arity a
                             -> f a -> Value
-nonAllNullarySumToJSON opts pa tj tjl =
+nonAllNullarySumToJSON opts targs =
     case sumEncoding opts of
       TaggedObject{..}      ->
-        object . taggedObjectPairs opts pa tagFieldName contentsFieldName tj tjl
-      ObjectWithSingleField -> Object . objectWithSingleFieldObj opts pa tj tjl
-      TwoElemArray          -> Array  . twoElemArrayObj opts pa tj tjl
+        object . taggedObjectPairs opts targs tagFieldName contentsFieldName
+      ObjectWithSingleField -> Object . objectWithSingleFieldObj opts targs
+      TwoElemArray          -> Array  . twoElemArrayObj opts targs
 
 --------------------------------------------------------------------------------
 
 class SumToEncoding arity f allNullary where
-    sumToEncoding :: Options -> Proxy arity
-                  -> (a -> Encoding) -> ([a] -> Encoding)
+    sumToEncoding :: Options -> ToArgs Encoding arity a
                   -> f a -> Tagged allNullary Encoding
 
 instance ( GetConName                     f
@@ -756,116 +759,111 @@ instance ( GetConName                     f
          , ObjectWithSingleFieldEnc arity f
          , TwoElemArrayEnc          arity f
          ) => SumToEncoding arity f True where
-    sumToEncoding opts pa te tel
+    sumToEncoding opts targs
         | allNullaryToStringTag opts = Tagged . toEncoding .
                                        constructorTagModifier opts . getConName
-        | otherwise = Tagged . nonAllNullarySumToEncoding opts pa te tel
+        | otherwise = Tagged . nonAllNullarySumToEncoding opts targs
 
 instance ( TwoElemArrayEnc          arity f
          , TaggedObjectEnc          arity f
          , ObjectWithSingleFieldEnc arity f
          ) => SumToEncoding arity f False where
-    sumToEncoding opts pa te tel = Tagged . nonAllNullarySumToEncoding opts pa te tel
+    sumToEncoding opts targs = Tagged . nonAllNullarySumToEncoding opts targs
 
 nonAllNullarySumToEncoding :: ( TwoElemArrayEnc          arity f
                               , TaggedObjectEnc          arity f
                               , ObjectWithSingleFieldEnc arity f
-                              ) => Options -> Proxy arity
-                                -> (a -> Encoding) -> ([a] -> Encoding)
+                              ) => Options -> ToArgs Encoding arity a
                                 -> f a -> Encoding
-nonAllNullarySumToEncoding opts pa te tel =
+nonAllNullarySumToEncoding opts targs =
     case sumEncoding opts of
       TaggedObject{..}      ->
-        taggedObjectEnc opts pa tagFieldName contentsFieldName te tel
-      ObjectWithSingleField -> objectWithSingleFieldEnc opts pa te tel
-      TwoElemArray          -> twoElemArrayEnc opts pa te tel
+        taggedObjectEnc opts targs tagFieldName contentsFieldName
+      ObjectWithSingleField -> objectWithSingleFieldEnc opts targs
+      TwoElemArray          -> twoElemArrayEnc opts targs
 
 --------------------------------------------------------------------------------
 
 class TaggedObjectPairs arity f where
-    taggedObjectPairs :: Options -> Proxy arity
+    taggedObjectPairs :: Options -> ToArgs Value arity a
                       -> String -> String
-                      -> (a -> Value) -> ([a] -> Value)
                       -> f a -> [Pair]
 
 instance ( TaggedObjectPairs arity a
          , TaggedObjectPairs arity b
          ) => TaggedObjectPairs arity (a :+: b) where
-    taggedObjectPairs opts pa tagFieldName contentsFieldName tj tjl (L1 x) =
-        taggedObjectPairs opts pa tagFieldName contentsFieldName tj tjl x
-    taggedObjectPairs opts pa tagFieldName contentsFieldName tj tjl (R1 x) =
-        taggedObjectPairs opts pa tagFieldName contentsFieldName tj tjl x
+    taggedObjectPairs opts targs tagFieldName contentsFieldName (L1 x) =
+        taggedObjectPairs opts targs tagFieldName contentsFieldName x
+    taggedObjectPairs opts targs tagFieldName contentsFieldName (R1 x) =
+        taggedObjectPairs opts targs tagFieldName contentsFieldName x
 
 instance ( IsRecord                 a isRecord
          , TaggedObjectPairs' arity a isRecord
          , Constructor c
          ) => TaggedObjectPairs arity (C1 c a) where
-    taggedObjectPairs opts pa tagFieldName contentsFieldName tj tjl =
+    taggedObjectPairs opts targs tagFieldName contentsFieldName =
         (pack tagFieldName .= constructorTagModifier opts
                                  (conName (undefined :: t c a p)) :) .
         (unTagged :: Tagged isRecord [Pair] -> [Pair]) .
-          taggedObjectPairs' opts pa contentsFieldName tj tjl . unM1
+          taggedObjectPairs' opts targs contentsFieldName . unM1
 
 class TaggedObjectPairs' arity f isRecord where
-    taggedObjectPairs' :: Options -> Proxy arity
-                       -> String -> (a -> Value) -> ([a] -> Value)
-                       -> f a -> Tagged isRecord [Pair]
+    taggedObjectPairs' :: Options -> ToArgs Value arity a
+                       -> String -> f a -> Tagged isRecord [Pair]
 
 instance OVERLAPPING_ TaggedObjectPairs' arity U1 False where
-    taggedObjectPairs' _ _ _ _ _ _ = Tagged []
+    taggedObjectPairs' _ _ _ _ = Tagged []
 
 instance (RecordToPairs arity f) => TaggedObjectPairs' arity f True where
-    taggedObjectPairs' opts pa _ tj tjl =
-      Tagged . toList . recordToPairs opts pa tj tjl
+    taggedObjectPairs' opts targs _ =
+      Tagged . toList . recordToPairs opts targs
 
 instance (GToJSON arity f) => TaggedObjectPairs' arity f False where
-    taggedObjectPairs' opts pa contentsFieldName tj tjl =
-        Tagged . (:[]) . (pack contentsFieldName .=) . gToJSON opts pa tj tjl
+    taggedObjectPairs' opts targs contentsFieldName =
+        Tagged . (:[]) . (pack contentsFieldName .=) . gToJSON opts targs
 
 --------------------------------------------------------------------------------
 
 class TaggedObjectEnc arity f where
-    taggedObjectEnc :: Options -> Proxy arity
+    taggedObjectEnc :: Options -> ToArgs Encoding arity a
                     -> String -> String
-                    -> (a -> Encoding) -> ([a] -> Encoding)
                     -> f a -> Encoding
 
 instance ( TaggedObjectEnc    arity a
          , TaggedObjectEnc    arity b
          ) => TaggedObjectEnc arity (a :+: b) where
-    taggedObjectEnc opts pa tagFieldName contentsFieldName te tel (L1 x) =
-        taggedObjectEnc opts pa tagFieldName contentsFieldName te tel x
-    taggedObjectEnc opts pa tagFieldName contentsFieldName te tel (R1 x) =
-        taggedObjectEnc opts pa tagFieldName contentsFieldName te tel x
+    taggedObjectEnc opts targs tagFieldName contentsFieldName (L1 x) =
+        taggedObjectEnc opts targs tagFieldName contentsFieldName x
+    taggedObjectEnc opts targs tagFieldName contentsFieldName (R1 x) =
+        taggedObjectEnc opts targs tagFieldName contentsFieldName x
 
 instance ( IsRecord               a isRecord
          , TaggedObjectEnc' arity a isRecord
          , Constructor c
          ) => TaggedObjectEnc arity (C1 c a) where
-    taggedObjectEnc opts pa tagFieldName contentsFieldName te tel v =
+    taggedObjectEnc opts targs tagFieldName contentsFieldName v =
         E.wrapObject $
             (E.string tagFieldName ><
              E.colon ><
              toEncoding (constructorTagModifier opts (conName (undefined :: t c a p)))) ><
             ((unTagged :: Tagged isRecord Encoding -> Encoding) .
-             taggedObjectEnc' opts pa contentsFieldName te tel . unM1 $ v)
+             taggedObjectEnc' opts targs contentsFieldName . unM1 $ v)
 
 class TaggedObjectEnc' arity f isRecord where
-    taggedObjectEnc' :: Options -> Proxy arity
-                     -> String -> (a -> Encoding) -> ([a] -> Encoding)
-                     -> f a -> Tagged isRecord Encoding
+    taggedObjectEnc' :: Options -> ToArgs Encoding arity a
+                     -> String -> f a -> Tagged isRecord Encoding
 
 instance OVERLAPPING_ TaggedObjectEnc' arity U1 False where
-    taggedObjectEnc' _ _ _ _ _ _ = Tagged E.empty
+    taggedObjectEnc' _ _ _ _ = Tagged E.empty
 
 instance (RecordToEncoding arity f) => TaggedObjectEnc' arity f True where
-    taggedObjectEnc' opts pa _ te tel = Tagged . (E.comma ><) . fst
-                                               . recordToEncoding opts pa te tel
+    taggedObjectEnc' opts targs _ = Tagged . (E.comma ><) . fst
+                                           . recordToEncoding opts targs
 
 instance (GToEncoding arity f) => TaggedObjectEnc' arity f False where
-    taggedObjectEnc' opts pa contentsFieldName te tel =
+    taggedObjectEnc' opts targs contentsFieldName =
         Tagged . (\z -> E.comma >< toEncoding contentsFieldName >< E.colon >< z) .
-        gToEncoding opts pa te tel
+        gToEncoding opts targs
 
 --------------------------------------------------------------------------------
 
@@ -883,137 +881,129 @@ instance (Constructor c) => GetConName (C1 c a) where
 --------------------------------------------------------------------------------
 
 class TwoElemArrayObj arity f where
-    twoElemArrayObj :: Options -> Proxy arity
-                    -> (a -> Value) -> ([a] -> Value)
+    twoElemArrayObj :: Options -> ToArgs Value arity a
                     -> f a -> V.Vector Value
 
 instance ( TwoElemArrayObj arity a
          , TwoElemArrayObj arity b
          ) => TwoElemArrayObj arity (a :+: b) where
-    twoElemArrayObj opts pa tj tjl (L1 x) = twoElemArrayObj opts pa tj tjl x
-    twoElemArrayObj opts pa tj tjl (R1 x) = twoElemArrayObj opts pa tj tjl x
+    twoElemArrayObj opts targs (L1 x) = twoElemArrayObj opts targs x
+    twoElemArrayObj opts targs (R1 x) = twoElemArrayObj opts targs x
 
 instance ( GToJSON    arity a
          , ConsToJSON arity a
          , Constructor c
          ) => TwoElemArrayObj arity (C1 c a) where
-    twoElemArrayObj opts pa tj tjl x = V.create $ do
+    twoElemArrayObj opts targs x = V.create $ do
       mv <- VM.unsafeNew 2
       VM.unsafeWrite mv 0 $ String $ pack $ constructorTagModifier opts
                                    $ conName (undefined :: t c a p)
-      VM.unsafeWrite mv 1 $ gToJSON opts pa tj tjl x
+      VM.unsafeWrite mv 1 $ gToJSON opts targs x
       return mv
 
 --------------------------------------------------------------------------------
 
 class TwoElemArrayEnc arity f where
-    twoElemArrayEnc :: Options -> Proxy arity
-                    -> (a -> Encoding) -> ([a] -> Encoding)
+    twoElemArrayEnc :: Options -> ToArgs Encoding arity a
                     -> f a -> Encoding
 
 instance ( TwoElemArrayEnc    arity a
          , TwoElemArrayEnc    arity b
          ) => TwoElemArrayEnc arity (a :+: b) where
-    twoElemArrayEnc opts pa te tel (L1 x) = twoElemArrayEnc opts pa te tel x
-    twoElemArrayEnc opts pa te tel (R1 x) = twoElemArrayEnc opts pa te tel x
+    twoElemArrayEnc opts targs (L1 x) = twoElemArrayEnc opts targs x
+    twoElemArrayEnc opts targs (R1 x) = twoElemArrayEnc opts targs x
 
 instance ( GToEncoding    arity a
          , ConsToEncoding arity a
          , Constructor c
          ) => TwoElemArrayEnc arity (C1 c a) where
-    twoElemArrayEnc opts pa te tel x = E.tuple $
+    twoElemArrayEnc opts targs x = E.tuple $
       toEncoding (constructorTagModifier opts (conName (undefined :: t c a p))) >*<
-      gToEncoding opts pa te tel x
+      gToEncoding opts targs x
 
 --------------------------------------------------------------------------------
 
 class ConsToJSON arity f where
-    consToJSON     :: Options -> Proxy arity
-                   -> (a -> Value) -> ([a] -> Value)
+    consToJSON     :: Options -> ToArgs Value arity a
                    -> f a -> Value
 
 class ConsToJSON' arity f isRecord where
-    consToJSON'     :: Options -> Proxy arity
+    consToJSON'     :: Options -> ToArgs Value arity a
                     -> Bool -- ^ Are we a record with one field?
-                    -> (a -> Value) -> ([a] -> Value)
                     -> f a -> Tagged isRecord Value
 
 instance ( IsRecord          f isRecord
          , ConsToJSON' arity f isRecord
          ) => ConsToJSON arity f where
-    consToJSON opts pa tj tjl =
+    consToJSON opts targs =
         (unTagged :: Tagged isRecord Value -> Value)
-      . consToJSON' opts pa (isUnary (undefined :: f a)) tj tjl
+      . consToJSON' opts targs (isUnary (undefined :: f a))
 
 instance (RecordToPairs arity f) => ConsToJSON' arity f True where
-    consToJSON' opts pa isUn tj tjl f = let
-      vals = toList $ recordToPairs opts pa tj tjl f
+    consToJSON' opts targs isUn f = let
+      vals = toList $ recordToPairs opts targs f
       in case (unwrapUnaryRecords opts,isUn,vals) of
         (True,True,[(_,val)]) -> Tagged val
         _ -> Tagged $ object vals
 
 instance GToJSON arity f => ConsToJSON' arity f False where
-    consToJSON' opts pa _ tj tjl = Tagged . gToJSON opts pa tj tjl
+    consToJSON' opts targs _ = Tagged . gToJSON opts targs
 
 --------------------------------------------------------------------------------
 
 class ConsToEncoding arity f where
-    consToEncoding :: Options -> Proxy arity
-                   -> (a -> Encoding) -> ([a] -> Encoding)
+    consToEncoding :: Options -> ToArgs Encoding arity a
                    -> f a -> Encoding
 
 class ConsToEncoding' arity f isRecord where
-    consToEncoding' :: Options -> Proxy arity
+    consToEncoding' :: Options -> ToArgs Encoding arity a
                     -> Bool -- ^ Are we a record with one field?
-                    -> (a -> Encoding) -> ([a] -> Encoding)
                     -> f a -> Tagged isRecord Encoding
 
 instance ( IsRecord                f isRecord
          , ConsToEncoding'   arity f isRecord
          ) => ConsToEncoding arity f where
-    consToEncoding opts pa te tel =
+    consToEncoding opts targs =
         (unTagged :: Tagged isRecord Encoding -> Encoding)
-      . consToEncoding' opts pa (isUnary (undefined :: f a)) te tel
+      . consToEncoding' opts targs (isUnary (undefined :: f a))
 
 instance (RecordToEncoding arity f) => ConsToEncoding' arity f True where
-    consToEncoding' opts pa isUn te tel x =
-      let (enc, mbVal) = recordToEncoding opts pa te tel x
+    consToEncoding' opts targs isUn x =
+      let (enc, mbVal) = recordToEncoding opts targs x
       in case (unwrapUnaryRecords opts, isUn, mbVal) of
            (True, True, Just val) -> Tagged val
            _ -> Tagged $ E.wrapObject enc
 
 instance GToEncoding arity f => ConsToEncoding' arity f False where
-    consToEncoding' opts pa _ te tel = Tagged . gToEncoding opts pa te tel
+    consToEncoding' opts targs _ = Tagged . gToEncoding opts targs
 
 --------------------------------------------------------------------------------
 
 class RecordToPairs arity f where
-    recordToPairs    :: Options -> Proxy arity
-                     -> (a -> Value) -> ([a] -> Value)
+    recordToPairs    :: Options -> ToArgs Value arity a
                      -> f a -> DList Pair
 
 instance ( RecordToPairs arity a
          , RecordToPairs arity b
          ) => RecordToPairs arity (a :*: b) where
-    recordToPairs opts pa tj tjl (a :*: b) = recordToPairs opts pa tj tjl a <>
-                                             recordToPairs opts pa tj tjl b
+    recordToPairs opts targs (a :*: b) = recordToPairs opts targs a <>
+                                         recordToPairs opts targs b
 
 instance (Selector s, GToJSON arity a) => RecordToPairs arity (S1 s a) where
     recordToPairs = fieldToPair
 
 instance OVERLAPPING_ (Selector s, ToJSON a) =>
   RecordToPairs arity (S1 s (K1 i (Maybe a))) where
-    recordToPairs opts _ _ _ (M1 k1) | omitNothingFields opts
-                                     , K1 Nothing <- k1 = DList.empty
-    recordToPairs opts pa tj tjl m1 = fieldToPair opts pa tj tjl m1
+    recordToPairs opts _ (M1 k1) | omitNothingFields opts
+                                 , K1 Nothing <- k1 = DList.empty
+    recordToPairs opts targs m1 = fieldToPair opts targs m1
 
 fieldToPair :: (Selector s, GToJSON arity a)
-            => Options -> Proxy arity
-            -> (p -> Value) -> ([p] -> Value)
+            => Options -> ToArgs Value arity p
             -> S1 s a p -> DList Pair
-fieldToPair opts pa tj tjl m1 = pure ( pack $ fieldLabelModifier opts $ selName m1
-                                     , gToJSON opts pa tj tjl (unM1 m1)
-                                     )
+fieldToPair opts targs m1 = pure ( pack $ fieldLabelModifier opts $ selName m1
+                                 , gToJSON opts targs (unM1 m1)
+                                 )
 
 --------------------------------------------------------------------------------
 
@@ -1021,22 +1011,21 @@ class RecordToEncoding arity f where
     -- 1st element: whole thing
     -- 2nd element: in case the record has only 1 field, just the value
     --              of the field (without the key); 'Nothing' otherwise
-    recordToEncoding :: Options -> Proxy arity
-                     -> (a -> Encoding) -> ([a] -> Encoding)
+    recordToEncoding :: Options -> ToArgs Encoding arity a
                      -> f a -> (Encoding, Maybe Encoding)
 
 instance ( RecordToEncoding    arity a
          , RecordToEncoding    arity b
          ) => RecordToEncoding arity (a :*: b) where
-    recordToEncoding opts pa te tel (a :*: b) | omitNothingFields opts =
+    recordToEncoding opts targs (a :*: b) | omitNothingFields opts =
       (E.econcat $ intersperse E.comma $
         filter (not . E.nullEncoding)
-        [ fst (recordToEncoding opts pa te tel a)
-        , fst (recordToEncoding opts pa te tel b) ]
+        [ fst (recordToEncoding opts targs a)
+        , fst (recordToEncoding opts targs b) ]
       , Nothing)
-    recordToEncoding opts pa te tel (a :*: b) =
-      (fst (recordToEncoding opts pa te tel a) >< E.comma ><
-       fst (recordToEncoding opts pa te tel b),
+    recordToEncoding opts targs (a :*: b) =
+      (fst (recordToEncoding opts targs a) >< E.comma ><
+       fst (recordToEncoding opts targs b),
        Nothing)
 
 
@@ -1045,87 +1034,82 @@ instance (Selector s, GToEncoding arity a) => RecordToEncoding arity (S1 s a) wh
 
 instance OVERLAPPING_ (Selector s, ToJSON a) =>
   RecordToEncoding arity (S1 s (K1 i (Maybe a))) where
-    recordToEncoding opts _ _ _ (M1 k1) | omitNothingFields opts
-                                        , K1 Nothing <- k1 = (E.empty, Nothing)
-    recordToEncoding opts pa te tel m1 = fieldToEncoding opts pa te tel m1
+    recordToEncoding opts _ (M1 k1) | omitNothingFields opts
+                                    , K1 Nothing <- k1 = (E.empty, Nothing)
+    recordToEncoding opts targs m1 = fieldToEncoding opts targs m1
 
 fieldToEncoding :: (Selector s, GToEncoding arity a)
-                => Options -> Proxy arity
-                -> (p -> Encoding) -> ([p] -> Encoding)
+                => Options -> ToArgs Encoding arity p
                 -> S1 s a p -> (Encoding, Maybe Encoding)
-fieldToEncoding opts pa te tel m1 =
+fieldToEncoding opts targs m1 =
   let keyBuilder = toEncoding (fieldLabelModifier opts $ selName m1)
-      valueBuilder = gToEncoding opts pa te tel (unM1 m1)
+      valueBuilder = gToEncoding opts targs (unM1 m1)
   in  (keyBuilder >< E.colon >< valueBuilder, Just valueBuilder)
 
 --------------------------------------------------------------------------------
 
 class WriteProduct arity f where
     writeProduct :: Options
-                 -> Proxy arity
+                 -> ToArgs Value arity a
                  -> VM.MVector s Value
                  -> Int -- ^ index
                  -> Int -- ^ length
-                 -> (a -> Value)
-                 -> ([a] -> Value)
                  -> f a
                  -> ST s ()
 
 instance ( WriteProduct arity a
          , WriteProduct arity b
          ) => WriteProduct arity (a :*: b) where
-    writeProduct opts pa mv ix len tj tjl (a :*: b) = do
-      writeProduct opts pa mv ix  lenL tj tjl a
-      writeProduct opts pa mv ixR lenR tj tjl b
+    writeProduct opts targs mv ix len (a :*: b) = do
+      writeProduct opts targs mv ix  lenL a
+      writeProduct opts targs mv ixR lenR b
         where
           lenL = len `unsafeShiftR` 1
           lenR = len - lenL
           ixR  = ix  + lenL
 
 instance OVERLAPPABLE_ (GToJSON arity a) => WriteProduct arity a where
-    writeProduct opts pa mv ix _ tj tjl =
-      VM.unsafeWrite mv ix . gToJSON opts pa tj tjl
+    writeProduct opts targs mv ix _ =
+      VM.unsafeWrite mv ix . gToJSON opts targs
 
 --------------------------------------------------------------------------------
 
 class EncodeProduct arity f where
-    encodeProduct :: Options -> Proxy arity
-                  -> (a -> Encoding) -> ([a] -> Encoding)
+    encodeProduct :: Options -> ToArgs Encoding arity a
                   -> f a -> Encoding' E.InArray
 
 instance ( EncodeProduct    arity a
          , EncodeProduct    arity b
          ) => EncodeProduct arity (a :*: b) where
-    encodeProduct opts pa te tel (a :*: b) | omitNothingFields opts =
+    encodeProduct opts targs (a :*: b) | omitNothingFields opts =
         E.econcat $ intersperse E.comma $
         filter (not . E.nullEncoding)
-        [encodeProduct opts pa te tel a, encodeProduct opts pa te tel b]
-    encodeProduct opts pa te tel (a :*: b) = encodeProduct opts pa te tel a >*<
-                                             encodeProduct opts pa te tel b
+        [encodeProduct opts targs a, encodeProduct opts targs b]
+    encodeProduct opts targs (a :*: b) = encodeProduct opts targs a >*<
+                                         encodeProduct opts targs b
 
 instance OVERLAPPABLE_ (GToEncoding arity a) => EncodeProduct arity a where
-    encodeProduct opts pa te tel a = E.retagEncoding $ gToEncoding opts pa te tel a
+    encodeProduct opts targs a = E.retagEncoding $ gToEncoding opts targs a
 
 --------------------------------------------------------------------------------
 
 class ObjectWithSingleFieldObj arity f where
-    objectWithSingleFieldObj :: Options -> Proxy arity
-                             -> (a -> Value) -> ([a] -> Value)
+    objectWithSingleFieldObj :: Options -> ToArgs Value arity a
                              -> f a -> Object
 
 instance ( ObjectWithSingleFieldObj arity a
          , ObjectWithSingleFieldObj arity b
          ) => ObjectWithSingleFieldObj arity (a :+: b) where
-    objectWithSingleFieldObj opts pa tj tjl (L1 x) =
-      objectWithSingleFieldObj opts pa tj tjl x
-    objectWithSingleFieldObj opts pa tj tjl (R1 x) =
-      objectWithSingleFieldObj opts pa tj tjl x
+    objectWithSingleFieldObj opts targs (L1 x) =
+      objectWithSingleFieldObj opts targs x
+    objectWithSingleFieldObj opts targs (R1 x) =
+      objectWithSingleFieldObj opts targs x
 
 instance ( GToJSON    arity a
          , ConsToJSON arity a
          , Constructor c
          ) => ObjectWithSingleFieldObj arity (C1 c a) where
-    objectWithSingleFieldObj opts pa tj tjl = H.singleton typ . gToJSON opts pa tj tjl
+    objectWithSingleFieldObj opts targs = H.singleton typ . gToJSON opts targs
         where
           typ = pack $ constructorTagModifier opts $
                          conName (undefined :: t c a p)
@@ -1133,29 +1117,28 @@ instance ( GToJSON    arity a
 --------------------------------------------------------------------------------
 
 class ObjectWithSingleFieldEnc arity f where
-    objectWithSingleFieldEnc :: Options -> Proxy arity
-                             -> (a -> Encoding) -> ([a] -> Encoding)
+    objectWithSingleFieldEnc :: Options -> ToArgs Encoding arity a
                              -> f a -> Encoding
 
 instance ( ObjectWithSingleFieldEnc    arity a
          , ObjectWithSingleFieldEnc    arity b
          ) => ObjectWithSingleFieldEnc arity (a :+: b) where
-    objectWithSingleFieldEnc opts pa te tel (L1 x) =
-      objectWithSingleFieldEnc opts pa te tel x
-    objectWithSingleFieldEnc opts pa te tel (R1 x) =
-      objectWithSingleFieldEnc opts pa te tel x
+    objectWithSingleFieldEnc opts targs (L1 x) =
+      objectWithSingleFieldEnc opts targs x
+    objectWithSingleFieldEnc opts targs (R1 x) =
+      objectWithSingleFieldEnc opts targs x
 
 instance ( GToEncoding    arity a
          , ConsToEncoding arity a
          , Constructor c
          ) => ObjectWithSingleFieldEnc arity (C1 c a) where
-    objectWithSingleFieldEnc opts pa te tel v =
+    objectWithSingleFieldEnc opts targs v =
       E.openCurly ><
       toEncoding
           (constructorTagModifier opts
           (conName (undefined :: t c a p))) ><
       E.colon ><
-      gToEncoding opts pa te tel v ><
+      gToEncoding opts targs v ><
       E.closeCurly
 
 -------------------------------------------------------------------------------
