@@ -48,6 +48,7 @@ import Data.Text.Internal.Unsafe.Char (ord)
 import Data.Vector as Vector (Vector, empty, fromList, reverse)
 import Data.Word (Word8)
 import Foreign.ForeignPtr (withForeignPtr)
+import Foreign.Marshal.Utils (copyBytes)
 import Foreign.Ptr (Ptr, minusPtr, plusPtr)
 import Foreign.Storable (poke)
 import System.IO.Unsafe (unsafePerformIO)
@@ -261,7 +262,7 @@ unescape s = unsafePerformIO $ do
         let newlen = p `minusPtr` ptr
             slop = len - newlen
         Right <$> if slop >= 128 && slop >= len `quot` 4
-                  then B.create newlen $ \np -> B.memcpy np ptr newlen
+                  then B.create newlen $ \np -> copyBytes np ptr newlen
                   else return (PS fp 0 newlen)
  where
   go ptr = do
@@ -380,7 +381,7 @@ word8 w ptr = do
 copy :: ByteString -> Ptr Word8 -> Z.ZeptoT IO (Ptr Word8)
 copy (PS fp off len) ptr =
   liftIO . withForeignPtr fp $ \src -> do
-    B.memcpy ptr (src `plusPtr` off) len
+    copyBytes ptr (src `plusPtr` off) len
     return $! ptr `plusPtr` len
 
 charUtf8 :: Char -> Ptr Word8 -> Z.ZeptoT IO (Ptr Word8)
