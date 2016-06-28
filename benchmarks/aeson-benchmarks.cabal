@@ -4,6 +4,11 @@ build-type:          Simple
 
 cabal-version:       >=1.8
 
+flag bytestring-builder
+  description: Depend on the bytestring-builder package for backwards compatibility.
+  default: False
+  manual: False
+
 library
   hs-source-dirs: .. .
 
@@ -34,7 +39,6 @@ library
     base == 4.*,
     base-compat >= 0.9.1 && <0.10,
     time-locale-compat >=0.1.1 && <0.2,
-    bytestring >= 0.10.4.0,
     containers,
     deepseq,
     dlist >= 0.2,
@@ -42,7 +46,7 @@ library
     ghc-prim >= 0.2,
     hashable >= 1.1.2.0,
     mtl,
-    scientific >= 0.3.1 && < 0.4,
+    scientific >= 0.3.4.7 && < 0.4,
     syb,
     tagged >=0.8.3 && <0.9,
     template-haskell >= 2.4,
@@ -52,12 +56,18 @@ library
     unordered-containers >= 0.2.3.0,
     vector >= 0.7.1
 
+  if flag(bytestring-builder)
+    build-depends: bytestring >= 0.9 && < 0.10.4,
+                   bytestring-builder >= 0.10.4 && < 1
+  else
+    build-depends: bytestring >= 0.10.4
+
   if impl(ghc >=7.8)
     cpp-options: -DHAS_COERCIBLE
 
   if !impl(ghc >= 8.0)
     -- `Data.Semigroup` is available in base only since GHC 8.0 / base 4.9
-    build-depends: semigroups >= 0.16.1 && < 0.19
+    build-depends: semigroups >= 0.18.2 && < 0.19
 
   include-dirs: ../include
 
@@ -99,12 +109,17 @@ executable aeson-benchmark-typed
   build-depends:
     aeson-benchmarks,
     base,
-    bytestring,
     criterion >= 1.0,
     deepseq,
     ghc-prim,
     text,
     time
+
+  if flag(bytestring-builder)
+    build-depends: bytestring >= 0.9 && < 0.10.4,
+                   bytestring-builder >= 0.10.4 && < 1
+  else
+    build-depends: bytestring >= 0.10.4
 
 executable aeson-benchmark-compare-with-json
   main-is: CompareWithJSON.hs

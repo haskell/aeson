@@ -1,3 +1,4 @@
+{-# LANGUAGE BangPatterns          #-}
 {-# LANGUAGE CPP                   #-}
 {-# LANGUAGE DataKinds             #-}
 {-# LANGUAGE DefaultSignatures     #-}
@@ -97,6 +98,7 @@ import Foreign.Storable        (Storable)
 import GHC.Generics
 import Numeric.Natural         (Natural)
 
+import qualified Data.ByteString       as S
 import qualified Data.ByteString.Lazy  as L
 import qualified Data.DList            as DList
 import qualified Data.HashMap.Strict   as H
@@ -118,6 +120,15 @@ import qualified Data.Vector.Mutable   as VM
 import qualified Data.Vector.Primitive as VP
 import qualified Data.Vector.Storable  as VS
 import qualified Data.Vector.Unboxed   as VU
+
+#if !(MIN_VERSION_bytestring(0,10,0))
+import Foreign.ForeignPtr    (withForeignPtr)
+import Foreign.Marshal.Utils (copyBytes)
+import Foreign.Ptr           (plusPtr)
+
+import qualified Data.ByteString.Internal      as S
+import qualified Data.ByteString.Lazy.Internal as L
+#endif
 
 toJSONPair :: (a -> Value) -> (b -> Value) -> (a, b) -> Value
 toJSONPair a b = liftToJSON2 a (listValue a) b (listValue b)
@@ -454,7 +465,11 @@ toJSONKeyTextEnc :: (a -> Encoding' Text) -> ToJSONKeyFunction a
 toJSONKeyTextEnc e = ToJSONKeyText tot e
  where
     -- TODO: dropAround is also used in stringEncoding, which is unfortunate atm
-    tot = T.dropAround (== '"') . T.decodeLatin1 . L.toStrict . E.encodingToLazyByteString . e
+    tot = T.dropAround (== '"')
+        . T.decodeLatin1
+        . lazyToStrictByteString
+        . E.encodingToLazyByteString
+        . e
 
 -- | Contravariant map, as 'ToJSONKeyFunction' is a contravariant functor.
 contramapToJSONKeyFunction :: (b -> a) -> ToJSONKeyFunction a -> ToJSONKeyFunction b
@@ -1926,7 +1941,7 @@ stringEncoding :: Encoding' Text -> Value
 stringEncoding = String
     . T.dropAround (== '"')
     . T.decodeLatin1
-    . L.toStrict
+    . lazyToStrictByteString
     . E.encodingToLazyByteString
 {-# INLINE stringEncoding #-}
 
@@ -2566,3 +2581,28 @@ instance (ToJSON a, ToJSON b, ToJSON c, ToJSON d, ToJSON e, ToJSON f, ToJSON g, 
     {-# INLINE toJSON #-}
     toEncoding = toEncoding2
     {-# INLINE toEncoding #-}
+
+-------------------------------------------------------------------------------
+-- pre-bytestring-0.10 compatibility
+-------------------------------------------------------------------------------
+
+{-# INLINE lazyToStrictByteString #-}
+lazyToStrictByteString :: L.ByteString -> S.ByteString
+#if MIN_VERSION_bytestring(0,10,0)
+lazyToStrictByteString = L.toStrict
+#else
+lazyToStrictByteString = packChunks
+
+-- packChunks is taken from the blaze-builder package.
+
+-- | Pack the chunks of a lazy bytestring into a single strict bytestring.
+packChunks :: L.ByteString -> S.ByteString
+packChunks lbs = do
+    S.unsafeCreate (fromIntegral $ L.length lbs) (copyChunks lbs)
+  where
+    copyChunks !L.Empty                         !_pf = return ()
+    copyChunks !(L.Chunk (S.PS fpbuf o l) lbs') !pf  = do
+        withForeignPtr fpbuf $ \pbuf ->
+            copyBytes pf (pbuf `plusPtr` o) l
+        copyChunks lbs' (pf `plusPtr` l)
+#endif
