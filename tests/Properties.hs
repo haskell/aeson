@@ -1,4 +1,4 @@
-{-# LANGUAGE CPP, OverloadedStrings, ScopedTypeVariables #-}
+{-# LANGUAGE CPP, OverloadedStrings, ScopedTypeVariables, RankNTypes #-}
 
 -- For Arbitrary Compose
 {-# LANGUAGE FlexibleContexts #-}
@@ -12,8 +12,8 @@ import Control.Applicative (Const)
 import Data.Aeson (eitherDecode, encode)
 import Data.Aeson.Internal (IResult(..), formatError, ifromJSON, iparse)
 import Data.Aeson.Parser (value)
+import Data.Aeson.Encoding (encodingToLazyByteString)
 import Data.Aeson.Types
-import Data.ByteString.Builder (toLazyByteString)
 import Data.Int (Int8)
 import Data.Sequence (Seq)
 import Data.DList (DList)
@@ -52,12 +52,23 @@ encodeDouble num denom
 encodeInteger :: Integer -> Property
 encodeInteger i = encode i === L.pack (show i)
 
-toParseJSON :: (Arbitrary a, Eq a, Show a) =>
+toParseJSON :: (Eq a, Show a) =>
                (Value -> Parser a) -> (a -> Value) -> a -> Property
 toParseJSON parsejson tojson x =
     case iparse parsejson . tojson $ x of
       IError path msg -> failure "parse" (formatError path msg) x
       ISuccess x'     -> x === x'
+
+toParseJSON1
+    :: (Eq (f Int), Show (f Int))
+    => (forall a. LiftParseJSON f a)
+    -> (forall a. LiftToJSON f a)
+    -> f Int
+    -> Property
+toParseJSON1 parsejson1 tojson1 = toParseJSON parsejson tojson
+  where
+    parsejson = parsejson1 parseJSON (listParser parseJSON)
+    tojson    = tojson1 toJSON (listValue toJSON)
 
 roundTripEnc :: (FromJSON a, ToJSON a, Show a) =>
              (a -> a -> Property) -> a -> a -> Property
@@ -106,7 +117,29 @@ modifyFailureProp orig added =
 -- variation in JSON object key ordering.
 sameAs :: (a -> Value) -> (a -> Encoding) -> a -> Property
 sameAs toVal toEnc v =
-  eitherDecode (toLazyByteString (fromEncoding (toEnc v))) === Right (toVal v)
+  eitherDecode (encodingToLazyByteString (toEnc v)) === Right (toVal v)
+
+sameAs1
+    :: (forall a. LiftToJSON f a)
+    -> (forall a. LiftToEncoding f a)
+    -> f Int
+    -> Property
+sameAs1 toVal1 toEnc1 v = lhs === rhs
+  where
+    rhs = Right $ toVal1 toJSON (listValue toJSON) v
+    lhs = eitherDecode . encodingToLazyByteString $
+        toEnc1 toEncoding (listEncoding toEncoding) v
+
+sameAs1Agree
+    :: ToJSON a
+    => (f a -> Encoding)
+    -> (forall b. LiftToEncoding f b)
+    -> f a
+    -> Property
+sameAs1Agree toEnc toEnc1 v = rhs === lhs
+  where
+    rhs = encodingToLazyByteString $ toEnc v
+    lhs = encodingToLazyByteString $ toEnc1 toEncoding (listEncoding toEncoding) v
 
 type P6 = Product6 Int Bool String (Approx Double) (Int, Approx Double) ()
 type S4 = Sum4 Int8 ZonedTime T.Text (Map.Map String Int)
@@ -268,6 +301,12 @@ tests = testGroup "properties" [
             testProperty "2ElemArray" (toParseJSON gSomeTypeParseJSON2ElemArray gSomeTypeToJSON2ElemArray)
           , testProperty "TaggedObject" (toParseJSON gSomeTypeParseJSONTaggedObject gSomeTypeToJSONTaggedObject)
           , testProperty "ObjectWithSingleField" (toParseJSON gSomeTypeParseJSONObjectWithSingleField gSomeTypeToJSONObjectWithSingleField)
+
+#if __GLASGOW_HASKELL__ >= 706
+          , testProperty "2ElemArray unary" (toParseJSON1 gSomeTypeLiftParseJSON2ElemArray gSomeTypeLiftToJSON2ElemArray)
+          , testProperty "TaggedObject unary" (toParseJSON1 gSomeTypeLiftParseJSONTaggedObject gSomeTypeLiftToJSONTaggedObject)
+          , testProperty "ObjectWithSingleField unary" (toParseJSON1 gSomeTypeLiftParseJSONObjectWithSingleField gSomeTypeLiftToJSONObjectWithSingleField)
+#endif
           ]
         ]
       ]
@@ -285,13 +324,34 @@ tests = testGroup "properties" [
       --   gApproxToJSONUnwrap `sameAs` gApproxToEncodingUnwrap
       , testProperty "ApproxDefault" $
         gApproxToJSONDefault `sameAs` gApproxToEncodingDefault
+
       , testProperty "SomeType2ElemArray" $
         gSomeTypeToJSON2ElemArray `sameAs` gSomeTypeToEncoding2ElemArray
+#if __GLASGOW_HASKELL__ >= 706
+      , testProperty "SomeType2ElemArray unary" $
+        gSomeTypeLiftToJSON2ElemArray `sameAs1` gSomeTypeLiftToEncoding2ElemArray
+      , testProperty "SomeType2ElemArray unary agree" $
+        gSomeTypeToEncoding2ElemArray `sameAs1Agree` gSomeTypeLiftToEncoding2ElemArray
+#endif
+
       , testProperty "SomeTypeTaggedObject" $
         gSomeTypeToJSONTaggedObject `sameAs` gSomeTypeToEncodingTaggedObject
+#if __GLASGOW_HASKELL__ >= 706
+      , testProperty "SomeTypeTaggedObject unary" $
+        gSomeTypeLiftToJSONTaggedObject `sameAs1` gSomeTypeLiftToEncodingTaggedObject
+      , testProperty "SomeTypeTaggedObject unary agree" $
+        gSomeTypeToEncodingTaggedObject `sameAs1Agree` gSomeTypeLiftToEncodingTaggedObject
+#endif
+
       , testProperty "SomeTypeObjectWithSingleField" $
-        gSomeTypeToJSONObjectWithSingleField `sameAs`
-        gSomeTypeToEncodingObjectWithSingleField
+        gSomeTypeToJSONObjectWithSingleField `sameAs` gSomeTypeToEncodingObjectWithSingleField
+#if __GLASGOW_HASKELL__ >= 706
+      , testProperty "SomeTypeObjectWithSingleField unary" $
+        gSomeTypeLiftToJSONObjectWithSingleField `sameAs1` gSomeTypeLiftToEncodingObjectWithSingleField
+      , testProperty "SomeTypeObjectWithSingleField unary agree" $
+        gSomeTypeToEncodingObjectWithSingleField `sameAs1Agree` gSomeTypeLiftToEncodingObjectWithSingleField
+#endif
+
       , testProperty "SomeTypeOmitNothingFields" $
         gSomeTypeToJSONOmitNothingFields `sameAs` gSomeTypeToEncodingOmitNothingFields
       ]
@@ -319,6 +379,11 @@ tests = testGroup "properties" [
             testProperty "2ElemArray" (toParseJSON thSomeTypeParseJSON2ElemArray thSomeTypeToJSON2ElemArray)
           , testProperty "TaggedObject" (toParseJSON thSomeTypeParseJSONTaggedObject thSomeTypeToJSONTaggedObject)
           , testProperty "ObjectWithSingleField" (toParseJSON thSomeTypeParseJSONObjectWithSingleField thSomeTypeToJSONObjectWithSingleField)
+
+          , testProperty "2ElemArray unary" (toParseJSON1 thSomeTypeLiftParseJSON2ElemArray thSomeTypeLiftToJSON2ElemArray)
+          , testProperty "TaggedObject unary" (toParseJSON1 thSomeTypeLiftParseJSONTaggedObject thSomeTypeLiftToJSONTaggedObject)
+          , testProperty "ObjectWithSingleField unary" (toParseJSON1 thSomeTypeLiftParseJSONObjectWithSingleField thSomeTypeLiftToJSONObjectWithSingleField)
+
           ]
        , testGroup "Approx" [
             testProperty "string"                (isString                . thApproxToJSONUnwrap)
@@ -352,13 +417,27 @@ tests = testGroup "properties" [
         thApproxToJSONUnwrap `sameAs` thApproxToEncodingUnwrap
       , testProperty "ApproxDefault" $
         thApproxToJSONDefault `sameAs` thApproxToEncodingDefault
+
       , testProperty "SomeType2ElemArray" $
         thSomeTypeToJSON2ElemArray `sameAs` thSomeTypeToEncoding2ElemArray
+      , testProperty "SomeType2ElemArray unary" $
+        thSomeTypeLiftToJSON2ElemArray `sameAs1` thSomeTypeLiftToEncoding2ElemArray
+      , testProperty "SomeType2ElemArray unary agree" $
+        thSomeTypeToEncoding2ElemArray `sameAs1Agree` thSomeTypeLiftToEncoding2ElemArray
+
       , testProperty "SomeTypeTaggedObject" $
         thSomeTypeToJSONTaggedObject `sameAs` thSomeTypeToEncodingTaggedObject
+      , testProperty "SomeTypeTaggedObject unary" $
+        thSomeTypeLiftToJSONTaggedObject `sameAs1` thSomeTypeLiftToEncodingTaggedObject
+      , testProperty "SomeTypeTaggedObject unary agree" $
+        thSomeTypeToEncodingTaggedObject `sameAs1Agree` thSomeTypeLiftToEncodingTaggedObject
+
       , testProperty "SomeTypeObjectWithSingleField" $
-        thSomeTypeToJSONObjectWithSingleField `sameAs`
-        thSomeTypeToEncodingObjectWithSingleField
+        thSomeTypeToJSONObjectWithSingleField `sameAs` thSomeTypeToEncodingObjectWithSingleField
+      , testProperty "SomeTypeObjectWithSingleField unary" $
+        thSomeTypeLiftToJSONObjectWithSingleField `sameAs1` thSomeTypeLiftToEncodingObjectWithSingleField
+      , testProperty "SomeTypeObjectWithSingleField unary agree" $
+        thSomeTypeToEncodingObjectWithSingleField `sameAs1Agree` thSomeTypeLiftToEncodingObjectWithSingleField
       ]
     ]
   ]

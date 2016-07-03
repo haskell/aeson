@@ -1,3 +1,4 @@
+{-# LANGUAGE CPP #-}
 {-# LANGUAGE GADTs #-}
 {-# LANGUAGE TemplateHaskell #-}
 
@@ -97,14 +98,31 @@ gNullaryParseJSONObjectWithSingleField = genericParseJSON optsObjectWithSingleFi
 -- SomeType encoders/decoders
 --------------------------------------------------------------------------------
 
+-- Unary types
+type LiftToJSON f a =
+    (a -> Value) -> ([a] -> Value) -> f a -> Value
+type LiftToEncoding f a =
+    (a -> Encoding) -> ([a] -> Encoding) -> f a -> Encoding
+type LiftParseJSON f a =
+    (Value -> Parser a) -> (Value -> Parser [a]) -> Value -> Parser (f a)
+
 thSomeTypeToJSON2ElemArray :: SomeType Int -> Value
 thSomeTypeToJSON2ElemArray = $(mkToJSON opts2ElemArray ''SomeType)
 
 thSomeTypeToEncoding2ElemArray :: SomeType Int -> Encoding
 thSomeTypeToEncoding2ElemArray = $(mkToEncoding opts2ElemArray ''SomeType)
 
+thSomeTypeLiftToJSON2ElemArray :: LiftToJSON SomeType a
+thSomeTypeLiftToJSON2ElemArray = $(mkLiftToJSON opts2ElemArray ''SomeType)
+
+thSomeTypeLiftToEncoding2ElemArray :: LiftToEncoding SomeType a
+thSomeTypeLiftToEncoding2ElemArray = $(mkLiftToEncoding opts2ElemArray ''SomeType)
+
 thSomeTypeParseJSON2ElemArray :: Value -> Parser (SomeType Int)
 thSomeTypeParseJSON2ElemArray = $(mkParseJSON opts2ElemArray ''SomeType)
+
+thSomeTypeLiftParseJSON2ElemArray :: LiftParseJSON SomeType a
+thSomeTypeLiftParseJSON2ElemArray = $(mkLiftParseJSON opts2ElemArray ''SomeType)
 
 
 thSomeTypeToJSONTaggedObject :: SomeType Int -> Value
@@ -113,21 +131,36 @@ thSomeTypeToJSONTaggedObject = $(mkToJSON optsTaggedObject ''SomeType)
 thSomeTypeToEncodingTaggedObject :: SomeType Int -> Encoding
 thSomeTypeToEncodingTaggedObject = $(mkToEncoding optsTaggedObject ''SomeType)
 
+thSomeTypeLiftToJSONTaggedObject :: LiftToJSON SomeType a
+thSomeTypeLiftToJSONTaggedObject = $(mkLiftToJSON optsTaggedObject ''SomeType)
+
+thSomeTypeLiftToEncodingTaggedObject :: LiftToEncoding SomeType a
+thSomeTypeLiftToEncodingTaggedObject = $(mkLiftToEncoding optsTaggedObject ''SomeType)
+
 thSomeTypeParseJSONTaggedObject :: Value -> Parser (SomeType Int)
 thSomeTypeParseJSONTaggedObject = $(mkParseJSON optsTaggedObject ''SomeType)
 
+thSomeTypeLiftParseJSONTaggedObject :: LiftParseJSON SomeType a
+thSomeTypeLiftParseJSONTaggedObject = $(mkLiftParseJSON optsTaggedObject ''SomeType)
+
 
 thSomeTypeToJSONObjectWithSingleField :: SomeType Int -> Value
-thSomeTypeToJSONObjectWithSingleField =
-  $(mkToJSON optsObjectWithSingleField ''SomeType)
+thSomeTypeToJSONObjectWithSingleField = $(mkToJSON optsObjectWithSingleField ''SomeType)
 
 thSomeTypeToEncodingObjectWithSingleField :: SomeType Int -> Encoding
-thSomeTypeToEncodingObjectWithSingleField =
-  $(mkToEncoding optsObjectWithSingleField ''SomeType)
+thSomeTypeToEncodingObjectWithSingleField = $(mkToEncoding optsObjectWithSingleField ''SomeType)
+
+thSomeTypeLiftToJSONObjectWithSingleField :: LiftToJSON SomeType a
+thSomeTypeLiftToJSONObjectWithSingleField = $(mkLiftToJSON optsObjectWithSingleField ''SomeType)
+
+thSomeTypeLiftToEncodingObjectWithSingleField :: LiftToEncoding SomeType a
+thSomeTypeLiftToEncodingObjectWithSingleField = $(mkLiftToEncoding optsObjectWithSingleField ''SomeType)
 
 thSomeTypeParseJSONObjectWithSingleField :: Value -> Parser (SomeType Int)
-thSomeTypeParseJSONObjectWithSingleField =
-  $(mkParseJSON optsObjectWithSingleField ''SomeType)
+thSomeTypeParseJSONObjectWithSingleField = $(mkParseJSON optsObjectWithSingleField ''SomeType)
+
+thSomeTypeLiftParseJSONObjectWithSingleField :: LiftParseJSON SomeType a
+thSomeTypeLiftParseJSONObjectWithSingleField = $(mkLiftParseJSON optsObjectWithSingleField ''SomeType)
 
 
 gSomeTypeToJSON2ElemArray :: SomeType Int -> Value
@@ -139,6 +172,17 @@ gSomeTypeToEncoding2ElemArray = genericToEncoding opts2ElemArray
 gSomeTypeParseJSON2ElemArray :: Value -> Parser (SomeType Int)
 gSomeTypeParseJSON2ElemArray = genericParseJSON opts2ElemArray
 
+#if __GLASGOW_HASKELL__ >= 706
+gSomeTypeLiftToEncoding2ElemArray :: LiftToEncoding SomeType a
+gSomeTypeLiftToEncoding2ElemArray = genericLiftToEncoding opts2ElemArray
+
+gSomeTypeLiftToJSON2ElemArray :: LiftToJSON SomeType a
+gSomeTypeLiftToJSON2ElemArray = genericLiftToJSON opts2ElemArray
+
+gSomeTypeLiftParseJSON2ElemArray :: LiftParseJSON SomeType a
+gSomeTypeLiftParseJSON2ElemArray = genericLiftParseJSON opts2ElemArray
+#endif
+
 
 gSomeTypeToJSONTaggedObject :: SomeType Int -> Value
 gSomeTypeToJSONTaggedObject = genericToJSON optsTaggedObject
@@ -149,6 +193,17 @@ gSomeTypeToEncodingTaggedObject = genericToEncoding optsTaggedObject
 gSomeTypeParseJSONTaggedObject :: Value -> Parser (SomeType Int)
 gSomeTypeParseJSONTaggedObject = genericParseJSON optsTaggedObject
 
+#if __GLASGOW_HASKELL__ >= 706
+gSomeTypeLiftToEncodingTaggedObject :: LiftToEncoding SomeType a
+gSomeTypeLiftToEncodingTaggedObject = genericLiftToEncoding optsTaggedObject
+
+gSomeTypeLiftToJSONTaggedObject :: LiftToJSON SomeType a
+gSomeTypeLiftToJSONTaggedObject = genericLiftToJSON optsTaggedObject
+
+gSomeTypeLiftParseJSONTaggedObject :: LiftParseJSON SomeType a
+gSomeTypeLiftParseJSONTaggedObject = genericLiftParseJSON optsTaggedObject
+#endif
+
 
 gSomeTypeToJSONObjectWithSingleField :: SomeType Int -> Value
 gSomeTypeToJSONObjectWithSingleField = genericToJSON optsObjectWithSingleField
@@ -158,6 +213,17 @@ gSomeTypeToEncodingObjectWithSingleField = genericToEncoding optsObjectWithSingl
 
 gSomeTypeParseJSONObjectWithSingleField :: Value -> Parser (SomeType Int)
 gSomeTypeParseJSONObjectWithSingleField = genericParseJSON optsObjectWithSingleField
+
+#if __GLASGOW_HASKELL__ >= 706
+gSomeTypeLiftToEncodingObjectWithSingleField :: LiftToEncoding SomeType a
+gSomeTypeLiftToEncodingObjectWithSingleField = genericLiftToEncoding optsObjectWithSingleField
+
+gSomeTypeLiftToJSONObjectWithSingleField :: LiftToJSON SomeType a
+gSomeTypeLiftToJSONObjectWithSingleField = genericLiftToJSON optsObjectWithSingleField
+
+gSomeTypeLiftParseJSONObjectWithSingleField :: LiftParseJSON SomeType a
+gSomeTypeLiftParseJSONObjectWithSingleField = genericLiftParseJSON optsObjectWithSingleField
+#endif
 
 
 gSomeTypeToJSONOmitNothingFields :: SomeType Int -> Value
