@@ -11,6 +11,8 @@ For the latest version of this document, please see [https://github.com/bos/aeso
 * Modified instances for `Map` and `HashMap`. Introduced new `FromJSONKey` and
   `ToJSONKey` type classes.
 
+* Added `Data.Aeson.Encoding` with functions to work with `Encoding` in an abstract way.
+
 * Export `decodeWith`, `decodeStrictWith`, `eitherDecodeWith`, and
   `eitherDecodeStrictWith` from `Data.Aeson.Parser`. This allows
   decoding using explicit parsers instead of using `FromJSON`
@@ -36,6 +38,10 @@ For the latest version of this document, please see [https://github.com/bos/aeso
 
 * `ToJSON` instances using `genericToEncoding` and `omitNothingFields`
   no longer produces invalid JSON.
+
+* Added instances for `DList`, `Compose`, `Product`, `Sum`.
+
+* Buildable with `bytestring-0.9` (with a help of `bytestring-builder` compatibility package).
 
 ### 0.11.2.0
 
