@@ -232,6 +232,28 @@ gSomeTypeToJSONOmitNothingFields = genericToJSON optsOmitNothingFields
 gSomeTypeToEncodingOmitNothingFields :: SomeType Int -> Encoding
 gSomeTypeToEncodingOmitNothingFields = genericToEncoding optsOmitNothingFields
 
+-------------------------------------------------------------------------------
+-- EitherTextInt encoders/decodes
+-------------------------------------------------------------------------------
+
+thEitherTextIntToJSONUntaggedValue :: EitherTextInt -> Value
+thEitherTextIntToJSONUntaggedValue = $(mkToJSON optsUntaggedValue ''EitherTextInt)
+
+thEitherTextIntToEncodingUntaggedValue :: EitherTextInt -> Encoding
+thEitherTextIntToEncodingUntaggedValue = $(mkToEncoding optsUntaggedValue ''EitherTextInt)
+
+thEitherTextIntParseJSONUntaggedValue :: Value -> Parser EitherTextInt
+thEitherTextIntParseJSONUntaggedValue = $(mkParseJSON optsUntaggedValue ''EitherTextInt)
+
+
+gEitherTextIntToJSONUntaggedValue :: EitherTextInt -> Value
+gEitherTextIntToJSONUntaggedValue = genericToJSON optsUntaggedValue
+
+gEitherTextIntToEncodingUntaggedValue :: EitherTextInt -> Encoding
+gEitherTextIntToEncodingUntaggedValue = genericToEncoding optsUntaggedValue
+
+gEitherTextIntParseJSONUntaggedValue :: Value -> Parser EitherTextInt
+gEitherTextIntParseJSONUntaggedValue = genericParseJSON optsUntaggedValue
 
 --------------------------------------------------------------------------------
 -- Approx encoders/decoders

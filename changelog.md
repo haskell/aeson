@@ -13,6 +13,8 @@ For the latest version of this document, please see [https://github.com/bos/aeso
 
 * Added `Data.Aeson.Encoding` with functions to work with `Encoding` in an abstract way.
 
+* Added `UntaggedValue` to `SumEncoding`
+
 * Export `decodeWith`, `decodeStrictWith`, `eitherDecodeWith`, and
   `eitherDecodeStrictWith` from `Data.Aeson.Parser`. This allows
   decoding using explicit parsers instead of using `FromJSON`

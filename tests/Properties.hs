@@ -172,6 +172,16 @@ isObjectWithSingleField :: Value -> Bool
 isObjectWithSingleField (Object obj) = H.size obj == 1
 isObjectWithSingleField _            = False
 
+-- | is untaggedValue of EitherTextInt
+isUntaggedValueETI :: Value -> Bool
+isUntaggedValueETI (String s)
+    | s == "nonenullary"   = True
+isUntaggedValueETI (Bool _)   = True
+isUntaggedValueETI (Number _) = True
+isUntaggedValueETI (Array a)  = length a == 2
+isUntaggedValueETI _          = False
+
+
 --------------------------------------------------------------------------------
 
 
@@ -293,6 +303,10 @@ tests = testGroup "properties" [
             , testProperty "ObjectWithSingleField" (toParseJSON gNullaryParseJSONObjectWithSingleField gNullaryToJSONObjectWithSingleField)
             ]
         ]
+      , testGroup "EitherTextInt" [
+          testProperty "UntaggedValue" (isUntaggedValueETI . gEitherTextIntToJSONUntaggedValue)
+        , testProperty "roundtrip" (toParseJSON gEitherTextIntParseJSONUntaggedValue gEitherTextIntToJSONUntaggedValue)
+        ]
       , testGroup "SomeType" [
           testProperty "2ElemArray" (is2ElemArray . gSomeTypeToJSON2ElemArray)
         , testProperty "TaggedObject" (isTaggedObject . gSomeTypeToJSONTaggedObject)
@@ -324,6 +338,9 @@ tests = testGroup "properties" [
       --   gApproxToJSONUnwrap `sameAs` gApproxToEncodingUnwrap
       , testProperty "ApproxDefault" $
         gApproxToJSONDefault `sameAs` gApproxToEncodingDefault
+
+      , testProperty "EitherTextInt UntaggedValue" $
+        gEitherTextIntToJSONUntaggedValue `sameAs` gEitherTextIntToEncodingUntaggedValue
 
       , testProperty "SomeType2ElemArray" $
         gSomeTypeToJSON2ElemArray `sameAs` gSomeTypeToEncoding2ElemArray
@@ -371,6 +388,10 @@ tests = testGroup "properties" [
             , testProperty "ObjectWithSingleField" (toParseJSON thNullaryParseJSONObjectWithSingleField thNullaryToJSONObjectWithSingleField)
             ]
         ]
+      , testGroup "EitherTextInt" [
+          testProperty "UntaggedValue" (isUntaggedValueETI . thEitherTextIntToJSONUntaggedValue)
+        , testProperty "roundtrip" (toParseJSON thEitherTextIntParseJSONUntaggedValue thEitherTextIntToJSONUntaggedValue)
+        ]
       , testGroup "SomeType" [
           testProperty "2ElemArray" (is2ElemArray . thSomeTypeToJSON2ElemArray)
         , testProperty "TaggedObject" (isTaggedObject . thSomeTypeToJSONTaggedObject)
@@ -417,6 +438,9 @@ tests = testGroup "properties" [
         thApproxToJSONUnwrap `sameAs` thApproxToEncodingUnwrap
       , testProperty "ApproxDefault" $
         thApproxToJSONDefault `sameAs` thApproxToEncodingDefault
+
+      , testProperty "EitherTextInt UntaggedValue" $
+        thEitherTextIntToJSONUntaggedValue `sameAs` thEitherTextIntToEncodingUntaggedValue
 
       , testProperty "SomeType2ElemArray" $
         thSomeTypeToJSON2ElemArray `sameAs` thSomeTypeToEncoding2ElemArray
