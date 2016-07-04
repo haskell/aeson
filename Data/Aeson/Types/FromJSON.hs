@@ -189,18 +189,14 @@ parseIntegral :: Integral a => String -> Value -> Parser a
 parseIntegral expected = withScientific expected $ truncateIntegral expected
 {-# INLINE parseIntegral #-}
 
-truncateBoundedIntegral :: Integral a => String -> Scientific -> Parser a
-truncateBoundedIntegral expected s
-    | Scientific.isInteger s =
-        let x = truncate s
-        in if fromIntegral x == s
-               then pure x
-               else fail $ "Truncating to " ++ expected ++ " cause over or underflow: " ++ show s
-    | otherwise                        =
-        fail $ "Floating number specified for " ++ expected ++ ": " ++ show s
+truncateBoundedIntegral :: (Bounded a, Integral a) => String -> Scientific -> Parser a
+truncateBoundedIntegral expected s = maybe
+    (fail $ expected ++ " is either floating or will cause over or underflow: " ++ show s)
+    pure
+    (Scientific.toBoundedInteger s)
 {-# INLINE truncateBoundedIntegral #-}
 
-parseBoundedIntegral :: Integral a => String -> Value -> Parser a
+parseBoundedIntegral :: (Bounded a, Integral a) => String -> Value -> Parser a
 parseBoundedIntegral expected = withScientific expected $ truncateBoundedIntegral expected
 {-# INLINE parseBoundedIntegral #-}
 
@@ -215,7 +211,7 @@ parseIntegralText expected t =
     parseScientificText t >>= truncateIntegral expected
 {-# INLINE parseIntegralText #-}
 
-parseBoundedIntegralText :: Integral a => String -> Text -> Parser a
+parseBoundedIntegralText :: (Bounded a, Integral a) => String -> Text -> Parser a
 parseBoundedIntegralText expected t =
     parseScientificText t >>= truncateBoundedIntegral expected
 
