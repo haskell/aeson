@@ -580,9 +580,25 @@ toEncoding2 = liftToEncoding2 toEncoding toEncodingList toEncoding toEncodingLis
 -- Encoding functions
 -------------------------------------------------------------------------------
 
+-- | Helper function to use with 'liftToEncoding'.
+-- Useful when writing own 'ToJSON1' instances.
+--
+-- @
+-- newtype F a = F [a]
+--
+-- -- This instance encodes String as an array of chars
+-- instance 'ToJSON1' F where
+--     'liftToJSON'     tj _ (F xs) = 'liftToJSON'     tj ('listValue'    tj) xs
+--     'liftToEncoding' te _ (F xs) = 'liftToEncoding' te ('listEncoding' te) xs
+--
+-- instance 'Data.Aeson.FromJSON.FromJSON1' F where
+--     'Data.Aeson.FromJSON.liftParseJSON' p _ v = F \<$\> 'Data.Aeson.FromJSON.liftParseJSON' p ('Data.Aeson.FromJSON.listParser' p) v
+-- @
 listEncoding :: (a -> Encoding) -> [a] -> Encoding
 listEncoding = E.list
+{-# INLINE listEncoding #-}
 
+-- | Helper function to use with 'liftToJSON', see 'listEncoding'.
 listValue :: (a -> Value) -> [a] -> Value
 listValue f = Array . V.fromList . map f
 {-# INLINE listValue #-}

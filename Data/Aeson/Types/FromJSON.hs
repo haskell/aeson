@@ -548,6 +548,7 @@ parseJSON2 = liftParseJSON2 parseJSON parseJSONList parseJSON parseJSONList
 -- List functions
 -------------------------------------------------------------------------------
 
+-- | Helper function to use with 'liftParseJSON'. See 'Data.Aeson.ToJSON.listEncoding'.
 listParser :: (Value -> Parser a) -> Value -> Parser [a]
 listParser f (Array xs) = fmap V.toList (V.mapM f xs)
 listParser _ v          = typeMismatch "[a]" v
