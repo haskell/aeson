@@ -24,6 +24,7 @@ instance Arbitrary a => Arbitrary (SomeType c () a) where
                       , Unary   <$> arbitrary
                       , Product <$> arbitrary <*> arbitrary <*> arbitrary
                       , Record  <$> arbitrary <*> arbitrary <*> arbitrary
+                      , List    <$> arbitrary
                       ]
 
 instance Arbitrary (GADT String) where

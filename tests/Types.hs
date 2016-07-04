@@ -63,7 +63,9 @@ data SomeType a = Nullary
                 | Record { testOne   :: Double
                          , testTwo   :: Maybe Bool
                          , testThree :: Maybe a
-                         } deriving (Eq, Show)
+                         }
+                | List [a]
+  deriving (Eq, Show)
 
 data GADT a where
     GADT :: { gadt :: String } -> GADT String
