@@ -178,9 +178,31 @@ parseRealFloat _        Null       = pure (0/0)
 parseRealFloat expected v          = typeMismatch expected v
 {-# INLINE parseRealFloat #-}
 
+truncateIntegral :: Integral a => String -> Scientific -> Parser a
+truncateIntegral expected s
+    | Scientific.isInteger s = pure (truncate s)
+    | otherwise               =
+        fail $ "Floating number specified for " ++ expected ++ ": " ++ show s
+{-# INLINE truncateIntegral #-}
+
 parseIntegral :: Integral a => String -> Value -> Parser a
-parseIntegral expected = withScientific expected $ pure . truncate
+parseIntegral expected = withScientific expected $ truncateIntegral expected
 {-# INLINE parseIntegral #-}
+
+truncateBoundedIntegral :: Integral a => String -> Scientific -> Parser a
+truncateBoundedIntegral expected s
+    | Scientific.isInteger s =
+        let x = truncate s
+        in if fromIntegral x == s
+               then pure x
+               else fail $ "Truncating to " ++ expected ++ " cause over or underflow: " ++ show s
+    | otherwise                        =
+        fail $ "Floating number specified for " ++ expected ++ ": " ++ show s
+{-# INLINE truncateBoundedIntegral #-}
+
+parseBoundedIntegral :: Integral a => String -> Value -> Parser a
+parseBoundedIntegral expected = withScientific expected $ truncateBoundedIntegral expected
+{-# INLINE parseBoundedIntegral #-}
 
 parseScientificText :: Text -> Parser Scientific
 parseScientificText
@@ -188,8 +210,14 @@ parseScientificText
     . A.parseOnly (A.scientific <* A.endOfInput)
     . T.encodeUtf8
 
-parseIntegralText :: Integral a => Text -> Parser a
-parseIntegralText t = truncate <$> parseScientificText t
+parseIntegralText :: Integral a => String -> Text -> Parser a
+parseIntegralText expected t =
+    parseScientificText t >>= truncateIntegral expected
+{-# INLINE parseIntegralText #-}
+
+parseBoundedIntegralText :: Integral a => String -> Text -> Parser a
+parseBoundedIntegralText expected t =
+    parseScientificText t >>= truncateBoundedIntegral expected
 
 parseOptionalFieldWith :: (Value -> Parser (Maybe a))
                        -> Object -> Text -> Parser (Maybe a)
@@ -1115,22 +1143,22 @@ instance HasResolution a => FromJSON (Fixed a) where
     {-# INLINE parseJSON #-}
 
 instance FromJSON Int where
-    parseJSON = parseIntegral "Int"
+    parseJSON = parseBoundedIntegral "Int"
     {-# INLINE parseJSON #-}
 
 instance FromJSONKey Int where
-    fromJSONKey = FromJSONKeyTextParser parseIntegralText
+    fromJSONKey = FromJSONKeyTextParser $ parseBoundedIntegralText "Int" 
 
 -- | /WARNING:/ Only parse Integers from trusted input since an
 -- attacker could easily fill up the memory of the target system by
 -- specifying a scientific number with a big exponent like
 -- @1e1000000000@.
 instance FromJSON Integer where
-    parseJSON = withScientific "Integral" $ pure . truncate
+    parseJSON = parseIntegral "Integer"
     {-# INLINE parseJSON #-}
 
 instance FromJSONKey Integer where
-    fromJSONKey = FromJSONKeyTextParser parseIntegralText
+    fromJSONKey = FromJSONKeyTextParser $ parseIntegralText "Integer"
 
 instance FromJSON Natural where
     parseJSON = withScientific "Natural" $ \s ->
@@ -1145,67 +1173,67 @@ instance FromJSONKey Natural where
         else pure $ truncate s
 
 instance FromJSON Int8 where
-    parseJSON = parseIntegral "Int8"
+    parseJSON = parseBoundedIntegral "Int8"
     {-# INLINE parseJSON #-}
 
 instance FromJSONKey Int8 where
-    fromJSONKey = FromJSONKeyTextParser parseIntegralText
+    fromJSONKey = FromJSONKeyTextParser $ parseBoundedIntegralText "Int8"
 
 instance FromJSON Int16 where
-    parseJSON = parseIntegral "Int16"
+    parseJSON = parseBoundedIntegral "Int16"
     {-# INLINE parseJSON #-}
 
 instance FromJSONKey Int16 where
-    fromJSONKey = FromJSONKeyTextParser parseIntegralText
+    fromJSONKey = FromJSONKeyTextParser $ parseBoundedIntegralText "Int16"
 
 instance FromJSON Int32 where
-    parseJSON = parseIntegral "Int32"
+    parseJSON = parseBoundedIntegral "Int32"
     {-# INLINE parseJSON #-}
 
 instance FromJSONKey Int32 where
-    fromJSONKey = FromJSONKeyTextParser parseIntegralText
+    fromJSONKey = FromJSONKeyTextParser $ parseBoundedIntegralText "Int32"
 
 instance FromJSON Int64 where
-    parseJSON = parseIntegral "Int64"
+    parseJSON = parseBoundedIntegral "Int64"
     {-# INLINE parseJSON #-}
 
 instance FromJSONKey Int64 where
-    fromJSONKey = FromJSONKeyTextParser parseIntegralText
+    fromJSONKey = FromJSONKeyTextParser $ parseBoundedIntegralText "Int64"
 
 instance FromJSON Word where
-    parseJSON = parseIntegral "Word"
+    parseJSON = parseBoundedIntegral "Word"
     {-# INLINE parseJSON #-}
 
 instance FromJSONKey Word where
-    fromJSONKey = FromJSONKeyTextParser parseIntegralText
+    fromJSONKey = FromJSONKeyTextParser $ parseBoundedIntegralText "Word"
 
 instance FromJSON Word8 where
-    parseJSON = parseIntegral "Word8"
+    parseJSON = parseBoundedIntegral "Word8"
     {-# INLINE parseJSON #-}
 
 instance FromJSONKey Word8 where
-    fromJSONKey = FromJSONKeyTextParser parseIntegralText
+    fromJSONKey = FromJSONKeyTextParser $ parseBoundedIntegralText "Word8"
 
 instance FromJSON Word16 where
-    parseJSON = parseIntegral "Word16"
+    parseJSON = parseBoundedIntegral "Word16"
     {-# INLINE parseJSON #-}
 
 instance FromJSONKey Word16 where
-    fromJSONKey = FromJSONKeyTextParser parseIntegralText
+    fromJSONKey = FromJSONKeyTextParser $ parseBoundedIntegralText "Word16"
 
 instance FromJSON Word32 where
-    parseJSON = parseIntegral "Word32"
+    parseJSON = parseBoundedIntegral "Word32"
     {-# INLINE parseJSON #-}
 
 instance FromJSONKey Word32 where
-    fromJSONKey = FromJSONKeyTextParser parseIntegralText
+    fromJSONKey = FromJSONKeyTextParser $ parseBoundedIntegralText "Word32"
 
 instance FromJSON Word64 where
-    parseJSON = parseIntegral "Word64"
+    parseJSON = parseBoundedIntegral "Word64"
     {-# INLINE parseJSON #-}
 
 instance FromJSONKey Word64 where
-    fromJSONKey = FromJSONKeyTextParser parseIntegralText
+    fromJSONKey = FromJSONKeyTextParser $ parseBoundedIntegralText "Word64"
 
 
 instance FromJSON Text where
