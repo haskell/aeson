@@ -178,26 +178,28 @@ parseRealFloat _        Null       = pure (0/0)
 parseRealFloat expected v          = typeMismatch expected v
 {-# INLINE parseRealFloat #-}
 
-truncateIntegral :: forall a. Integral a => String -> Scientific -> Parser a
-truncateIntegral expected s =
+parseIntegralFromScientific :: forall a. Integral a => String -> Scientific -> Parser a
+parseIntegralFromScientific expected s =
     case Scientific.floatingOrInteger s :: Either Double a of
         Right x -> pure x
         Left _  -> fail $ "Floating number specified for " ++ expected ++ ": " ++ show s
-{-# INLINE truncateIntegral #-}
+{-# INLINE parseIntegralFromScientific #-}
 
 parseIntegral :: Integral a => String -> Value -> Parser a
-parseIntegral expected = withScientific expected $ truncateIntegral expected
+parseIntegral expected =
+    withScientific expected $ parseIntegralFromScientific expected
 {-# INLINE parseIntegral #-}
 
-truncateBoundedIntegral :: (Bounded a, Integral a) => String -> Scientific -> Parser a
-truncateBoundedIntegral expected s = maybe
+parseBoundedIntegralFromScientific :: (Bounded a, Integral a) => String -> Scientific -> Parser a
+parseBoundedIntegralFromScientific expected s = maybe
     (fail $ expected ++ " is either floating or will cause over or underflow: " ++ show s)
     pure
     (Scientific.toBoundedInteger s)
-{-# INLINE truncateBoundedIntegral #-}
+{-# INLINE parseBoundedIntegralFromScientific #-}
 
 parseBoundedIntegral :: (Bounded a, Integral a) => String -> Value -> Parser a
-parseBoundedIntegral expected = withScientific expected $ truncateBoundedIntegral expected
+parseBoundedIntegral expected =
+    withScientific expected $ parseBoundedIntegralFromScientific expected
 {-# INLINE parseBoundedIntegral #-}
 
 parseScientificText :: Text -> Parser Scientific
@@ -208,12 +210,12 @@ parseScientificText
 
 parseIntegralText :: Integral a => String -> Text -> Parser a
 parseIntegralText expected t =
-    parseScientificText t >>= truncateIntegral expected
+    parseScientificText t >>= parseIntegralFromScientific expected
 {-# INLINE parseIntegralText #-}
 
 parseBoundedIntegralText :: (Bounded a, Integral a) => String -> Text -> Parser a
 parseBoundedIntegralText expected t =
-    parseScientificText t >>= truncateBoundedIntegral expected
+    parseScientificText t >>= parseBoundedIntegralFromScientific expected
 
 parseOptionalFieldWith :: (Value -> Parser (Maybe a))
                        -> Object -> Text -> Parser (Maybe a)
