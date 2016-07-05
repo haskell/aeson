@@ -178,11 +178,11 @@ parseRealFloat _        Null       = pure (0/0)
 parseRealFloat expected v          = typeMismatch expected v
 {-# INLINE parseRealFloat #-}
 
-truncateIntegral :: Integral a => String -> Scientific -> Parser a
-truncateIntegral expected s
-    | Scientific.isInteger s = pure (truncate s)
-    | otherwise               =
-        fail $ "Floating number specified for " ++ expected ++ ": " ++ show s
+truncateIntegral :: forall a. Integral a => String -> Scientific -> Parser a
+truncateIntegral expected s =
+    case Scientific.floatingOrInteger s :: Either Double a of
+        Right x -> pure x
+        Left _  -> fail $ "Floating number specified for " ++ expected ++ ": " ++ show s
 {-# INLINE truncateIntegral #-}
 
 parseIntegral :: Integral a => String -> Value -> Parser a
