@@ -12,7 +12,7 @@ For the latest version of this document, please see [https://github.com/bos/aeso
   `ToJSONKey` type classes.
 
 * Integral `FromJSON` instances do not accept non integral JSON numbers (e.g. `3.14`).
-  Also over/underflows are catched for bounded types.
+  Also over/underflows are caught for bounded types.
 
 * Added `Data.Aeson.Encoding` with functions to work with `Encoding` in an abstract way.
 
