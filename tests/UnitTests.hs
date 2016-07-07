@@ -86,7 +86,7 @@ tests = testGroup "unit" [
     ]
   , testGroup ".:, .:?, .:!" $ fmap (testCase "-") dotColonMark
   , testGroup "To JSON representation" $ fmap assertJsonEncodingExample jsonEncodingExamples
-  , testGroup "From JSON representation" $ fmap assertJsonDecodingExample jsonDecodingExamples
+  , testGroup "From JSON representation" $ fmap assertJsonExample jsonDecodingExamples
   , testGroup "To/From JSON representation" $ fmap assertJsonExample jsonExamples
   , testGroup "JSONPath" $ fmap (testCase "-") jsonPath
   , testGroup "Hashable laws" $ fmap (testCase "-") hashableLaws
@@ -255,21 +255,24 @@ data Example where
     Example
         :: (Eq a, Show a, ToJSON a, FromJSON a)
         => String -> L.ByteString -> a -> Example
+    MaybeExample
+        :: (Eq a, Show a, FromJSON a)
+        => String -> L.ByteString -> Maybe a -> Example
 
 assertJsonExample :: Example -> Test
 assertJsonExample (Example name bs val) = testCase name $ do
     assertEqual "encode"           bs         (encode val)
     assertEqual "encode/via value" bs         (encode $ toJSON val)
     assertEqual "decode"           (Just val) (decode bs)
+assertJsonExample (MaybeExample name bs mval) = testCase name $
+    assertEqual "decode" mval (decode bs)
 
 assertJsonEncodingExample :: Example -> Test
 assertJsonEncodingExample (Example name bs val) = testCase name $ do
     assertEqual "encode"           bs (encode val)
     assertEqual "encode/via value" bs (encode $ toJSON val)
-
-assertJsonDecodingExample :: Example -> Test
-assertJsonDecodingExample (Example name bs val) = testCase name $
-    assertEqual "decode" (Just val) (decode bs)
+assertJsonEncodingExample (MaybeExample name _ _) = testCase name $
+    assertFailure "cannot encode MaybeExample"
 
 jsonEncodingExamples :: [Example]
 jsonEncodingExamples =
@@ -285,16 +288,16 @@ jsonDecodingExamples :: [Example]
 jsonDecodingExamples = [
   -- Maybe serialising is lossy
   -- https://github.com/bos/aeson/issues/376
-    Example "Nothing"      "null" (Nothing :: Maybe Int)
-  , Example "Just"         "1"    (Just 1 :: Maybe Int)
-  , Example "Just Nothing" "null" (Nothing :: Maybe (Maybe Int))
+    MaybeExample "Nothing"      "null" (Just $ Nothing :: Maybe (Maybe Int))
+  , MaybeExample "Just"         "1"    (Just $ Just 1 :: Maybe (Maybe Int))
+  , MaybeExample "Just Nothing" "null" (Just $ Nothing :: Maybe (Maybe (Maybe Int)))
   -- Integral values are truncated, and overflowed
   -- https://github.com/bos/aeson/issues/317
-  , Example "Word8 3"    "3"    (Just 3 :: Maybe Word8)
-  , Example "Word8 3.00" "3.00" (Just 3 :: Maybe Word8)
-  , Example "Word8 3.14" "3.14" (Just 3 :: Maybe Word8)    -- TODO: should be Nothing
-  , Example "Word8 -1"   "-1"   (Just 255 :: Maybe Word8)  -- TODO: should be Nothing
-  , Example "Word8 300"  "300"  (Just 44 :: Maybe Word8)   -- TODO: should be Nothing
+  , MaybeExample "Word8 3"    "3"    (Just 3 :: Maybe Word8)
+  , MaybeExample "Word8 3.00" "3.00" (Just 3 :: Maybe Word8)
+  , MaybeExample "Word8 3.14" "3.14" (Nothing :: Maybe Word8)
+  , MaybeExample "Word8 -1"   "-1"   (Nothing :: Maybe Word8)
+  , MaybeExample "Word8 300"  "300"  (Nothing :: Maybe Word8)
   ]
 
 jsonExamples :: [Example]

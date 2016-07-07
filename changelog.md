@@ -11,6 +11,9 @@ For the latest version of this document, please see [https://github.com/bos/aeso
 * Modified instances for `Map` and `HashMap`. Introduced new `FromJSONKey` and
   `ToJSONKey` type classes.
 
+* Integral `FromJSON` instances do not accept non integral JSON numbers (e.g. `3.14`).
+  Also over/underflows are catched for bounded types.
+
 * Added `Data.Aeson.Encoding` with functions to work with `Encoding` in an abstract way.
 
 * Export `decodeWith`, `decodeStrictWith`, `eitherDecodeWith`, and
