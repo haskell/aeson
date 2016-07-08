@@ -63,7 +63,9 @@ data SomeType a = Nullary
                 | Record { testOne   :: Double
                          , testTwo   :: Maybe Bool
                          , testThree :: Maybe a
-                         } deriving (Eq, Show)
+                         }
+                | List [a]
+  deriving (Eq, Show)
 
 -- Used for testing UntaggedValue SumEncoding
 data EitherTextInt

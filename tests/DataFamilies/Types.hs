@@ -24,7 +24,9 @@ data instance SomeType c () a = Nullary
                               | Record { testOne   :: Double
                                        , testTwo   :: Maybe Bool
                                        , testThree :: Maybe a
-                                       } deriving (Eq, Show)
+                                       }
+                              | List [a]
+    deriving (Eq, Show)
 
 data family Approx a
 newtype instance Approx a = Approx { fromApprox :: a }

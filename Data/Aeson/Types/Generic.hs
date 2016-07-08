@@ -47,6 +47,7 @@ instance OVERLAPPING_ IsRecord (M1 S NoSelector f) False
 instance (IsRecord f isRecord) => IsRecord (M1 S c f) isRecord
 instance IsRecord (K1 i c) True
 instance IsRecord Par1 True
+instance IsRecord (Rec1 f) True
 instance IsRecord (f :.: g) True
 instance IsRecord U1 False
   where isUnary = const False
@@ -64,6 +65,7 @@ instance AllNullary (a :*: b) False
 instance AllNullary (a :.: b) False
 instance AllNullary (K1 i c) False
 instance AllNullary Par1 False
+instance AllNullary (Rec1 f) False
 instance AllNullary U1 True
 
 newtype Tagged2 (s :: * -> *) b = Tagged2 {unTagged2 :: b}
