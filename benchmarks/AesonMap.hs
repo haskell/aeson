@@ -1,9 +1,7 @@
-{-# LANGUAGE OverloadedStrings, RankNTypes, PackageImports #-}
+{-# LANGUAGE OverloadedStrings, RankNTypes, PackageImports, FlexibleContexts #-}
 
 import Control.DeepSeq
 import Criterion.Main
-import "aeson-benchmarks" Data.Aeson
-import "aeson-benchmarks" Data.Aeson.Types (fromJSONKeyCoerce)
 import Data.Hashable
 import Data.Proxy (Proxy (..))
 import Data.Tagged (Tagged (..))
@@ -11,6 +9,11 @@ import qualified Data.ByteString.Lazy as LBS
 import qualified Data.Text as T
 import qualified Data.Map as M
 import qualified Data.HashMap.Strict as HM
+
+import qualified "aeson" Data.Aeson as A
+
+import qualified "aeson-benchmarks" Data.Aeson as B
+import qualified "aeson-benchmarks" Data.Aeson.Types as B (fromJSONKeyCoerce)
 
 value :: Int -> HM.HashMap T.Text T.Text
 value n = HM.fromList $ map f [1..n]
@@ -35,10 +38,11 @@ instance NFData T1 where
     rnf (T1 t) = rnf t
 instance Hashable T1 where
     hashWithSalt salt (T1 t) = hashWithSalt salt t
-instance FromJSON T1 where
-    parseJSON = withText "T1" $ pure . T1
-instance FromJSONKey T1 where
-    fromJSONKey = FromJSONKeyText T1
+
+instance B.FromJSON T1 where
+    parseJSON = B.withText "T1" $ pure . T1
+instance B.FromJSONKey T1 where
+    fromJSONKey = B.FromJSONKeyText T1
 
 -------------------------------------------------------------------------------
 -- Coerce
@@ -51,10 +55,11 @@ instance NFData T2 where
     rnf (T2 t) = rnf t
 instance Hashable T2 where
     hashWithSalt salt (T2 t) = hashWithSalt salt t
-instance FromJSON T2 where
-    parseJSON = withText "T2" $ pure . T2
-instance FromJSONKey T2 where
-    fromJSONKey = fromJSONKeyCoerce
+
+instance B.FromJSON T2 where
+    parseJSON = B.withText "T2" $ pure . T2
+instance B.FromJSONKey T2 where
+    fromJSONKey = B.fromJSONKeyCoerce
 
 -------------------------------------------------------------------------------
 -- TextParser
@@ -67,10 +72,11 @@ instance NFData T3 where
     rnf (T3 t) = rnf t
 instance Hashable T3 where
     hashWithSalt salt (T3 t) = hashWithSalt salt t
-instance FromJSON T3 where
-    parseJSON = withText "T3" $ pure . T3
-instance FromJSONKey T3 where
-    fromJSONKey = FromJSONKeyTextParser (pure . T3)
+
+instance B.FromJSON T3 where
+    parseJSON = B.withText "T3" $ pure . T3
+instance B.FromJSONKey T3 where
+    fromJSONKey = B.FromJSONKeyTextParser (pure . T3)
 
 -------------------------------------------------------------------------------
 -- Values
@@ -83,30 +89,40 @@ value1000 = value 1000
 value10000 = value 10000
 
 encodedValue10 :: LBS.ByteString
-encodedValue10 = encode $ value10
+encodedValue10 = B.encode $ value10
 
 encodedValue100 :: LBS.ByteString
-encodedValue100 = encode $ value100
+encodedValue100 = B.encode $ value100
 
 encodedValue1000 :: LBS.ByteString
-encodedValue1000 = encode $ value1000
+encodedValue1000 = B.encode $ value1000
 
 encodedValue10000 :: LBS.ByteString
-encodedValue10000 = encode $ value10000
+encodedValue10000 = B.encode $ value10000
 
 -------------------------------------------------------------------------------
 -- Helpers
 -------------------------------------------------------------------------------
 
-decodeHM
-    :: (FromJSONKey k, Eq k, Hashable k)
+decodeHMB
+    :: (B.FromJSONKey k, Eq k, Hashable k)
     => Proxy k -> LBS.ByteString -> Maybe (HM.HashMap k T.Text)
-decodeHM _ = decode
+decodeHMB _ = B.decode
 
-decodeMap
-    :: (FromJSONKey k, Ord k)
+decodeHMA
+    :: (A.FromJSON (HM.HashMap k T.Text), Eq k, Hashable k)
+    => Proxy k -> LBS.ByteString -> Maybe (HM.HashMap k T.Text)
+decodeHMA _ = A.decode
+
+decodeMapB
+    :: (B.FromJSONKey k, Ord k)
     => Proxy k -> LBS.ByteString -> Maybe (M.Map k T.Text)
-decodeMap _ = decode
+decodeMapB _ = B.decode
+
+decodeMapA
+    :: (A.FromJSON (M.Map k T.Text), Ord k)
+    => Proxy k -> LBS.ByteString -> Maybe (M.Map k T.Text)
+decodeMapA _ = A.decode
 
 proxyText :: Proxy T.Text
 proxyText = Proxy
@@ -132,14 +148,15 @@ benchDecodeHM
     -> LBS.ByteString
     -> Benchmark
 benchDecodeHM name val = bgroup name
-    [  bench "Text"            $ nf (decodeHM proxyText) val
-    ,  bench "Identity"        $ nf (decodeHM proxyT1)   val
-    ,  bench "Coerce"          $ nf (decodeHM proxyT2)   val
-    ,  bench "Parser"          $ nf (decodeHM proxyT3)   val
-    ,  bench "Tagged Text"     $ nf (decodeHM $ proxyTagged proxyText) val
-    ,  bench "Tagged Identity" $ nf (decodeHM $ proxyTagged proxyT1)   val
-    ,  bench "Tagged Coerce"   $ nf (decodeHM $ proxyTagged proxyT2)   val
-    ,  bench "Tagged Parser"   $ nf (decodeHM $ proxyTagged proxyT3)   val
+    [  bench "Text"            $ nf (decodeHMB proxyText) val
+    ,  bench "Identity"        $ nf (decodeHMB proxyT1)   val
+    ,  bench "Coerce"          $ nf (decodeHMB proxyT2)   val
+    ,  bench "Parser"          $ nf (decodeHMB proxyT3)   val
+    ,  bench "aeson-0.11"      $ nf (decodeHMA proxyText) val
+    ,  bench "Tagged Text"     $ nf (decodeHMB $ proxyTagged proxyText) val
+    ,  bench "Tagged Identity" $ nf (decodeHMB $ proxyTagged proxyT1)   val
+    ,  bench "Tagged Coerce"   $ nf (decodeHMB $ proxyTagged proxyT2)   val
+    ,  bench "Tagged Parser"   $ nf (decodeHMB $ proxyTagged proxyT3)   val
     ]
 
 benchDecodeMap
@@ -147,10 +164,11 @@ benchDecodeMap
     -> LBS.ByteString
     -> Benchmark
 benchDecodeMap name val = bgroup name
-    [  bench "Text"     $ nf (decodeMap proxyText) val
-    ,  bench "Identity" $ nf (decodeMap proxyT1)   val
-    ,  bench "Coerce"   $ nf (decodeMap proxyT2)   val
-    ,  bench "Parser"   $ nf (decodeMap proxyT3)   val
+    [  bench "Text"        $ nf (decodeMapB proxyText) val
+    ,  bench "Identity"    $ nf (decodeMapB proxyT1)   val
+    ,  bench "Coerce"      $ nf (decodeMapB proxyT2)   val
+    ,  bench "Parser"      $ nf (decodeMapB proxyT3)   val
+    ,  bench "aeson-0.11"  $ nf (decodeMapA proxyText) val
     ]
 
 benchEncodeHM
@@ -158,7 +176,8 @@ benchEncodeHM
     -> HM.HashMap T.Text T.Text
     -> Benchmark
 benchEncodeHM name val = bgroup name
-    [ bench "Text" $ nf encode val
+    [ bench "Text"       $ nf B.encode val
+    , bench "aeson-0.11" $ nf A.encode val
     ]
 
 benchEncodeMap
@@ -166,7 +185,8 @@ benchEncodeMap
     -> HM.HashMap T.Text T.Text
     -> Benchmark
 benchEncodeMap name val = bgroup name
-    [ bench "Text" $ nf encode val'
+    [ bench "Text"       $ nf B.encode val'
+    , bench "aeson-0.11" $ nf A.encode val'
     ]
   where
     val' :: M.Map T.Text T.Text

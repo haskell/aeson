@@ -180,7 +180,7 @@ executable aeson-benchmark-map
   main-is: AesonMap.hs
   ghc-options: -Wall -O2 -rtsopts
   build-depends:
-    aeson,
+    aeson == 0.11.*,
     aeson-benchmarks,
     base,
     criterion >= 1.0,
