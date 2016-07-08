@@ -660,9 +660,9 @@ obj .: key = case H.lookup key obj of
                Just v  -> parseJSON v <?> Key key
 {-# INLINE (.:) #-}
 
--- | Retrieve the value associated with the given key of an 'Object'.
--- The result is 'Nothing' if the key is not present, or 'empty' if
--- the value cannot be converted to the desired type.
+-- | Retrieve the value associated with the given key of an 'Object'.  The
+-- result is 'Nothing' if the key is not present or value is 'Null', or 'empty'
+-- if the value cannot be converted to the desired type.
 --
 -- This accessor is most useful if the key and value can be absent
 -- from an object without affecting its validity.  If the key and
