@@ -112,7 +112,7 @@ module Data.Aeson.TH
     , mkLiftParseJSON2
     ) where
 
-import Control.Applicative ( pure, (<$>), (<*>) )
+import Control.Applicative ( pure, (<$>), (<*>), (<|>) )
 import Data.Aeson ( Object, (.=), (.:)
                   , ToJSON(..),  FromJSON(..)
                   , ToJSON1(..), FromJSON1(..)
@@ -437,7 +437,7 @@ sumToValue opts multiCons conName exp
               [|A.object|] `appE` listE
                 [ infixApp (conTxt opts conName) [|(.=)|] exp
                 ]
-
+          UntaggedValue -> exp
     | otherwise = exp
 
 nullarySumToValue :: Options -> Bool -> Name -> Q Exp
@@ -447,6 +447,7 @@ nullarySumToValue opts multiCons conName =
           [|A.object|] `appE` listE
             [ infixApp [|T.pack tagFieldName|] [|(.=)|] (conStr opts conName)
             ]
+      UntaggedValue -> conStr opts conName
       _ -> sumToValue opts multiCons conName [e|toJSON ([] :: [()])|]
 
 -- | Generates code to generate the JSON encoding of a single constructor.
@@ -545,6 +546,7 @@ argsToValue jc tjs opts multiCons (RecC conName ts) = case (unwrapUnaryRecords o
                    ObjectWithSingleField ->
                        [|A.object|] `appE` listE
                          [ infixApp (conTxt opts conName) [|(.=)|] exp ]
+                   UntaggedValue -> exp
             else exp
           ) []
 
@@ -610,7 +612,7 @@ sumToEncoding opts multiCons conName exp
             ([|E.text (T.pack contentsFieldName)|] <:> fexp)
           ObjectWithSingleField ->
             object (encStr opts conName <:> fexp)
-
+          UntaggedValue -> exp
     | otherwise = exp
 
 nullarySumToEncoding :: Options -> Bool -> Name -> Q Exp
@@ -619,6 +621,7 @@ nullarySumToEncoding opts multiCons conName =
       TaggedObject{tagFieldName} ->
           object $
             [|E.text (T.pack tagFieldName)|] <:> encStr opts conName
+      UntaggedValue -> encStr opts conName
       _ -> sumToEncoding opts multiCons conName [e|toEncoding ([] :: [()])|]
 
 -- | Generates code to generate the JSON encoding of a single constructor.
@@ -706,6 +709,7 @@ argsToEncoding jc tes opts multiCons (RecC conName ts) = case (unwrapUnaryRecord
                      objBody
                    ObjectWithSingleField -> object $
                      encStr opts conName <:> exp
+                   UntaggedValue -> exp
             else exp
           ) []
 
@@ -836,7 +840,10 @@ consFromJSON jc tName opts cons = do
   where
     lamExpr value pjs = case cons of
       [con] -> parseArgs jc pjs tName opts con (Right value)
-      _     -> caseE (varE value) $
+      _ | sumEncoding opts == UntaggedValue
+            -> parseUntaggedValue pjs cons value
+        | otherwise
+            -> caseE (varE value) $
                    if allNullaryToStringTag opts && all isNullary cons
                    then allNullaryMatches
                    else mixedMatches pjs
@@ -878,6 +885,7 @@ consFromJSON jc tName opts cons = do
         case sumEncoding opts of
           TaggedObject {tagFieldName, contentsFieldName} ->
             parseObject $ parseTaggedObject pjs tagFieldName contentsFieldName
+          UntaggedValue -> error "UntaggedValue: Should be handled already"
           ObjectWithSingleField ->
             parseObject $ parseObjectWithSingleField pjs
           TwoElemArray ->
@@ -926,6 +934,27 @@ consFromJSON jc tName opts cons = do
                             ([|T.pack|] `appE` stringE typFieldName))
           , noBindS $ parseContents pjs conKey (Left (valFieldName, obj)) 'conNotFoundFailTaggedObject
           ]
+
+    parseUntaggedValue pjs cons' conVal =
+        foldr1 (\e e' -> infixApp e [|(<|>)|] e')
+               (map (\x -> parseValue pjs x conVal) cons')
+
+    parseValue _pjs (NormalC conName []) conVal = do
+      str <- newName "str"
+      caseE (varE conVal)
+        [ match (conP 'String [varP str])
+                (guardedB
+                  [ liftM2 (,) (normalG $ infixApp (varE str) [|(==)|] ([|T.pack|] `appE` conStringE opts conName)
+                               )
+                               ([|pure|] `appE` conE conName)
+                  ]
+                )
+                []
+        , matchFailed tName conName "String"
+        ]
+    parseValue pjs con conVal =
+      parseArgs jc pjs tName opts con (Right conVal)
+
 
     parse2ElemArray pjs arr = do
       conKey <- newName "conKey"

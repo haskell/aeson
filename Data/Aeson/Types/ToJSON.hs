@@ -755,6 +755,7 @@ instance ( GetConName                     f
          , TaggedObjectPairs        arity f
          , ObjectWithSingleFieldObj arity f
          , TwoElemArrayObj          arity f
+         , UntaggedValueObj         arity f
          ) => SumToJSON arity f True where
     sumToJSON opts targs
         | allNullaryToStringTag opts = Tagged . String . pack
@@ -764,12 +765,14 @@ instance ( GetConName                     f
 instance ( TwoElemArrayObj          arity f
          , TaggedObjectPairs        arity f
          , ObjectWithSingleFieldObj arity f
+         , UntaggedValueObj         arity f
          ) => SumToJSON arity f False where
     sumToJSON opts targs = Tagged . nonAllNullarySumToJSON opts targs
 
 nonAllNullarySumToJSON :: ( TwoElemArrayObj          arity f
                           , TaggedObjectPairs        arity f
                           , ObjectWithSingleFieldObj arity f
+                          , UntaggedValueObj         arity f
                           ) => Options -> ToArgs Value arity a
                             -> f a -> Value
 nonAllNullarySumToJSON opts targs =
@@ -778,6 +781,7 @@ nonAllNullarySumToJSON opts targs =
         object . taggedObjectPairs opts targs tagFieldName contentsFieldName
       ObjectWithSingleField -> Object . objectWithSingleFieldObj opts targs
       TwoElemArray          -> Array  . twoElemArrayObj opts targs
+      UntaggedValue         -> untaggedValueObj opts targs
 
 --------------------------------------------------------------------------------
 
@@ -789,6 +793,7 @@ instance ( GetConName                     f
          , TaggedObjectEnc          arity f
          , ObjectWithSingleFieldEnc arity f
          , TwoElemArrayEnc          arity f
+         , UntaggedValueEnc         arity f
          ) => SumToEncoding arity f True where
     sumToEncoding opts targs
         | allNullaryToStringTag opts = Tagged . toEncoding .
@@ -798,12 +803,14 @@ instance ( GetConName                     f
 instance ( TwoElemArrayEnc          arity f
          , TaggedObjectEnc          arity f
          , ObjectWithSingleFieldEnc arity f
+         , UntaggedValueEnc         arity f
          ) => SumToEncoding arity f False where
     sumToEncoding opts targs = Tagged . nonAllNullarySumToEncoding opts targs
 
 nonAllNullarySumToEncoding :: ( TwoElemArrayEnc          arity f
                               , TaggedObjectEnc          arity f
                               , ObjectWithSingleFieldEnc arity f
+                              , UntaggedValueEnc         arity f
                               ) => Options -> ToArgs Encoding arity a
                                 -> f a -> Encoding
 nonAllNullarySumToEncoding opts targs =
@@ -812,6 +819,7 @@ nonAllNullarySumToEncoding opts targs =
         taggedObjectEnc opts targs tagFieldName contentsFieldName
       ObjectWithSingleField -> objectWithSingleFieldEnc opts targs
       TwoElemArray          -> twoElemArrayEnc opts targs
+      UntaggedValue         -> untaggedValueEnc opts targs
 
 --------------------------------------------------------------------------------
 
@@ -1171,6 +1179,60 @@ instance ( GToEncoding    arity a
       E.colon ><
       gToEncoding opts targs v ><
       E.closeCurly
+
+--------------------------------------------------------------------------------
+
+class UntaggedValueObj arity f where
+    untaggedValueObj :: Options -> ToArgs Value arity a
+                     -> f a -> Value
+
+instance
+    ( UntaggedValueObj    arity a
+    , UntaggedValueObj    arity b
+    ) => UntaggedValueObj arity (a :+: b)
+  where
+    untaggedValueObj opts targs (L1 x) = untaggedValueObj opts targs x
+    untaggedValueObj opts targs (R1 x) = untaggedValueObj opts targs x
+
+instance OVERLAPPABLE_
+    ( GToJSON             arity a
+    , ConsToJSON          arity a
+    ) => UntaggedValueObj arity (C1 c a) where
+    untaggedValueObj = gToJSON
+
+instance OVERLAPPING_
+    ( Constructor c )
+    => UntaggedValueObj arity (C1 c U1)
+  where
+    untaggedValueObj opts _ _ = toJSON $
+        constructorTagModifier opts $ conName (undefined :: t c U1 p)
+
+--------------------------------------------------------------------------------
+
+class UntaggedValueEnc arity f where
+    untaggedValueEnc :: Options -> ToArgs Encoding arity a
+                     -> f a -> Encoding
+instance
+    ( UntaggedValueEnc    arity a
+    , UntaggedValueEnc    arity b
+    ) => UntaggedValueEnc arity (a :+: b)
+  where
+    untaggedValueEnc opts targs (L1 x) = untaggedValueEnc opts targs x
+    untaggedValueEnc opts targs (R1 x) = untaggedValueEnc opts targs x
+
+instance OVERLAPPABLE_
+    ( GToEncoding         arity a
+    , ConsToEncoding      arity a
+    ) => UntaggedValueEnc arity (C1 c a)
+  where
+    untaggedValueEnc = gToEncoding
+
+instance OVERLAPPING_
+    ( Constructor c )
+    => UntaggedValueEnc arity (C1 c U1)
+  where
+    untaggedValueEnc opts _ _ = toEncoding $
+        constructorTagModifier opts $ conName (undefined :: t c U1 p)
 
 -------------------------------------------------------------------------------
 -- Instances

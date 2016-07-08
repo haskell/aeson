@@ -774,17 +774,19 @@ class ParseSum arity f allNullary where
     parseSum :: Options -> FromArgs arity a
              -> Value -> Tagged allNullary (Parser (f a))
 
-instance ( SumFromString          (a :+: b)
-         , FromPair         arity (a :+: b)
-         , FromTaggedObject arity (a :+: b)
-         ) => ParseSum      arity (a :+: b) True where
+instance ( SumFromString           (a :+: b)
+         , FromPair          arity (a :+: b)
+         , FromTaggedObject  arity (a :+: b)
+         , FromUntaggedValue arity (a :+: b)
+         ) => ParseSum       arity (a :+: b) True where
     parseSum opts fargs
         | allNullaryToStringTag opts = Tagged . parseAllNullarySum    opts
         | otherwise                  = Tagged . parseNonAllNullarySum opts fargs
 
-instance ( FromPair         arity (a :+: b)
-         , FromTaggedObject arity (a :+: b)
-         ) => ParseSum      arity (a :+: b) False where
+instance ( FromPair          arity (a :+: b)
+         , FromTaggedObject  arity (a :+: b)
+         , FromUntaggedValue arity (a :+: b)
+         ) => ParseSum       arity (a :+: b) False where
     parseSum opts fargs = Tagged . parseNonAllNullarySum opts fargs
 
 --------------------------------------------------------------------------------
@@ -810,8 +812,9 @@ instance (Constructor c) => SumFromString (C1 c U1) where
 
 --------------------------------------------------------------------------------
 
-parseNonAllNullarySum :: ( FromPair         arity (a :+: b)
-                         , FromTaggedObject arity (a :+: b)
+parseNonAllNullarySum :: ( FromPair          arity (a :+: b)
+                         , FromTaggedObject  arity (a :+: b)
+                         , FromUntaggedValue arity (a :+: b)
                          ) => Options -> FromArgs arity c
                            -> Value -> Parser ((a :+: b) c)
 parseNonAllNullarySum opts fargs =
@@ -837,6 +840,8 @@ parseNonAllNullarySum opts fargs =
                                    parsePair opts fargs (tag, V.unsafeIndex arr 1)
                    _ -> fail "First element is not a String"
             else fail "Array doesn't have 2 elements"
+
+      UntaggedValue -> parseUntaggedValue opts fargs
 
 --------------------------------------------------------------------------------
 
@@ -998,6 +1003,40 @@ instance ( Constructor c
         where
           tag' = pack $ constructorTagModifier opts $
                           conName (undefined :: t c a p)
+
+--------------------------------------------------------------------------------
+
+class FromUntaggedValue arity f where
+    parseUntaggedValue :: Options -> FromArgs arity a
+                       -> Value -> Parser (f a)
+
+instance
+    ( FromUntaggedValue    arity a
+    , FromUntaggedValue    arity b
+    ) => FromUntaggedValue arity (a :+: b)
+  where
+    parseUntaggedValue opts fargs value =
+        L1 <$> parseUntaggedValue opts fargs value <|>
+        R1 <$> parseUntaggedValue opts fargs value
+
+instance OVERLAPPABLE_
+    ( GFromJSON            arity a
+    , ConsFromJSON         arity a
+    ) => FromUntaggedValue arity (C1 c a)
+  where
+    parseUntaggedValue = gParseJSON
+
+instance OVERLAPPING_
+    ( Constructor c )
+    => FromUntaggedValue arity (C1 c U1)
+  where
+    parseUntaggedValue opts _ (String s)
+        | s == pack (constructorTagModifier opts (conName (undefined :: t c U1 p))) =
+            pure $ M1 U1
+        | otherwise =
+            fail $ "Invalid tag: " ++ unpack s
+    parseUntaggedValue _ _ v = typeMismatch (conName (undefined :: t c U1 p)) v
+
 
 --------------------------------------------------------------------------------
 

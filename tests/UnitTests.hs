@@ -15,11 +15,11 @@ import Instances ()
 
 import Control.Applicative (Const(..))
 import Control.Monad (forM)
-import Data.Aeson (FromJSONKeyFunction(..), FromJSONKey(..), decode, eitherDecode, encode, genericToJSON, genericToEncoding, object, FromJSON(..), withObject, (.=), (.:), (.:?), (.:!))
+import Data.Aeson (FromJSONKeyFunction(..), FromJSONKey(..), decode, eitherDecode, encode, genericParseJSON, genericToJSON, genericToEncoding, object, FromJSON(..), withObject, (.=), (.:), (.:?), (.:!))
 import Data.Aeson.Text (encodeToTextBuilder)
 import Data.Aeson.Internal (JSONPathElement(..), formatError)
 import Data.Aeson.TH (deriveJSON)
-import Data.Aeson.Types (ToJSON(..), Value, camelTo, camelTo2, defaultOptions, omitNothingFields)
+import Data.Aeson.Types (ToJSON(..), Value, camelTo, camelTo2, defaultOptions, omitNothingFields, Options(..), SumEncoding(..))
 import Data.Char (toUpper)
 import Data.Hashable (hash)
 import Data.List.NonEmpty (NonEmpty(..))
@@ -107,6 +107,18 @@ camelFrom c s = let (p:ps) = split c s
   where
     split c' s' = map L.unpack $ L.split c' $ L.pack s'
     capitalize t = toUpper (head t) : tail t
+
+
+data MyEither a b = MyLeft a | MyRight b
+  deriving (Generic, Show, Eq)
+
+instance (ToJSON a, ToJSON b) => ToJSON (MyEither a b) where
+    toJSON = genericToJSON defaultOptions { sumEncoding = UntaggedValue }
+    toEncoding = genericToEncoding defaultOptions { sumEncoding = UntaggedValue }
+
+instance (FromJSON a, FromJSON b) => FromJSON (MyEither a b) where
+    parseJSON = genericParseJSON defaultOptions { sumEncoding = UntaggedValue }
+
 
 data Wibble = Wibble {
     wibbleString :: String
@@ -395,6 +407,9 @@ jsonExamples =
   , Example "Compose3' [] I  [] Char" "[\"x\"]"    (pure 'x' :: Compose3' [] I  [] Char)
   , Example "Compose3' [] [] I  Char" "[\"x\"]"    (pure 'x' :: Compose3' [] [] I  Char)
   , Example "Compose3' [] [] [] Char" "[[\"x\"]]"  (pure 'x' :: Compose3' [] [] [] Char)
+
+  , Example "MyEither Int String: Left"  "42"      (MyLeft 42     :: MyEither Int String)
+  , Example "MyEither Int String: Right" "\"foo\"" (MyRight "foo" :: MyEither Int String)
   ]
 
 
