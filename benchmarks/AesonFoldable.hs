@@ -1,6 +1,9 @@
-{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE OverloadedStrings, PackageImports #-}
 import Criterion.Main
-import Data.Aeson
+
+import qualified "aeson"            Data.Aeson as A
+import qualified "aeson-benchmarks" Data.Aeson as B
+
 import Data.Foldable (toList)
 
 import qualified Data.Sequence as S
@@ -13,9 +16,13 @@ import qualified Data.Vector.Unboxed as U
 
 newtype L f = L { getL :: f Int }
 
-instance Foldable f => ToJSON (L f) where
+instance Foldable f => B.ToJSON (L f) where
     toJSON = error "do not use this"
-    toEncoding = toEncoding . toList . getL
+    toEncoding = B.toEncoding . toList . getL
+
+instance Foldable f => A.ToJSON (L f) where
+    toJSON = error "do not use this"
+    toEncoding = A.toEncoding . toList . getL
 
 -------------------------------------------------------------------------------
 -- Foldable
@@ -23,9 +30,13 @@ instance Foldable f => ToJSON (L f) where
 
 newtype F f = F { getF :: f Int }
 
-instance Foldable f => ToJSON (F f) where
+instance Foldable f => B.ToJSON (F f) where
     toJSON = error "do not use this"
-    toEncoding = foldable . getF
+    toEncoding = B.foldable . getF
+
+instance Foldable f => A.ToJSON (F f) where
+    toJSON = error "do not use this"
+    toEncoding = A.foldable . getF
 
 -------------------------------------------------------------------------------
 -- Values
@@ -47,34 +58,52 @@ valueUVector = U.fromList valueList
 -- Main
 -------------------------------------------------------------------------------
 
-benchEncode
-    :: ToJSON a
+benchEncodeA
+    :: A.ToJSON a
     => String
     -> a
     -> Benchmark
-benchEncode name val
-    = bench name $ nf encode val
+benchEncodeA name val
+    = bench ("A " ++ name) $ nf A.encode val
+
+benchEncodeB
+    :: B.ToJSON a
+    => String
+    -> a
+    -> Benchmark
+benchEncodeB name val
+    = bench ("B " ++ name) $ nf B.encode val
 
 main :: IO ()
 main =  defaultMain
     [ bgroup "encode"
         [ bgroup "List"
-            [ benchEncode "-"     valueList
-            , benchEncode "L" $ L valueList
-            , benchEncode "F" $ F valueList
+            [ benchEncodeB "-"     valueList
+            , benchEncodeB "L" $ L valueList
+            , benchEncodeB "F" $ F valueList
+            , benchEncodeA "-"     valueList
+            , benchEncodeA "L" $ L valueList
+            , benchEncodeA "F" $ F valueList
             ]
         , bgroup "Seq"
-            [ benchEncode "-"     valueSeq
-            , benchEncode "L" $ L valueSeq
-            , benchEncode "F" $ F valueSeq
+            [ benchEncodeB "-"     valueSeq
+            , benchEncodeB "L" $ L valueSeq
+            , benchEncodeB "F" $ F valueSeq
+            , benchEncodeA "-"     valueSeq
+            , benchEncodeA "L" $ L valueSeq
+            , benchEncodeA "F" $ F valueSeq
             ]
         , bgroup "Vector"
-            [ benchEncode "-"     valueVector
-            , benchEncode "L" $ L valueVector
-            , benchEncode "F" $ F valueVector
+            [ benchEncodeB "-"     valueVector
+            , benchEncodeB "L" $ L valueVector
+            , benchEncodeB "F" $ F valueVector
+            , benchEncodeA "-"     valueVector
+            , benchEncodeA "L" $ L valueVector
+            , benchEncodeA "F" $ F valueVector
             ]
         , bgroup "Vector.Unboxed"
-            [ benchEncode "-"     valueUVector
+            [ benchEncodeB "-"     valueUVector
+            , benchEncodeA "-"     valueUVector
             ]
         ]
     ]

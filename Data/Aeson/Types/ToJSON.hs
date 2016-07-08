@@ -1808,10 +1808,10 @@ instance ToJSON1 Vector where
     {-# INLINE liftToEncoding #-}
 
 instance (ToJSON a) => ToJSON (Vector a) where
-    toJSON = Array . V.map toJSON
+    toJSON = toJSON1
     {-# INLINE toJSON #-}
 
-    toEncoding = encodeVector
+    toEncoding = toEncoding1
     {-# INLINE toEncoding #-}
 
 encodeVector :: (ToJSON a, VG.Vector v a) => v a -> Encoding

@@ -180,6 +180,7 @@ executable aeson-benchmark-map
   main-is: AesonMap.hs
   ghc-options: -Wall -O2 -rtsopts
   build-depends:
+    aeson,
     aeson-benchmarks,
     base,
     criterion >= 1.0,
@@ -195,6 +196,7 @@ executable aeson-benchmark-foldable
   main-is: AesonFoldable.hs
   ghc-options: -Wall -O2 -rtsopts
   build-depends:
+    aeson,
     aeson-benchmarks,
     base,
     criterion >= 1.0,

@@ -1,9 +1,9 @@
-{-# LANGUAGE OverloadedStrings, RankNTypes #-}
+{-# LANGUAGE OverloadedStrings, RankNTypes, PackageImports #-}
 
 import Control.DeepSeq
 import Criterion.Main
-import Data.Aeson
-import Data.Aeson.Types (fromJSONKeyCoerce)
+import "aeson-benchmarks" Data.Aeson
+import "aeson-benchmarks" Data.Aeson.Types (fromJSONKeyCoerce)
 import Data.Hashable
 import Data.Proxy (Proxy (..))
 import Data.Tagged (Tagged (..))
