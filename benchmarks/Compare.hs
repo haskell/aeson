@@ -1,4 +1,5 @@
 {-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE PackageImports #-}
 
 module Main (main) where
 
@@ -11,7 +12,7 @@ import Twitter
 import Twitter.Manual ()
 import Typed.Common
 import qualified Compare.JsonBench as JsonBench
-import qualified Data.Aeson as Aeson
+import qualified "aeson-benchmarks" Data.Aeson as Aeson
 
 main :: IO ()
 main =
