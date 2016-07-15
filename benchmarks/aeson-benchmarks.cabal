@@ -11,7 +11,7 @@ flag bytestring-builder
 
 library
   hs-source-dirs: .. .
-
+  c-sources:  ../cbits/unescape_string.c
   exposed-modules:
     Data.Aeson
     Data.Aeson.Encoding
