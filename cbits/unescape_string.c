@@ -1,3 +1,7 @@
+// Copyright (c) 2008-2009 Bjoern Hoehrmann
+// Copyright (c) 2015, Ondrej Palkovsky
+// Copyright (c) 2016, Winterland
+
 #include <string.h>
 #include <stdio.h>
 #include <stdint.h>
@@ -130,7 +134,7 @@ int _js_decode_string(uint16_t *const dest, size_t *destoff,
     if (surrogate) {
       if (unidata <= 0xDC00 || unidata >= 0xDFFF) // is not low surrogate
         return -1;
-        surrogate = 0;
+      surrogate = 0;
     } else if (unidata >= 0xD800 && unidata <= 0xDBFF ) { // is high surrogate
         surrogate = 1;
         DISPATCH_ASCII(surrogate1);
@@ -139,12 +143,10 @@ int _js_decode_string(uint16_t *const dest, size_t *destoff,
     }
     goto standard;
   surrogate1:
-    if (codepoint != '\\')
-      return -1;
+    if (codepoint != '\\') { return -1; }
     DISPATCH_ASCII(surrogate2)
   surrogate2:
-    if (codepoint != 'u')
-      return -1;
+    if (codepoint != 'u') { return -1; }
     DISPATCH_ASCII(unicode1)
 }
 
