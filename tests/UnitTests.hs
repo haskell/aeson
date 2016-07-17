@@ -93,9 +93,7 @@ tests = testGroup "unit" [
   , testGroup "Issue #351" $ fmap (testCase "-") issue351
   , testGroup "Nullary constructors" $ fmap (testCase "-") nullaryConstructors
   , testGroup "FromJSONKey" $ fmap (testCase "-") fromJSONKeyAssertions
-  , testGroup "PR #455" [
-      testCase "-" pr455
-    ]
+  , testCase "PR #455" pr455
   ]
 
 roundTripCamel :: String -> Assertion
