@@ -74,9 +74,7 @@ int _js_decode_string(uint16_t *const dest, size_t *destoff,
   standard:
     // Test end of stream
     while (s < srcend) {
-        if (*s <= 127)
-          codepoint = *s++;
-        else if (decode(&state, &codepoint, *s++) != UTF8_ACCEPT) {
+        if (decode(&state, &codepoint, *s++) != UTF8_ACCEPT) {
           if (state == UTF8_REJECT) { return -1; }
           continue;
         }
