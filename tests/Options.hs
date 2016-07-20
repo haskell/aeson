@@ -34,3 +34,8 @@ optsOmitNothingFields :: Options
 optsOmitNothingFields = optsDefault
                         { omitNothingFields = True
                         }
+
+optsUntaggedValue :: Options
+optsUntaggedValue = optsDefault
+    { sumEncoding = UntaggedValue
+    }

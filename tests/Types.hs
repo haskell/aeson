@@ -63,7 +63,17 @@ data SomeType a = Nullary
                 | Record { testOne   :: Double
                          , testTwo   :: Maybe Bool
                          , testThree :: Maybe a
-                         } deriving (Eq, Show)
+                         }
+                | List [a]
+  deriving (Eq, Show)
+
+-- Used for testing UntaggedValue SumEncoding
+data EitherTextInt
+    = LeftBool Bool
+    | RightInt Int
+    | BothTextInt Text Int
+    | NoneNullary
+    deriving (Eq, Show)
 
 data GADT a where
     GADT :: { gadt :: String } -> GADT String
@@ -85,6 +95,7 @@ deriving instance Generic (SomeType a)
 #if __GLASGOW_HASKELL__ >= 706
 deriving instance Generic1 SomeType
 #endif
+deriving instance Generic EitherTextInt
 
 failure :: Show a => String -> String -> a -> Property
 failure func msg v = counterexample

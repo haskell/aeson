@@ -106,7 +106,11 @@ executable aeson-benchmark-typed
   main-is: Typed.hs
   hs-source-dirs: ../examples .
   ghc-options: -Wall -O2 -rtsopts
+  -- We must help ourself in situations when there is both
+  -- aeson and aeson-benchmakrs
+  cpp-options: -DHAS_BOTH_AESON_AND_BENCHMARKS
   build-depends:
+    aeson,
     aeson-benchmarks,
     base,
     criterion >= 1.0,
@@ -180,6 +184,7 @@ executable aeson-benchmark-map
   main-is: AesonMap.hs
   ghc-options: -Wall -O2 -rtsopts
   build-depends:
+    aeson == 0.11.*,
     aeson-benchmarks,
     base,
     criterion >= 1.0,
@@ -195,6 +200,7 @@ executable aeson-benchmark-foldable
   main-is: AesonFoldable.hs
   ghc-options: -Wall -O2 -rtsopts
   build-depends:
+    aeson,
     aeson-benchmarks,
     base,
     criterion >= 1.0,

@@ -1,8 +1,9 @@
 {-# LANGUAGE BangPatterns, OverloadedStrings #-}
+{-# LANGUAGE PackageImports #-}
 
 import Control.Exception
 import Control.Monad
-import Data.Aeson
+import "aeson-benchmarks" Data.Aeson
 import Data.Attoparsec.ByteString (IResult(..), parseWith)
 import Data.Time.Clock
 import System.Environment (getArgs)

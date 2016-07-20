@@ -153,7 +153,16 @@ instance Arbitrary a => Arbitrary (SomeType a) where
                       , Unary   <$> arbitrary
                       , Product <$> arbitrary <*> arbitrary <*> arbitrary
                       , Record  <$> arbitrary <*> arbitrary <*> arbitrary
+                      , List    <$> arbitrary
                       ]
+
+instance Arbitrary EitherTextInt where
+    arbitrary = oneof
+        [ LeftBool <$> arbitrary
+        , RightInt <$> arbitrary
+        , BothTextInt <$> arbitrary <*> arbitrary
+        , pure NoneNullary
+        ]
 
 instance Arbitrary (GADT String) where
     arbitrary = GADT <$> arbitrary
