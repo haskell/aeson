@@ -1408,10 +1408,12 @@ dispatchFunByType jc jf conName tvMap list ty = do
     if any (`mentionsName` tyVarNames) lhsArgs
           || itf && any (`mentionsName` tyVarNames) tyArgs
        then outOfPlaceTyVarError jc conName
-       else appsE $ varE (jsonFunValOrListName list jf $ toEnum numLastArgs)
-                    : zipWith (dispatchFunByType jc jf conName tvMap)
-                              (cycle [False,True])
-                              (interleave rhsArgs rhsArgs)
+       else if any (`mentionsName` tyVarNames) rhsArgs
+            then appsE $ varE (jsonFunValOrListName list jf $ toEnum numLastArgs)
+                         : zipWith (dispatchFunByType jc jf conName tvMap)
+                                   (cycle [False,True])
+                                   (interleave rhsArgs rhsArgs)
+            else varE $ jsonFunValOrListName list jf Arity0
 
 dispatchToJSON, dispatchToEncoding, dispatchParseJSON
   :: JSONClass -> Name -> TyVarMap -> Type -> Q Exp

@@ -15,10 +15,10 @@ import Instances ()
 
 import Control.Applicative (Const(..))
 import Control.Monad (forM)
-import Data.Aeson (FromJSONKeyFunction(..), FromJSONKey(..), decode, eitherDecode, encode, genericParseJSON, genericToJSON, genericToEncoding, object, FromJSON(..), withObject, (.=), (.:), (.:?), (.:!))
+import Data.Aeson (FromJSONKeyFunction(..), FromJSONKey(..), decode, eitherDecode, encode, genericParseJSON, genericToJSON, genericToEncoding, object, FromJSON(..), withObject, ToJSON1(..), (.=), (.:), (.:?), (.:!))
 import Data.Aeson.Text (encodeToTextBuilder)
 import Data.Aeson.Internal (JSONPathElement(..), formatError)
-import Data.Aeson.TH (deriveJSON)
+import Data.Aeson.TH (deriveJSON, deriveToJSON, deriveToJSON1)
 import Data.Aeson.Types (ToJSON(..), Value, camelTo, camelTo2, defaultOptions, omitNothingFields, Options(..), SumEncoding(..))
 import Data.Char (toUpper)
 import Data.Hashable (hash)
@@ -93,6 +93,7 @@ tests = testGroup "unit" [
   , testGroup "Issue #351" $ fmap (testCase "-") issue351
   , testGroup "Nullary constructors" $ fmap (testCase "-") nullaryConstructors
   , testGroup "FromJSONKey" $ fmap (testCase "-") fromJSONKeyAssertions
+  , testCase "PR #455" pr455
   ]
 
 roundTripCamel :: String -> Assertion
@@ -544,10 +545,24 @@ encoderComparisonTests = do
 
 -- A regression test for: https://github.com/bos/aeson/issues/293
 data MyRecord = MyRecord {_field1 :: Maybe Int, _field2 :: Maybe Bool}
-deriveJSON defaultOptions{omitNothingFields=True} ''MyRecord
 
 data MyRecord2 = MyRecord2 {_field3 :: Maybe Int, _field4 :: Maybe Bool}
   deriving Generic
 
 instance ToJSON   MyRecord2
 instance FromJSON MyRecord2
+
+-- A regression test for: https://github.com/bos/aeson/pull/455
+data Foo a = FooNil | FooCons (Foo Int)
+
+pr455 :: Assertion
+pr455 = assertEqual "FooCons FooNil"
+          (toJSON foo) (liftToJSON undefined undefined foo)
+  where
+    foo :: Foo Int
+    foo = FooCons FooNil
+
+deriveJSON defaultOptions{omitNothingFields=True} ''MyRecord
+
+deriveToJSON  defaultOptions ''Foo
+deriveToJSON1 defaultOptions ''Foo
