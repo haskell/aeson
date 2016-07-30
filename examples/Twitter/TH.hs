@@ -12,6 +12,9 @@ module Twitter.TH
     , Story(..)
     , Result(..)
     ) where
+
+import Prelude ()
+
 import Twitter
 
 #ifndef HAS_BOTH_AESON_AND_BENCHMARKS

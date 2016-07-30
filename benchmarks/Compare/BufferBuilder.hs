@@ -1,8 +1,13 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RecordWildCards #-}
+
+{-# OPTIONS_GHC -fno-warn-name-shadowing #-}
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 
 module Compare.BufferBuilder () where
+
+import Prelude ()
+import Prelude.Compat
 
 import Data.BufferBuilder.Json
 import Data.Int (Int64)
@@ -38,7 +43,7 @@ instance ToJson Story where
     <> "metadata"          .= metadata
     <> "to_user_id"        .= to_user_id
     <> "text"              .= text
-    <> "id"                .= id
+    <> "id"                .= id_
     <> "from_user_id"      .= from_user_id
     <> "geo"               .= geo
     <> "iso_language_code" .= iso_language_code

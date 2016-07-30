@@ -11,6 +11,9 @@
 
 module Compare.JsonBench (benchmarks) where
 
+import Prelude ()
+import Prelude.Compat
+
 import Control.DeepSeq (NFData(..))
 import Criterion
 import Data.Aeson ((.:))

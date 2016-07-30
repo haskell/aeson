@@ -1,6 +1,9 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RecordWildCards #-}
 
+import Prelude ()
+import Prelude.Compat
+
 import Control.Applicative (empty)
 import Data.Aeson
 import Data.Monoid

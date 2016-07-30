@@ -1,5 +1,8 @@
 module Main where
 
+import Prelude ()
+import Prelude.Compat
+
 import Control.DeepSeq (deepseq)
 import Criterion.Main
 import Data.Aeson

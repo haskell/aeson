@@ -4,6 +4,9 @@
 
 module Main where
 
+import Prelude ()
+import Prelude.Compat
+
 import Control.DeepSeq (NFData, rnf, deepseq)
 import Criterion.Main hiding (defaultOptions)
 import Data.Aeson.Encode

@@ -112,23 +112,20 @@ module Data.Aeson.TH
     , mkLiftParseJSON2
     ) where
 
-import Control.Applicative ((<$>), (<*>), (<|>), pure)
+import Prelude ()
+import Prelude.Compat hiding (exp)
+
+import Control.Applicative ((<|>))
 import Data.Aeson (Object, (.=), (.:), FromJSON(..), FromJSON1(..), FromJSON2(..), ToJSON(..), ToJSON1(..), ToJSON2(..))
 import Data.Aeson.Types (Options(..), Parser, SumEncoding(..), Value(..), defaultOptions, defaultTaggedObject)
 import Data.Aeson.Types.Internal ((<?>), Pair, JSONPathElement(Key))
 import Data.Aeson.Types.FromJSON (parseOptionalFieldWith)
-import Control.Monad (fail, liftM2, mapM, return, unless, when)
-import Data.Bool ((&&), Bool(False, True), otherwise, not )
-import Data.Either (Either(Left, Right))
-import Data.Eq ((==))
-import Data.Foldable (concatMap, foldr')
-import Data.Function (($), (.), flip)
-import Data.Functor (fmap)
-import Data.Int (Int)
-import Data.List ((++), all, any, find, foldl, foldl', genericLength , intercalate , intersperse, length, map, partition, union, zip, zip3)
+import Control.Monad (liftM2, unless, when)
+import Data.Foldable (foldr')
+import Data.List (find, foldl', genericLength , intercalate , intersperse, partition, union)
 import Data.List.NonEmpty ((<|), NonEmpty((:|)))
 import Data.Map (Map)
-import Data.Maybe (Maybe(Nothing, Just), catMaybes, fromMaybe, mapMaybe)
+import Data.Maybe (catMaybes, fromMaybe, mapMaybe)
 import Data.Set (Set)
 #if MIN_VERSION_template_haskell(2,8,0)
 import Language.Haskell.TH hiding (Arity)
@@ -136,7 +133,6 @@ import Language.Haskell.TH hiding (Arity)
 import Language.Haskell.TH
 #endif
 import Language.Haskell.TH.Syntax (VarStrictType)
-import Prelude ((-), (||), Enum(..), Eq(..), Integer, Ord(..), String, concat, cycle, drop, elem, error, foldr1, fromIntegral, showChar, showParen, shows, showString, snd, splitAt, take, unzip, zipWith)
 #if MIN_VERSION_template_haskell(2,7,0) && !(MIN_VERSION_template_haskell(2,8,0))
 import Language.Haskell.TH.Lib (starK)
 #endif
@@ -149,7 +145,6 @@ import Prelude (uncurry)
 import Prelude (head)
 #endif
 import Text.Printf (printf)
-import Text.Show (show)
 import qualified Data.Aeson as A
 import qualified Data.Aeson.Encoding.Internal as E
 import qualified Data.Foldable as F (all)

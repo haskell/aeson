@@ -3,6 +3,9 @@
 
 module Main (main) where
 
+import Prelude ()
+import Prelude.Compat
+
 import Compare.BufferBuilder ()
 import Compare.JsonBuilder ()
 import Criterion.Main

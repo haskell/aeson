@@ -1,6 +1,9 @@
 {-# LANGUAGE BangPatterns #-}
 {-# LANGUAGE OverloadedStrings #-}
 
+import Prelude ()
+import Prelude.Compat
+
 import Control.DeepSeq
 import Control.Exception
 import Control.Monad

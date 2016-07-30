@@ -1,3 +1,6 @@
+import Prelude ()
+import Prelude.Compat
+
 import Criterion.Main
 import Data.Aeson (decode, encode)
 import Data.Time.Clock (UTCTime)

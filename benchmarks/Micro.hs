@@ -1,5 +1,8 @@
 module Main (main) where
 
+import Prelude ()
+import Prelude.Compat
+
 import Criterion.Main
 import qualified Data.Aeson.Encoding.Builder as AB
 import qualified Data.ByteString.Builder as B

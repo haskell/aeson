@@ -4,6 +4,9 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE TemplateHaskell #-}
 
+import Prelude ()
+import Prelude.Compat
+
 import Data.Aeson (decode, encode)
 import Data.Aeson.TH (deriveJSON, defaultOptions)
 import qualified Data.ByteString.Lazy.Char8 as BL

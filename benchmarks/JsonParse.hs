@@ -2,6 +2,9 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 
+import Prelude ()
+import Prelude.Compat
+
 import Control.DeepSeq
 import Control.Monad
 import Data.Time.Clock

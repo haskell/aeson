@@ -3,7 +3,10 @@
 {-# LANGUAGE PackageImports #-}
 {-# LANGUAGE RankNTypes #-}
 
-{-# OPTIONS -fno-warn-orphans #-}
+{-# OPTIONS_GHC -fno-warn-orphans #-}
+
+import Prelude ()
+import Prelude.Compat
 
 import Control.DeepSeq
 import Criterion.Main

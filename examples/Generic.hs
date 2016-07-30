@@ -8,6 +8,9 @@
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE OverloadedStrings #-}
 
+import Prelude ()
+import Prelude.Compat
+
 import Data.Aeson (FromJSON, ToJSON, decode, encode)
 import qualified Data.ByteString.Lazy.Char8 as BL
 import GHC.Generics (Generic)

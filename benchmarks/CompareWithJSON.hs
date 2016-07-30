@@ -1,5 +1,8 @@
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 
+import Prelude ()
+import Prelude.Compat
+
 import Blaze.ByteString.Builder (toLazyByteString)
 import Blaze.ByteString.Builder.Char.Utf8 (fromString)
 import Control.DeepSeq (NFData(rnf))

@@ -11,6 +11,9 @@ module Twitter.Generic
     , Result(..)
     ) where
 
+import Prelude ()
+import Prelude.Compat
+
 import Twitter
 
 #ifndef HAS_BOTH_AESON_AND_BENCHMARKS

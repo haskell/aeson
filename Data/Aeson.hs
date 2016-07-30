@@ -111,7 +111,7 @@ module Data.Aeson
     ) where
 
 import Prelude ()
-import Prelude.Compat (Maybe, either, Either(..), uncurry, String, (.))
+import Prelude.Compat
 
 import Data.Aeson.Types.FromJSON (ifromJSON)
 import Data.Aeson.Encoding (encodingToLazyByteString)

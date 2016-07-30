@@ -1,6 +1,9 @@
 {-# LANGUAGE PackageImports #-}
 module Typed.Generic (benchmarks) where
 
+import Prelude ()
+import Prelude.Compat
+
 import "aeson" Data.Aeson hiding (Result)
 import Criterion
 import Data.ByteString.Lazy as L

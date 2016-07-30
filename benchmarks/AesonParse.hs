@@ -2,6 +2,9 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE PackageImports #-}
 
+import Prelude ()
+import Prelude.Compat
+
 import "aeson-benchmarks" Data.Aeson
 import Control.Exception
 import Control.Monad
