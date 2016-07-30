@@ -58,6 +58,11 @@ flag developer
   default: False
   manual: True
 
+flag fast
+  description: compile without optimizations
+  default: False
+  manual: True
+
 flag bytestring-builder
   description: Depend on the bytestring-builder package for backwards compatibility.
   default: False
@@ -132,8 +137,13 @@ library
   if flag(developer)
     ghc-options: -Werror
     ghc-prof-options: -auto-all
+  else
+    ghc-options: -Wall
 
-  ghc-options: -O2 -Wall
+  if flag(fast)
+    ghc-options: -O0
+  else
+    ghc-options: -O2
 
   include-dirs: include
 

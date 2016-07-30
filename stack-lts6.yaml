@@ -6,5 +6,7 @@ packages:
 extra-deps:
 - semigroups-0.18.2
 flags:
+  aeson:
+    fast: true
   semigroups:
     bytestring-builder: false
