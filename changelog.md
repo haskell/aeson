@@ -8,15 +8,15 @@ For the latest version of this document, please see [https://github.com/bos/aeso
 
 * Added higher rank classes: `ToJSON1`, `ToJSON2`, `FromJSON1`, and `FromJSON2`.
 
-* Modified instances for `Map` and `HashMap`. Introduced new `FromJSONKey` and
-  `ToJSONKey` type classes.
+* Introduced new `FromJSONKey` and `ToJSONKey` type classes that is used to encode maps.
 
-* Integral `FromJSON` instances do not accept non integral JSON numbers (e.g. `3.14`).
-  Also over/underflows are caught for bounded types.
+* Integral `FromJSON` instances now only accepts integral values. E.g. parsing `3.14` will fail instead of succeeding with the value `3`.
 
-* Added `Data.Aeson.Encoding` with functions to work with `Encoding` in an abstract way.
+* Over/underflows are now caught for bounded numeric types.
 
-* Added `UntaggedValue` to `SumEncoding`
+* Added `Data.Aeson.Encoding` with functions to safely write `ToJSON` instances using `toEncoding`.
+
+* Added a new `sumEncoding` option `UntaggedValue` which prevents objects from being tagged with the constructor name.
 
 * Export `decodeWith`, `decodeStrictWith`, `eitherDecodeWith`, and
   `eitherDecodeStrictWith` from `Data.Aeson.Parser`. This allows
@@ -46,7 +46,7 @@ For the latest version of this document, please see [https://github.com/bos/aeso
 
 * Added instances for `DList`, `Compose`, `Product`, `Sum`.
 
-* Buildable with `bytestring-0.9` (with a help of `bytestring-builder` compatibility package).
+* Backwards compatibility with `bytestring-0.9` using the `bytestring-builder` compatibility package.
 
 ### 0.11.2.0
 
