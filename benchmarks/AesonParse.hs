@@ -2,6 +2,8 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE PackageImports #-}
 
+module Main (main) where
+
 import Prelude ()
 import Prelude.Compat
 

@@ -47,7 +47,7 @@ module Data.Aeson.Types.FromJSON
     -- * List functions
     , listParser
 
-      -- * Inspecting @'Value's@
+    -- * Inspecting @'Value's@
     , withObject
     , withText
     , withArray

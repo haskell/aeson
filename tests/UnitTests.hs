@@ -11,7 +11,11 @@
 
 {-# OPTIONS_GHC -fno-warn-deprecations #-}
 
-module UnitTests (ioTests, tests) where
+module UnitTests
+    (
+      ioTests
+    , tests
+    ) where
 
 import Prelude ()
 import Prelude.Compat

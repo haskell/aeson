@@ -86,8 +86,12 @@ $('deriveJSON' 'defaultOptions' ''(,,,))
 -}
 
 module Data.Aeson.TH
-    ( -- * Encoding configuration
-      Options(..), SumEncoding(..), defaultOptions, defaultTaggedObject
+    (
+      -- * Encoding configuration
+      Options(..)
+    , SumEncoding(..)
+    , defaultOptions
+    , defaultTaggedObject
 
      -- * FromJSON and ToJSON derivation
     , deriveJSON

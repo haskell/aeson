@@ -2,7 +2,7 @@
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE TemplateHaskell #-}
 
-module Main where
+module Main (main) where
 
 import Prelude ()
 import Prelude.Compat

@@ -4,7 +4,7 @@
 {-# LANGUAGE TypeFamilies #-}
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 
-module DataFamilies.Instances where
+module DataFamilies.Instances () where
 
 import Control.Applicative
 import Data.Aeson.TH

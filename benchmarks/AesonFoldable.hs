@@ -1,5 +1,8 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE PackageImports #-}
+
+module Main (main) where
+
 import Criterion.Main
 
 import Prelude ()

@@ -6,7 +6,7 @@
 {-# LANGUAGE StandaloneDeriving #-}
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 
-module Instances where
+module Instances () where
 
 import Prelude ()
 import Prelude.Compat

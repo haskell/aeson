@@ -23,7 +23,18 @@
 --
 -- Helpers for generic derivations.
 
-module Data.Aeson.Types.Generic where
+module Data.Aeson.Types.Generic
+    (
+      IsRecord(..)
+    , AllNullary(..)
+    , Tagged2(..)
+    , True
+    , False
+    , And
+    , Zero
+    , One
+    , ProductSize(..)
+    ) where
 
 import Prelude ()
 import Prelude.Compat

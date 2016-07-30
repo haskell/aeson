@@ -1,4 +1,8 @@
-module Functions where
+module Functions
+    (
+      approxEq
+    , approxEqWith
+    ) where
 
 approxEq :: (Fractional a, Ord a) => a -> a -> Bool
 approxEq = approxEqWith 1e-15 1e-15

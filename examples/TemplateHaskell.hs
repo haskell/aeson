@@ -4,6 +4,8 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE TemplateHaskell #-}
 
+module Main (main) where
+
 import Prelude ()
 import Prelude.Compat
 
