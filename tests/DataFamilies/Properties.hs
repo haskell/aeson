@@ -4,7 +4,6 @@ module DataFamilies.Properties (tests) where
 
 import DataFamilies.Encoders
 import DataFamilies.Instances ()
-
 import Properties hiding (tests)
 
 import Test.Framework (Test, testGroup)

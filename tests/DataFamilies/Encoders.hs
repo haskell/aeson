@@ -6,8 +6,8 @@ module DataFamilies.Encoders where
 
 import Data.Aeson.TH
 import Data.Aeson.Types
-import Options
 import DataFamilies.Types
+import Options
 
 --------------------------------------------------------------------------------
 -- Nullary encoders/decoders

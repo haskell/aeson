@@ -1,19 +1,22 @@
-{-# LANGUAGE OverloadedStrings, RankNTypes, PackageImports, FlexibleContexts #-}
+{-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE PackageImports #-}
+{-# LANGUAGE RankNTypes #-}
+
+{-# OPTIONS -fno-warn-orphans #-}
 
 import Control.DeepSeq
 import Criterion.Main
 import Data.Hashable
 import Data.Proxy (Proxy (..))
 import Data.Tagged (Tagged (..))
-import qualified Data.ByteString.Lazy as LBS
-import qualified Data.Text as T
-import qualified Data.Map as M
-import qualified Data.HashMap.Strict as HM
-
 import qualified "aeson" Data.Aeson as A
-
 import qualified "aeson-benchmarks" Data.Aeson as B
 import qualified "aeson-benchmarks" Data.Aeson.Types as B (fromJSONKeyCoerce)
+import qualified Data.ByteString.Lazy as LBS
+import qualified Data.HashMap.Strict as HM
+import qualified Data.Map as M
+import qualified Data.Text as T
 
 value :: Int -> HM.HashMap T.Text T.Text
 value n = HM.fromList $ map f [1..n]

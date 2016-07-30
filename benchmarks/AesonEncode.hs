@@ -1,5 +1,7 @@
-{-# LANGUAGE BangPatterns, OverloadedStrings #-}
+{-# LANGUAGE BangPatterns #-}
+{-# LANGUAGE OverloadedStrings #-}
 
+import Control.DeepSeq
 import Control.Exception
 import Control.Monad
 import Data.Aeson
@@ -9,7 +11,6 @@ import Data.Time.Clock
 import System.Environment (getArgs)
 import System.IO
 import qualified Data.ByteString as B
-import Control.DeepSeq
 
 main :: IO ()
 main = do
@@ -17,6 +18,7 @@ main = do
   let (cnt,args) = case args0 of
         (i:c:a) | all isDigit i && all isDigit c -> (c,a)
         (c:a) -> (c,a)
+        [] -> error "Unexpected empty list"
   let count = read cnt :: Int
   forM_ args $ \arg -> bracket (openFile arg ReadMode) hClose $ \h -> do
     putStrLn $ arg ++ ":"

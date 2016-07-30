@@ -10,8 +10,8 @@ import Control.Applicative
 import Data.Aeson.TH
 import Data.Aeson.Types (FromJSON(..))
 import DataFamilies.Types
-import Test.QuickCheck (Arbitrary(..), elements, oneof)
 import Prelude
+import Test.QuickCheck (Arbitrary(..), elements, oneof)
 
 instance (Arbitrary a) => Arbitrary (Approx a) where
     arbitrary = Approx <$> arbitrary

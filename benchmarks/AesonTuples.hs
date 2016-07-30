@@ -1,9 +1,7 @@
 module Main where
 
---------------------------------------------------------------------------------
-
-import Criterion.Main
 import Control.DeepSeq (deepseq)
+import Criterion.Main
 import Data.Aeson
 
 --------------------------------------------------------------------------------

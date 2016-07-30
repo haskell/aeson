@@ -1,6 +1,7 @@
-{-# LANGUAGE OverloadedStrings, RecordWildCards #-}
+{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE RecordWildCards #-}
 
-import Control.Applicative ((<$>), (<*>), empty)
+import Control.Applicative (empty)
 import Data.Aeson
 import Data.Monoid
 import qualified Data.ByteString.Lazy.Char8 as BL

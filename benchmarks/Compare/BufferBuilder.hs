@@ -1,11 +1,12 @@
-{-# LANGUAGE OverloadedStrings, RecordWildCards #-}
+{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE RecordWildCards #-}
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 
 module Compare.BufferBuilder () where
 
 import Data.BufferBuilder.Json
-import Data.Monoid ((<>))
 import Data.Int (Int64)
+import Data.Monoid ((<>))
 import Prelude hiding (id)
 import Twitter
 import qualified Data.BufferBuilder.Utf8 as UB

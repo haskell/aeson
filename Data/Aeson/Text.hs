@@ -1,4 +1,5 @@
-{-# LANGUAGE BangPatterns, OverloadedStrings #-}
+{-# LANGUAGE BangPatterns #-}
+{-# LANGUAGE OverloadedStrings #-}
 -- |
 -- Module:      Data.Aeson.Text
 -- Copyright:   (c) 2012-2016 Bryan O'Sullivan
@@ -14,7 +15,8 @@
 -- You can use the conversions to 'Builder's when embedding JSON messages as
 -- parts of a protocol.
 module Data.Aeson.Text
-    ( encodeToLazyText
+    (
+      encodeToLazyText
     , encodeToTextBuilder
     ) where
 

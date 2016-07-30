@@ -10,7 +10,7 @@ import Data.Aeson.Types (Parser)
 import Data.ByteString.Builder (toLazyByteString)
 import Data.Maybe (fromJust)
 import Encoders
-import Test.HUnit (Assertion, (@=?))
+import Test.HUnit ((@=?), Assertion)
 import Types
 import qualified Data.ByteString.Lazy.Char8 as L
 

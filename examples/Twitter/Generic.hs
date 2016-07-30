@@ -1,6 +1,6 @@
 -- Use GHC generics to automatically generate good instances.
-
-{-# LANGUAGE CPP, PackageImports #-}
+{-# LANGUAGE CPP #-}
+{-# LANGUAGE PackageImports #-}
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 
 module Twitter.Generic

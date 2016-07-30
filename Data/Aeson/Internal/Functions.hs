@@ -8,7 +8,8 @@
 -- Portability: portable
 
 module Data.Aeson.Internal.Functions
-    ( mapHashKeyVal
+    (
+      mapHashKeyVal
     , mapKeyVal
     , mapKey
     ) where

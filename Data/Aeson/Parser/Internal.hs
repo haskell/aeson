@@ -1,4 +1,6 @@
-{-# LANGUAGE BangPatterns, CPP, OverloadedStrings #-}
+{-# LANGUAGE BangPatterns #-}
+{-# LANGUAGE CPP #-}
+{-# LANGUAGE OverloadedStrings #-}
 #if MIN_VERSION_ghc_prim(0,3,1)
 {-# LANGUAGE MagicHash #-}
 #endif

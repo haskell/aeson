@@ -1,11 +1,10 @@
-{-# LANGUAGE OverloadedStrings, PackageImports #-}
+{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE PackageImports #-}
 import Criterion.Main
 
-import qualified "aeson"            Data.Aeson as A
-import qualified "aeson-benchmarks" Data.Aeson as B
-
 import Data.Foldable (toList)
-
+import qualified "aeson" Data.Aeson as A
+import qualified "aeson-benchmarks" Data.Aeson as B
 import qualified Data.Sequence as S
 import qualified Data.Vector as V
 import qualified Data.Vector.Unboxed as U

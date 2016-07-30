@@ -1,7 +1,8 @@
-{-# LANGUAGE CPP, OverloadedStrings, ScopedTypeVariables, RankNTypes #-}
-
--- For Arbitrary Compose
-{-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE CPP #-}
+{-# LANGUAGE FlexibleContexts #-} -- For arbitrary Compose
+{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE RankNTypes #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 
 module Properties where
 
@@ -10,23 +11,22 @@ import Prelude.Compat
 
 import Control.Applicative (Const)
 import Data.Aeson (eitherDecode, encode)
+import Data.Aeson.Encoding (encodingToLazyByteString)
 import Data.Aeson.Internal (IResult(..), formatError, ifromJSON, iparse)
 import Data.Aeson.Parser (value)
-import Data.Aeson.Encoding (encodingToLazyByteString)
 import Data.Aeson.Types
-import Data.Int (Int8)
-import Data.Sequence (Seq)
 import Data.DList (DList)
-import Data.Hashable (Hashable)
-import Data.HashMap.Strict (HashMap)
 import Data.Functor.Compose (Compose (..))
-import Data.Map (Map)
-import Data.Ratio (Ratio)
+import Data.HashMap.Strict (HashMap)
+import Data.Hashable (Hashable)
+import Data.Int (Int8)
 import Data.List.NonEmpty (NonEmpty)
-import Data.Time (Day, LocalTime, NominalDiffTime, TimeOfDay, UTCTime,
-                  ZonedTime)
+import Data.Map (Map)
 import Data.Proxy (Proxy)
+import Data.Ratio (Ratio)
+import Data.Sequence (Seq)
 import Data.Tagged (Tagged)
+import Data.Time (Day, LocalTime, NominalDiffTime, TimeOfDay, UTCTime, ZonedTime)
 import Data.Version (Version)
 import Encoders
 import Instances ()

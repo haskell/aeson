@@ -1,24 +1,19 @@
-{-# LANGUAGE DeriveDataTypeable, DeriveGeneric, TemplateHaskell #-}
+{-# LANGUAGE DeriveDataTypeable #-}
+{-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE TemplateHaskell #-}
 
 module Main where
 
---------------------------------------------------------------------------------
-
-import Criterion.Main hiding (defaultOptions)
-
 import Control.DeepSeq (NFData, rnf, deepseq)
-
-import Data.Typeable (Typeable)
-import Data.Data (Data)
-import GHC.Generics (Generic)
-
-import Data.Aeson.Types
-import Data.Aeson.TH
-import qualified Data.Aeson.Generic as G (fromJSON, toJSON)
-
+import Criterion.Main hiding (defaultOptions)
 import Data.Aeson.Encode
-
+import Data.Aeson.TH
+import Data.Aeson.Types
+import Data.Data (Data)
+import Data.Typeable (Typeable)
+import GHC.Generics (Generic)
 import Options
+import qualified Data.Aeson.Generic as G (fromJSON, toJSON)
 
 --------------------------------------------------------------------------------
 

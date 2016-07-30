@@ -2,13 +2,11 @@
 module Typed.Manual (benchmarks) where
 
 import "aeson" Data.Aeson hiding (Result)
-import qualified "aeson-benchmarks" Data.Aeson as B
-
-import Control.Applicative
 import Criterion
 import Data.ByteString.Lazy as L
 import Twitter.Manual
 import Typed.Common
+import qualified "aeson-benchmarks" Data.Aeson as B
 
 encodeDirectA :: Result -> L.ByteString
 encodeDirectA = encode

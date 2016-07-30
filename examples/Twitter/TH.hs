@@ -1,6 +1,7 @@
 -- Use Template Haskell to generate good instances.
 
-{-# LANGUAGE CPP, PackageImports #-}
+{-# LANGUAGE CPP #-}
+{-# LANGUAGE PackageImports #-}
 {-# LANGUAGE TemplateHaskell #-}
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 

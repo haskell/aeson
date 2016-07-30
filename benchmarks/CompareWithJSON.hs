@@ -7,10 +7,10 @@ import Criterion.Main
 import qualified Data.Aeson as A
 import qualified Data.Aeson.Text as A
 import qualified Data.ByteString.Lazy as BL
-import qualified Text.JSON as J
 import qualified Data.Text.Lazy          as TL
 import qualified Data.Text.Lazy.Builder  as TLB
 import qualified Data.Text.Lazy.Encoding as TLE
+import qualified Text.JSON as J
 
 instance (NFData v) => NFData (J.JSObject v) where
   rnf o = rnf (J.fromJSObject o)

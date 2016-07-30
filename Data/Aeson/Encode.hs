@@ -9,7 +9,8 @@
 --
 -- This module is left to supply limited backwards-compatibility.
 module Data.Aeson.Encode {-# DEPRECATED "Use Data.Aeson or Data.Aeson.Text instead" #-}
-    ( encode
+    (
+      encode
     , encodeToTextBuilder
     ) where
 

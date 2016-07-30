@@ -1,4 +1,10 @@
-{-# LANGUAGE CPP, GADTs, DeriveGeneric, OverloadedStrings, ScopedTypeVariables, TemplateHaskell, GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE CPP #-}
+{-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE GADTs #-}
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE TemplateHaskell #-}
 #if __GLASGOW_HASKELL__ >= 708
 {-# LANGUAGE DataKinds #-}
 #endif
@@ -10,45 +16,39 @@ module UnitTests (ioTests, tests) where
 import Prelude ()
 import Prelude.Compat
 
-import Types (I, Compose3, Compose3', Approx(..))
-import Instances ()
-
 import Control.Applicative (Const(..))
 import Control.Monad (forM)
-import Data.Aeson (FromJSONKeyFunction(..), FromJSONKey(..), decode, eitherDecode, encode, genericParseJSON, genericToJSON, genericToEncoding, object, FromJSON(..), withObject, ToJSON1(..), (.=), (.:), (.:?), (.:!))
-import Data.Aeson.Text (encodeToTextBuilder)
+import Data.Aeson ((.=), (.:), (.:?), (.:!), FromJSON(..), FromJSONKeyFunction(..), FromJSONKey(..), ToJSON1(..), decode, eitherDecode, encode, genericParseJSON, genericToEncoding, genericToJSON, object, withObject)
 import Data.Aeson.Internal (JSONPathElement(..), formatError)
 import Data.Aeson.TH (deriveJSON, deriveToJSON, deriveToJSON1)
-import Data.Aeson.Types (ToJSON(..), Value, camelTo, camelTo2, defaultOptions, omitNothingFields, Options(..), SumEncoding(..))
+import Data.Aeson.Text (encodeToTextBuilder)
+import Data.Aeson.Types (Options(..), SumEncoding(..), ToJSON(..), Value, camelTo, camelTo2, defaultOptions, omitNothingFields)
 import Data.Char (toUpper)
-import Data.Hashable (hash)
-import Data.List.NonEmpty (NonEmpty(..))
-import Data.Functor.Compose (Compose (..))
+import Data.Fixed (Pico)
+import Data.Functor.Compose (Compose(..))
+import Data.Functor.Identity (Identity(..))
 import Data.Functor.Product (Product(..))
 import Data.Functor.Sum (Sum(..))
-import Data.Functor.Identity (Identity (..))
+import Data.Hashable (hash)
+import Data.List.NonEmpty (NonEmpty(..))
 import Data.Maybe (fromMaybe)
 import Data.Proxy (Proxy(..))
-import Data.Fixed (Pico)
+import Data.Scientific (Scientific)
 import Data.Sequence (Seq)
 import Data.Tagged (Tagged(..))
 import Data.Text (Text)
 import Data.Time (UTCTime)
 import Data.Time.Format (parseTime)
 import Data.Time.Locale.Compat (defaultTimeLocale)
+import Data.Word (Word8)
 import GHC.Generics (Generic)
+import Instances ()
 import Test.Framework (Test, testGroup)
 import Test.Framework.Providers.HUnit (testCase)
 import Test.HUnit (Assertion, assertFailure, assertEqual)
+import Types (Approx(..), Compose3, Compose3', I)
 import UnitTests.NullaryConstructors (nullaryConstructors)
-import Data.Word (Word8)
-import Data.Scientific (Scientific)
 import qualified Data.ByteString.Lazy.Char8 as L
-import qualified Data.Text.Lazy.Builder as TLB
-import qualified Data.Text.Lazy.Encoding as TLE
-import qualified Data.Text.Lazy as LT
-import qualified Data.Text.Lazy.Encoding as LT
-
 import qualified Data.DList as DList
 import qualified Data.HashMap.Strict as HM
 import qualified Data.HashSet as HashSet
@@ -57,6 +57,10 @@ import qualified Data.IntSet as IntSet
 import qualified Data.Map as M
 import qualified Data.Sequence as Seq
 import qualified Data.Set as Set
+import qualified Data.Text.Lazy as LT
+import qualified Data.Text.Lazy.Builder as TLB
+import qualified Data.Text.Lazy.Encoding as LT
+import qualified Data.Text.Lazy.Encoding as TLE
 import qualified Data.Tree as Tree
 import qualified Data.Vector as Vector
 

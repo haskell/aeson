@@ -1,5 +1,13 @@
-{-# LANGUAGE CPP, PackageImports #-}
+{-# LANGUAGE CPP #-}
+{-# LANGUAGE PackageImports #-}
+
+{-# OPTIONS -fno-warn-unused-imports #-}
+
 module Typed.Common (load) where
+
+import Data.ByteString.Lazy as L
+import System.Exit
+import System.IO
 
 #ifndef HAS_BOTH_AESON_AND_BENCHMARKS
 import Data.Aeson hiding (Result)
@@ -7,11 +15,6 @@ import Data.Aeson hiding (Result)
 import "aeson" Data.Aeson hiding (Result)
 import qualified "aeson-benchmarks" Data.Aeson as B
 #endif
-
-import Data.ByteString.Lazy as L
-import Control.Applicative
-import System.IO
-import System.Exit
 
 load :: FromJSON a => FilePath -> IO a
 load fileName = do
