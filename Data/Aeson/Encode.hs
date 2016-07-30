@@ -15,7 +15,6 @@ module Data.Aeson.Encode {-# DEPRECATED "Use Data.Aeson or Data.Aeson.Text inste
 
 import Data.ByteString.Lazy (ByteString)
 import Data.Text.Lazy.Builder (Builder)
-
 import qualified Data.Aeson as A
 import qualified Data.Aeson.Text as A
 

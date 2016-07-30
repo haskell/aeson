@@ -55,78 +55,72 @@ module Data.Aeson.Types.ToJSON (
     , listValue
     ) where
 
-import Prelude        ()
+import Prelude ()
 import Prelude.Compat
 
-import Data.Aeson.Encoding.Internal  (Encoding, Encoding', Series, dict,
-                                      emptyArray_, tuple, (>*<), (><))
+import Control.Applicative (Const(..))
+import Control.Monad.ST (ST)
+import Data.Aeson.Encoding.Internal ((>*<), (><), Encoding, Encoding', Series, dict, emptyArray_, tuple)
 import Data.Aeson.Internal.Functions (mapHashKeyVal, mapKeyVal)
 import Data.Aeson.Types.Generic
 import Data.Aeson.Types.Internal
-
+import Data.Attoparsec.Number (Number(..))
+import Data.Bits (unsafeShiftR)
+import Data.DList (DList)
+import Data.Fixed (Fixed, HasResolution)
+import Data.Foldable (toList)
+import Data.Functor.Compose (Compose(..))
+import Data.Functor.Identity (Identity(..))
+import Data.Functor.Product (Product(..))
+import Data.Functor.Sum (Sum(..))
+import Data.Int (Int16, Int32, Int64, Int8)
+import Data.List (intersperse)
+import Data.List.NonEmpty (NonEmpty(..))
+import Data.Monoid ((<>), Dual(..), First(..), Last(..))
+import Data.Proxy (Proxy(..))
+import Data.Ratio (Ratio, denominator, numerator)
+import Data.Scientific (Scientific)
+import Data.Tagged (Tagged(..))
+import Data.Text (Text, pack)
+import Data.Time (Day, LocalTime, NominalDiffTime, TimeOfDay, UTCTime, ZonedTime)
+import Data.Time.Format (FormatTime, formatTime)
+import Data.Time.Locale.Compat (defaultTimeLocale)
+import Data.Vector (Vector)
+import Data.Version (Version, showVersion)
+import Data.Word (Word16, Word32, Word64, Word8)
+import Foreign.Storable (Storable)
+import GHC.Generics
+import Numeric.Natural (Natural)
 -- We need internal here for generic deriving
 import qualified Data.Aeson.Encoding.Internal as E
-
-import Control.Applicative     (Const (..))
-import Control.Monad.ST        (ST)
-import Data.Attoparsec.Number  (Number (..))
-import Data.Bits               (unsafeShiftR)
-import Data.DList              (DList)
-import Data.Fixed              (Fixed, HasResolution)
-import Data.Foldable           (toList)
-import Data.Functor.Compose    (Compose (..))
-import Data.Functor.Identity   (Identity (..))
-import Data.Functor.Product    (Product (..))
-import Data.Functor.Sum        (Sum (..))
-import Data.Int                (Int16, Int32, Int64, Int8)
-import Data.List               (intersperse)
-import Data.List.NonEmpty      (NonEmpty (..))
-import Data.Monoid             (Dual (..), First (..), Last (..), (<>))
-import Data.Proxy              (Proxy (..))
-import Data.Ratio              (Ratio, denominator, numerator)
-import Data.Scientific         (Scientific)
-import Data.Tagged             (Tagged (..))
-import Data.Text               (Text, pack)
-import Data.Time               (Day, LocalTime, NominalDiffTime, TimeOfDay,
-                                UTCTime, ZonedTime)
-import Data.Time.Format        (FormatTime, formatTime)
-import Data.Time.Locale.Compat (defaultTimeLocale)
-import Data.Vector             (Vector)
-import Data.Version            (Version, showVersion)
-import Data.Word               (Word16, Word32, Word64, Word8)
-import Foreign.Storable        (Storable)
-import GHC.Generics
-import Numeric.Natural         (Natural)
-
-import qualified Data.ByteString       as S
-import qualified Data.ByteString.Lazy  as L
-import qualified Data.DList            as DList
-import qualified Data.HashMap.Strict   as H
-import qualified Data.HashSet          as HashSet
-import qualified Data.IntMap           as IntMap
-import qualified Data.IntSet           as IntSet
-import qualified Data.List.NonEmpty    as NE
-import qualified Data.Map              as M
-import qualified Data.Scientific       as Scientific
-import qualified Data.Sequence         as Seq
-import qualified Data.Set              as Set
-import qualified Data.Text             as T
-import qualified Data.Text.Encoding    as T
-import qualified Data.Text.Lazy        as LT
-import qualified Data.Tree             as Tree
-import qualified Data.Vector           as V
-import qualified Data.Vector.Generic   as VG
-import qualified Data.Vector.Mutable   as VM
+import qualified Data.ByteString as S
+import qualified Data.ByteString.Lazy as L
+import qualified Data.DList as DList
+import qualified Data.HashMap.Strict as H
+import qualified Data.HashSet as HashSet
+import qualified Data.IntMap as IntMap
+import qualified Data.IntSet as IntSet
+import qualified Data.List.NonEmpty as NE
+import qualified Data.Map as M
+import qualified Data.Scientific as Scientific
+import qualified Data.Sequence as Seq
+import qualified Data.Set as Set
+import qualified Data.Text as T
+import qualified Data.Text.Encoding as T
+import qualified Data.Text.Lazy as LT
+import qualified Data.Tree as Tree
+import qualified Data.Vector as V
+import qualified Data.Vector.Generic as VG
+import qualified Data.Vector.Mutable as VM
 import qualified Data.Vector.Primitive as VP
-import qualified Data.Vector.Storable  as VS
-import qualified Data.Vector.Unboxed   as VU
+import qualified Data.Vector.Storable as VS
+import qualified Data.Vector.Unboxed as VU
 
 #if !(MIN_VERSION_bytestring(0,10,0))
-import Foreign.ForeignPtr    (withForeignPtr)
+import Foreign.ForeignPtr (withForeignPtr)
 import Foreign.Marshal.Utils (copyBytes)
-import Foreign.Ptr           (plusPtr)
-
-import qualified Data.ByteString.Internal      as S
+import Foreign.Ptr (plusPtr)
+import qualified Data.ByteString.Internal as S
 import qualified Data.ByteString.Lazy.Internal as L
 #endif
 

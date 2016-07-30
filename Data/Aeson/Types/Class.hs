@@ -84,5 +84,5 @@ module Data.Aeson.Types.Class
     ) where
 
 import Data.Aeson.Types.FromJSON
-import Data.Aeson.Types.ToJSON
 import Data.Aeson.Types.Generic (One, Zero)
+import Data.Aeson.Types.ToJSON

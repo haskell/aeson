@@ -63,24 +63,24 @@ module Data.Aeson.Types.Internal
 import Prelude ()
 import Prelude.Compat
 
-import Control.Arrow (first)
 import Control.Applicative (Alternative(..))
+import Control.Arrow (first)
 import Control.DeepSeq (NFData(..))
 import Control.Monad (MonadPlus(..), ap)
-import qualified Control.Monad.Fail as Fail
 import Data.Char (isLower, isUpper, toLower, isAlpha, isAlphaNum)
 import Data.Data (Data)
 import Data.Foldable (foldl')
 import Data.HashMap.Strict (HashMap)
 import Data.Hashable (Hashable(..))
-import Data.Semigroup (Semigroup((<>)))
 import Data.Scientific (Scientific)
+import Data.Semigroup (Semigroup((<>)))
 import Data.String (IsString(..))
 import Data.Text (Text, pack, unpack)
 import Data.Time (UTCTime)
 import Data.Time.Format (FormatTime)
 import Data.Typeable (Typeable)
 import Data.Vector (Vector)
+import qualified Control.Monad.Fail as Fail
 import qualified Data.HashMap.Strict as H
 import qualified Data.Scientific as S
 import qualified Data.Vector as V
