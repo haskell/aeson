@@ -1,0 +1,12 @@
+resolver: nightly-2016-07-30
+packages:
+- '.'
+- benchmarks
+- examples
+extra-deps:
+- buffer-builder-0.2.4.3
+- json-0.9.1
+- json-builder-0.3
+flags:
+  aeson:
+    fast: true
