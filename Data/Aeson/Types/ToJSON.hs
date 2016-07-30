@@ -61,9 +61,10 @@ import Prelude.Compat
 
 import Control.Applicative (Const(..))
 import Control.Monad.ST (ST)
-import Data.Aeson.Encoding.Internal ((>*<), (><), Encoding, Encoding', Series, dict, emptyArray_, tuple)
+import Data.Aeson.Encoding (Encoding, Encoding', Series, dict, emptyArray_)
+import Data.Aeson.Encoding.Internal ((>*<), (><), tuple)
 import Data.Aeson.Internal.Functions (mapHashKeyVal, mapKeyVal)
-import Data.Aeson.Types.Generic
+import Data.Aeson.Types.Generic (AllNullary, False, IsRecord(..), One, ProductSize, Tagged2(..), True, Zero, productSize)
 import Data.Aeson.Types.Internal
 import Data.Attoparsec.Number (Number(..))
 import Data.Bits (unsafeShiftR)
@@ -92,8 +93,9 @@ import Data.Word (Word16, Word32, Word64, Word8)
 import Foreign.Storable (Storable)
 import GHC.Generics
 import Numeric.Natural (Natural)
+import qualified Data.Aeson.Encoding as E
 -- We need internal here for generic deriving
-import qualified Data.Aeson.Encoding.Internal as E
+import qualified Data.Aeson.Encoding.Internal as E (InArray, closeCurly, colon, comma, econcat, empty, openCurly, retagEncoding, tuple, wrapObject)
 import qualified Data.ByteString as S
 import qualified Data.ByteString.Lazy as L
 import qualified Data.DList as DList

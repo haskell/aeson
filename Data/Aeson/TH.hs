@@ -141,12 +141,7 @@ import Language.Haskell.TH.Syntax (VarStrictType)
 import Language.Haskell.TH.Lib (starK)
 #endif
 #if MIN_VERSION_template_haskell(2,8,0) && !(MIN_VERSION_template_haskell(2,10,0))
-import Data.List (nub)
 import Language.Haskell.TH.Syntax (mkNameG_tc)
-import Prelude (uncurry)
-#endif
-#if MIN_VERSION_template_haskell(2,11,0)
-import Prelude (head)
 #endif
 import Text.Printf (printf)
 import qualified Data.Aeson as A
