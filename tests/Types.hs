@@ -8,6 +8,9 @@
 
 module Types where
 
+import Prelude ()
+import Prelude.Compat
+
 import Data.Data
 import Data.Functor.Compose (Compose (..))
 import Data.Functor.Identity (Identity (..))

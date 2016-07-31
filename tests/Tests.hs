@@ -1,5 +1,8 @@
 module Main (main) where
 
+import Prelude ()
+import Prelude.Compat
+
 import Test.Framework (defaultMain)
 import qualified DataFamilies.Properties as DF
 import qualified Properties

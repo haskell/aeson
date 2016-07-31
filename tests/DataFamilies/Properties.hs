@@ -2,6 +2,9 @@
 
 module DataFamilies.Properties (tests) where
 
+import Prelude ()
+import Prelude.Compat
+
 import DataFamilies.Encoders
 import DataFamilies.Instances ()
 import Properties hiding (tests)

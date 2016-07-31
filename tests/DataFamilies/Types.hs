@@ -10,6 +10,9 @@
 
 module DataFamilies.Types where
 
+import Prelude ()
+import Prelude.Compat
+
 import Generics.Deriving.TH (deriveAll0)
 import Types (ApproxEq(..))
 

@@ -6,11 +6,12 @@
 
 module DataFamilies.Instances () where
 
-import Control.Applicative
+import Prelude ()
+import Prelude.Compat
+
 import Data.Aeson.TH
 import Data.Aeson.Types (FromJSON(..))
 import DataFamilies.Types
-import Prelude
 import Test.QuickCheck (Arbitrary(..), elements, oneof)
 
 instance (Arbitrary a) => Arbitrary (Approx a) where

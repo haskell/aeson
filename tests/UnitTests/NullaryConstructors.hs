@@ -7,6 +7,9 @@ module UnitTests.NullaryConstructors
       nullaryConstructors
     ) where
 
+import Prelude ()
+import Prelude.Compat
+
 import Data.Aeson (decode, eitherDecode, fromEncoding, Value)
 import Data.Aeson.Internal (IResult (..), iparse)
 import Data.Aeson.Types (Parser)
