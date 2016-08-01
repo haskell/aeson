@@ -126,6 +126,9 @@ import Data.Aeson.Types.Internal ((<?>), Pair, JSONPathElement(Key))
 import Data.Aeson.Types.FromJSON (parseOptionalFieldWith)
 import Control.Monad (liftM2, unless, when)
 import Data.Foldable (foldr')
+#if MIN_VERSION_template_haskell(2,8,0) && !MIN_VERSION_template_haskell(2,10,0)
+import Data.List (nub)
+#endif
 import Data.List (find, foldl', genericLength , intercalate , intersperse, partition, union)
 import Data.List.NonEmpty ((<|), NonEmpty((:|)))
 import Data.Map (Map)
@@ -142,6 +145,7 @@ import Language.Haskell.TH.Lib (starK)
 #endif
 #if MIN_VERSION_template_haskell(2,8,0) && !(MIN_VERSION_template_haskell(2,10,0))
 import Language.Haskell.TH.Syntax (mkNameG_tc)
+#else
 #endif
 import Text.Printf (printf)
 import qualified Data.Aeson as A
