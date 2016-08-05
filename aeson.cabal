@@ -134,11 +134,11 @@ library
     -- `Numeric.Natural` is available in base only since GHC 7.10 / base 4.8
     build-depends: nats >= 1 && < 1.2
 
+  ghc-options: -Wall
+
   if flag(developer)
     ghc-options: -Werror
     ghc-prof-options: -auto-all
-  else
-    ghc-options: -Wall
 
   if flag(fast)
     ghc-options: -O0
