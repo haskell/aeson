@@ -15,6 +15,13 @@ Major enhancements:
 
 Other enhancements:
 
+* A Cabal `fast` flag was added to disable building with optimizations. This drastically speeds up compiling both aeson ***and*** libraries using aeson so it is recommended to enable it during development. With cabal-install you can `cabal install aeson -ffast` and with stack you can add a flag section to your stack.yaml:
+```
+flags:
+  aeson:
+    fast: true
+```
+
 * Added list specific members to `ToJSON` and `FromJSON` classes. In
   the same way `Read` and `Show` handle lists specifically. This
   removes need for overlapping instances to handle `String`.
