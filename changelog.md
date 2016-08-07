@@ -5,7 +5,9 @@ For the latest version of this document, please see [https://github.com/bos/aeso
 Major enhancements:
 
 * Introduced new `FromJSONKey` and `ToJSONKey` type classes that are
-  used to encode maps without going through HashMap
+  used to encode maps without going through HashMap. This also allows arbitrary
+  serialization of keys where a string-like key will encode into an object and
+  other keys will encode into an array of key-value tuples.
 
 * Added higher rank classes: `ToJSON1`, `ToJSON2`, `FromJSON1`, and
   `FromJSON2`.
