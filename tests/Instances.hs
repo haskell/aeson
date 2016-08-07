@@ -142,11 +142,16 @@ instance ApproxEq Char where
 instance (ApproxEq a) => ApproxEq [a] where
     a =~ b = length a == length b && all (uncurry (=~)) (zip a b)
 
+#if !MIN_VERSION_QuickCheck(2,9,0)
 instance Arbitrary Version where
     arbitrary = makeVersion . fmap getNonNegative <$> resize 4 (listOf1 arbitrary)
 
 instance Arbitrary a => Arbitrary (NonEmpty a) where
     arbitrary = (:|) <$> arbitrary <*> arbitrary
+
+instance Arbitrary a => Arbitrary (Const a b) where
+    arbitrary = Const <$> arbitrary
+#endif
 
 -- Version tags are deprecated, so we avoid using them in the Arbitrary
 -- instance. However, the recommended constructor 'makeVersion' is not
@@ -168,6 +173,3 @@ instance Arbitrary (Proxy a) where
 
 instance Arbitrary b => Arbitrary (Tagged a b) where
     arbitrary = Tagged <$> arbitrary
-
-instance Arbitrary a => Arbitrary (Const a b) where
-    arbitrary = Const <$> arbitrary
