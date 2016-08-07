@@ -8,13 +8,16 @@
 
 module Types where
 
-import qualified Data.Map as Map
+import Prelude ()
+import Prelude.Compat
+
 import Data.Data
+import Data.Functor.Compose (Compose (..))
+import Data.Functor.Identity (Identity (..))
 import Data.Text
 import GHC.Generics
 import Test.QuickCheck (Property, counterexample)
-import Data.Functor.Compose (Compose (..))
-import Data.Functor.Identity (Identity (..))
+import qualified Data.Map as Map
 
 type I = Identity
 type Compose3  f g h = Compose (Compose f g) h

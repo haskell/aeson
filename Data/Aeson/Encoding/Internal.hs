@@ -1,7 +1,7 @@
 {-# LANGUAGE DeriveDataTypeable #-}
-{-# LANGUAGE EmptyDataDecls     #-}
-{-# LANGUAGE OverloadedStrings  #-}
-{-# LANGUAGE RankNTypes         #-}
+{-# LANGUAGE EmptyDataDecls #-}
+{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE RankNTypes #-}
 module Data.Aeson.Encoding.Internal
     (
     -- * Encoding
@@ -53,25 +53,22 @@ module Data.Aeson.Encoding.Internal
     , comma, colon, openBracket, closeBracket, openCurly, closeCurly
     ) where
 
-import Prelude        ()
+import Prelude ()
 import Prelude.Compat
 
-import Data.ByteString.Builder      (Builder, char7, toLazyByteString)
-import Data.Int
-import Data.Scientific              (Scientific)
-import Data.Semigroup               (Semigroup ((<>)))
-import Data.Text                    (Text)
-import Data.Time                    (Day, LocalTime, TimeOfDay, UTCTime,
-                                     ZonedTime)
-import Data.Typeable                (Typeable)
-import Data.Word
-
 import Data.Aeson.Types.Internal (Value)
-
+import Data.ByteString.Builder (Builder, char7, toLazyByteString)
+import Data.Int
+import Data.Scientific (Scientific)
+import Data.Semigroup (Semigroup ((<>)))
+import Data.Text (Text)
+import Data.Time (Day, LocalTime, TimeOfDay, UTCTime, ZonedTime)
+import Data.Typeable (Typeable)
+import Data.Word
 import qualified Data.Aeson.Encoding.Builder as EB
-import qualified Data.ByteString.Builder     as B
-import qualified Data.ByteString.Lazy        as BSL
-import qualified Data.Text.Lazy              as LT
+import qualified Data.ByteString.Builder as B
+import qualified Data.ByteString.Lazy as BSL
+import qualified Data.Text.Lazy as LT
 
 -- | An encoding of a JSON value.
 --

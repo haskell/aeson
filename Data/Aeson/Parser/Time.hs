@@ -1,4 +1,5 @@
-{-# LANGUAGE BangPatterns, ScopedTypeVariables #-}
+{-# LANGUAGE BangPatterns #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 
 -- |
 -- Module:      Data.Aeson.Parser.Time
@@ -24,7 +25,7 @@ module Data.Aeson.Parser.Time
 import Prelude ()
 import Prelude.Compat
 
-import Control.Monad (when, void)
+import Control.Monad (void, when)
 import Data.Aeson.Internal.Time (toPico)
 import Data.Attoparsec.Text as A
 import Data.Bits ((.&.))

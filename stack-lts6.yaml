@@ -1,9 +1,12 @@
-resolver: lts-6.7
+resolver: lts-6.9
 packages:
 - '.'
 - benchmarks
+- examples
 extra-deps:
 - semigroups-0.18.2
 flags:
+  aeson:
+    fast: true
   semigroups:
     bytestring-builder: false

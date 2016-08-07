@@ -1,9 +1,12 @@
 module Main where
 
---------------------------------------------------------------------------------
+module Main (main) where
 
-import Criterion.Main
+import Prelude ()
+import Prelude.Compat
+
 import Control.DeepSeq (deepseq)
+import Criterion.Main
 import Data.Aeson
 
 --------------------------------------------------------------------------------

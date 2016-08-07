@@ -1,7 +1,10 @@
-{-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE PackageImports #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 
 module Main (main) where
+
+import Prelude ()
+import Prelude.Compat
 
 import Compare.BufferBuilder ()
 import Compare.JsonBuilder ()
@@ -11,8 +14,8 @@ import Data.Json.Builder
 import Twitter
 import Twitter.Manual ()
 import Typed.Common
-import qualified Compare.JsonBench as JsonBench
 import qualified "aeson-benchmarks" Data.Aeson as Aeson
+import qualified Compare.JsonBench as JsonBench
 
 main :: IO ()
 main =

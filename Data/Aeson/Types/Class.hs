@@ -83,6 +83,8 @@ module Data.Aeson.Types.Class
     , typeMismatch
     ) where
 
+import Prelude ()
+
 import Data.Aeson.Types.FromJSON
-import Data.Aeson.Types.ToJSON
 import Data.Aeson.Types.Generic (One, Zero)
+import Data.Aeson.Types.ToJSON

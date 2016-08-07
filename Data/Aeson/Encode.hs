@@ -9,13 +9,15 @@
 --
 -- This module is left to supply limited backwards-compatibility.
 module Data.Aeson.Encode {-# DEPRECATED "Use Data.Aeson or Data.Aeson.Text instead" #-}
-    ( encode
+    (
+      encode
     , encodeToTextBuilder
     ) where
 
+import Prelude ()
+
 import Data.ByteString.Lazy (ByteString)
 import Data.Text.Lazy.Builder (Builder)
-
 import qualified Data.Aeson as A
 import qualified Data.Aeson.Text as A
 

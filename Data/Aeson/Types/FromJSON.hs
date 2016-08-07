@@ -1,21 +1,21 @@
-{-# LANGUAGE CPP                   #-}
-{-# LANGUAGE DataKinds             #-}
-{-# LANGUAGE DefaultSignatures     #-}
-{-# LANGUAGE FlexibleContexts      #-}
-{-# LANGUAGE FlexibleInstances     #-}
-{-# LANGUAGE GADTs                 #-}
+{-# LANGUAGE CPP #-}
+{-# LANGUAGE DataKinds #-}
+{-# LANGUAGE DefaultSignatures #-}
+{-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE GADTs #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
-{-# LANGUAGE NamedFieldPuns        #-}
-{-# LANGUAGE OverloadedStrings     #-}
-{-# LANGUAGE RecordWildCards       #-}
-{-# LANGUAGE ScopedTypeVariables   #-}
-{-# LANGUAGE TypeOperators         #-}
-{-# LANGUAGE TypeSynonymInstances  #-}
-{-# LANGUAGE UndecidableInstances  #-}
-{-# LANGUAGE ViewPatterns          #-}
+{-# LANGUAGE NamedFieldPuns #-}
+{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE RecordWildCards #-}
+{-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE TypeOperators #-}
+{-# LANGUAGE TypeSynonymInstances #-}
+{-# LANGUAGE UndecidableInstances #-}
+{-# LANGUAGE ViewPatterns #-}
 
 #if __GLASGOW_HASKELL__ >= 706
-{-# LANGUAGE PolyKinds             #-}
+{-# LANGUAGE PolyKinds #-}
 #endif
 
 #include "overlapping-compat.h"
@@ -23,7 +23,8 @@
 -- TODO: Drop this when we remove support for Data.Attoparsec.Number
 {-# OPTIONS_GHC -fno-warn-deprecations #-}
 
-module Data.Aeson.Types.FromJSON (
+module Data.Aeson.Types.FromJSON
+    (
     -- * Core JSON classes
       FromJSON(..)
     -- * Liftings to unary and binary type constructors
@@ -46,7 +47,7 @@ module Data.Aeson.Types.FromJSON (
     -- * List functions
     , listParser
 
-      -- * Inspecting @'Value's@
+    -- * Inspecting @'Value's@
     , withObject
     , withText
     , withArray
@@ -67,68 +68,62 @@ module Data.Aeson.Types.FromJSON (
     , parseOptionalFieldWith
     ) where
 
-import Prelude        ()
-import Prelude.Compat hiding (foldr)
+import Prelude ()
+import Prelude.Compat
 
+import Control.Applicative ((<|>), Const(..))
+import Control.Monad ((<=<), zipWithM)
 import Data.Aeson.Internal.Functions (mapKey)
 import Data.Aeson.Types.Generic
 import Data.Aeson.Types.Internal
-
-import qualified Data.Aeson.Parser.Time           as Time
-import qualified Data.Attoparsec.ByteString.Char8 as A (endOfInput, parseOnly,
-                                                        scientific)
-
-import Control.Applicative          (Const (..), (<|>))
-import Control.Monad                ((<=<), zipWithM)
-import Data.Attoparsec.Number       (Number (..))
-import Data.Bits                    (unsafeShiftR)
-import Data.Fixed                   (Fixed, HasResolution)
-import Data.Functor.Compose         (Compose (..))
-import Data.Functor.Identity        (Identity (..))
-import Data.Functor.Product         (Product (..))
-import Data.Functor.Sum             (Sum (..))
-import Data.Hashable                (Hashable (..))
-import Data.Int                     (Int16, Int32, Int64, Int8)
-import Data.List.NonEmpty           (NonEmpty (..))
-import Data.Maybe                   (fromMaybe)
-import Data.Monoid                  (Dual (..), First (..), Last (..), (<>))
-import Data.Proxy                   (Proxy (..))
-import Data.Ratio                   (Ratio, (%))
-import Data.Scientific              (Scientific)
-import Data.Tagged                  (Tagged (..))
-import Data.Text                    (Text, pack, unpack)
-import Data.Time                    (Day, LocalTime, NominalDiffTime, TimeOfDay,
-                                     UTCTime, ZonedTime)
-import Data.Time.Format             (parseTime)
-import Data.Time.Locale.Compat      (defaultTimeLocale)
-import Data.Traversable             as Tr (sequence)
-import Data.Vector                  (Vector)
-import Data.Version                 (Version, parseVersion)
-import Data.Word                    (Word16, Word32, Word64, Word8)
-import Foreign.Storable             (Storable)
+import Data.Attoparsec.Number (Number(..))
+import Data.Bits (unsafeShiftR)
+import Data.Fixed (Fixed, HasResolution)
+import Data.Functor.Compose (Compose(..))
+import Data.Functor.Identity (Identity(..))
+import Data.Functor.Product (Product(..))
+import Data.Functor.Sum (Sum(..))
+import Data.Hashable (Hashable(..))
+import Data.Int (Int16, Int32, Int64, Int8)
+import Data.List.NonEmpty (NonEmpty(..))
+import Data.Maybe (fromMaybe)
+import Data.Monoid ((<>), Dual(..), First (..), Last (..))
+import Data.Proxy (Proxy(..))
+import Data.Ratio ((%), Ratio)
+import Data.Scientific (Scientific)
+import Data.Tagged (Tagged(..))
+import Data.Text (Text, pack, unpack)
+import Data.Time (Day, LocalTime, NominalDiffTime, TimeOfDay, UTCTime, ZonedTime)
+import Data.Time.Format (parseTime)
+import Data.Time.Locale.Compat (defaultTimeLocale)
+import Data.Traversable as Tr (sequence)
+import Data.Vector (Vector)
+import Data.Version (Version, parseVersion)
+import Data.Word (Word16, Word32, Word64, Word8)
+import Foreign.Storable (Storable)
 import GHC.Generics
-import Numeric.Natural              (Natural)
+import Numeric.Natural (Natural)
 import Text.ParserCombinators.ReadP (readP_to_S)
-
-import qualified Data.DList            as DList
-import qualified Data.HashMap.Strict   as H
-import qualified Data.HashSet          as HashSet
-import qualified Data.IntMap           as IntMap
-import qualified Data.IntSet           as IntSet
-import qualified Data.Map              as M
-import qualified Data.Scientific       as Scientific
-import qualified Data.Sequence         as Seq
-import qualified Data.Set              as Set
-import qualified Data.Text             as T
-import qualified Data.Text.Encoding    as T
-import qualified Data.Text.Lazy        as LT
-import qualified Data.Tree             as Tree
-import qualified Data.Vector           as V
-import qualified Data.Vector.Generic   as VG
+import qualified Data.Aeson.Parser.Time as Time
+import qualified Data.Attoparsec.ByteString.Char8 as A (endOfInput, parseOnly, scientific)
+import qualified Data.DList as DList
+import qualified Data.HashMap.Strict as H
+import qualified Data.HashSet as HashSet
+import qualified Data.IntMap as IntMap
+import qualified Data.IntSet as IntSet
+import qualified Data.Map as M
+import qualified Data.Scientific as Scientific
+import qualified Data.Sequence as Seq
+import qualified Data.Set as Set
+import qualified Data.Text as T
+import qualified Data.Text.Encoding as T
+import qualified Data.Text.Lazy as LT
+import qualified Data.Tree as Tree
+import qualified Data.Vector as V
+import qualified Data.Vector.Generic as VG
 import qualified Data.Vector.Primitive as VP
-import qualified Data.Vector.Storable  as VS
-import qualified Data.Vector.Unboxed   as VU
-
+import qualified Data.Vector.Storable as VS
+import qualified Data.Vector.Unboxed as VU
 import Unsafe.Coerce (unsafeCoerce)
 
 #ifndef HAS_COERCIBLE
@@ -1184,7 +1179,7 @@ instance FromJSON Int where
     {-# INLINE parseJSON #-}
 
 instance FromJSONKey Int where
-    fromJSONKey = FromJSONKeyTextParser $ parseBoundedIntegralText "Int" 
+    fromJSONKey = FromJSONKeyTextParser $ parseBoundedIntegralText "Int"
 
 -- | /WARNING:/ Only parse Integers from trusted input since an
 -- attacker could easily fill up the memory of the target system by

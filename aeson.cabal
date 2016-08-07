@@ -58,6 +58,11 @@ flag developer
   default: False
   manual: True
 
+flag fast
+  description: compile without optimizations
+  default: False
+  manual: True
+
 flag bytestring-builder
   description: Depend on the bytestring-builder package for backwards compatibility.
   default: False
@@ -129,11 +134,16 @@ library
     -- `Numeric.Natural` is available in base only since GHC 7.10 / base 4.8
     build-depends: nats >= 1 && < 1.2
 
+  ghc-options: -Wall
+
   if flag(developer)
     ghc-options: -Werror
     ghc-prof-options: -auto-all
 
-  ghc-options: -O2 -Wall
+  if flag(fast)
+    ghc-options: -O0
+  else
+    ghc-options: -O2
 
   include-dirs: include
 

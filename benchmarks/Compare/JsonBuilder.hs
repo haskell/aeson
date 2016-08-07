@@ -1,7 +1,12 @@
 {-# LANGUAGE RecordWildCards #-}
+
+{-# OPTIONS_GHC -fno-warn-name-shadowing #-}
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 
 module Compare.JsonBuilder () where
+
+import Prelude ()
+import Prelude.Compat
 
 import Data.Json.Builder
 import Data.Monoid ((<>))
@@ -36,7 +41,7 @@ instance JsObject Story where
     row "metadata" metadata <>
     row "to_user_id" to_user_id <>
     row "text" text <>
-    row "id" id <>
+    row "id" id_ <>
     row "from_user_id" from_user_id <>
     row "geo" geo <>
     row "iso_language_code" iso_language_code <>

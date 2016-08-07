@@ -1,14 +1,17 @@
 -- DataKinds is needed for deriveAll0 calls on GHC 8
 {-# LANGUAGE DataKinds #-}
+{-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE GADTs #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE StandaloneDeriving #-}
-{-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE TypeFamilies #-}
 
 module DataFamilies.Types where
+
+import Prelude ()
+import Prelude.Compat
 
 import Generics.Deriving.TH (deriveAll0)
 import Types (ApproxEq(..))

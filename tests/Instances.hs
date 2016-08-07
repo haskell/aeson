@@ -1,32 +1,31 @@
 {-# LANGUAGE CPP #-}
-{-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE StandaloneDeriving #-}
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 
-module Instances where
+module Instances () where
 
 import Prelude ()
 import Prelude.Compat
 
-import Types
-import Data.Function (on)
-import Control.Monad
-import Test.QuickCheck (Arbitrary(..), getNonNegative, elements,
-                        listOf1, oneof, resize)
-import Data.Time.Clock (UTCTime(..))
-import Data.Time (ZonedTime(..), TimeZone(..))
-import Data.List.NonEmpty (NonEmpty(..))
-import Data.Version
-import Data.Aeson.Types
 import Control.Applicative (Const(..), empty)
-import Data.Tagged (Tagged(..))
-import Data.Proxy (Proxy(..))
-import Data.Functor.Identity (Identity (..))
+import Control.Monad
+import Data.Aeson.Types
+import Data.Function (on)
 import Data.Functor.Compose (Compose (..))
+import Data.Functor.Identity (Identity (..))
+import Data.List.NonEmpty (NonEmpty(..))
+import Data.Proxy (Proxy(..))
+import Data.Tagged (Tagged(..))
+import Data.Time (ZonedTime(..), TimeZone(..))
+import Data.Time.Clock (UTCTime(..))
+import Data.Version
 import Functions
+import Test.QuickCheck (Arbitrary(..), getNonNegative, elements, listOf1, oneof, resize)
+import Types
 import qualified Data.DList as DList
 import qualified Data.HashMap.Strict as HM
 

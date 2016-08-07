@@ -107,10 +107,9 @@ module Data.Aeson.Types
 import Prelude ()
 import Prelude.Compat
 
+import Data.Aeson.Encoding (Encoding, unsafeToEncoding, fromEncoding, Series, pairs)
 import Data.Aeson.Types.Class
 import Data.Aeson.Types.Internal
-import Data.Aeson.Encoding (Encoding, unsafeToEncoding, fromEncoding, Series, pairs)
-
 import Data.Foldable (toList)
 
 -- | Encode a 'Foldable' as a JSON array.

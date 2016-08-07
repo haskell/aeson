@@ -1,7 +1,9 @@
 -- Manually write instances.
 
-{-# LANGUAGE CPP, PackageImports #-}
-{-# LANGUAGE OverloadedStrings, RecordWildCards #-}
+{-# LANGUAGE CPP #-}
+{-# LANGUAGE PackageImports #-}
+{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE RecordWildCards #-}
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 
 module Twitter.Manual
@@ -11,6 +13,9 @@ module Twitter.Manual
     , Story(..)
     , Result(..)
     ) where
+
+import Prelude ()
+import Prelude.Compat
 
 import Control.Applicative
 import Data.Monoid ((<>))
@@ -63,7 +68,7 @@ instance ToJSON Story where
     , "metadata"          .= metadata
     , "to_user_id"        .= to_user_id
     , "text"              .= text
-    , "id"                .= id
+    , "id"                .= id_
     , "from_user_id"      .= from_user_id
     , "geo"               .= geo
     , "iso_language_code" .= iso_language_code
@@ -80,7 +85,7 @@ instance ToJSON Story where
     <> "metadata"          .= metadata
     <> "to_user_id"        .= to_user_id
     <> "text"              .= text
-    <> "id"                .= id
+    <> "id"                .= id_
     <> "from_user_id"      .= from_user_id
     <> "geo"               .= geo
     <> "iso_language_code" .= iso_language_code
@@ -187,7 +192,7 @@ instance B.ToJSON Story where
     , "metadata"          B..= metadata
     , "to_user_id"        B..= to_user_id
     , "text"              B..= text
-    , "id"                B..= id
+    , "id"                B..= id_
     , "from_user_id"      B..= from_user_id
     , "geo"               B..= geo
     , "iso_language_code" B..= iso_language_code
@@ -204,7 +209,7 @@ instance B.ToJSON Story where
     <> "metadata"          B..= metadata
     <> "to_user_id"        B..= to_user_id
     <> "text"              B..= text
-    <> "id"                B..= id
+    <> "id"                B..= id_
     <> "from_user_id"      B..= from_user_id
     <> "geo"               B..= geo
     <> "iso_language_code" B..= iso_language_code

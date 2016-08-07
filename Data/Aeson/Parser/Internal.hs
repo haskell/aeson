@@ -1,4 +1,6 @@
-{-# LANGUAGE BangPatterns, CPP, OverloadedStrings #-}
+{-# LANGUAGE BangPatterns #-}
+{-# LANGUAGE CPP #-}
+{-# LANGUAGE OverloadedStrings #-}
 #if MIN_VERSION_ghc_prim(0,3,1)
 {-# LANGUAGE MagicHash #-}
 #endif
@@ -36,8 +38,7 @@ import Prelude.Compat
 
 import Control.Monad.IO.Class (liftIO)
 import Data.Aeson.Types.Internal (IResult(..), JSONPath, Result(..), Value(..))
-import Data.Attoparsec.ByteString.Char8 (Parser, char, endOfInput, scientific,
-                                         skipSpace, string)
+import Data.Attoparsec.ByteString.Char8 (Parser, char, endOfInput, scientific, skipSpace, string)
 import Data.Bits ((.|.), shiftL)
 import Data.ByteString.Internal (ByteString(..))
 import Data.Char (chr)

@@ -1,6 +1,7 @@
 -- Use Template Haskell to generate good instances.
 
-{-# LANGUAGE CPP, PackageImports #-}
+{-# LANGUAGE CPP #-}
+{-# LANGUAGE PackageImports #-}
 {-# LANGUAGE TemplateHaskell #-}
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 
@@ -11,6 +12,9 @@ module Twitter.TH
     , Story(..)
     , Result(..)
     ) where
+
+import Prelude ()
+
 import Twitter
 
 #ifndef HAS_BOTH_AESON_AND_BENCHMARKS

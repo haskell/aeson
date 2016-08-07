@@ -46,9 +46,9 @@ module Data.Aeson.Parser
     , eitherDecodeStrictWith
     ) where
 
-import Data.Aeson.Parser.Internal (decodeStrictWith, decodeWith,
-                                   eitherDecodeStrictWith, eitherDecodeWith,
-                                   json, json', jstring, value, value')
+import Prelude ()
+
+import Data.Aeson.Parser.Internal (decodeStrictWith, decodeWith, eitherDecodeStrictWith, eitherDecodeWith, json, json', jstring, value, value')
 
 -- $lazy
 --

@@ -111,13 +111,11 @@ module Data.Aeson
     ) where
 
 import Prelude ()
-import Prelude.Compat (Maybe, either, Either(..), uncurry, String, (.))
+import Prelude.Compat
 
 import Data.Aeson.Types.FromJSON (ifromJSON)
 import Data.Aeson.Encoding (encodingToLazyByteString)
-import Data.Aeson.Parser.Internal (decodeWith, decodeStrictWith,
-                                   eitherDecodeWith, eitherDecodeStrictWith,
-                                   jsonEOF, json, jsonEOF', json')
+import Data.Aeson.Parser.Internal (decodeWith, decodeStrictWith, eitherDecodeWith, eitherDecodeStrictWith, jsonEOF, json, jsonEOF', json')
 import Data.Aeson.Types
 import Data.Aeson.Types.Internal (JSONPath, formatError)
 import qualified Data.ByteString as B

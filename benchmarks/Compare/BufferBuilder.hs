@@ -1,11 +1,17 @@
-{-# LANGUAGE OverloadedStrings, RecordWildCards #-}
+{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE RecordWildCards #-}
+
+{-# OPTIONS_GHC -fno-warn-name-shadowing #-}
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 
 module Compare.BufferBuilder () where
 
+import Prelude ()
+import Prelude.Compat
+
 import Data.BufferBuilder.Json
-import Data.Monoid ((<>))
 import Data.Int (Int64)
+import Data.Monoid ((<>))
 import Prelude hiding (id)
 import Twitter
 import qualified Data.BufferBuilder.Utf8 as UB
@@ -37,7 +43,7 @@ instance ToJson Story where
     <> "metadata"          .= metadata
     <> "to_user_id"        .= to_user_id
     <> "text"              .= text
-    <> "id"                .= id
+    <> "id"                .= id_
     <> "from_user_id"      .= from_user_id
     <> "geo"               .= geo
     <> "iso_language_code" .= iso_language_code

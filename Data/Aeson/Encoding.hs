@@ -8,7 +8,7 @@ module Data.Aeson.Encoding
     -- * Encoding
       Encoding
     , Encoding'
-    , encodingToLazyByteString 
+    , encodingToLazyByteString
     , fromEncoding
     , unsafeToEncoding
     , Series
@@ -46,5 +46,7 @@ module Data.Aeson.Encoding
     -- ** value
     , value
     ) where
+
+import Prelude ()
 
 import Data.Aeson.Encoding.Internal
