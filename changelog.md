@@ -1,5 +1,10 @@
 For the latest version of this document, please see [https://github.com/bos/aeson/blob/master/changelog.md](https://github.com/bos/aeson/blob/master/changelog.md).
 
+# Upcoming
+
+* Add `ToJSON`/`FromJSON` instances for newtypes from `Data.Semigroup`:
+  `Min`, `Max`, `First`, `Last`, `WrappedMonoid`, `Option`.
+
 # 1.0.0.0
 
 Major enhancements:
