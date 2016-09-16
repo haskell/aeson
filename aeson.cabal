@@ -181,7 +181,7 @@ test-suite tests
     base-orphans >= 0.5.3 && <0.6,
     containers,
     dlist,
-    generic-deriving >= 1.10 && < 1.11,
+    generic-deriving >= 1.10 && < 1.12,
     ghc-prim >= 0.2,
     hashable >= 1.2.4.0,
     scientific,
