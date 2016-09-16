@@ -36,34 +36,23 @@ module Data.Aeson.Parser.Internal
 import Prelude ()
 import Prelude.Compat
 
-import Control.Monad.IO.Class (liftIO)
 import Data.Aeson.Types.Internal (IResult(..), JSONPath, Result(..), Value(..))
+import Data.Attoparsec.ByteString.Char8 (Parser, char, endOfInput, scientific, skipSpace, string)
 import Data.Attoparsec.ByteString.Char8 (Parser, char, endOfInput, scientific, skipSpace, string)
 import Data.Bits ((.|.), shiftL)
 import Data.ByteString.Internal (ByteString(..))
 import Data.Char (chr)
 import Data.Text (Text)
-import Data.Text.Encoding (decodeUtf8')
-import Data.Text.Internal.Encoding.Utf8 (ord2, ord3, ord4)
-import Data.Text.Internal.Unsafe.Char (ord)
-import Data.Vector as Vector (Vector, empty, fromList, reverse)
-import Data.Word (Word8)
-import Foreign.ForeignPtr (withForeignPtr)
-import Foreign.Marshal.Utils (copyBytes)
-import Foreign.Ptr (Ptr, minusPtr, plusPtr)
-import Foreign.Storable (poke)
-import System.IO.Unsafe (unsafePerformIO)
+import Data.Vector as Vector (Vector, empty, fromListN, reverse)
 import qualified Data.Attoparsec.ByteString as A
 import qualified Data.Attoparsec.Lazy as L
-import qualified Data.Attoparsec.Zepto as Z
 import qualified Data.ByteString as B
-import qualified Data.ByteString.Internal as B
 import qualified Data.ByteString.Lazy as L
-import qualified Data.ByteString.Unsafe as B
 import qualified Data.HashMap.Strict as H
+import Data.Aeson.Parser.Unescape
 
 #if MIN_VERSION_ghc_prim(0,3,1)
-import GHC.Base (Int#, (==#), isTrue#, orI#, word2Int#)
+import GHC.Base (Int#, (==#), isTrue#, word2Int#)
 import GHC.Word (Word8(W8#))
 #endif
 
@@ -126,16 +115,18 @@ objectValues str val = do
   w <- A.peekWord8'
   if w == CLOSE_CURLY
     then A.anyWord8 >> return H.empty
-    else loop H.empty
+    else loop []
  where
-  loop m0 = do
+  -- Why use acc pattern here, you may ask? because 'H.fromList' use 'unsafeInsert'
+  -- and it's much faster because it's doing in place update to the 'HashMap'!
+  loop acc = do
     k <- str <* skipSpace <* char ':'
     v <- val <* skipSpace
-    let !m = H.insert k v m0
     ch <- A.satisfy $ \w -> w == COMMA || w == CLOSE_CURLY
+    let acc' = (k, v) : acc
     if ch == COMMA
-      then skipSpace >> loop m
-      else return m
+      then skipSpace >> loop acc'
+      else return (H.fromList acc')
 {-# INLINE objectValues #-}
 
 array_ :: Parser Value
@@ -152,14 +143,14 @@ arrayValues val = do
   w <- A.peekWord8'
   if w == CLOSE_SQUARE
     then A.anyWord8 >> return Vector.empty
-    else loop []
+    else loop [] 1
   where
-    loop acc = do
+    loop acc !len = do
       v <- val <* skipSpace
       ch <- A.satisfy $ \w -> w == COMMA || w == CLOSE_SQUARE
       if ch == COMMA
-        then skipSpace >> loop (v:acc)
-        else return (Vector.reverse (Vector.fromList (v:acc)))
+        then skipSpace >> loop (v:acc) (len+1)
+        else return (Vector.reverse (Vector.fromListN len (v:acc)))
 {-# INLINE arrayValues #-}
 
 -- | Parse any JSON value.  You should usually 'json' in preference to
@@ -215,100 +206,29 @@ jstring = A.word8 DOUBLE_QUOTE *> jstring_
 jstring_ :: Parser Text
 {-# INLINE jstring_ #-}
 jstring_ = {-# SCC "jstring_" #-} do
-  (s, fin) <- A.runScanner startState go
-  _ <- A.anyWord8
-  s1 <- if isEscaped fin
-        then case unescape s of
-               Right r  -> return r
-               Left err -> fail err
-        else return s
-  case decodeUtf8' s1 of
+  s <- A.scan startState go <* A.anyWord8
+  case unescapeText s of
     Right r  -> return r
     Left err -> fail $ show err
  where
 #if MIN_VERSION_ghc_prim(0,3,1)
-    isEscaped (S _ escaped) = isTrue# escaped
-    startState              = S 0# 0#
-    go (S a b) (W8# c)
-      | isTrue# a                     = Just (S 0# b)
+    startState              = S 0#
+    go (S a) (W8# c)
+      | isTrue# a                     = Just (S 0#)
       | isTrue# (word2Int# c ==# 34#) = Nothing   -- double quote
       | otherwise = let a' = word2Int# c ==# 92#  -- backslash
-                    in Just (S a' (orI# a' b))
+                    in Just (S a')
 
-data S = S Int# Int#
+data S = S Int#
 #else
-    isEscaped (S _ escaped) = escaped
-    startState              = S False False
-    go (S a b) c
-      | a                  = Just (S False b)
+    startState              = False
+    go a c
+      | a                  = Just False
       | c == DOUBLE_QUOTE  = Nothing
       | otherwise = let a' = c == backslash
-                    in Just (S a' (a' || b))
+                    in Just a'
       where backslash = BACKSLASH
-
-data S = S !Bool !Bool
 #endif
-
-unescape :: ByteString -> Either String ByteString
-unescape s = unsafePerformIO $ do
-  let len = B.length s
-  fp <- B.mallocByteString len
-  -- We perform no bounds checking when writing to the destination
-  -- string, as unescaping always makes it shorter than the source.
-  withForeignPtr fp $ \ptr -> do
-    ret <- Z.parseT (go ptr) s
-    case ret of
-      Left err -> return (Left err)
-      Right p -> do
-        let newlen = p `minusPtr` ptr
-            slop = len - newlen
-        Right <$> if slop >= 128 && slop >= len `quot` 4
-                  then B.create newlen $ \np -> copyBytes np ptr newlen
-                  else return (PS fp 0 newlen)
- where
-  go ptr = do
-    h <- Z.takeWhile (/=BACKSLASH)
-    let rest = do
-          start <- Z.take 2
-          let !slash = B.unsafeHead start
-              !t = B.unsafeIndex start 1
-              escape = case B.elemIndex t "\"\\/ntbrfu" of
-                         Just i -> i
-                         _      -> 255
-          if slash /= BACKSLASH || escape == 255
-            then fail "invalid JSON escape sequence"
-            else
-            if t /= 117 -- 'u'
-              then copy h ptr >>= word8 (B.unsafeIndex mapping escape) >>= go
-              else do
-                   a <- hexQuad
-                   if a < 0xd800 || a > 0xdfff
-                     then copy h ptr >>= charUtf8 (chr a) >>= go
-                     else do
-                       b <- Z.string "\\u" *> hexQuad
-                       if a <= 0xdbff && b >= 0xdc00 && b <= 0xdfff
-                         then let !c = ((a - 0xd800) `shiftL` 10) +
-                                       (b - 0xdc00) + 0x10000
-                              in copy h ptr >>= charUtf8 (chr c) >>= go
-                         else fail "invalid UTF-16 surrogates"
-    done <- Z.atEnd
-    if done
-      then copy h ptr
-      else rest
-  mapping = "\"\\/\n\t\b\r\f"
-
-hexQuad :: Z.ZeptoT IO Int
-hexQuad = do
-  s <- Z.take 4
-  let hex n | w >= C_0 && w <= C_9 = w - C_0
-            | w >= C_a && w <= C_f = w - 87
-            | w >= C_A && w <= C_F = w - 55
-            | otherwise          = 255
-        where w = fromIntegral $ B.unsafeIndex s n
-      a = hex 0; b = hex 1; c = hex 2; d = hex 3
-  if (a .|. b .|. c .|. d) /= 255
-    then return $! d .|. (c `shiftL` 4) .|. (b `shiftL` 8) .|. (a `shiftL` 12)
-    else fail "invalid hex escape"
 
 decodeWith :: Parser Value -> (Value -> Result a) -> L.ByteString -> Maybe a
 decodeWith p to s =
@@ -373,38 +293,3 @@ jsonEOF = json <* skipSpace <* endOfInput
 -- end-of-input.  See also: 'json''.
 jsonEOF' :: Parser Value
 jsonEOF' = json' <* skipSpace <* endOfInput
-
-word8 :: Word8 -> Ptr Word8 -> Z.ZeptoT IO (Ptr Word8)
-word8 w ptr = do
-  liftIO $ poke ptr w
-  return $! ptr `plusPtr` 1
-
-copy :: ByteString -> Ptr Word8 -> Z.ZeptoT IO (Ptr Word8)
-copy (PS fp off len) ptr =
-  liftIO . withForeignPtr fp $ \src -> do
-    copyBytes ptr (src `plusPtr` off) len
-    return $! ptr `plusPtr` len
-
-charUtf8 :: Char -> Ptr Word8 -> Z.ZeptoT IO (Ptr Word8)
-charUtf8 ch ptr
-  | ch < '\x80'   = liftIO $ do
-                       poke ptr (fromIntegral (ord ch))
-                       return $! ptr `plusPtr` 1
-  | ch < '\x800'  = liftIO $ do
-                       let (a,b) = ord2 ch
-                       poke ptr a
-                       poke (ptr `plusPtr` 1) b
-                       return $! ptr `plusPtr` 2
-  | ch < '\xffff' = liftIO $ do
-                       let (a,b,c) = ord3 ch
-                       poke ptr a
-                       poke (ptr `plusPtr` 1) b
-                       poke (ptr `plusPtr` 2) c
-                       return $! ptr `plusPtr` 3
-  | otherwise     = liftIO $ do
-                       let (a,b,c,d) = ord4 ch
-                       poke ptr a
-                       poke (ptr `plusPtr` 1) b
-                       poke (ptr `plusPtr` 2) c
-                       poke (ptr `plusPtr` 3) d
-                       return $! ptr `plusPtr` 4
