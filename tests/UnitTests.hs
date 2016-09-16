@@ -59,6 +59,8 @@ import qualified Data.HashSet as HashSet
 import qualified Data.IntMap as IntMap
 import qualified Data.IntSet as IntSet
 import qualified Data.Map as M
+import qualified Data.Monoid as Monoid
+import qualified Data.Semigroup as Semigroup
 import qualified Data.Sequence as Seq
 import qualified Data.Set as Set
 import qualified Data.Text.Lazy as LT
@@ -419,6 +421,18 @@ jsonExamples =
 
   , Example "MyEither Int String: Left"  "42"      (MyLeft 42     :: MyEither Int String)
   , Example "MyEither Int String: Right" "\"foo\"" (MyRight "foo" :: MyEither Int String)
+
+  -- newtypes from Monoid/Semigroup
+  , Example "Monoid.Dual Int" "2" (pure 2 :: Monoid.Dual Int)
+  , Example "Monoid.First Int" "2" (pure 2 :: Monoid.First Int)
+  , Example "Monoid.Last Int" "2" (pure 2 :: Monoid.Last Int)
+  , Example "Semigroup.Min Int" "2" (pure 2 :: Semigroup.Min Int)
+  , Example "Semigroup.Max Int" "2" (pure 2 :: Semigroup.Max Int)
+  , Example "Semigroup.First Int" "2" (pure 2 :: Semigroup.First Int)
+  , Example "Semigroup.Last Int" "2" (pure 2 :: Semigroup.Last Int)
+  , Example "Semigroup.WrappedMonoid Int" "2" (Semigroup.WrapMonoid 2 :: Semigroup.WrappedMonoid Int)
+  , Example "Semigroup.Option Just" "2" (pure 2 :: Semigroup.Option Int)
+  , Example "Semigroup.Option Nothing" "null" (Semigroup.Option (Nothing :: Maybe Bool))
   ]
 
 

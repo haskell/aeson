@@ -87,7 +87,7 @@ import Data.Hashable (Hashable(..))
 import Data.Int (Int16, Int32, Int64, Int8)
 import Data.List.NonEmpty (NonEmpty(..))
 import Data.Maybe (fromMaybe)
-import Data.Monoid ((<>), Dual(..), First (..), Last (..))
+import Data.Monoid ((<>))
 import Data.Proxy (Proxy(..))
 import Data.Ratio ((%), Ratio)
 import Data.Scientific (Scientific)
@@ -112,7 +112,9 @@ import qualified Data.HashSet as HashSet
 import qualified Data.IntMap as IntMap
 import qualified Data.IntSet as IntSet
 import qualified Data.Map as M
+import qualified Data.Monoid as Monoid
 import qualified Data.Scientific as Scientific
+import qualified Data.Semigroup as Semigroup
 import qualified Data.Sequence as Seq
 import qualified Data.Set as Set
 import qualified Data.Text as T
@@ -124,6 +126,7 @@ import qualified Data.Vector.Generic as VG
 import qualified Data.Vector.Primitive as VP
 import qualified Data.Vector.Storable as VS
 import qualified Data.Vector.Unboxed as VU
+
 import Unsafe.Coerce (unsafeCoerce)
 
 #ifndef HAS_COERCIBLE
@@ -1314,6 +1317,8 @@ instance (FromJSON a) => FromJSON (NonEmpty a) where
     parseJSON = parseJSON1
     {-# INLINE parseJSON #-}
 
+
+
 -------------------------------------------------------------------------------
 -- scientific
 -------------------------------------------------------------------------------
@@ -1605,29 +1610,113 @@ instance FromJSON NominalDiffTime where
 -- base Monoid/Semigroup
 -------------------------------------------------------------------------------
 
-instance FromJSON1 Dual where
-    liftParseJSON p _ = fmap Dual . p
+instance FromJSON1 Monoid.Dual where
+    liftParseJSON p _ = fmap Monoid.Dual . p
     {-# INLINE liftParseJSON #-}
 
-instance FromJSON a => FromJSON (Dual a) where
+instance FromJSON a => FromJSON (Monoid.Dual a) where
     parseJSON = parseJSON1
     {-# INLINE parseJSON #-}
 
 
-instance FromJSON1 First where
-    liftParseJSON p p' = fmap First . liftParseJSON p p'
+instance FromJSON1 Monoid.First where
+    liftParseJSON p p' = fmap Monoid.First . liftParseJSON p p'
     {-# INLINE liftParseJSON #-}
 
-instance FromJSON a => FromJSON (First a) where
+instance FromJSON a => FromJSON (Monoid.First a) where
     parseJSON = parseJSON1
     {-# INLINE parseJSON #-}
 
 
-instance FromJSON1 Last where
-    liftParseJSON p p' = fmap Last . liftParseJSON p p'
+instance FromJSON1 Monoid.Last where
+    liftParseJSON p p' = fmap Monoid.Last . liftParseJSON p p'
     {-# INLINE liftParseJSON #-}
 
-instance FromJSON a => FromJSON (Last a) where
+instance FromJSON a => FromJSON (Monoid.Last a) where
+    parseJSON = parseJSON1
+    {-# INLINE parseJSON #-}
+
+
+instance FromJSON1 Semigroup.Min where
+    liftParseJSON p _ a = Semigroup.Min <$> p a
+    {-# INLINE liftParseJSON #-}
+
+    liftParseJSONList _ p a = fmap Semigroup.Min <$> p a
+    {-# INLINE liftParseJSONList #-}
+
+instance (FromJSON a) => FromJSON (Semigroup.Min a) where
+    parseJSON = parseJSON1
+    {-# INLINE parseJSON #-}
+
+    parseJSONList = liftParseJSONList parseJSON parseJSONList
+    {-# INLINE parseJSONList #-}
+
+
+instance FromJSON1 Semigroup.Max where
+    liftParseJSON p _ a = Semigroup.Max <$> p a
+    {-# INLINE liftParseJSON #-}
+
+    liftParseJSONList _ p a = fmap Semigroup.Max <$> p a
+    {-# INLINE liftParseJSONList #-}
+
+instance (FromJSON a) => FromJSON (Semigroup.Max a) where
+    parseJSON = parseJSON1
+    {-# INLINE parseJSON #-}
+
+    parseJSONList = liftParseJSONList parseJSON parseJSONList
+    {-# INLINE parseJSONList #-}
+
+
+instance FromJSON1 Semigroup.First where
+    liftParseJSON p _ a = Semigroup.First <$> p a
+    {-# INLINE liftParseJSON #-}
+
+    liftParseJSONList _ p a = fmap Semigroup.First <$> p a
+    {-# INLINE liftParseJSONList #-}
+
+instance (FromJSON a) => FromJSON (Semigroup.First a) where
+    parseJSON = parseJSON1
+    {-# INLINE parseJSON #-}
+
+    parseJSONList = liftParseJSONList parseJSON parseJSONList
+    {-# INLINE parseJSONList #-}
+
+
+instance FromJSON1 Semigroup.Last where
+    liftParseJSON p _ a = Semigroup.Last <$> p a
+    {-# INLINE liftParseJSON #-}
+
+    liftParseJSONList _ p a = fmap Semigroup.Last <$> p a
+    {-# INLINE liftParseJSONList #-}
+
+instance (FromJSON a) => FromJSON (Semigroup.Last a) where
+    parseJSON = parseJSON1
+    {-# INLINE parseJSON #-}
+
+    parseJSONList = liftParseJSONList parseJSON parseJSONList
+    {-# INLINE parseJSONList #-}
+
+
+instance FromJSON1 Semigroup.WrappedMonoid where
+    liftParseJSON p _ a = Semigroup.WrapMonoid <$> p a
+    {-# INLINE liftParseJSON #-}
+
+    liftParseJSONList _ p a = fmap Semigroup.WrapMonoid <$> p a
+    {-# INLINE liftParseJSONList #-}
+
+instance (FromJSON a) => FromJSON (Semigroup.WrappedMonoid a) where
+    parseJSON = parseJSON1
+    {-# INLINE parseJSON #-}
+
+    parseJSONList = liftParseJSONList parseJSON parseJSONList
+    {-# INLINE parseJSONList #-}
+
+
+instance FromJSON1 Semigroup.Option where
+    liftParseJSON p p' = fmap Semigroup.Option . liftParseJSON p p'
+    {-# INLINE liftParseJSON #-}
+
+instance FromJSON a => FromJSON (Semigroup.Option a) where
     parseJSON = parseJSON1
     {-# INLINE parseJSON #-}
 

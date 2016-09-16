@@ -78,7 +78,7 @@ import Data.Functor.Sum (Sum(..))
 import Data.Int (Int16, Int32, Int64, Int8)
 import Data.List (intersperse)
 import Data.List.NonEmpty (NonEmpty(..))
-import Data.Monoid ((<>), Dual(..), First(..), Last(..))
+import Data.Monoid ((<>))
 import Data.Proxy (Proxy(..))
 import Data.Ratio (Ratio, denominator, numerator)
 import Data.Scientific (Scientific)
@@ -104,7 +104,9 @@ import qualified Data.IntMap as IntMap
 import qualified Data.IntSet as IntSet
 import qualified Data.List.NonEmpty as NE
 import qualified Data.Map as M
+import qualified Data.Monoid as Monoid
 import qualified Data.Scientific as Scientific
+import qualified Data.Semigroup as Semigroup
 import qualified Data.Sequence as Seq
 import qualified Data.Set as Set
 import qualified Data.Text as T
@@ -2026,14 +2028,14 @@ instance ToJSON NominalDiffTime where
 -- base Monoid/Semigroup
 -------------------------------------------------------------------------------
 
-instance ToJSON1 Dual where
-    liftToJSON t _ = t . getDual
+instance ToJSON1 Monoid.Dual where
+    liftToJSON t _ = t . Monoid.getDual
     {-# INLINE liftToJSON #-}
 
-    liftToEncoding t _ = t . getDual
+    liftToEncoding t _ = t . Monoid.getDual
     {-# INLINE liftToEncoding #-}
 
-instance ToJSON a => ToJSON (Dual a) where
+instance ToJSON a => ToJSON (Monoid.Dual a) where
     toJSON = toJSON1
     {-# INLINE toJSON #-}
 
@@ -2041,14 +2043,14 @@ instance ToJSON a => ToJSON (Dual a) where
     {-# INLINE toEncoding #-}
 
 
-instance ToJSON1 First where
-    liftToJSON t to' = liftToJSON t to' . getFirst
+instance ToJSON1 Monoid.First where
+    liftToJSON t to' = liftToJSON t to' . Monoid.getFirst
     {-# INLINE liftToJSON #-}
 
-    liftToEncoding t to' = liftToEncoding t to' . getFirst
+    liftToEncoding t to' = liftToEncoding t to' . Monoid.getFirst
     {-# INLINE liftToEncoding #-}
 
-instance ToJSON a => ToJSON (First a) where
+instance ToJSON a => ToJSON (Monoid.First a) where
     toJSON = toJSON1
     {-# INLINE toJSON #-}
 
@@ -2056,14 +2058,103 @@ instance ToJSON a => ToJSON (First a) where
     {-# INLINE toEncoding #-}
 
 
-instance ToJSON1 Last where
-    liftToJSON t to' = liftToJSON t to' . getLast
+instance ToJSON1 Monoid.Last where
+    liftToJSON t to' = liftToJSON t to' . Monoid.getLast
     {-# INLINE liftToJSON #-}
 
-    liftToEncoding t to' = liftToEncoding t to' . getLast
+    liftToEncoding t to' = liftToEncoding t to' . Monoid.getLast
     {-# INLINE liftToEncoding #-}
 
-instance ToJSON a => ToJSON (Last a) where
+instance ToJSON a => ToJSON (Monoid.Last a) where
+    toJSON = toJSON1
+    {-# INLINE toJSON #-}
+
+    toEncoding = toEncoding1
+    {-# INLINE toEncoding #-}
+
+
+instance ToJSON1 Semigroup.Min where
+    liftToJSON t _ (Semigroup.Min x) = t x
+    {-# INLINE liftToJSON #-}
+
+    liftToEncoding t _ (Semigroup.Min x) = t x
+    {-# INLINE liftToEncoding #-}
+
+instance ToJSON a => ToJSON (Semigroup.Min a) where
+    toJSON = toJSON1
+    {-# INLINE toJSON #-}
+
+    toEncoding = toEncoding1
+    {-# INLINE toEncoding #-}
+
+
+instance ToJSON1 Semigroup.Max where
+    liftToJSON t _ (Semigroup.Max x) = t x
+    {-# INLINE liftToJSON #-}
+
+    liftToEncoding t _ (Semigroup.Max x) = t x
+    {-# INLINE liftToEncoding #-}
+
+instance ToJSON a => ToJSON (Semigroup.Max a) where
+    toJSON = toJSON1
+    {-# INLINE toJSON #-}
+
+    toEncoding = toEncoding1
+    {-# INLINE toEncoding #-}
+
+instance ToJSON1 Semigroup.First where
+    liftToJSON t _ (Semigroup.First x) = t x
+    {-# INLINE liftToJSON #-}
+
+    liftToEncoding t _ (Semigroup.First x) = t x
+    {-# INLINE liftToEncoding #-}
+
+instance ToJSON a => ToJSON (Semigroup.First a) where
+    toJSON = toJSON1
+    {-# INLINE toJSON #-}
+
+    toEncoding = toEncoding1
+    {-# INLINE toEncoding #-}
+
+
+instance ToJSON1 Semigroup.Last where
+    liftToJSON t _ (Semigroup.Last x) = t x
+    {-# INLINE liftToJSON #-}
+
+    liftToEncoding t _ (Semigroup.Last x) = t x
+    {-# INLINE liftToEncoding #-}
+
+instance ToJSON a => ToJSON (Semigroup.Last a) where
+    toJSON = toJSON1
+    {-# INLINE toJSON #-}
+
+    toEncoding = toEncoding1
+    {-# INLINE toEncoding #-}
+
+
+instance ToJSON1 Semigroup.WrappedMonoid where
+    liftToJSON t _ (Semigroup.WrapMonoid x) = t x
+    {-# INLINE liftToJSON #-}
+
+    liftToEncoding t _ (Semigroup.WrapMonoid x) = t x
+    {-# INLINE liftToEncoding #-}
+
+instance ToJSON a => ToJSON (Semigroup.WrappedMonoid a) where
+    toJSON = toJSON1
+    {-# INLINE toJSON #-}
+
+    toEncoding = toEncoding1
+    {-# INLINE toEncoding #-}
+
+
+instance ToJSON1 Semigroup.Option where
+    liftToJSON t to' = liftToJSON t to' . Semigroup.getOption
+    {-# INLINE liftToJSON #-}
+
+    liftToEncoding t to' = liftToEncoding t to' . Semigroup.getOption
+    {-# INLINE liftToEncoding #-}
+
+instance ToJSON a => ToJSON (Semigroup.Option a) where
     toJSON = toJSON1
     {-# INLINE toJSON #-}
 
