@@ -1,8 +1,6 @@
-resolver: lts-6.9
+resolver: lts-6.17
 packages:
 - '.'
-- benchmarks
-- examples
 extra-deps:
 - semigroups-0.18.2
 flags:
