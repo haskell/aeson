@@ -104,6 +104,7 @@ import Foreign.Storable (Storable)
 import GHC.Generics
 import Numeric.Natural (Natural)
 import Text.ParserCombinators.ReadP (readP_to_S)
+import Unsafe.Coerce (unsafeCoerce)
 import qualified Data.Aeson.Parser.Time as Time
 import qualified Data.Attoparsec.ByteString.Char8 as A (endOfInput, parseOnly, scientific)
 import qualified Data.DList as DList
@@ -126,8 +127,6 @@ import qualified Data.Vector.Generic as VG
 import qualified Data.Vector.Primitive as VP
 import qualified Data.Vector.Storable as VS
 import qualified Data.Vector.Unboxed as VU
-
-import Unsafe.Coerce (unsafeCoerce)
 
 #ifndef HAS_COERCIBLE
 #define HAS_COERCIBLE (__GLASGOW_HASKELL__ >= 707)
@@ -1316,8 +1315,6 @@ instance FromJSON1 NonEmpty where
 instance (FromJSON a) => FromJSON (NonEmpty a) where
     parseJSON = parseJSON1
     {-# INLINE parseJSON #-}
-
-
 
 -------------------------------------------------------------------------------
 -- scientific
