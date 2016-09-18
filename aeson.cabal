@@ -6,7 +6,7 @@ category:        Text, Web, JSON
 copyright:       (c) 2011-2016 Bryan O'Sullivan
                  (c) 2011 MailRank, Inc.
 author:          Bryan O'Sullivan <bos@serpentine.com>
-maintainer:      Bryan O'Sullivan <bos@serpentine.com>
+maintainer:      Adam Bergmark <adam@bergmark.nl>
 stability:       experimental
 tested-with:     GHC == 7.4.2, GHC == 7.6.3, GHC == 7.8.4, GHC == 7.10.3, GHC == 8.0.1
 synopsis:        Fast JSON parsing and encoding
