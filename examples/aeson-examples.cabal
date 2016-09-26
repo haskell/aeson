@@ -9,6 +9,7 @@ executable aeson-example-generic
   build-depends:
     aeson >= 0.10,
     base,
+    base-compat,
     bytestring,
     ghc-prim
 
@@ -18,6 +19,7 @@ executable aeson-example-simplest
   build-depends:
     aeson,
     base,
+    base-compat,
     bytestring
 
 executable aeson-example-th
@@ -26,4 +28,5 @@ executable aeson-example-th
   build-depends:
     aeson,
     base,
+    base-compat,
     bytestring

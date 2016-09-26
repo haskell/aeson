@@ -1,22 +1,22 @@
-{-# LANGUAGE BangPatterns          #-}
-{-# LANGUAGE CPP                   #-}
-{-# LANGUAGE DataKinds             #-}
-{-# LANGUAGE DefaultSignatures     #-}
-{-# LANGUAGE FlexibleContexts      #-}
-{-# LANGUAGE FlexibleInstances     #-}
-{-# LANGUAGE GADTs                 #-}
+{-# LANGUAGE BangPatterns #-}
+{-# LANGUAGE CPP #-}
+{-# LANGUAGE DataKinds #-}
+{-# LANGUAGE DefaultSignatures #-}
+{-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE GADTs #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
-{-# LANGUAGE NamedFieldPuns        #-}
-{-# LANGUAGE OverloadedStrings     #-}
-{-# LANGUAGE PatternGuards         #-}
-{-# LANGUAGE RecordWildCards       #-}
-{-# LANGUAGE ScopedTypeVariables   #-}
-{-# LANGUAGE TypeOperators         #-}
-{-# LANGUAGE TypeSynonymInstances  #-}
-{-# LANGUAGE UndecidableInstances  #-}
+{-# LANGUAGE NamedFieldPuns #-}
+{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE PatternGuards #-}
+{-# LANGUAGE RecordWildCards #-}
+{-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE TypeOperators #-}
+{-# LANGUAGE TypeSynonymInstances #-}
+{-# LANGUAGE UndecidableInstances #-}
 
 #if __GLASGOW_HASKELL__ >= 706
-{-# LANGUAGE PolyKinds             #-}
+{-# LANGUAGE PolyKinds #-}
 #endif
 
 #include "overlapping-compat.h"
@@ -24,7 +24,8 @@
 -- TODO: Drop this when we remove support for Data.Attoparsec.Number
 {-# OPTIONS_GHC -fno-warn-deprecations #-}
 
-module Data.Aeson.Types.ToJSON (
+module Data.Aeson.Types.ToJSON
+    (
     -- * Core JSON classes
       ToJSON(..)
     -- * Liftings to unary and binary type constructors
@@ -55,78 +56,75 @@ module Data.Aeson.Types.ToJSON (
     , listValue
     ) where
 
-import Prelude        ()
+import Prelude ()
 import Prelude.Compat
 
-import Data.Aeson.Encoding.Internal  (Encoding, Encoding', Series, dict,
-                                      emptyArray_, tuple, (>*<), (><))
+import Control.Applicative (Const(..))
+import Control.Monad.ST (ST)
+import Data.Aeson.Encoding (Encoding, Encoding', Series, dict, emptyArray_)
+import Data.Aeson.Encoding.Internal ((>*<), (><))
 import Data.Aeson.Internal.Functions (mapHashKeyVal, mapKeyVal)
-import Data.Aeson.Types.Generic
+import Data.Aeson.Types.Generic (AllNullary, False, IsRecord(..), One, ProductSize, Tagged2(..), True, Zero, productSize)
 import Data.Aeson.Types.Internal
-
--- We need internal here for generic deriving
-import qualified Data.Aeson.Encoding.Internal as E
-
-import Control.Applicative     (Const (..))
-import Control.Monad.ST        (ST)
-import Data.Attoparsec.Number  (Number (..))
-import Data.Bits               (unsafeShiftR)
-import Data.DList              (DList)
-import Data.Fixed              (Fixed, HasResolution)
-import Data.Foldable           (toList)
-import Data.Functor.Compose    (Compose (..))
-import Data.Functor.Identity   (Identity (..))
-import Data.Functor.Product    (Product (..))
-import Data.Functor.Sum        (Sum (..))
-import Data.Int                (Int16, Int32, Int64, Int8)
-import Data.List               (intersperse)
-import Data.List.NonEmpty      (NonEmpty (..))
-import Data.Monoid             (Dual (..), First (..), Last (..), (<>))
-import Data.Proxy              (Proxy (..))
-import Data.Ratio              (Ratio, denominator, numerator)
-import Data.Scientific         (Scientific)
-import Data.Tagged             (Tagged (..))
-import Data.Text               (Text, pack)
-import Data.Time               (Day, LocalTime, NominalDiffTime, TimeOfDay,
-                                UTCTime, ZonedTime)
-import Data.Time.Format        (FormatTime, formatTime)
+import Data.Attoparsec.Number (Number(..))
+import Data.Bits (unsafeShiftR)
+import Data.DList (DList)
+import Data.Fixed (Fixed, HasResolution)
+import Data.Foldable (toList)
+import Data.Functor.Compose (Compose(..))
+import Data.Functor.Identity (Identity(..))
+import Data.Functor.Product (Product(..))
+import Data.Functor.Sum (Sum(..))
+import Data.Int (Int16, Int32, Int64, Int8)
+import Data.List (intersperse)
+import Data.List.NonEmpty (NonEmpty(..))
+import Data.Monoid ((<>))
+import Data.Proxy (Proxy(..))
+import Data.Ratio (Ratio, denominator, numerator)
+import Data.Scientific (Scientific)
+import Data.Tagged (Tagged(..))
+import Data.Text (Text, pack)
+import Data.Time (Day, LocalTime, NominalDiffTime, TimeOfDay, UTCTime, ZonedTime)
+import Data.Time.Format (FormatTime, formatTime)
 import Data.Time.Locale.Compat (defaultTimeLocale)
-import Data.Vector             (Vector)
-import Data.Version            (Version, showVersion)
-import Data.Word               (Word16, Word32, Word64, Word8)
-import Foreign.Storable        (Storable)
+import Data.Vector (Vector)
+import Data.Version (Version, showVersion)
+import Data.Word (Word16, Word32, Word64, Word8)
+import Foreign.Storable (Storable)
 import GHC.Generics
-import Numeric.Natural         (Natural)
-
-import qualified Data.ByteString       as S
-import qualified Data.ByteString.Lazy  as L
-import qualified Data.DList            as DList
-import qualified Data.HashMap.Strict   as H
-import qualified Data.HashSet          as HashSet
-import qualified Data.IntMap           as IntMap
-import qualified Data.IntSet           as IntSet
-import qualified Data.List.NonEmpty    as NE
-import qualified Data.Map              as M
-import qualified Data.Scientific       as Scientific
-import qualified Data.Sequence         as Seq
-import qualified Data.Set              as Set
-import qualified Data.Text             as T
-import qualified Data.Text.Encoding    as T
-import qualified Data.Text.Lazy        as LT
-import qualified Data.Tree             as Tree
-import qualified Data.Vector           as V
-import qualified Data.Vector.Generic   as VG
-import qualified Data.Vector.Mutable   as VM
+import Numeric.Natural (Natural)
+import qualified Data.Aeson.Encoding as E
+import qualified Data.Aeson.Encoding.Internal as E (InArray, colon, comma, econcat, empty, retagEncoding, wrapObject)
+import qualified Data.ByteString as S
+import qualified Data.ByteString.Lazy as L
+import qualified Data.DList as DList
+import qualified Data.HashMap.Strict as H
+import qualified Data.HashSet as HashSet
+import qualified Data.IntMap as IntMap
+import qualified Data.IntSet as IntSet
+import qualified Data.List.NonEmpty as NE
+import qualified Data.Map as M
+import qualified Data.Monoid as Monoid
+import qualified Data.Scientific as Scientific
+import qualified Data.Semigroup as Semigroup
+import qualified Data.Sequence as Seq
+import qualified Data.Set as Set
+import qualified Data.Text as T
+import qualified Data.Text.Encoding as T
+import qualified Data.Text.Lazy as LT
+import qualified Data.Tree as Tree
+import qualified Data.Vector as V
+import qualified Data.Vector.Generic as VG
+import qualified Data.Vector.Mutable as VM
 import qualified Data.Vector.Primitive as VP
-import qualified Data.Vector.Storable  as VS
-import qualified Data.Vector.Unboxed   as VU
+import qualified Data.Vector.Storable as VS
+import qualified Data.Vector.Unboxed as VU
 
 #if !(MIN_VERSION_bytestring(0,10,0))
-import Foreign.ForeignPtr    (withForeignPtr)
+import Foreign.ForeignPtr (withForeignPtr)
 import Foreign.Marshal.Utils (copyBytes)
-import Foreign.Ptr           (plusPtr)
-
-import qualified Data.ByteString.Internal      as S
+import Foreign.Ptr (plusPtr)
+import qualified Data.ByteString.Internal as S
 import qualified Data.ByteString.Lazy.Internal as L
 #endif
 
@@ -725,7 +723,7 @@ instance ( EncodeProduct  arity a
     -- Products are encoded to an array. Here we allocate a mutable vector of
     -- the same size as the product and write the product's elements to it using
     -- 'encodeProduct':
-    gToEncoding opts targs p = E.tuple $ encodeProduct opts targs p
+    gToEncoding opts targs p = E.list E.retagEncoding [encodeProduct opts targs p]
 
 instance ( AllNullary           (a :+: b) allNullary
          , SumToEncoding  arity (a :+: b) allNullary
@@ -880,13 +878,12 @@ instance ( IsRecord               a isRecord
          , TaggedObjectEnc' arity a isRecord
          , Constructor c
          ) => TaggedObjectEnc arity (C1 c a) where
-    taggedObjectEnc opts targs tagFieldName contentsFieldName v =
-        E.wrapObject $
-            (E.string tagFieldName ><
-             E.colon ><
-             toEncoding (constructorTagModifier opts (conName (undefined :: t c a p)))) ><
-            ((unTagged :: Tagged isRecord Encoding -> Encoding) .
-             taggedObjectEnc' opts targs contentsFieldName . unM1 $ v)
+    taggedObjectEnc opts targs tagFieldName contentsFieldName v = E.pairs (E.pair key val)
+      where
+        key :: Text
+        key = pack tagFieldName
+        val = toEncoding (constructorTagModifier opts (conName (undefined :: t c a p)))
+           >< ((unTagged :: Tagged isRecord Encoding -> Encoding) . taggedObjectEnc' opts targs contentsFieldName . unM1 $ v)
 
 class TaggedObjectEnc' arity f isRecord where
     taggedObjectEnc' :: Options -> ToArgs Encoding arity a
@@ -956,9 +953,10 @@ instance ( GToEncoding    arity a
          , ConsToEncoding arity a
          , Constructor c
          ) => TwoElemArrayEnc arity (C1 c a) where
-    twoElemArrayEnc opts targs x = E.tuple $
-      toEncoding (constructorTagModifier opts (conName (undefined :: t c a p))) >*<
-      gToEncoding opts targs x
+    twoElemArrayEnc opts targs x = E.list id
+      [ toEncoding (constructorTagModifier opts (conName (undefined :: t c a p)))
+      , gToEncoding opts targs x
+      ]
 
 --------------------------------------------------------------------------------
 
@@ -1124,8 +1122,9 @@ instance ( EncodeProduct    arity a
         E.econcat $ intersperse E.comma $
         filter (not . E.nullEncoding)
         [encodeProduct opts targs a, encodeProduct opts targs b]
-    encodeProduct opts targs (a :*: b) = encodeProduct opts targs a >*<
-                                         encodeProduct opts targs b
+    encodeProduct opts targs (a :*: b) =
+      encodeProduct opts targs a >*<
+      encodeProduct opts targs b
 
 instance OVERLAPPABLE_ (GToEncoding arity a) => EncodeProduct arity a where
     encodeProduct opts targs a = E.retagEncoding $ gToEncoding opts targs a
@@ -1171,14 +1170,12 @@ instance ( GToEncoding    arity a
          , ConsToEncoding arity a
          , Constructor c
          ) => ObjectWithSingleFieldEnc arity (C1 c a) where
-    objectWithSingleFieldEnc opts targs v =
-      E.openCurly ><
-      toEncoding
-          (constructorTagModifier opts
-          (conName (undefined :: t c a p))) ><
-      E.colon ><
-      gToEncoding opts targs v ><
-      E.closeCurly
+    objectWithSingleFieldEnc opts targs v = E.pairs (E.pair key val)
+      where
+        key :: Text
+        key = pack (constructorTagModifier opts (conName (undefined :: t c a p)))
+        val :: Encoding' Value
+        val = gToEncoding opts targs v
 
 --------------------------------------------------------------------------------
 
@@ -1813,13 +1810,11 @@ instance ToJSONKey k => ToJSON1 (M.Map k) where
         ToJSONKeyValue  f _ -> Array . V.fromList . map (toJSONPair f g) . M.toList
     {-# INLINE liftToJSON #-}
 
-    -- liftToEncoding :: forall a. (a -> Encoding) -> ([a] -> Encoding) -> M.Map k a -> Encoding
     liftToEncoding g _ = case toJSONKey of
         ToJSONKeyText _ f -> dict f g M.foldrWithKey
         ToJSONKeyValue _ f -> listEncoding (pairEncoding f) . M.toList
       where
-        -- pairEncoding :: (k -> Encoding) -> (k, a) -> Encoding
-        pairEncoding f (a, b) = tuple $ f a >*< g b
+        pairEncoding f (a, b) = E.list id [f a, g b]
     {-# INLINE liftToEncoding #-}
 
 
@@ -1937,8 +1932,7 @@ instance ToJSONKey k => ToJSON1 (H.HashMap k) where
         ToJSONKeyText _ f -> dict f g H.foldrWithKey
         ToJSONKeyValue _ f -> listEncoding (pairEncoding f) . H.toList
       where
-        -- pairEncoding :: (k -> Encoding) -> (k, a) -> Encoding
-        pairEncoding f (a, b) = tuple $ f a >*< g b
+        pairEncoding f (a, b) = E.list id [f a, g b]
     {-# INLINE liftToEncoding #-}
 
 instance (ToJSON v, ToJSONKey k) => ToJSON (H.HashMap k v) where
@@ -2034,14 +2028,14 @@ instance ToJSON NominalDiffTime where
 -- base Monoid/Semigroup
 -------------------------------------------------------------------------------
 
-instance ToJSON1 Dual where
-    liftToJSON t _ = t . getDual
+instance ToJSON1 Monoid.Dual where
+    liftToJSON t _ = t . Monoid.getDual
     {-# INLINE liftToJSON #-}
 
-    liftToEncoding t _ = t . getDual
+    liftToEncoding t _ = t . Monoid.getDual
     {-# INLINE liftToEncoding #-}
 
-instance ToJSON a => ToJSON (Dual a) where
+instance ToJSON a => ToJSON (Monoid.Dual a) where
     toJSON = toJSON1
     {-# INLINE toJSON #-}
 
@@ -2049,14 +2043,14 @@ instance ToJSON a => ToJSON (Dual a) where
     {-# INLINE toEncoding #-}
 
 
-instance ToJSON1 First where
-    liftToJSON t to' = liftToJSON t to' . getFirst
+instance ToJSON1 Monoid.First where
+    liftToJSON t to' = liftToJSON t to' . Monoid.getFirst
     {-# INLINE liftToJSON #-}
 
-    liftToEncoding t to' = liftToEncoding t to' . getFirst
+    liftToEncoding t to' = liftToEncoding t to' . Monoid.getFirst
     {-# INLINE liftToEncoding #-}
 
-instance ToJSON a => ToJSON (First a) where
+instance ToJSON a => ToJSON (Monoid.First a) where
     toJSON = toJSON1
     {-# INLINE toJSON #-}
 
@@ -2064,14 +2058,103 @@ instance ToJSON a => ToJSON (First a) where
     {-# INLINE toEncoding #-}
 
 
-instance ToJSON1 Last where
-    liftToJSON t to' = liftToJSON t to' . getLast
+instance ToJSON1 Monoid.Last where
+    liftToJSON t to' = liftToJSON t to' . Monoid.getLast
     {-# INLINE liftToJSON #-}
 
-    liftToEncoding t to' = liftToEncoding t to' . getLast
+    liftToEncoding t to' = liftToEncoding t to' . Monoid.getLast
     {-# INLINE liftToEncoding #-}
 
-instance ToJSON a => ToJSON (Last a) where
+instance ToJSON a => ToJSON (Monoid.Last a) where
+    toJSON = toJSON1
+    {-# INLINE toJSON #-}
+
+    toEncoding = toEncoding1
+    {-# INLINE toEncoding #-}
+
+
+instance ToJSON1 Semigroup.Min where
+    liftToJSON t _ (Semigroup.Min x) = t x
+    {-# INLINE liftToJSON #-}
+
+    liftToEncoding t _ (Semigroup.Min x) = t x
+    {-# INLINE liftToEncoding #-}
+
+instance ToJSON a => ToJSON (Semigroup.Min a) where
+    toJSON = toJSON1
+    {-# INLINE toJSON #-}
+
+    toEncoding = toEncoding1
+    {-# INLINE toEncoding #-}
+
+
+instance ToJSON1 Semigroup.Max where
+    liftToJSON t _ (Semigroup.Max x) = t x
+    {-# INLINE liftToJSON #-}
+
+    liftToEncoding t _ (Semigroup.Max x) = t x
+    {-# INLINE liftToEncoding #-}
+
+instance ToJSON a => ToJSON (Semigroup.Max a) where
+    toJSON = toJSON1
+    {-# INLINE toJSON #-}
+
+    toEncoding = toEncoding1
+    {-# INLINE toEncoding #-}
+
+instance ToJSON1 Semigroup.First where
+    liftToJSON t _ (Semigroup.First x) = t x
+    {-# INLINE liftToJSON #-}
+
+    liftToEncoding t _ (Semigroup.First x) = t x
+    {-# INLINE liftToEncoding #-}
+
+instance ToJSON a => ToJSON (Semigroup.First a) where
+    toJSON = toJSON1
+    {-# INLINE toJSON #-}
+
+    toEncoding = toEncoding1
+    {-# INLINE toEncoding #-}
+
+
+instance ToJSON1 Semigroup.Last where
+    liftToJSON t _ (Semigroup.Last x) = t x
+    {-# INLINE liftToJSON #-}
+
+    liftToEncoding t _ (Semigroup.Last x) = t x
+    {-# INLINE liftToEncoding #-}
+
+instance ToJSON a => ToJSON (Semigroup.Last a) where
+    toJSON = toJSON1
+    {-# INLINE toJSON #-}
+
+    toEncoding = toEncoding1
+    {-# INLINE toEncoding #-}
+
+
+instance ToJSON1 Semigroup.WrappedMonoid where
+    liftToJSON t _ (Semigroup.WrapMonoid x) = t x
+    {-# INLINE liftToJSON #-}
+
+    liftToEncoding t _ (Semigroup.WrapMonoid x) = t x
+    {-# INLINE liftToEncoding #-}
+
+instance ToJSON a => ToJSON (Semigroup.WrappedMonoid a) where
+    toJSON = toJSON1
+    {-# INLINE toJSON #-}
+
+    toEncoding = toEncoding1
+    {-# INLINE toEncoding #-}
+
+
+instance ToJSON1 Semigroup.Option where
+    liftToJSON t to' = liftToJSON t to' . Semigroup.getOption
+    {-# INLINE liftToJSON #-}
+
+    liftToEncoding t to' = liftToEncoding t to' . Semigroup.getOption
+    {-# INLINE liftToEncoding #-}
+
+instance ToJSON a => ToJSON (Semigroup.Option a) where
     toJSON = toJSON1
     {-# INLINE toJSON #-}
 
@@ -2125,7 +2208,7 @@ instance (ToJSONKey a, ToJSON a) => ToJSONKey [a] where
     toJSONKey = toJSONKeyList
 
 -------------------------------------------------------------------------------
--- Tuple instances, see tuple-instances-to.hs
+-- Tuple instances
 -------------------------------------------------------------------------------
 
 instance ToJSON2 (,) where
@@ -2136,9 +2219,7 @@ instance ToJSON2 (,) where
         return mv
     {-# INLINE liftToJSON2 #-}
 
-    liftToEncoding2 toA _ toB _ (a, b) = tuple $
-        toA a >*<
-        toB b
+    liftToEncoding2 toA _ toB _ (a, b) = E.list id [toA a, toB b]
     {-# INLINE liftToEncoding2 #-}
 
 instance (ToJSON a) => ToJSON1 ((,) a) where
@@ -2162,10 +2243,11 @@ instance (ToJSON a) => ToJSON2 ((,,) a) where
         return mv
     {-# INLINE liftToJSON2 #-}
 
-    liftToEncoding2 toB _ toC _ (a, b, c) = tuple $
-        toEncoding a >*<
-        toB b >*<
-        toC c
+    liftToEncoding2 toB _ toC _ (a, b, c) = E.list id
+      [ toEncoding a
+      , toB b
+      , toC c
+      ]
     {-# INLINE liftToEncoding2 #-}
 
 instance (ToJSON a, ToJSON b) => ToJSON1 ((,,) a b) where
@@ -2190,11 +2272,12 @@ instance (ToJSON a, ToJSON b) => ToJSON2 ((,,,) a b) where
         return mv
     {-# INLINE liftToJSON2 #-}
 
-    liftToEncoding2 toC _ toD _ (a, b, c, d) = tuple $
-        toEncoding a >*<
-        toEncoding b >*<
-        toC c >*<
-        toD d
+    liftToEncoding2 toC _ toD _ (a, b, c, d) = E.list id
+      [ toEncoding a
+      , toEncoding b
+      , toC c
+      , toD d
+      ]
     {-# INLINE liftToEncoding2 #-}
 
 instance (ToJSON a, ToJSON b, ToJSON c) => ToJSON1 ((,,,) a b c) where
@@ -2220,12 +2303,13 @@ instance (ToJSON a, ToJSON b, ToJSON c) => ToJSON2 ((,,,,) a b c) where
         return mv
     {-# INLINE liftToJSON2 #-}
 
-    liftToEncoding2 toD _ toE _ (a, b, c, d, e) = tuple $
-        toEncoding a >*<
-        toEncoding b >*<
-        toEncoding c >*<
-        toD d >*<
-        toE e
+    liftToEncoding2 toD _ toE _ (a, b, c, d, e) = E.list id
+      [ toEncoding a
+      , toEncoding b
+      , toEncoding c
+      , toD d
+      , toE e
+      ]
     {-# INLINE liftToEncoding2 #-}
 
 instance (ToJSON a, ToJSON b, ToJSON c, ToJSON d) => ToJSON1 ((,,,,) a b c d) where
@@ -2252,13 +2336,14 @@ instance (ToJSON a, ToJSON b, ToJSON c, ToJSON d) => ToJSON2 ((,,,,,) a b c d) w
         return mv
     {-# INLINE liftToJSON2 #-}
 
-    liftToEncoding2 toE _ toF _ (a, b, c, d, e, f) = tuple $
-        toEncoding a >*<
-        toEncoding b >*<
-        toEncoding c >*<
-        toEncoding d >*<
-        toE e >*<
-        toF f
+    liftToEncoding2 toE _ toF _ (a, b, c, d, e, f) = E.list id
+      [ toEncoding a
+      , toEncoding b
+      , toEncoding c
+      , toEncoding d
+      , toE e
+      , toF f
+      ]
     {-# INLINE liftToEncoding2 #-}
 
 instance (ToJSON a, ToJSON b, ToJSON c, ToJSON d, ToJSON e) => ToJSON1 ((,,,,,) a b c d e) where
@@ -2286,14 +2371,15 @@ instance (ToJSON a, ToJSON b, ToJSON c, ToJSON d, ToJSON e) => ToJSON2 ((,,,,,,)
         return mv
     {-# INLINE liftToJSON2 #-}
 
-    liftToEncoding2 toF _ toG _ (a, b, c, d, e, f, g) = tuple $
-        toEncoding a >*<
-        toEncoding b >*<
-        toEncoding c >*<
-        toEncoding d >*<
-        toEncoding e >*<
-        toF f >*<
-        toG g
+    liftToEncoding2 toF _ toG _ (a, b, c, d, e, f, g) = E.list id
+        [ toEncoding a
+        , toEncoding b
+        , toEncoding c
+        , toEncoding d
+        , toEncoding e
+        , toF f
+        , toG g
+        ]
     {-# INLINE liftToEncoding2 #-}
 
 instance (ToJSON a, ToJSON b, ToJSON c, ToJSON d, ToJSON e, ToJSON f) => ToJSON1 ((,,,,,,) a b c d e f) where
@@ -2322,15 +2408,16 @@ instance (ToJSON a, ToJSON b, ToJSON c, ToJSON d, ToJSON e, ToJSON f) => ToJSON2
         return mv
     {-# INLINE liftToJSON2 #-}
 
-    liftToEncoding2 toG _ toH _ (a, b, c, d, e, f, g, h) = tuple $
-        toEncoding a >*<
-        toEncoding b >*<
-        toEncoding c >*<
-        toEncoding d >*<
-        toEncoding e >*<
-        toEncoding f >*<
-        toG g >*<
-        toH h
+    liftToEncoding2 toG _ toH _ (a, b, c, d, e, f, g, h) = E.list id
+        [ toEncoding a
+        , toEncoding b
+        , toEncoding c
+        , toEncoding d
+        , toEncoding e
+        , toEncoding f
+        , toG g
+        , toH h
+        ]
     {-# INLINE liftToEncoding2 #-}
 
 instance (ToJSON a, ToJSON b, ToJSON c, ToJSON d, ToJSON e, ToJSON f, ToJSON g) => ToJSON1 ((,,,,,,,) a b c d e f g) where
@@ -2360,16 +2447,17 @@ instance (ToJSON a, ToJSON b, ToJSON c, ToJSON d, ToJSON e, ToJSON f, ToJSON g) 
         return mv
     {-# INLINE liftToJSON2 #-}
 
-    liftToEncoding2 toH _ toI _ (a, b, c, d, e, f, g, h, i) = tuple $
-        toEncoding a >*<
-        toEncoding b >*<
-        toEncoding c >*<
-        toEncoding d >*<
-        toEncoding e >*<
-        toEncoding f >*<
-        toEncoding g >*<
-        toH h >*<
-        toI i
+    liftToEncoding2 toH _ toI _ (a, b, c, d, e, f, g, h, i) = E.list id
+        [ toEncoding a
+        , toEncoding b
+        , toEncoding c
+        , toEncoding d
+        , toEncoding e
+        , toEncoding f
+        , toEncoding g
+        , toH h
+        , toI i
+        ]
     {-# INLINE liftToEncoding2 #-}
 
 instance (ToJSON a, ToJSON b, ToJSON c, ToJSON d, ToJSON e, ToJSON f, ToJSON g, ToJSON h) => ToJSON1 ((,,,,,,,,) a b c d e f g h) where
@@ -2400,17 +2488,18 @@ instance (ToJSON a, ToJSON b, ToJSON c, ToJSON d, ToJSON e, ToJSON f, ToJSON g, 
         return mv
     {-# INLINE liftToJSON2 #-}
 
-    liftToEncoding2 toI _ toJ _ (a, b, c, d, e, f, g, h, i, j) = tuple $
-        toEncoding a >*<
-        toEncoding b >*<
-        toEncoding c >*<
-        toEncoding d >*<
-        toEncoding e >*<
-        toEncoding f >*<
-        toEncoding g >*<
-        toEncoding h >*<
-        toI i >*<
-        toJ j
+    liftToEncoding2 toI _ toJ _ (a, b, c, d, e, f, g, h, i, j) = E.list id
+        [ toEncoding a
+        , toEncoding b
+        , toEncoding c
+        , toEncoding d
+        , toEncoding e
+        , toEncoding f
+        , toEncoding g
+        , toEncoding h
+        , toI i
+        , toJ j
+        ]
     {-# INLINE liftToEncoding2 #-}
 
 instance (ToJSON a, ToJSON b, ToJSON c, ToJSON d, ToJSON e, ToJSON f, ToJSON g, ToJSON h, ToJSON i) => ToJSON1 ((,,,,,,,,,) a b c d e f g h i) where
@@ -2442,18 +2531,19 @@ instance (ToJSON a, ToJSON b, ToJSON c, ToJSON d, ToJSON e, ToJSON f, ToJSON g, 
         return mv
     {-# INLINE liftToJSON2 #-}
 
-    liftToEncoding2 toJ _ toK _ (a, b, c, d, e, f, g, h, i, j, k) = tuple $
-        toEncoding a >*<
-        toEncoding b >*<
-        toEncoding c >*<
-        toEncoding d >*<
-        toEncoding e >*<
-        toEncoding f >*<
-        toEncoding g >*<
-        toEncoding h >*<
-        toEncoding i >*<
-        toJ j >*<
-        toK k
+    liftToEncoding2 toJ _ toK _ (a, b, c, d, e, f, g, h, i, j, k) = E.list id
+        [ toEncoding a
+        , toEncoding b
+        , toEncoding c
+        , toEncoding d
+        , toEncoding e
+        , toEncoding f
+        , toEncoding g
+        , toEncoding h
+        , toEncoding i
+        , toJ j
+        , toK k
+        ]
     {-# INLINE liftToEncoding2 #-}
 
 instance (ToJSON a, ToJSON b, ToJSON c, ToJSON d, ToJSON e, ToJSON f, ToJSON g, ToJSON h, ToJSON i, ToJSON j) => ToJSON1 ((,,,,,,,,,,) a b c d e f g h i j) where
@@ -2486,19 +2576,20 @@ instance (ToJSON a, ToJSON b, ToJSON c, ToJSON d, ToJSON e, ToJSON f, ToJSON g, 
         return mv
     {-# INLINE liftToJSON2 #-}
 
-    liftToEncoding2 toK _ toL _ (a, b, c, d, e, f, g, h, i, j, k, l) = tuple $
-        toEncoding a >*<
-        toEncoding b >*<
-        toEncoding c >*<
-        toEncoding d >*<
-        toEncoding e >*<
-        toEncoding f >*<
-        toEncoding g >*<
-        toEncoding h >*<
-        toEncoding i >*<
-        toEncoding j >*<
-        toK k >*<
-        toL l
+    liftToEncoding2 toK _ toL _ (a, b, c, d, e, f, g, h, i, j, k, l) = E.list id
+        [ toEncoding a
+        , toEncoding b
+        , toEncoding c
+        , toEncoding d
+        , toEncoding e
+        , toEncoding f
+        , toEncoding g
+        , toEncoding h
+        , toEncoding i
+        , toEncoding j
+        , toK k
+        , toL l
+        ]
     {-# INLINE liftToEncoding2 #-}
 
 instance (ToJSON a, ToJSON b, ToJSON c, ToJSON d, ToJSON e, ToJSON f, ToJSON g, ToJSON h, ToJSON i, ToJSON j, ToJSON k) => ToJSON1 ((,,,,,,,,,,,) a b c d e f g h i j k) where
@@ -2532,20 +2623,21 @@ instance (ToJSON a, ToJSON b, ToJSON c, ToJSON d, ToJSON e, ToJSON f, ToJSON g, 
         return mv
     {-# INLINE liftToJSON2 #-}
 
-    liftToEncoding2 toL _ toM _ (a, b, c, d, e, f, g, h, i, j, k, l, m) = tuple $
-        toEncoding a >*<
-        toEncoding b >*<
-        toEncoding c >*<
-        toEncoding d >*<
-        toEncoding e >*<
-        toEncoding f >*<
-        toEncoding g >*<
-        toEncoding h >*<
-        toEncoding i >*<
-        toEncoding j >*<
-        toEncoding k >*<
-        toL l >*<
-        toM m
+    liftToEncoding2 toL _ toM _ (a, b, c, d, e, f, g, h, i, j, k, l, m) = E.list id
+        [ toEncoding a
+        , toEncoding b
+        , toEncoding c
+        , toEncoding d
+        , toEncoding e
+        , toEncoding f
+        , toEncoding g
+        , toEncoding h
+        , toEncoding i
+        , toEncoding j
+        , toEncoding k
+        , toL l
+        , toM m
+        ]
     {-# INLINE liftToEncoding2 #-}
 
 instance (ToJSON a, ToJSON b, ToJSON c, ToJSON d, ToJSON e, ToJSON f, ToJSON g, ToJSON h, ToJSON i, ToJSON j, ToJSON k, ToJSON l) => ToJSON1 ((,,,,,,,,,,,,) a b c d e f g h i j k l) where
@@ -2580,21 +2672,22 @@ instance (ToJSON a, ToJSON b, ToJSON c, ToJSON d, ToJSON e, ToJSON f, ToJSON g, 
         return mv
     {-# INLINE liftToJSON2 #-}
 
-    liftToEncoding2 toM _ toN _ (a, b, c, d, e, f, g, h, i, j, k, l, m, n) = tuple $
-        toEncoding a >*<
-        toEncoding b >*<
-        toEncoding c >*<
-        toEncoding d >*<
-        toEncoding e >*<
-        toEncoding f >*<
-        toEncoding g >*<
-        toEncoding h >*<
-        toEncoding i >*<
-        toEncoding j >*<
-        toEncoding k >*<
-        toEncoding l >*<
-        toM m >*<
-        toN n
+    liftToEncoding2 toM _ toN _ (a, b, c, d, e, f, g, h, i, j, k, l, m, n) = E.list id
+        [ toEncoding a
+        , toEncoding b
+        , toEncoding c
+        , toEncoding d
+        , toEncoding e
+        , toEncoding f
+        , toEncoding g
+        , toEncoding h
+        , toEncoding i
+        , toEncoding j
+        , toEncoding k
+        , toEncoding l
+        , toM m
+        , toN n
+        ]
     {-# INLINE liftToEncoding2 #-}
 
 instance (ToJSON a, ToJSON b, ToJSON c, ToJSON d, ToJSON e, ToJSON f, ToJSON g, ToJSON h, ToJSON i, ToJSON j, ToJSON k, ToJSON l, ToJSON m) => ToJSON1 ((,,,,,,,,,,,,,) a b c d e f g h i j k l m) where
@@ -2630,22 +2723,23 @@ instance (ToJSON a, ToJSON b, ToJSON c, ToJSON d, ToJSON e, ToJSON f, ToJSON g, 
         return mv
     {-# INLINE liftToJSON2 #-}
 
-    liftToEncoding2 toN _ toO _ (a, b, c, d, e, f, g, h, i, j, k, l, m, n, o) = tuple $
-        toEncoding a >*<
-        toEncoding b >*<
-        toEncoding c >*<
-        toEncoding d >*<
-        toEncoding e >*<
-        toEncoding f >*<
-        toEncoding g >*<
-        toEncoding h >*<
-        toEncoding i >*<
-        toEncoding j >*<
-        toEncoding k >*<
-        toEncoding l >*<
-        toEncoding m >*<
-        toN n >*<
-        toO o
+    liftToEncoding2 toN _ toO _ (a, b, c, d, e, f, g, h, i, j, k, l, m, n, o) = E.list id
+        [ toEncoding a
+        , toEncoding b
+        , toEncoding c
+        , toEncoding d
+        , toEncoding e
+        , toEncoding f
+        , toEncoding g
+        , toEncoding h
+        , toEncoding i
+        , toEncoding j
+        , toEncoding k
+        , toEncoding l
+        , toEncoding m
+        , toN n
+        , toO o
+        ]
     {-# INLINE liftToEncoding2 #-}
 
 instance (ToJSON a, ToJSON b, ToJSON c, ToJSON d, ToJSON e, ToJSON f, ToJSON g, ToJSON h, ToJSON i, ToJSON j, ToJSON k, ToJSON l, ToJSON m, ToJSON n) => ToJSON1 ((,,,,,,,,,,,,,,) a b c d e f g h i j k l m n) where

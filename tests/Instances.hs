@@ -1,34 +1,38 @@
 {-# LANGUAGE CPP #-}
-{-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE StandaloneDeriving #-}
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 
-module Instances where
+module Instances () where
 
 import Prelude ()
 import Prelude.Compat
 
-import Types
-import Data.Function (on)
+import Control.Applicative (empty)
 import Control.Monad
-import Test.QuickCheck (Arbitrary(..), getNonNegative, elements,
-                        listOf1, oneof, resize)
-import Data.Time.Clock (UTCTime(..))
-import Data.Time (ZonedTime(..), TimeZone(..))
-import Data.List.NonEmpty (NonEmpty(..))
-import Data.Version
 import Data.Aeson.Types
-import Control.Applicative (Const(..), empty)
-import Data.Tagged (Tagged(..))
-import Data.Proxy (Proxy(..))
-import Data.Functor.Identity (Identity (..))
+import Data.Function (on)
 import Data.Functor.Compose (Compose (..))
+import Data.Proxy (Proxy(..))
+import Data.Tagged (Tagged(..))
+import Data.Time (ZonedTime(..), TimeZone(..))
+import Data.Time.Clock (UTCTime(..))
 import Functions
+import Test.QuickCheck (Arbitrary(..), elements,  oneof)
+import Types
 import qualified Data.DList as DList
 import qualified Data.HashMap.Strict as HM
+
+#if !MIN_VERSION_QuickCheck(2,9,0)
+import Control.Applicative (Const(..))
+import Data.List.NonEmpty (NonEmpty(..))
+import Data.Functor.Identity (Identity (..))
+import Data.Version
+import Test.QuickCheck (getNonNegative, listOf1, resize)
+#endif
 
 import Data.Orphans ()
 import Test.QuickCheck.Instances ()
@@ -173,21 +177,11 @@ instance ApproxEq Char where
 instance (ApproxEq a) => ApproxEq [a] where
     a =~ b = length a == length b && all (uncurry (=~)) (zip a b)
 
-instance Arbitrary Version where
-    arbitrary = makeVersion . fmap getNonNegative <$> resize 4 (listOf1 arbitrary)
-
-instance Arbitrary a => Arbitrary (NonEmpty a) where
-    arbitrary = (:|) <$> arbitrary <*> arbitrary
-
 -- Version tags are deprecated, so we avoid using them in the Arbitrary
 -- instance. However, the recommended constructor 'makeVersion' is not
 -- exported by "Data.Version" until base-4.8.0.0. For previous versions,
 -- a definition is given below.
 
-#if !MIN_VERSION_base(4,8,0)
-makeVersion :: [Int] -> Version
-makeVersion b = Version b []
-#endif
 
 #if !MIN_VERSION_base(4,8,0) && !MIN_VERSION_QuickCheck(2,8,3)
 instance Arbitrary Natural where
@@ -200,15 +194,27 @@ instance Arbitrary (Proxy a) where
 instance Arbitrary b => Arbitrary (Tagged a b) where
     arbitrary = Tagged <$> arbitrary
 
-instance Arbitrary a => Arbitrary (Const a b) where
-    arbitrary = Const <$> arbitrary
-
 instance Arbitrary a => Arbitrary (DList.DList a) where
     arbitrary = DList.fromList <$> arbitrary
 
--- would like to have -- https://github.com/nick8325/quickcheck/issues/73
-instance Arbitrary a => Arbitrary (Identity a) where
-    arbitrary = Identity <$> arbitrary
-
 instance Arbitrary (f (g a)) => Arbitrary (Compose f g a) where
     arbitrary = Compose <$> arbitrary
+
+#if !MIN_VERSION_QuickCheck(2,9,0)
+instance Arbitrary a => Arbitrary (Const a b) where
+    arbitrary = Const <$> arbitrary
+
+instance Arbitrary a => Arbitrary (NonEmpty a) where
+    arbitrary = (:|) <$> arbitrary <*> arbitrary
+
+instance Arbitrary Version where
+    arbitrary = makeVersion . fmap getNonNegative <$> resize 4 (listOf1 arbitrary)
+
+#if !MIN_VERSION_base(4,8,0)
+makeVersion :: [Int] -> Version
+makeVersion b = Version b []
+#endif
+
+instance Arbitrary a => Arbitrary (Identity a) where
+    arbitrary = Identity <$> arbitrary
+#endif

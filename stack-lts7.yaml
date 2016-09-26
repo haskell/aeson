@@ -1,0 +1,6 @@
+resolver: lts-7.0
+packages:
+- '.'
+flags:
+  aeson:
+    fast: true

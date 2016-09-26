@@ -15,24 +15,23 @@ library
   exposed-modules:
     Data.Aeson
     Data.Aeson.Encoding
-    Data.Aeson.Parser
-    Data.Aeson.Text
-    Data.Aeson.Types
-    Data.Aeson.TH
-
+    Data.Aeson.Encoding.Builder
     Data.Aeson.Encoding.Internal
     Data.Aeson.Internal
-    Data.Aeson.Internal.Time
-
-    Data.Aeson.Encoding.Builder
     Data.Aeson.Internal.Functions
+    Data.Aeson.Internal.Time
+    Data.Aeson.Parser
     Data.Aeson.Parser.Internal
     Data.Aeson.Parser.Time
+    Data.Aeson.Parser.Unescape
+    Data.Aeson.TH
+    Data.Aeson.Text
+    Data.Aeson.Types
+    Data.Aeson.Types.Class
     Data.Aeson.Types.FromJSON
     Data.Aeson.Types.Generic
-    Data.Aeson.Types.ToJSON
-    Data.Aeson.Types.Class
     Data.Aeson.Types.Internal
+    Data.Aeson.Types.ToJSON
 
   build-depends:
     attoparsec >= 0.13.0.1,
@@ -81,6 +80,7 @@ executable aeson-benchmark-compare
   build-depends:
     aeson-benchmarks,
     base,
+    base-compat,
     buffer-builder,
     bytestring,
     criterion >= 1.0,
@@ -96,6 +96,7 @@ executable aeson-benchmark-micro
   build-depends:
     aeson-benchmarks,
     base,
+    base-compat,
     bytestring,
     criterion >= 1.0,
     deepseq,
@@ -113,6 +114,7 @@ executable aeson-benchmark-typed
     aeson,
     aeson-benchmarks,
     base,
+    base-compat,
     criterion >= 1.0,
     deepseq,
     ghc-prim,
@@ -131,6 +133,7 @@ executable aeson-benchmark-compare-with-json
   build-depends:
     aeson-benchmarks,
     base,
+    base-compat,
     blaze-builder,
     bytestring,
     criterion,
@@ -145,6 +148,7 @@ executable aeson-benchmark-aeson-encode
     aeson-benchmarks,
     attoparsec,
     base,
+    base-compat,
     bytestring,
     deepseq,
     time
@@ -156,6 +160,7 @@ executable aeson-benchmark-aeson-parse
     aeson-benchmarks,
     attoparsec,
     base,
+    base-compat,
     bytestring,
     time
 
@@ -164,6 +169,7 @@ executable aeson-benchmark-json-parse
   ghc-options: -Wall -O2 -rtsopts
   build-depends:
     base,
+    base-compat,
     deepseq,
     json,
     time
@@ -173,6 +179,7 @@ executable aeson-benchmark-dates
   ghc-options: -Wall -O2 -rtsopts
   build-depends:
     base,
+    base-compat,
     bytestring,
     criterion,
     deepseq,
@@ -184,9 +191,10 @@ executable aeson-benchmark-map
   main-is: AesonMap.hs
   ghc-options: -Wall -O2 -rtsopts
   build-depends:
-    aeson == 0.11.*,
+    aeson,
     aeson-benchmarks,
     base,
+    base-compat,
     criterion >= 1.0,
     bytestring,
     containers,
@@ -203,6 +211,7 @@ executable aeson-benchmark-foldable
     aeson,
     aeson-benchmarks,
     base,
+    base-compat,
     criterion >= 1.0,
     bytestring,
     containers,

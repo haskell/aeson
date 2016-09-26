@@ -1,13 +1,13 @@
-{-# LANGUAGE CPP                    #-}
-{-# LANGUAGE DataKinds              #-}
-{-# LANGUAGE EmptyDataDecls         #-}
-{-# LANGUAGE FlexibleInstances      #-}
+{-# LANGUAGE CPP #-}
+{-# LANGUAGE DataKinds #-}
+{-# LANGUAGE EmptyDataDecls #-}
+{-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE FunctionalDependencies #-}
-{-# LANGUAGE KindSignatures         #-}
-{-# LANGUAGE MultiParamTypeClasses  #-}
-{-# LANGUAGE ScopedTypeVariables    #-}
-{-# LANGUAGE TypeOperators          #-}
-{-# LANGUAGE UndecidableInstances   #-}
+{-# LANGUAGE KindSignatures #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE TypeOperators #-}
+{-# LANGUAGE UndecidableInstances #-}
 
 #include "overlapping-compat.h"
 
@@ -23,7 +23,18 @@
 --
 -- Helpers for generic derivations.
 
-module Data.Aeson.Types.Generic where
+module Data.Aeson.Types.Generic
+    (
+      IsRecord(..)
+    , AllNullary
+    , Tagged2(..)
+    , True
+    , False
+    , And
+    , Zero
+    , One
+    , ProductSize(..)
+    ) where
 
 import Prelude ()
 import Prelude.Compat

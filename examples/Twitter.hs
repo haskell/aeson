@@ -8,22 +8,26 @@
 -- renamed "type" to "type_" in the *.json files, to avoid overlap
 -- with a Haskell reserved keyword.
 
-{-# LANGUAGE DeriveDataTypeable, DeriveGeneric #-}
+{-# LANGUAGE DeriveDataTypeable #-}
+{-# LANGUAGE DeriveGeneric #-}
 
-module Twitter (
+module Twitter
+    (
       Metadata(..)
     , Geo(..)
     , Story(..)
     , Result(..)
     ) where
 
+import Prelude ()
+import Prelude.Compat
+
+import Control.DeepSeq
 import Data.Data (Typeable, Data)
 import Data.Int (Int64)
 import Data.Text (Text)
--- import Data.Time (ZonedTime)
 import GHC.Generics (Generic)
 import Prelude hiding (id)
-import Control.DeepSeq
 
 data Metadata = Metadata {
     result_type :: Text
@@ -47,7 +51,7 @@ data Story = Story {
   , metadata          :: Metadata
   , to_user_id        :: Maybe Int64
   , text              :: Text
-  , id                :: Int64
+  , id_               :: Int64
   , from_user_id      :: Int64
   , geo               :: Maybe Geo
   , iso_language_code :: Text

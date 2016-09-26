@@ -1,6 +1,12 @@
-{-# LANGUAGE OverloadedStrings, RecordWildCards #-}
+{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE RecordWildCards #-}
 
-import Control.Applicative ((<$>), (<*>), empty)
+module Main (main) where
+
+import Prelude ()
+import Prelude.Compat
+
+import Control.Applicative (empty)
 import Data.Aeson
 import Data.Monoid
 import qualified Data.ByteString.Lazy.Char8 as BL

@@ -1,11 +1,17 @@
-{-# LANGUAGE BangPatterns, ScopedTypeVariables #-}
+{-# LANGUAGE BangPatterns #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 {-# OPTIONS_GHC -fno-warn-orphans #-}
+
+module Main (main) where
+
+import Prelude ()
+import Prelude.Compat
 
 import Control.DeepSeq
 import Control.Monad
-import Text.JSON
 import Data.Time.Clock
 import System.Environment (getArgs)
+import Text.JSON
 
 instance NFData JSValue where
     rnf JSNull = ()

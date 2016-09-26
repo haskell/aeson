@@ -4,10 +4,13 @@
 
 module DataFamilies.Encoders where
 
+import Prelude ()
+import Prelude.Compat
+
 import Data.Aeson.TH
 import Data.Aeson.Types
-import Options
 import DataFamilies.Types
+import Options
 
 --------------------------------------------------------------------------------
 -- Nullary encoders/decoders

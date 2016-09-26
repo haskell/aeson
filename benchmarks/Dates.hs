@@ -1,4 +1,8 @@
-import Control.Applicative ((<$>))
+module Main (main) where
+
+import Prelude ()
+import Prelude.Compat
+
 import Criterion.Main
 import Data.Aeson (decode, encode)
 import Data.Time.Clock (UTCTime)

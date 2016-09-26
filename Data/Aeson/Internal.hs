@@ -22,5 +22,7 @@ module Data.Aeson.Internal
     , iparse
     ) where
 
+import Prelude ()
+
 import Data.Aeson.Types.Internal
 import Data.Aeson.Types.FromJSON (ifromJSON)

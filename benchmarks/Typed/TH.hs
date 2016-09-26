@@ -1,15 +1,15 @@
 {-# LANGUAGE PackageImports #-}
 module Typed.TH (benchmarks) where
 
-import "aeson" Data.Aeson hiding (Result)
-import qualified "aeson-benchmarks" Data.Aeson as B
+import Prelude ()
+import Prelude.Compat
 
-import Control.Applicative
+import "aeson" Data.Aeson hiding (Result)
 import Criterion
-import Data.ByteString.Builder as B
 import Data.ByteString.Lazy as L
 import Twitter.TH
 import Typed.Common
+import qualified "aeson-benchmarks" Data.Aeson as B
 
 encodeDirectA :: Result -> L.ByteString
 encodeDirectA = encode

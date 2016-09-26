@@ -86,8 +86,12 @@ $('deriveJSON' 'defaultOptions' ''(,,,))
 -}
 
 module Data.Aeson.TH
-    ( -- * Encoding configuration
-      Options(..), SumEncoding(..), defaultOptions, defaultTaggedObject
+    (
+      -- * Encoding configuration
+      Options(..)
+    , SumEncoding(..)
+    , defaultOptions
+    , defaultTaggedObject
 
      -- * FromJSON and ToJSON derivation
     , deriveJSON
@@ -112,71 +116,47 @@ module Data.Aeson.TH
     , mkLiftParseJSON2
     ) where
 
-import Control.Applicative ( pure, (<$>), (<*>), (<|>) )
-import Data.Aeson ( Object, (.=), (.:)
-                  , ToJSON(..),  FromJSON(..)
-                  , ToJSON1(..), FromJSON1(..)
-                  , ToJSON2(..), FromJSON2(..)
-                  )
-import Data.Aeson.Types ( Value(..), Parser
-                        , Options(..)
-                        , SumEncoding(..)
-                        , defaultOptions
-                        , defaultTaggedObject
-                        )
-import Data.Aeson.Types.Internal (Pair, (<?>), JSONPathElement(Key))
+import Prelude ()
+import Prelude.Compat hiding (exp)
+
+import Control.Applicative ((<|>))
+import Data.Aeson (Object, (.=), (.:), FromJSON(..), FromJSON1(..), FromJSON2(..), ToJSON(..), ToJSON1(..), ToJSON2(..))
+import Data.Aeson.Types (Options(..), Parser, SumEncoding(..), Value(..), defaultOptions, defaultTaggedObject)
+import Data.Aeson.Types.Internal ((<?>), Pair, JSONPathElement(Key))
 import Data.Aeson.Types.FromJSON (parseOptionalFieldWith)
-import Control.Monad       ( fail, liftM2, mapM, return, unless, when )
-import Data.Bool           ( Bool(False, True), otherwise, (&&), not )
-import Data.Either         ( Either(Left, Right) )
-import Data.Eq             ( (==) )
-import Data.Foldable       ( concatMap, foldr' )
-import Data.Function       ( ($), (.), flip )
-import Data.Functor        ( fmap )
-import Data.Int            ( Int )
-import Data.List           ( (++), all, any, find, foldl, foldl'
-                           , genericLength , intercalate , intersperse, length, map
-                           , partition, union, zip, zip3
-                           )
-import Data.List.NonEmpty  ( NonEmpty((:|)), (<|) )
-import Data.Map            ( Map )
-import Data.Maybe          ( Maybe(Nothing, Just), catMaybes, fromMaybe, mapMaybe )
-import Data.Set            ( Set )
-import Language.Haskell.TH
-#if MIN_VERSION_template_haskell(2,8,0)
-  hiding ( Arity )
+import Control.Monad (liftM2, unless, when)
+import Data.Foldable (foldr')
+#if MIN_VERSION_template_haskell(2,8,0) && !MIN_VERSION_template_haskell(2,10,0)
+import Data.List (nub)
 #endif
-import Language.Haskell.TH.Syntax ( VarStrictType )
-import Prelude             ( Enum(..), Eq(..), Integer, Ord(..), String
-                           , concat, cycle, drop, elem, error, foldr1, fromIntegral
-                           , showChar, showParen, shows, showString, snd, splitAt
-                           , take, unzip, zipWith, (-), (||)
-                           )
+import Data.List (find, foldl', genericLength , intercalate , intersperse, partition, union)
+import Data.List.NonEmpty ((<|), NonEmpty((:|)))
+import Data.Map (Map)
+import Data.Maybe (catMaybes, fromMaybe, mapMaybe)
+import Data.Set (Set)
+#if MIN_VERSION_template_haskell(2,8,0)
+import Language.Haskell.TH hiding (Arity)
+#else
+import Language.Haskell.TH
+#endif
+import Language.Haskell.TH.Syntax (VarStrictType)
 #if MIN_VERSION_template_haskell(2,7,0) && !(MIN_VERSION_template_haskell(2,8,0))
-import Language.Haskell.TH.Lib    ( starK )
+import Language.Haskell.TH.Lib (starK)
 #endif
 #if MIN_VERSION_template_haskell(2,8,0) && !(MIN_VERSION_template_haskell(2,10,0))
-import Data.List                  ( nub )
-import Language.Haskell.TH.Syntax ( mkNameG_tc )
-import Prelude                    ( uncurry )
+import Language.Haskell.TH.Syntax (mkNameG_tc)
 #endif
-#if MIN_VERSION_template_haskell(2,11,0)
-import Prelude             ( head )
-#endif
-import Text.Printf         ( printf )
-import Text.Show           ( show )
+import Text.Printf (printf)
 import qualified Data.Aeson as A
 import qualified Data.Aeson.Encoding.Internal as E
-import qualified Data.Foldable as F ( all )
-import qualified Data.HashMap.Strict as H ( lookup, toList )
-import qualified Data.List.NonEmpty as NE ( drop, length, reverse, splitAt )
-import qualified Data.Map as M ( fromList, findWithDefault, keys, lookup
-                               , singleton, size
-                               )
-import qualified Data.Set as Set ( empty, insert, member )
-import qualified Data.Text as T ( Text, pack, unpack )
-import qualified Data.Vector as V ( unsafeIndex, null, length, create, fromList )
-import qualified Data.Vector.Mutable as VM ( unsafeNew, unsafeWrite )
+import qualified Data.Foldable as F (all)
+import qualified Data.HashMap.Strict as H (lookup, toList)
+import qualified Data.List.NonEmpty as NE (drop, length, reverse, splitAt)
+import qualified Data.Map as M (fromList, findWithDefault, keys, lookup , singleton, size)
+import qualified Data.Set as Set (empty, insert, member)
+import qualified Data.Text as T (Text, pack, unpack)
+import qualified Data.Vector as V (unsafeIndex, null, length, create, fromList)
+import qualified Data.Vector.Mutable as VM (unsafeNew, unsafeWrite)
 
 
 --------------------------------------------------------------------------------
@@ -1408,10 +1388,12 @@ dispatchFunByType jc jf conName tvMap list ty = do
     if any (`mentionsName` tyVarNames) lhsArgs
           || itf && any (`mentionsName` tyVarNames) tyArgs
        then outOfPlaceTyVarError jc conName
-       else appsE $ varE (jsonFunValOrListName list jf $ toEnum numLastArgs)
-                    : zipWith (dispatchFunByType jc jf conName tvMap)
-                              (cycle [False,True])
-                              (interleave rhsArgs rhsArgs)
+       else if any (`mentionsName` tyVarNames) rhsArgs
+            then appsE $ varE (jsonFunValOrListName list jf $ toEnum numLastArgs)
+                         : zipWith (dispatchFunByType jc jf conName tvMap)
+                                   (cycle [False,True])
+                                   (interleave rhsArgs rhsArgs)
+            else varE $ jsonFunValOrListName list jf Arity0
 
 dispatchToJSON, dispatchToEncoding, dispatchParseJSON
   :: JSONClass -> Name -> TyVarMap -> Type -> Q Exp

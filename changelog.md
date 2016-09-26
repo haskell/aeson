@@ -1,52 +1,91 @@
 For the latest version of this document, please see [https://github.com/bos/aeson/blob/master/changelog.md](https://github.com/bos/aeson/blob/master/changelog.md).
 
+# 1.0.1.0
+
+* Decoding performance has been significantly improved (see
+  https://github.com/bos/aeson/pull/452).
+
+* Add `ToJSON`/`FromJSON` instances for newtypes from
+  `Data.Semigroup`: `Min`, `Max`, `First`, `Last`, `WrappedMonoid`,
+  `Option`.
+
+* Make the documentation for `.:!` more accurate.
+
 # 1.0.0.0
 
-* Added list specific members to `ToJSON` and `FromJSON` classes. In the same
-  way `Read` / `Show` handle lists specifically. This removes need for
-  overlapping instances to handle `String`.
+Major enhancements:
 
-* Added higher rank classes: `ToJSON1`, `ToJSON2`, `FromJSON1`, and `FromJSON2`.
+* Introduced new `FromJSONKey` and `ToJSONKey` type classes that are
+  used to encode maps without going through HashMap. This also allows arbitrary
+  serialization of keys where a string-like key will encode into an object and
+  other keys will encode into an array of key-value tuples.
 
-* Modified instances for `Map` and `HashMap`. Introduced new `FromJSONKey` and
-  `ToJSONKey` type classes.
+* Added higher rank classes: `ToJSON1`, `ToJSON2`, `FromJSON1`, and
+  `FromJSON2`.
 
-* Integral `FromJSON` instances do not accept non integral JSON numbers (e.g. `3.14`).
-  Also over/underflows are caught for bounded types.
+* Added `Data.Aeson.Encoding` with functions to safely write `ToJSON`
+  instances using `toEncoding`.
 
-* Added `Data.Aeson.Encoding` with functions to work with `Encoding` in an abstract way.
+Other enhancements:
 
-* Added `UntaggedValue` to `SumEncoding`
+* A Cabal `fast` flag was added to disable building with optimizations. This drastically speeds up compiling both aeson ***and*** libraries using aeson so it is recommended to enable it during development. With cabal-install you can `cabal install aeson -ffast` and with stack you can add a flag section to your stack.yaml:
+```
+flags:
+  aeson:
+    fast: true
+```
+
+* Added list specific members to `ToJSON` and `FromJSON` classes. In
+  the same way `Read` and `Show` handle lists specifically. This
+  removes need for overlapping instances to handle `String`.
+
+* Added a new `sumEncoding` option `UntaggedValue` which prevents
+  objects from being tagged with the constructor name.
+
+* JSONPaths are now tracked in instances derived with template-haskell
+  and generics.
+
+* Get rid of redundancy of JSONPath error messages in nested records.
+
+  `eitherDecode "{\"x\":{\"a\": [1,2,true]}}" :: Either String Y`
+  previously yielded
+  `Error in $.x.a[2]: failed to parse field" x: failed to parse field a: expected Int, encountered Boolean`
+  and now yields `Error in $.x.a[2]: expected Int, encountered Boolean"`.
+
+  Some users might prefer to insert `modifyFailure` themselves to
+  customize error messages, which previously prevented the use of
+  `(.:)`.
+
+* Backwards compatibility with `bytestring-0.9` using the
+  `bytestring-builder` compatibility package.
 
 * Export `decodeWith`, `decodeStrictWith`, `eitherDecodeWith`, and
   `eitherDecodeStrictWith` from `Data.Aeson.Parser`. This allows
   decoding using explicit parsers instead of using `FromJSON`
   instances.
 
+* Un-orphan internal instances to render them in haddocks.
+
+Other changes:
+
+* Integral `FromJSON` instances now only accept integral
+  values. E.g. parsing `3.14` to `Int` fails instead of succeeding
+  with the value `3`.
+
+* Over/underflows are now caught for bounded numeric types.
+
 * Remove the `contents` field encoding with `allNullaryToStringTag = False`,
   giving us `{ "tag" : "c1" }` instead of `{ "tag" : "c1", contents : [] }`.
-  The contents field is optional when parsing so this is only a breaking change for ToJSON.
+  The contents field is optional when parsing so this is only a breaking
+  change for ToJSON instances.
 
 * Fix a bug where `genericToEncoding` with `unwrapUnaryRecords = True`
   would produce an invalid encoding: `"unwrap\":""`.
 
-* Get rid of redundancy of JSONPath error messages in nested records.
-
-  `eitherDecode "{\"x\":{\"a\": [1,2,true]}}" :: Either String Y`
-  previously yielded `Error in $.x.a[2]: failed to parse field" x:
-  failed to parse field a: expected Int, encountered Boolean` and now
-  yields `Error in $.x.a[2]: expected Int, encountered Boolean"`.
-
-  Some users might prefer to insert `modifyFailure` themselves to
-  customize error messages, which previously prevented the use of
-  `(.:)`.
-
 * `ToJSON` instances using `genericToEncoding` and `omitNothingFields`
-  no longer produces invalid JSON.
+  no longer produce invalid JSON.
 
 * Added instances for `DList`, `Compose`, `Product`, `Sum`.
-
-* Buildable with `bytestring-0.9` (with a help of `bytestring-builder` compatibility package).
 
 ### 0.11.2.0
 

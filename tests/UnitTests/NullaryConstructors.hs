@@ -2,7 +2,13 @@
 
 {-# OPTIONS_GHC -fno-warn-deprecations #-}
 
-module UnitTests.NullaryConstructors (nullaryConstructors) where
+module UnitTests.NullaryConstructors
+    (
+      nullaryConstructors
+    ) where
+
+import Prelude ()
+import Prelude.Compat
 
 import Data.Aeson (decode, eitherDecode, fromEncoding, Value)
 import Data.Aeson.Internal (IResult (..), iparse)
@@ -10,7 +16,7 @@ import Data.Aeson.Types (Parser)
 import Data.ByteString.Builder (toLazyByteString)
 import Data.Maybe (fromJust)
 import Encoders
-import Test.HUnit (Assertion, (@=?))
+import Test.HUnit ((@=?), Assertion)
 import Types
 import qualified Data.ByteString.Lazy.Char8 as L
 

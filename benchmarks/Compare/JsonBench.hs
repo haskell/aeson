@@ -2,11 +2,17 @@
 --
 -- https://github.com/chadaustin/buffer-builder/blob/master/test.json
 
-{-# LANGUAGE BangPatterns, OverloadedStrings, RecordWildCards #-}
+{-# LANGUAGE BangPatterns #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
-{-# LANGUAGE MagicHash, ScopedTypeVariables #-}
+{-# LANGUAGE MagicHash #-}
+{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE RecordWildCards #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 
 module Compare.JsonBench (benchmarks) where
+
+import Prelude ()
+import Prelude.Compat
 
 import Control.DeepSeq (NFData(..))
 import Criterion

@@ -1,21 +1,21 @@
-{-# LANGUAGE CPP                   #-}
-{-# LANGUAGE DataKinds             #-}
-{-# LANGUAGE DefaultSignatures     #-}
-{-# LANGUAGE FlexibleContexts      #-}
-{-# LANGUAGE FlexibleInstances     #-}
-{-# LANGUAGE GADTs                 #-}
+{-# LANGUAGE CPP #-}
+{-# LANGUAGE DataKinds #-}
+{-# LANGUAGE DefaultSignatures #-}
+{-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE GADTs #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
-{-# LANGUAGE NamedFieldPuns        #-}
-{-# LANGUAGE OverloadedStrings     #-}
-{-# LANGUAGE RecordWildCards       #-}
-{-# LANGUAGE ScopedTypeVariables   #-}
-{-# LANGUAGE TypeOperators         #-}
-{-# LANGUAGE TypeSynonymInstances  #-}
-{-# LANGUAGE UndecidableInstances  #-}
-{-# LANGUAGE ViewPatterns          #-}
+{-# LANGUAGE NamedFieldPuns #-}
+{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE RecordWildCards #-}
+{-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE TypeOperators #-}
+{-# LANGUAGE TypeSynonymInstances #-}
+{-# LANGUAGE UndecidableInstances #-}
+{-# LANGUAGE ViewPatterns #-}
 
 #if __GLASGOW_HASKELL__ >= 706
-{-# LANGUAGE PolyKinds             #-}
+{-# LANGUAGE PolyKinds #-}
 #endif
 
 #include "overlapping-compat.h"
@@ -23,7 +23,8 @@
 -- TODO: Drop this when we remove support for Data.Attoparsec.Number
 {-# OPTIONS_GHC -fno-warn-deprecations #-}
 
-module Data.Aeson.Types.FromJSON (
+module Data.Aeson.Types.FromJSON
+    (
     -- * Core JSON classes
       FromJSON(..)
     -- * Liftings to unary and binary type constructors
@@ -46,7 +47,7 @@ module Data.Aeson.Types.FromJSON (
     -- * List functions
     , listParser
 
-      -- * Inspecting @'Value's@
+    -- * Inspecting @'Value's@
     , withObject
     , withText
     , withArray
@@ -67,69 +68,65 @@ module Data.Aeson.Types.FromJSON (
     , parseOptionalFieldWith
     ) where
 
-import Prelude        ()
-import Prelude.Compat hiding (foldr)
+import Prelude ()
+import Prelude.Compat
 
+import Control.Applicative ((<|>), Const(..))
+import Control.Monad ((<=<), zipWithM)
 import Data.Aeson.Internal.Functions (mapKey)
 import Data.Aeson.Types.Generic
 import Data.Aeson.Types.Internal
-
-import qualified Data.Aeson.Parser.Time           as Time
-import qualified Data.Attoparsec.ByteString.Char8 as A (endOfInput, parseOnly,
-                                                        scientific)
-
-import Control.Applicative          (Const (..), (<|>))
-import Control.Monad                ((<=<), zipWithM)
-import Data.Attoparsec.Number       (Number (..))
-import Data.Bits                    (unsafeShiftR)
-import Data.Fixed                   (Fixed, HasResolution)
-import Data.Functor.Compose         (Compose (..))
-import Data.Functor.Identity        (Identity (..))
-import Data.Functor.Product         (Product (..))
-import Data.Functor.Sum             (Sum (..))
-import Data.Hashable                (Hashable (..))
-import Data.Int                     (Int16, Int32, Int64, Int8)
-import Data.List.NonEmpty           (NonEmpty (..))
-import Data.Maybe                   (fromMaybe)
-import Data.Monoid                  (Dual (..), First (..), Last (..), (<>))
-import Data.Proxy                   (Proxy (..))
-import Data.Ratio                   (Ratio, (%))
-import Data.Scientific              (Scientific)
-import Data.Tagged                  (Tagged (..))
-import Data.Text                    (Text, pack, unpack)
-import Data.Time                    (Day, LocalTime, NominalDiffTime, TimeOfDay,
-                                     UTCTime, ZonedTime)
-import Data.Time.Format             (parseTime)
-import Data.Time.Locale.Compat      (defaultTimeLocale)
-import Data.Traversable             as Tr (sequence)
-import Data.Vector                  (Vector)
-import Data.Version                 (Version, parseVersion)
-import Data.Word                    (Word16, Word32, Word64, Word8)
-import Foreign.Storable             (Storable)
+import Data.Attoparsec.Number (Number(..))
+import Data.Bits (unsafeShiftR)
+import Data.Fixed (Fixed, HasResolution)
+import Data.Functor.Compose (Compose(..))
+import Data.Functor.Identity (Identity(..))
+import Data.Functor.Product (Product(..))
+import Data.Functor.Sum (Sum(..))
+import Data.Hashable (Hashable(..))
+import Data.Int (Int16, Int32, Int64, Int8)
+import Data.List.NonEmpty (NonEmpty(..))
+import Data.Maybe (fromMaybe)
+import Data.Monoid ((<>))
+import Data.Proxy (Proxy(..))
+import Data.Ratio ((%), Ratio)
+import Data.Scientific (Scientific)
+import Data.Tagged (Tagged(..))
+import Data.Text (Text, pack, unpack)
+import Data.Time (Day, LocalTime, NominalDiffTime, TimeOfDay, UTCTime, ZonedTime)
+import Data.Time.Format (parseTime)
+import Data.Time.Locale.Compat (defaultTimeLocale)
+import Data.Traversable as Tr (sequence)
+import Data.Vector (Vector)
+import Data.Version (Version, parseVersion)
+import Data.Word (Word16, Word32, Word64, Word8)
+import Foreign.Storable (Storable)
 import GHC.Generics
-import Numeric.Natural              (Natural)
+import Numeric.Natural (Natural)
 import Text.ParserCombinators.ReadP (readP_to_S)
-
-import qualified Data.DList            as DList
-import qualified Data.HashMap.Strict   as H
-import qualified Data.HashSet          as HashSet
-import qualified Data.IntMap           as IntMap
-import qualified Data.IntSet           as IntSet
-import qualified Data.Map              as M
-import qualified Data.Scientific       as Scientific
-import qualified Data.Sequence         as Seq
-import qualified Data.Set              as Set
-import qualified Data.Text             as T
-import qualified Data.Text.Encoding    as T
-import qualified Data.Text.Lazy        as LT
-import qualified Data.Tree             as Tree
-import qualified Data.Vector           as V
-import qualified Data.Vector.Generic   as VG
-import qualified Data.Vector.Primitive as VP
-import qualified Data.Vector.Storable  as VS
-import qualified Data.Vector.Unboxed   as VU
-
 import Unsafe.Coerce (unsafeCoerce)
+import qualified Data.Aeson.Parser.Time as Time
+import qualified Data.Attoparsec.ByteString.Char8 as A (endOfInput, parseOnly, scientific)
+import qualified Data.DList as DList
+import qualified Data.HashMap.Strict as H
+import qualified Data.HashSet as HashSet
+import qualified Data.IntMap as IntMap
+import qualified Data.IntSet as IntSet
+import qualified Data.Map as M
+import qualified Data.Monoid as Monoid
+import qualified Data.Scientific as Scientific
+import qualified Data.Semigroup as Semigroup
+import qualified Data.Sequence as Seq
+import qualified Data.Set as Set
+import qualified Data.Text as T
+import qualified Data.Text.Encoding as T
+import qualified Data.Text.Lazy as LT
+import qualified Data.Tree as Tree
+import qualified Data.Vector as V
+import qualified Data.Vector.Generic as VG
+import qualified Data.Vector.Primitive as VP
+import qualified Data.Vector.Storable as VS
+import qualified Data.Vector.Unboxed as VU
 
 #ifndef HAS_COERCIBLE
 #define HAS_COERCIBLE (__GLASGOW_HASKELL__ >= 707)
@@ -660,9 +657,9 @@ obj .: key = case H.lookup key obj of
                Just v  -> parseJSON v <?> Key key
 {-# INLINE (.:) #-}
 
--- | Retrieve the value associated with the given key of an 'Object'.  The
--- result is 'Nothing' if the key is not present or value is 'Null', or 'empty'
--- if the value cannot be converted to the desired type.
+-- | Retrieve the value associated with the given key of an 'Object'. The
+-- result is 'Nothing' if the key is not present or if its value is 'Null',
+-- or 'empty' if the value cannot be converted to the desired type.
 --
 -- This accessor is most useful if the key and value can be absent
 -- from an object without affecting its validity.  If the key and
@@ -673,8 +670,12 @@ obj .:? key = case H.lookup key obj of
                Just v  -> parseJSON v <?> Key key
 {-# INLINE (.:?) #-}
 
--- | Like '.:?', but the resulting parser will fail,
--- if the key is present but is 'Null'.
+-- | Retrieve the value associated with the given key of an 'Object'.
+-- The result is 'Nothing' if the key is not present or 'empty' if the
+-- value cannot be converted to the desired type.
+--
+-- This differs from '.:?' by attempting to parse 'Null' the same as any
+-- other JSON value, instead of interpreting it as 'Nothing'.
 (.:!) :: (FromJSON a) => Object -> Text -> Parser (Maybe a)
 obj .:! key = case H.lookup key obj of
                Nothing -> pure Nothing
@@ -1184,7 +1185,7 @@ instance FromJSON Int where
     {-# INLINE parseJSON #-}
 
 instance FromJSONKey Int where
-    fromJSONKey = FromJSONKeyTextParser $ parseBoundedIntegralText "Int" 
+    fromJSONKey = FromJSONKeyTextParser $ parseBoundedIntegralText "Int"
 
 -- | /WARNING:/ Only parse Integers from trusted input since an
 -- attacker could easily fill up the memory of the target system by
@@ -1610,29 +1611,113 @@ instance FromJSON NominalDiffTime where
 -- base Monoid/Semigroup
 -------------------------------------------------------------------------------
 
-instance FromJSON1 Dual where
-    liftParseJSON p _ = fmap Dual . p
+instance FromJSON1 Monoid.Dual where
+    liftParseJSON p _ = fmap Monoid.Dual . p
     {-# INLINE liftParseJSON #-}
 
-instance FromJSON a => FromJSON (Dual a) where
+instance FromJSON a => FromJSON (Monoid.Dual a) where
     parseJSON = parseJSON1
     {-# INLINE parseJSON #-}
 
 
-instance FromJSON1 First where
-    liftParseJSON p p' = fmap First . liftParseJSON p p'
+instance FromJSON1 Monoid.First where
+    liftParseJSON p p' = fmap Monoid.First . liftParseJSON p p'
     {-# INLINE liftParseJSON #-}
 
-instance FromJSON a => FromJSON (First a) where
+instance FromJSON a => FromJSON (Monoid.First a) where
     parseJSON = parseJSON1
     {-# INLINE parseJSON #-}
 
 
-instance FromJSON1 Last where
-    liftParseJSON p p' = fmap Last . liftParseJSON p p'
+instance FromJSON1 Monoid.Last where
+    liftParseJSON p p' = fmap Monoid.Last . liftParseJSON p p'
     {-# INLINE liftParseJSON #-}
 
-instance FromJSON a => FromJSON (Last a) where
+instance FromJSON a => FromJSON (Monoid.Last a) where
+    parseJSON = parseJSON1
+    {-# INLINE parseJSON #-}
+
+
+instance FromJSON1 Semigroup.Min where
+    liftParseJSON p _ a = Semigroup.Min <$> p a
+    {-# INLINE liftParseJSON #-}
+
+    liftParseJSONList _ p a = fmap Semigroup.Min <$> p a
+    {-# INLINE liftParseJSONList #-}
+
+instance (FromJSON a) => FromJSON (Semigroup.Min a) where
+    parseJSON = parseJSON1
+    {-# INLINE parseJSON #-}
+
+    parseJSONList = liftParseJSONList parseJSON parseJSONList
+    {-# INLINE parseJSONList #-}
+
+
+instance FromJSON1 Semigroup.Max where
+    liftParseJSON p _ a = Semigroup.Max <$> p a
+    {-# INLINE liftParseJSON #-}
+
+    liftParseJSONList _ p a = fmap Semigroup.Max <$> p a
+    {-# INLINE liftParseJSONList #-}
+
+instance (FromJSON a) => FromJSON (Semigroup.Max a) where
+    parseJSON = parseJSON1
+    {-# INLINE parseJSON #-}
+
+    parseJSONList = liftParseJSONList parseJSON parseJSONList
+    {-# INLINE parseJSONList #-}
+
+
+instance FromJSON1 Semigroup.First where
+    liftParseJSON p _ a = Semigroup.First <$> p a
+    {-# INLINE liftParseJSON #-}
+
+    liftParseJSONList _ p a = fmap Semigroup.First <$> p a
+    {-# INLINE liftParseJSONList #-}
+
+instance (FromJSON a) => FromJSON (Semigroup.First a) where
+    parseJSON = parseJSON1
+    {-# INLINE parseJSON #-}
+
+    parseJSONList = liftParseJSONList parseJSON parseJSONList
+    {-# INLINE parseJSONList #-}
+
+
+instance FromJSON1 Semigroup.Last where
+    liftParseJSON p _ a = Semigroup.Last <$> p a
+    {-# INLINE liftParseJSON #-}
+
+    liftParseJSONList _ p a = fmap Semigroup.Last <$> p a
+    {-# INLINE liftParseJSONList #-}
+
+instance (FromJSON a) => FromJSON (Semigroup.Last a) where
+    parseJSON = parseJSON1
+    {-# INLINE parseJSON #-}
+
+    parseJSONList = liftParseJSONList parseJSON parseJSONList
+    {-# INLINE parseJSONList #-}
+
+
+instance FromJSON1 Semigroup.WrappedMonoid where
+    liftParseJSON p _ a = Semigroup.WrapMonoid <$> p a
+    {-# INLINE liftParseJSON #-}
+
+    liftParseJSONList _ p a = fmap Semigroup.WrapMonoid <$> p a
+    {-# INLINE liftParseJSONList #-}
+
+instance (FromJSON a) => FromJSON (Semigroup.WrappedMonoid a) where
+    parseJSON = parseJSON1
+    {-# INLINE parseJSON #-}
+
+    parseJSONList = liftParseJSONList parseJSON parseJSONList
+    {-# INLINE parseJSONList #-}
+
+
+instance FromJSON1 Semigroup.Option where
+    liftParseJSON p p' = fmap Semigroup.Option . liftParseJSON p p'
+    {-# INLINE liftParseJSON #-}
+
+instance FromJSON a => FromJSON (Semigroup.Option a) where
     parseJSON = parseJSON1
     {-# INLINE parseJSON #-}
 

@@ -1,12 +1,12 @@
 name:            aeson
-version:         1.0.0.0
+version:         1.0.1.0
 license:         BSD3
 license-file:    LICENSE
 category:        Text, Web, JSON
 copyright:       (c) 2011-2016 Bryan O'Sullivan
                  (c) 2011 MailRank, Inc.
 author:          Bryan O'Sullivan <bos@serpentine.com>
-maintainer:      Bryan O'Sullivan <bos@serpentine.com>
+maintainer:      Adam Bergmark <adam@bergmark.nl>
 stability:       experimental
 tested-with:     GHC == 7.4.2, GHC == 7.6.3, GHC == 7.8.4, GHC == 7.10.3, GHC == 8.0.1
 synopsis:        Fast JSON parsing and encoding
@@ -56,6 +56,11 @@ extra-source-files:
 
 flag developer
   description: operate in developer mode
+  default: False
+  manual: True
+
+flag fast
+  description: compile without optimizations
   default: False
   manual: True
 
@@ -131,11 +136,16 @@ library
     -- `Numeric.Natural` is available in base only since GHC 7.10 / base 4.8
     build-depends: nats >= 1 && < 1.2
 
+  ghc-options: -Wall
+
   if flag(developer)
     ghc-options: -Werror
     ghc-prof-options: -auto-all
 
-  ghc-options: -O2 -Wall
+  if flag(fast)
+    ghc-options: -O0
+  else
+    ghc-options: -O2
 
   include-dirs: include
   c-sources:  cbits/unescape_string.c
@@ -163,7 +173,7 @@ test-suite tests
 
   build-depends:
     HUnit,
-    QuickCheck >= 2.7 && <2.8.3,
+    QuickCheck >= 2.7 && <2.9.3,
     aeson,
     attoparsec,
     base,
@@ -171,7 +181,7 @@ test-suite tests
     base-orphans >= 0.5.3 && <0.6,
     containers,
     dlist,
-    generic-deriving >= 1.10 && < 1.11,
+    generic-deriving >= 1.10 && < 1.12,
     ghc-prim >= 0.2,
     hashable >= 1.2.4.0,
     scientific,
