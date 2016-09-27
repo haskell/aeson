@@ -158,13 +158,9 @@ int _js_find_string_end(const int bs, uint8_t *const start, uint8_t *const end){
         if (backslash == -2){
             backslash = -1;
             s++; 
-            if (s == end) {
-                break;
-            } else {
-                s++;
-            }
+            if (s == end) break;
         }
-        else if (*s == 92) {  // backslash
+        if (*s == 92) {  // backslash
             backslash = -2;
             s++;
         }
