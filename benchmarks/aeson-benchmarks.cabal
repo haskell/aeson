@@ -35,6 +35,7 @@ library
 
   build-depends:
     attoparsec >= 0.13.0.1,
+    binary-parsers >= 0.2.1,
     base == 4.*,
     base-compat >= 0.9.1 && <0.10,
     time-locale-compat >=0.1.1 && <0.2,
@@ -147,6 +148,7 @@ executable aeson-benchmark-aeson-encode
   build-depends:
     aeson-benchmarks,
     attoparsec,
+    binary-parsers,
     base,
     base-compat,
     bytestring,
@@ -159,6 +161,7 @@ executable aeson-benchmark-aeson-parse
   build-depends:
     aeson-benchmarks,
     attoparsec,
+    binary-parsers,
     base,
     base-compat,
     bytestring,

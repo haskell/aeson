@@ -35,7 +35,7 @@ import Test.Framework (Test, testGroup)
 import Test.Framework.Providers.QuickCheck2 (testProperty)
 import Test.QuickCheck (Arbitrary(..), Property, (===), (.&&.), counterexample)
 import Types
-import qualified Data.Attoparsec.Lazy as L
+import qualified Data.Binary.Parser as BP
 import qualified Data.ByteString.Lazy.Char8 as L
 import qualified Data.HashMap.Strict as H
 import qualified Data.Map as Map
@@ -73,10 +73,10 @@ toParseJSON1 parsejson1 tojson1 = toParseJSON parsejson tojson
 roundTripEnc :: (FromJSON a, ToJSON a, Show a) =>
              (a -> a -> Property) -> a -> a -> Property
 roundTripEnc eq _ i =
-    case fmap ifromJSON . L.parse value . encode $ i of
-      L.Done _ (ISuccess v)      -> v `eq` i
-      L.Done _ (IError path err) -> failure "fromJSON" (formatError path err) i
-      L.Fail _ _ err             -> failure "parse" err i
+    case fmap ifromJSON . BP.parseLazy value . encode $ i of
+      Right (ISuccess v)      -> v `eq` i
+      Right (IError path err) -> failure "fromJSON" (formatError path err) i
+      Left  err               -> failure "parse" err i
 
 roundTripNoEnc :: (FromJSON a, ToJSON a, Show a) =>
              (a -> a -> Property) -> a -> a -> Property

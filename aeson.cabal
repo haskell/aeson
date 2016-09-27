@@ -102,6 +102,7 @@ library
 
   build-depends:
     attoparsec >= 0.13.0.1,
+    binary-parsers >= 0.2.1,
     base >= 4.5 && < 5,
     base-compat >= 0.9.1 && < 0.10,
     containers >= 0.2.4.1,
@@ -176,6 +177,7 @@ test-suite tests
     QuickCheck >= 2.7 && <2.9.3,
     aeson,
     attoparsec,
+    binary-parsers,
     base,
     base-compat,
     base-orphans >= 0.5.3 && <0.6,
