@@ -9,6 +9,7 @@ module Data.Aeson.Parser.Unescape (
 
 import           Control.Exception          (evaluate, throw, try)
 import           Control.Monad.ST.Unsafe    (unsafeIOToST, unsafeSTToIO)
+import           Data.ByteString.Internal   (ByteString(..))
 import qualified Data.Text.Array            as A
 import           Data.Text.Encoding.Error   (UnicodeException (..))
 import           Data.Text.Internal         (Text (..))
