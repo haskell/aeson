@@ -43,7 +43,6 @@ library
     deepseq,
     dlist >= 0.2,
     fail == 4.9.*,
-    ghc-prim >= 0.2,
     hashable >= 1.1.2.0,
     mtl,
     scientific >= 0.3.4.7 && < 0.4,
@@ -86,7 +85,6 @@ executable aeson-benchmark-compare
     bytestring,
     criterion >= 1.0,
     deepseq,
-    ghc-prim,
     json-builder,
     text
 
@@ -101,7 +99,6 @@ executable aeson-benchmark-micro
     bytestring,
     criterion >= 1.0,
     deepseq,
-    ghc-prim,
     text
 
 executable aeson-benchmark-typed
@@ -118,7 +115,6 @@ executable aeson-benchmark-typed
     base-compat,
     criterion >= 1.0,
     deepseq,
-    ghc-prim,
     text,
     time
 

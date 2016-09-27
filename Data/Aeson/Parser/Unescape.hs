@@ -9,8 +9,6 @@ module Data.Aeson.Parser.Unescape (
 
 import           Control.Exception          (evaluate, throw, try)
 import           Control.Monad.ST.Unsafe    (unsafeIOToST, unsafeSTToIO)
-import           Data.ByteString            as B
-import           Data.ByteString.Internal   as B hiding (c2w)
 import qualified Data.Text.Array            as A
 import           Data.Text.Encoding.Error   (UnicodeException (..))
 import           Data.Text.Internal         (Text (..))
@@ -36,7 +34,8 @@ unescapeTextScanner backslashed bs@(PS fp off len) = unsafeDupablePerformIO $
     withForeignPtr fp $ \ptr -> do
         s <- c_js_find_string_end backslashed (ptr `plusPtr` off) (ptr `plusPtr` (off + len))
         if s >= 0
-            then return . Right $ B.splitAt (fromIntegral s) bs
+            then let s' = fromIntegral s
+                 in return $ Right (PS fp off s', PS fp (off + s') (len - s'))
             else return (Left s)
 {-# INLINE unescapeTextScanner #-}
 

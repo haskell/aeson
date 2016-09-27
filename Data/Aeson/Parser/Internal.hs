@@ -1,9 +1,6 @@
 {-# LANGUAGE BangPatterns #-}
 {-# LANGUAGE CPP #-}
 {-# LANGUAGE OverloadedStrings #-}
-#if MIN_VERSION_ghc_prim(0,3,1)
-{-# LANGUAGE MagicHash #-}
-#endif
 
 -- |
 -- Module:      Data.Aeson.Parser.Internal
@@ -38,10 +35,6 @@ import Prelude.Compat
 
 import Data.Aeson.Types.Internal (IResult(..), JSONPath, Result(..), Value(..))
 import Data.Binary.Parser (Parser, endOfInput, scientific, skipSpaces, string)
-import Data.Binary.Parser.Char8 (char)
-import Data.Bits ((.|.), shiftL)
-import Data.ByteString.Internal (ByteString(..))
-import Data.Char (chr)
 import Data.Text (Text)
 import Data.Vector as Vector (Vector, empty, fromListN, reverse)
 import qualified Data.Binary.Parser as BP
@@ -55,6 +48,7 @@ import Data.Aeson.Parser.Unescape
 #define CLOSE_CURLY 125
 #define CLOSE_SQUARE 93
 #define COMMA 44
+#define COLON 58
 #define DOUBLE_QUOTE 34
 #define OPEN_CURLY 123
 #define OPEN_SQUARE 91
@@ -115,7 +109,7 @@ objectValues str val = do
   -- Why use acc pattern here, you may ask? because 'H.fromList' use 'unsafeInsert'
   -- and it's much faster because it's doing in place update to the 'HashMap'!
   loop acc = do
-    k <- str <* skipSpaces <* char ':'
+    k <- str <* skipSpaces <* BP.word8 COLON
     v <- val <* skipSpaces
     ch <- BP.satisfy $ \w -> w == COMMA || w == CLOSE_CURLY
     let acc' = (k, v) : acc
