@@ -1,6 +1,8 @@
 resolver: lts-7.0
 packages:
 - '.'
+extra-deps:
+- binary-parsers-0.2.3
 flags:
   aeson:
     fast: true

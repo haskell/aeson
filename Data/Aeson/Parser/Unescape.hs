@@ -3,13 +3,13 @@
 {-# LANGUAGE UnliftedFFITypes         #-}
 
 module Data.Aeson.Parser.Unescape (
-  unescapeText
+  unescapeTextScanner
+, unescapeText
 ) where
 
 import           Control.Exception          (evaluate, throw, try)
 import           Control.Monad.ST.Unsafe    (unsafeIOToST, unsafeSTToIO)
-import           Data.ByteString            as B
-import           Data.ByteString.Internal   as B hiding (c2w)
+import           Data.ByteString.Internal   (ByteString(..))
 import qualified Data.Text.Array            as A
 import           Data.Text.Encoding.Error   (UnicodeException (..))
 import           Data.Text.Internal         (Text (..))
@@ -26,6 +26,19 @@ import           GHC.Base                   (MutableByteArray#)
 foreign import ccall unsafe "_js_decode_string" c_js_decode
     :: MutableByteArray# s -> Ptr CSize
     -> Ptr Word8 -> Ptr Word8 -> IO CInt
+
+foreign import ccall unsafe "_js_find_string_end" c_js_find_string_end
+    :: CInt -> Ptr Word8 -> Ptr Word8 -> IO CInt
+
+unescapeTextScanner :: CInt -> ByteString -> Either CInt (ByteString, ByteString)
+unescapeTextScanner backslashed bs@(PS fp off len) = unsafeDupablePerformIO $
+    withForeignPtr fp $ \ptr -> do
+        s <- c_js_find_string_end backslashed (ptr `plusPtr` off) (ptr `plusPtr` (off + len))
+        if s >= 0
+            then let s' = fromIntegral s
+                 in return $ Right (PS fp off s', PS fp (off + s') (len - s'))
+            else return (Left s)
+{-# INLINE unescapeTextScanner #-}
 
 unescapeText' :: ByteString -> Text
 unescapeText' (PS fp off len) = runText $ \done -> do

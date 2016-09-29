@@ -3,6 +3,7 @@ packages:
 - '.'
 extra-deps:
 - semigroups-0.18.2
+- binary-parsers-0.2.3
 flags:
   aeson:
     fast: true

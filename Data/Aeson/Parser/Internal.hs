@@ -1,9 +1,6 @@
 {-# LANGUAGE BangPatterns #-}
 {-# LANGUAGE CPP #-}
 {-# LANGUAGE OverloadedStrings #-}
-#if MIN_VERSION_ghc_prim(0,3,1)
-{-# LANGUAGE MagicHash #-}
-#endif
 
 -- |
 -- Module:      Data.Aeson.Parser.Internal
@@ -37,29 +34,21 @@ import Prelude ()
 import Prelude.Compat
 
 import Data.Aeson.Types.Internal (IResult(..), JSONPath, Result(..), Value(..))
-import Data.Attoparsec.ByteString.Char8 (Parser, char, endOfInput, scientific, skipSpace, string)
-import Data.Attoparsec.ByteString.Char8 (Parser, char, endOfInput, scientific, skipSpace, string)
-import Data.Bits ((.|.), shiftL)
-import Data.ByteString.Internal (ByteString(..))
-import Data.Char (chr)
+import Data.Binary.Parser (Parser, endOfInput, scientific, skipSpaces, string)
 import Data.Text (Text)
-import Data.Vector as Vector (Vector, empty, fromListN, reverse)
-import qualified Data.Attoparsec.ByteString as A
-import qualified Data.Attoparsec.Lazy as L
+import qualified Data.Vector as Vector (Vector, empty, fromListN, reverse)
+import qualified Data.Binary.Parser as BP
 import qualified Data.ByteString as B
 import qualified Data.ByteString.Lazy as L
 import qualified Data.HashMap.Strict as H
 import Data.Aeson.Parser.Unescape
 
-#if MIN_VERSION_ghc_prim(0,3,1)
-import GHC.Base (Int#, (==#), isTrue#, word2Int#)
-import GHC.Word (Word8(W8#))
-#endif
 
 #define BACKSLASH 92
 #define CLOSE_CURLY 125
 #define CLOSE_SQUARE 93
 #define COMMA 44
+#define COLON 58
 #define DOUBLE_QUOTE 34
 #define OPEN_CURLY 123
 #define OPEN_SQUARE 91
@@ -111,21 +100,21 @@ object_' = {-# SCC "object_'" #-} do
 
 objectValues :: Parser Text -> Parser Value -> Parser (H.HashMap Text Value)
 objectValues str val = do
-  skipSpace
-  w <- A.peekWord8'
+  skipSpaces
+  w <- BP.peek
   if w == CLOSE_CURLY
-    then A.anyWord8 >> return H.empty
+    then BP.skipN 1 >> return H.empty
     else loop []
  where
   -- Why use acc pattern here, you may ask? because 'H.fromList' use 'unsafeInsert'
   -- and it's much faster because it's doing in place update to the 'HashMap'!
   loop acc = do
-    k <- str <* skipSpace <* char ':'
-    v <- val <* skipSpace
-    ch <- A.satisfy $ \w -> w == COMMA || w == CLOSE_CURLY
+    k <- str <* skipSpaces <* BP.word8 COLON
+    v <- val <* skipSpaces
+    ch <- BP.satisfy $ \w -> w == COMMA || w == CLOSE_CURLY
     let acc' = (k, v) : acc
     if ch == COMMA
-      then skipSpace >> loop acc'
+      then skipSpaces >> loop acc'
       else return (H.fromList acc')
 {-# INLINE objectValues #-}
 
@@ -137,19 +126,19 @@ array_' = {-# SCC "array_'" #-} do
   !vals <- arrayValues value'
   return (Array vals)
 
-arrayValues :: Parser Value -> Parser (Vector Value)
+arrayValues :: Parser Value -> Parser (Vector.Vector Value)
 arrayValues val = do
-  skipSpace
-  w <- A.peekWord8'
+  skipSpaces
+  w <- BP.peek
   if w == CLOSE_SQUARE
-    then A.anyWord8 >> return Vector.empty
+    then BP.skipN 1 >> return Vector.empty
     else loop [] 1
   where
     loop acc !len = do
-      v <- val <* skipSpace
-      ch <- A.satisfy $ \w -> w == COMMA || w == CLOSE_SQUARE
+      v <- val <* skipSpaces
+      ch <- BP.satisfy $ \w -> w == COMMA || w == CLOSE_SQUARE
       if ch == COMMA
-        then skipSpace >> loop (v:acc) (len+1)
+        then skipSpaces >> loop (v:acc) (len+1)
         else return (Vector.reverse (Vector.fromListN len (v:acc)))
 {-# INLINE arrayValues #-}
 
@@ -165,12 +154,12 @@ arrayValues val = do
 -- to preserve interoperability and security.
 value :: Parser Value
 value = do
-  skipSpace
-  w <- A.peekWord8'
+  skipSpaces
+  w <- BP.peek
   case w of
-    DOUBLE_QUOTE  -> A.anyWord8 *> (String <$> jstring_)
-    OPEN_CURLY    -> A.anyWord8 *> object_
-    OPEN_SQUARE   -> A.anyWord8 *> array_
+    DOUBLE_QUOTE  -> BP.skipN 1 *> (String <$> jstring_)
+    OPEN_CURLY    -> BP.skipN 1 *> object_
+    OPEN_SQUARE   -> BP.skipN 1 *> array_
     C_f           -> string "false" *> pure (Bool False)
     C_t           -> string "true" *> pure (Bool True)
     C_n           -> string "null" *> pure Null
@@ -181,14 +170,14 @@ value = do
 -- | Strict version of 'value'. See also 'json''.
 value' :: Parser Value
 value' = do
-  skipSpace
-  w <- A.peekWord8'
+  skipSpaces
+  w <- BP.peek
   case w of
     DOUBLE_QUOTE  -> do
-                     !s <- A.anyWord8 *> jstring_
+                     !s <- BP.skipN 1 *> jstring_
                      return (String s)
-    OPEN_CURLY    -> A.anyWord8 *> object_'
-    OPEN_SQUARE   -> A.anyWord8 *> array_'
+    OPEN_CURLY    -> BP.skipN 1 *> object_'
+    OPEN_SQUARE   -> BP.skipN 1 *> array_'
     C_f           -> string "false" *> pure (Bool False)
     C_t           -> string "true" *> pure (Bool True)
     C_n           -> string "null" *> pure Null
@@ -200,40 +189,22 @@ value' = do
 
 -- | Parse a quoted JSON string.
 jstring :: Parser Text
-jstring = A.word8 DOUBLE_QUOTE *> jstring_
+jstring = BP.word8 DOUBLE_QUOTE *> jstring_
+{-# INLINE jstring #-}
 
 -- | Parse a string without a leading quote.
 jstring_ :: Parser Text
 {-# INLINE jstring_ #-}
 jstring_ = {-# SCC "jstring_" #-} do
-  s <- A.scan startState go <* A.anyWord8
+  s <- BP.scanChunks (-1) unescapeTextScanner <* BP.skipN 1
   case unescapeText s of
     Right r  -> return r
     Left err -> fail $ show err
- where
-#if MIN_VERSION_ghc_prim(0,3,1)
-    startState              = S 0#
-    go (S a) (W8# c)
-      | isTrue# a                     = Just (S 0#)
-      | isTrue# (word2Int# c ==# 34#) = Nothing   -- double quote
-      | otherwise = let a' = word2Int# c ==# 92#  -- backslash
-                    in Just (S a')
-
-data S = S Int#
-#else
-    startState              = False
-    go a c
-      | a                  = Just False
-      | c == DOUBLE_QUOTE  = Nothing
-      | otherwise = let a' = c == backslash
-                    in Just a'
-      where backslash = BACKSLASH
-#endif
 
 decodeWith :: Parser Value -> (Value -> Result a) -> L.ByteString -> Maybe a
 decodeWith p to s =
-    case L.parse p s of
-      L.Done _ v -> case to v of
+    case BP.parseLazy p s of
+      Right v -> case to v of
                       Success a -> Just a
                       _         -> Nothing
       _          -> Nothing
@@ -242,7 +213,7 @@ decodeWith p to s =
 decodeStrictWith :: Parser Value -> (Value -> Result a) -> B.ByteString
                  -> Maybe a
 decodeStrictWith p to s =
-    case either Error to (A.parseOnly p s) of
+    case either Error to (BP.parseOnly p s) of
       Success a -> Just a
       _         -> Nothing
 {-# INLINE decodeStrictWith #-}
@@ -250,17 +221,17 @@ decodeStrictWith p to s =
 eitherDecodeWith :: Parser Value -> (Value -> IResult a) -> L.ByteString
                  -> Either (JSONPath, String) a
 eitherDecodeWith p to s =
-    case L.parse p s of
-      L.Done _ v     -> case to v of
+    case BP.parseLazy p s of
+      Right v     -> case to v of
                           ISuccess a      -> Right a
                           IError path msg -> Left (path, msg)
-      L.Fail _ _ msg -> Left ([], msg)
+      Left  msg   -> Left ([], msg)
 {-# INLINE eitherDecodeWith #-}
 
 eitherDecodeStrictWith :: Parser Value -> (Value -> IResult a) -> B.ByteString
                        -> Either (JSONPath, String) a
 eitherDecodeStrictWith p to s =
-    case either (IError []) to (A.parseOnly p s) of
+    case either (IError []) to (BP.parseOnly p s) of
       ISuccess a      -> Right a
       IError path msg -> Left (path, msg)
 {-# INLINE eitherDecodeStrictWith #-}
@@ -287,9 +258,9 @@ eitherDecodeStrictWith p to s =
 -- | Parse a top-level JSON value followed by optional whitespace and
 -- end-of-input.  See also: 'json'.
 jsonEOF :: Parser Value
-jsonEOF = json <* skipSpace <* endOfInput
+jsonEOF = json <* skipSpaces <* endOfInput
 
 -- | Parse a top-level JSON value followed by optional whitespace and
 -- end-of-input.  See also: 'json''.
 jsonEOF' :: Parser Value
-jsonEOF' = json' <* skipSpace <* endOfInput
+jsonEOF' = json' <* skipSpaces <* endOfInput

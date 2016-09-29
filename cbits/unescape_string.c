@@ -148,3 +148,26 @@ int _js_decode_string(uint16_t *const dest, size_t *destoff,
     DISPATCH_ASCII(unicode1)
 }
 
+// if return >= 0, it's the split offset
+// if return == -1, then string ends without a tailing backslash 
+// if return == -2, then string ends with a tailing backslash 
+int _js_find_string_end(const int bs, uint8_t *const start, uint8_t *const end){
+    uint8_t *s = start;
+    int backslash = bs;
+    while (s < end) {
+        if (backslash == -2){
+            backslash = -1;
+            s++; 
+            if (s == end) break;
+        }
+        if (*s == 92) {  // backslash
+            backslash = -2;
+            s++;
+        }
+        else if (*s == 34) {  // double quote
+            return (s - start);
+        }
+        else { s++; }
+    }
+    return backslash;
+}
