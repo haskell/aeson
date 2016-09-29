@@ -36,7 +36,7 @@ import Prelude.Compat
 import Data.Aeson.Types.Internal (IResult(..), JSONPath, Result(..), Value(..))
 import Data.Binary.Parser (Parser, endOfInput, scientific, skipSpaces, string)
 import Data.Text (Text)
-import Data.Vector as Vector (Vector, empty, fromListN, reverse)
+import qualified Data.Vector as Vector (Vector, empty, fromListN, reverse)
 import qualified Data.Binary.Parser as BP
 import qualified Data.ByteString as B
 import qualified Data.ByteString.Lazy as L
@@ -126,7 +126,7 @@ array_' = {-# SCC "array_'" #-} do
   !vals <- arrayValues value'
   return (Array vals)
 
-arrayValues :: Parser Value -> Parser (Vector Value)
+arrayValues :: Parser Value -> Parser (Vector.Vector Value)
 arrayValues val = do
   skipSpaces
   w <- BP.peek

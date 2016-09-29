@@ -3,6 +3,7 @@ packages:
 - benchmarks
 extra-deps:
 - semigroups-0.18.2
+- binary-parsers-0.2.3
 flags:
   semigroups:
     bytestring-builder: false
