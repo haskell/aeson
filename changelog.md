@@ -1,6 +1,12 @@
 For the latest version of this document, please see [https://github.com/bos/aeson/blob/master/changelog.md](https://github.com/bos/aeson/blob/master/changelog.md).
 
-# 1.0.1.0
+### 1.0.2.0
+
+* Fixes a regression where it was no longer possible to derive
+  instances for types such as `data T a = T { f1 :: a, f2 :: Maybe a }`.
+  The fix is available on GHC >= 7.10.
+
+### 1.0.1.0
 
 * Decoding performance has been significantly improved (see
   https://github.com/bos/aeson/pull/452).
