@@ -47,6 +47,7 @@ extra-source-files:
     benchmarks/Typed/*.hs
     benchmarks/json-data/*.json
     include/overlapping-compat.h
+    include/incoherent-compat.h
     changelog.md
     examples/*.cabal
     examples/*.hs

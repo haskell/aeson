@@ -13,6 +13,7 @@
 {-# LANGUAGE TemplateHaskell #-}
 #endif
 
+#include "incoherent-compat.h"
 #include "overlapping-compat.h"
 
 {-|
@@ -1222,7 +1223,7 @@ class LookupField a where
 instance OVERLAPPABLE_ LookupField a where
     lookupField = lookupFieldWith
 
-instance LookupField (Maybe a) where
+instance INCOHERENT_ LookupField (Maybe a) where
     lookupField pj _ _ = parseOptionalFieldWith pj
 
 lookupFieldWith :: (Value -> Parser a) -> String -> String
