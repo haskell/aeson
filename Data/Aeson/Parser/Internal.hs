@@ -38,10 +38,6 @@ import Prelude.Compat
 
 import Data.Aeson.Types.Internal (IResult(..), JSONPath, Result(..), Value(..))
 import Data.Attoparsec.ByteString.Char8 (Parser, char, endOfInput, scientific, skipSpace, string)
-import Data.Attoparsec.ByteString.Char8 (Parser, char, endOfInput, scientific, skipSpace, string)
-import Data.Bits ((.|.), shiftL)
-import Data.ByteString.Internal (ByteString(..))
-import Data.Char (chr)
 import Data.Text (Text)
 import Data.Vector as Vector (Vector, empty, fromListN, reverse)
 import qualified Data.Attoparsec.ByteString as A
