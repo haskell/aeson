@@ -21,7 +21,7 @@ import Prelude ()
 import Prelude.Compat
 
 import Control.Applicative (Const(..))
-import Control.Monad (forM)
+import Control.Monad (forM, forM_)
 import Data.Aeson ((.=), (.:), (.:?), (.:!), FromJSON(..), FromJSONKeyFunction(..), FromJSONKey(..), ToJSON1(..), decode, eitherDecode, encode, genericParseJSON, genericToEncoding, genericToJSON, object, withObject)
 import Data.Aeson.Internal (JSONPathElement(..), formatError)
 import Data.Aeson.TH (deriveJSON, deriveToJSON, deriveToJSON1)
@@ -50,8 +50,10 @@ import Instances ()
 import Test.Framework (Test, testGroup)
 import Test.Framework.Providers.HUnit (testCase)
 import Test.HUnit (Assertion, assertFailure, assertEqual)
+import Text.Printf (printf)
 import Types (Approx(..), Compose3, Compose3', I)
 import UnitTests.NullaryConstructors (nullaryConstructors)
+import qualified Data.ByteString.Base16.Lazy as LBase16
 import qualified Data.ByteString.Lazy.Char8 as L
 import qualified Data.DList as DList
 import qualified Data.HashMap.Strict as HM
@@ -104,6 +106,7 @@ tests = testGroup "unit" [
   , testGroup "Nullary constructors" $ fmap (testCase "-") nullaryConstructors
   , testGroup "FromJSONKey" $ fmap (testCase "-") fromJSONKeyAssertions
   , testCase "PR #455" pr455
+  , testCase "Unescape string (PR #477)" unescapeString
   ]
 
 roundTripCamel :: String -> Assertion
@@ -573,6 +576,25 @@ data MyRecord2 = MyRecord2 {_field3 :: Maybe Int, _field4 :: Maybe Bool}
 
 instance ToJSON   MyRecord2
 instance FromJSON MyRecord2
+
+-- A regression test for: https://github.com/bos/aeson/pull/477
+unescapeString :: Assertion
+unescapeString = do
+  assertEqual "Basic escaping"
+     (Right ("\" / \\ \b \f \n \r \t" :: String))
+     (eitherDecode "\"\\\" \\/ \\\\ \\b \\f \\n \\r \\t\"")
+
+  forM_ [minBound .. maxBound :: Char] $ \ c ->
+    let s = LT.pack [c] in
+    assertEqual (printf "UTF-16 encoded '\\x%X'" c)
+      (Right s) (eitherDecode $ utf16Char s)
+  where
+    utf16Char = formatString . LBase16.encode . LT.encodeUtf16BE
+    formatString s
+      | L.length s == 4 = L.concat ["\"\\u", s, "\""]
+      | L.length s == 8 =
+          L.concat ["\"\\u", L.take 4 s, "\\u", L.drop 4 s, "\""]
+      | otherwise = error "unescapeString: can't happen"
 
 -- A regression test for: https://github.com/bos/aeson/pull/455
 data Foo a = FooNil | FooCons (Foo Int)
