@@ -130,7 +130,7 @@ int _js_decode_string(uint16_t *const dest, size_t *destoff,
     *d++ = (uint16_t) unidata;
 
     if (surrogate) {
-      if (unidata <= 0xDC00 || unidata >= 0xDFFF) // is not low surrogate
+      if (unidata < 0xDC00 || unidata > 0xDFFF) // is not low surrogate
         return -1;
       surrogate = 0;
     } else if (unidata >= 0xD800 && unidata <= 0xDBFF ) { // is high surrogate
@@ -147,4 +147,3 @@ int _js_decode_string(uint16_t *const dest, size_t *destoff,
     if (codepoint != 'u') { return -1; }
     DISPATCH_ASCII(unicode1)
 }
-
