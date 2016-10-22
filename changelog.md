@@ -1,21 +1,29 @@
 For the latest version of this document, please see [https://github.com/bos/aeson/blob/master/changelog.md](https://github.com/bos/aeson/blob/master/changelog.md).
 
+#### 1.0.2.1
+
+* Fixes a regression where a bunch of valid characters caused an
+  "Invalid UTF8-Stream" error when decoding. Thanks to Vladimir
+  Shabanov who investigated and fixed this.
+
 ### 1.0.2.0
 
 * Fixes a regression where it was no longer possible to derive
-  instances for types such as `data T a = T { f1 :: a, f2 :: Maybe a }`.
-  The fix is available on GHC >= 7.10.
+  instances for types such as `data T a = T { f1 :: a, f2 :: Maybe a
+  }`.
+
+Thanks to Sean Leather for fixing this, and to Ryan Scott for helping out.
 
 ### 1.0.1.0
 
 * Decoding performance has been significantly improved (see
-  https://github.com/bos/aeson/pull/452).
+  https://github.com/bos/aeson/pull/452). Thanks to @winterland1989.
 
 * Add `ToJSON`/`FromJSON` instances for newtypes from
   `Data.Semigroup`: `Min`, `Max`, `First`, `Last`, `WrappedMonoid`,
-  `Option`.
+  `Option`. Thanks to Lennart Spitzner.
 
-* Make the documentation for `.:!` more accurate.
+* Make the documentation for `.:!` more accurate. Thanks to Ian Jeffries.
 
 # 1.0.0.0
 
