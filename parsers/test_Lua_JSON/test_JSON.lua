@@ -1,5 +1,5 @@
 -- http://regex.info/blog/lua/json
-JSON = (loadfile "test_Lua_JSON/JSON.lua")() -- one-time load of the routines
+JSON = (loadfile "parsers/test_Lua_JSON/JSON.lua")() -- one-time load of the routines
 
 function readAll(file)
     local f = io.open(file, "rb")
