@@ -171,7 +171,22 @@ programs = {
        {
            "url":"https://doc.rust-lang.org/rustc-serialize/rustc_serialize/json/index.html",
            "commands":[os.path.join(PARSERS_DIR, "test_json-rustc_serialize/rj/target/debug/rj")]
-       }
+       },
+   "Java json-simple 1.1.1":
+       {
+           "url":"",
+           "commands":["/usr/bin/java", "-jar", os.path.join(PARSERS_DIR, "test_java_simple_json_1_1_1/TestJSONParsing.jar")]
+       },
+   "Java gson 2.7":
+       {
+           "url":"",
+           "commands":["/usr/bin/java", "-jar", os.path.join(PARSERS_DIR, "test_java_gson_2_7/TestJSONParsing.jar")]
+       },
+   "Java Jackson 2.8.4":
+       {
+           "url":"",
+           "commands":["/usr/bin/java", "-jar", os.path.join(PARSERS_DIR, "test_java_jackson_2_8_4/TestJSONParsing.jar")]
+       },
 }
 
 def run_tests(restrict_to_path=None):
@@ -213,7 +228,7 @@ def run_tests(restrict_to_path=None):
                     a = commands + [file_path]
 
                 #print("->", a)
-                #print("--", " ".join(a))
+                print("--", " ".join(a))
                 
                 try:
                     status = subprocess.call(
