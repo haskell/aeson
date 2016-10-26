@@ -222,6 +222,16 @@ programs = {
             "url":"",
             "commands":[os.path.join(PARSERS_DIR, "test_qt/test_qt")]
         },
+    "Squeak JSON-tonyg":
+        {
+            "url":"http://www.squeaksource.com/JSON.html",
+            "commands":[
+                    os.path.join(PARSERS_DIR, "test_Squeak_JSON_tonyg/Squeak.app/Contents/MacOS/Squeak"),
+                    "-headless", #<--optional
+                    os.path.join(PARSERS_DIR, "test_Squeak_JSON_tonyg/Squeak5.1-16549-32bit.image"),
+                    "test_JSON.st"
+            ]
+        },
 }
 
 def run_tests(restrict_to_path=None):
