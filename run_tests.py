@@ -182,6 +182,11 @@ programs = {
            "url":"",
            "commands":["/usr/bin/java", "-jar", os.path.join(PARSERS_DIR, "test_java_gson_2_7/TestJSONParsing.jar")]
        },
+   "Java com.leastfixedpoint.json 1.0":
+       {
+           "url":"",
+           "commands":["/usr/bin/java", "-jar", os.path.join(PARSERS_DIR, "test_java_com_leastfixedpoint_json_1_0/TestJSONParsing.jar")]
+       },
    "Java Jackson 2.8.4":
        {
            "url":"",
