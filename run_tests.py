@@ -7,7 +7,7 @@ import sys
 from os import listdir
 from time import strftime
 
-BASE_DIR = "/Users/nst/Projects/JSONTestSuite/"
+BASE_DIR = os.path.abspath(os.path.dirname(__file__))
 PARSERS_DIR = os.path.join(BASE_DIR, "parsers")
 TEST_CASES_DIR_PATH = os.path.join(BASE_DIR, "test_parsing")
 LOGS_DIR_PATH = os.path.join(BASE_DIR, "results")
