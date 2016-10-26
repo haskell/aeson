@@ -195,7 +195,7 @@ programs = {
    "Haskell Aeson 0.11.2.1":
        {
            "url":"https://github.com/bos/aeson",
-           "commands":[os.path.join(PARSERS_DIR, "test_haskell-aeson/.stack-work/install/x86_64-osx/lts-6.22/7.10.3/bin/testaeson")]
+           "commands":[os.path.join(PARSERS_DIR, "test_haskell-aeson/testaeson")]
        },
 }
 
