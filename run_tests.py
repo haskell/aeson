@@ -197,6 +197,11 @@ programs = {
            "url":"https://github.com/bos/aeson",
            "commands":[os.path.join(PARSERS_DIR, "test_haskell-aeson/.stack-work/install/x86_64-osx/lts-6.22/7.10.3/bin/testaeson")]
        },
+    "Qt JSON":
+        {
+            "url":"",
+            "commands":[os.path.join(PARSERS_DIR, "test_qt/test_qt")]
+        },
 }
 
 def run_tests(restrict_to_path=None):
