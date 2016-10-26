@@ -77,6 +77,11 @@ programs = {
            "url":"",
            "commands":["/usr/bin/ruby", os.path.join(PARSERS_DIR, "test_json_re.rb")]
        },
+   "Crystal":
+       {
+           "url":"https://github.com/crystal-lang/crystal",
+           "commands":[os.path.join(PARSERS_DIR, "test_json_cr")]
+       },
    "JavaScript":
        {
            "url":"",
