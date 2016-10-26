@@ -1,0 +1,12 @@
+name:                testaeson
+
+dependencies:
+  - base >= 4.7 && < 5
+  - aeson
+  - base-prelude
+  - bytestring
+
+executables:
+  testaeson:
+    source-dirs:      src
+    main:             Main.hs

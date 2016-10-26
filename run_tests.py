@@ -7,7 +7,7 @@ import sys
 from os import listdir
 from time import strftime
 
-BASE_DIR = "/Users/nst/Projects/JSONTestSuite/"
+BASE_DIR = os.path.dirname(os.path.realpath(__file__))
 PARSERS_DIR = os.path.join(BASE_DIR, "parsers")
 TEST_CASES_DIR_PATH = os.path.join(BASE_DIR, "test_parsing")
 LOGS_DIR_PATH = os.path.join(BASE_DIR, "results")
@@ -186,6 +186,11 @@ programs = {
        {
            "url":"",
            "commands":["/usr/bin/java", "-jar", os.path.join(PARSERS_DIR, "test_java_jackson_2_8_4/TestJSONParsing.jar")]
+       },
+   "Haskell Aeson 0.11.2.1":
+       {
+           "url":"https://github.com/bos/aeson",
+           "commands":[os.path.join(PARSERS_DIR, "test_haskell-aeson/.stack-work/install/x86_64-osx/lts-6.22/7.10.3/bin/testaeson")]
        },
 }
 
