@@ -232,6 +232,11 @@ programs = {
                     "test_JSON.st"
             ]
         },
+   "Json.NET 9.0.1":
+       {
+           "url":"http://www.newtonsoft.com/json",
+           "commands":["/usr/local/share/dotnet/dotnet", os.path.join(PARSERS_DIR, "test_Json.NET/bin/Release/netcoreapp1.0/publish/test_Json.NET.dll")]
+       },
 }
 
 def run_tests(restrict_to_path=None):
