@@ -21,19 +21,21 @@ import Prelude ()
 import Prelude.Compat
 
 import Control.Applicative (Const(..))
-import Control.Monad (forM, forM_)
+import Control.Monad (forM, forM_, unless)
 import Data.Aeson ((.=), (.:), (.:?), (.:!), FromJSON(..), FromJSONKeyFunction(..), FromJSONKey(..), ToJSON1(..), decode, eitherDecode, encode, genericParseJSON, genericToEncoding, genericToJSON, object, withObject)
 import Data.Aeson.Internal (JSONPathElement(..), formatError)
 import Data.Aeson.TH (deriveJSON, deriveToJSON, deriveToJSON1)
 import Data.Aeson.Text (encodeToTextBuilder)
 import Data.Aeson.Types (Options(..), SumEncoding(..), ToJSON(..), Value, camelTo, camelTo2, defaultOptions, omitNothingFields)
 import Data.Char (toUpper)
+import Data.Either (isLeft, isRight)
 import Data.Fixed (Pico)
 import Data.Functor.Compose (Compose(..))
 import Data.Functor.Identity (Identity(..))
 import Data.Functor.Product (Product(..))
 import Data.Functor.Sum (Sum(..))
 import Data.Hashable (hash)
+import Data.List (sort)
 import Data.List.NonEmpty (NonEmpty(..))
 import Data.Maybe (fromMaybe)
 import Data.Proxy (Proxy(..))
@@ -47,9 +49,13 @@ import Data.Time.Locale.Compat (defaultTimeLocale)
 import Data.Word (Word8)
 import GHC.Generics (Generic)
 import Instances ()
+import System.Directory (doesDirectoryExist, getDirectoryContents)
+import System.Exit (exitWith, ExitCode(ExitFailure))
+import System.IO (hPutStrLn, stderr)
+import System.FilePath ((</>), takeExtension, takeFileName)
 import Test.Framework (Test, testGroup)
 import Test.Framework.Providers.HUnit (testCase)
-import Test.HUnit (Assertion, assertFailure, assertEqual)
+import Test.HUnit (Assertion, assertBool, assertFailure, assertEqual)
 import Text.Printf (printf)
 import Types (Approx(..), Compose3, Compose3', I)
 import UnitTests.NullaryConstructors (nullaryConstructors)
@@ -536,7 +542,8 @@ issue351 = [
 ioTests :: IO [Test]
 ioTests = do
   enc <- encoderComparisonTests
-  return [enc]
+  js <- jsonTestSuite
+  return [enc, js]
 
 encoderComparisonTests :: IO Test
 encoderComparisonTests = do
@@ -595,6 +602,91 @@ unescapeString = do
       | L.length s == 8 =
           L.concat ["\"\\u", L.take 4 s, "\\u", L.drop 4 s, "\""]
       | otherwise = error "unescapeString: can't happen"
+
+-- JSONTestSuite
+
+jsonTestSuiteTest :: FilePath -> L.ByteString -> Test
+jsonTestSuiteTest path payload =
+    testCase fileName .
+    assertBool fileName $
+    case take 2 fileName of
+      "i_" -> isRight result
+      "n_" -> isLeft result
+      "y_" -> isRight result
+      _    -> isRight result -- test_transform tests have inconsistent names
+  where
+    fileName = takeFileName path
+    result   = eitherDecode payload :: Either String Value
+
+-- Build a collection of tests based on the current contents of the
+-- JSONTestSuite test directories.
+
+jsonTestSuite :: IO Test
+jsonTestSuite = do
+  let suitePath = "tests/JSONTestSuite"
+  exists <- doesDirectoryExist suitePath
+  unless exists $ do
+    hPutStrLn stderr $ "git clone https://github.com/nst/JSONTestSuite " ++
+                       suitePath
+    exitWith (ExitFailure 1)
+  -- ignore test_transform for now
+  let suites = ["test_parsing", "test_transform"]
+  testPaths <- fmap (sort . concat) . forM suites $ \suite -> do
+    let dir = suitePath </> suite
+    entries <- getDirectoryContents dir
+    let ok name = takeExtension name == ".json" &&
+                  not (name `HashSet.member` blacklist)
+    return . map (dir </>) . filter ok $ entries
+  fmap (testGroup "JSONTestSuite") . forM testPaths $ \path ->
+    jsonTestSuiteTest path <$> L.readFile path
+
+-- The set expected-to-be-failing JSONTestSuite tests.
+-- Not all of these failures are genuine bugs.
+-- Of those that are bugs, not all are worth fixing.
+
+blacklist :: HashSet.HashSet String
+-- blacklist = HashSet.empty
+blacklist = _blacklist
+
+_blacklist :: HashSet.HashSet String
+_blacklist = HashSet.fromList [
+    "i_object_key_lone_2nd_surrogate.json"
+  , "i_string_1st_surrogate_but_2nd_missing.json"
+  , "i_string_1st_valid_surrogate_2nd_invalid.json"
+  , "i_string_UTF-16LE_with_BOM.json"
+  , "i_string_UTF-16_invalid_lonely_surrogate.json"
+  , "i_string_UTF-16_invalid_surrogate.json"
+  , "i_string_UTF-8_invalid_sequence.json"
+  , "i_string_incomplete_surrogate_and_escape_valid.json"
+  , "i_string_incomplete_surrogate_pair.json"
+  , "i_string_incomplete_surrogates_escape_valid.json"
+  , "i_string_inverted_surrogates_U+1D11E.json"
+  , "i_string_lone_second_surrogate.json"
+  , "i_string_not_in_unicode_range.json"
+  , "i_string_truncated-utf-8.json"
+  , "i_structure_UTF-8_BOM_empty_object.json"
+  , "n_number_-01.json"
+  , "n_number_-2..json"
+  , "n_number_0.e1.json"
+  , "n_number_2.e+3.json"
+  , "n_number_2.e-3.json"
+  , "n_number_2.e3.json"
+  , "n_number_neg_int_starting_with_zero.json"
+  , "n_number_real_without_fractional_part.json"
+  , "n_number_with_leading_zero.json"
+  , "n_string_unescaped_crtl_char.json"
+  , "n_string_unescaped_newline.json"
+  , "n_string_unescaped_tab.json"
+  , "n_structure_whitespace_formfeed.json"
+  , "string_1_escaped_invalid_codepoint.json"
+  , "string_1_invalid_codepoint.json"
+  , "string_2_escaped_invalid_codepoints.json"
+  , "string_1_invalid_codepoints.json"
+  , "string_3_escaped_invalid_codepoints.json"
+  , "string_3_invalid_codepoints.json"
+  , "y_string_utf16BE_no_BOM.json"
+  , "y_string_utf16LE_no_BOM.json"
+  ]
 
 -- A regression test for: https://github.com/bos/aeson/pull/455
 data Foo a = FooNil | FooCons (Foo Int)
