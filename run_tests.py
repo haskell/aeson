@@ -11,7 +11,6 @@ BASE_DIR = os.path.dirname(os.path.realpath(__file__))
 PARSERS_DIR = os.path.join(BASE_DIR, "parsers")
 TEST_CASES_DIR_PATH = os.path.join(BASE_DIR, "test_parsing")
 LOGS_DIR_PATH = os.path.join(BASE_DIR, "results")
-REPORT_PATH = os.path.join(BASE_DIR, "results/parsing.html")
 LOG_FILENAME = "logs.txt"
 LOG_FILE_PATH = os.path.join(LOGS_DIR_PATH, LOG_FILENAME)
 
@@ -476,7 +475,7 @@ def f_tests_with_same_results(libs, status_for_lib_for_file):
     
     return r
 
-def generate_report(keep_only_first_result_in_set = False):
+def generate_report(report_path, keep_only_first_result_in_set = False):
 
     (status_for_lib_for_file, libs) = f_status_for_lib_for_file(TEST_CASES_DIR_PATH, LOGS_DIR_PATH)
     
@@ -484,7 +483,7 @@ def generate_report(keep_only_first_result_in_set = False):
     
     tests_with_same_results = f_tests_with_same_results(libs, status_for_lib_for_file)
         
-    with open(REPORT_PATH, 'w') as f:
+    with open(report_path, 'w') as f:
     
         f.write("""<!DOCTYPE html>
         
@@ -505,7 +504,12 @@ def generate_report(keep_only_first_result_in_set = False):
         libs = list(status_for_path_for_lib.keys())
         libs.sort()
 
-        f.write("<H1>JSON Parsing Tests</H1>\n")
+        title = "JSON Parsing Tests"
+        if keep_only_first_result_in_set:
+            title += ", Prunned"
+        else:
+            title += ", Full"
+        f.write("<H1>%s</H1>\n" % title)
         f.write('<P>Appendix to: seriot.ch <A HREF="http://www.seriot.ch/parsing_json.php">Parsing JSON is a Minefield</A> http://www.seriot.ch/parsing_json.php</P>\n')
         f.write("<PRE>%s</PRE>\n" % strftime("%Y-%m-%d %H:%M:%S"))
 
@@ -635,7 +639,7 @@ def generate_report(keep_only_first_result_in_set = False):
         </HTML>
         """)
     
-    os.system("/usr/bin/open %s" % REPORT_PATH)
+    os.system('/usr/bin/open "%s"' % report_path)
 
 ###
 
@@ -650,4 +654,5 @@ if __name__ == '__main__':
     
     run_tests(restrict_to_path)
     
-    generate_report(keep_only_first_result_in_set = False)
+    generate_report(os.path.join(BASE_DIR, "results/parsing.html"), keep_only_first_result_in_set = False)
+    generate_report(os.path.join(BASE_DIR, "results/parsing_pruned.html"), keep_only_first_result_in_set = True)
