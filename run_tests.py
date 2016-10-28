@@ -69,12 +69,12 @@ programs = {
    "Ruby":
        {
            "url":"",
-           "commands":["/usr/bin/ruby", os.path.join(PARSERS_DIR, "test_json.rb")]
+           "commands":["/usr/bin/env", "ruby", os.path.join(PARSERS_DIR, "test_json.rb")]
        },
    "Ruby regex":
        {
            "url":"",
-           "commands":["/usr/bin/ruby", os.path.join(PARSERS_DIR, "test_json_re.rb")]
+           "commands":["/usr/bin/env", "ruby", os.path.join(PARSERS_DIR, "test_json_re.rb")]
        },
    "Crystal":
        {
