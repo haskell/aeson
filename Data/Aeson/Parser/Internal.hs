@@ -46,6 +46,7 @@ import Data.Vector as Vector (Vector, empty, fromListN, reverse)
 import qualified Data.Attoparsec.ByteString as A
 import qualified Data.Attoparsec.Lazy as L
 import qualified Data.ByteString as B
+import qualified Data.ByteString.Unsafe as B
 import qualified Data.ByteString.Lazy as L
 import qualified Data.HashMap.Strict as H
 import qualified Data.Scientific as Sci
@@ -299,6 +300,15 @@ jsonEOF' = json' <* skipSpace <* endOfInput
 -- A strict pair
 data SP = SP !Integer {-# UNPACK #-}!Int
 
+decimal0 :: Parser Integer
+decimal0 = do
+  let step a w = a * 10 + fromIntegral (w - zero)
+      zero = 48
+  digits <- A.takeWhile1 isDigit_w8
+  if B.length digits > 1 && B.unsafeHead digits == zero
+    then fail "leading zero"
+    else return (B.foldl' step 0 digits)
+
 {-# INLINE scientific #-}
 scientific :: Parser Scientific
 scientific = do
@@ -309,7 +319,7 @@ scientific = do
   when (sign == plus || sign == minus) $
     void A.anyWord8
 
-  n <- decimal
+  n <- decimal0
 
   let f fracDigits = SP (B.foldl' step n fracDigits)
                         (negate $ B.length fracDigits)

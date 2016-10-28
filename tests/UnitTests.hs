@@ -667,7 +667,6 @@ _blacklist = HashSet.fromList [
   , "i_string_not_in_unicode_range.json"
   , "i_string_truncated-utf-8.json"
   , "i_structure_UTF-8_BOM_empty_object.json"
-  , "n_number_-01.json"
   , "n_number_-2..json"
   , "n_number_0.e1.json"
   , "n_number_2.e+3.json"
