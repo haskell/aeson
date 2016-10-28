@@ -328,7 +328,7 @@ scientific = do
   dotty <- A.peekWord8
   -- '.' -> ascii 46
   SP c e <- case dotty of
-              Just 46 -> A.anyWord8 *> (f <$> A.takeWhile isDigit_w8)
+              Just 46 -> A.anyWord8 *> (f <$> A.takeWhile1 isDigit_w8)
               _       -> pure (SP n 0)
 
   let !signedCoeff | positive  =  c
