@@ -222,7 +222,3 @@ test-suite tests
 source-repository head
   type:     git
   location: git://github.com/bos/aeson.git
-
-source-repository head
-  type:     mercurial
-  location: https://bitbucket.org/bos/aeson
