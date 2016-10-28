@@ -1,0 +1,2 @@
+cargo build && ./target/debug/tj /Users/nst/Desktop/in.json 
+
