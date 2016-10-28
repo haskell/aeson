@@ -78,17 +78,17 @@ programs = {
        },
    "Ruby Yajl":
        {
-           "url":"",
+           "url":"https://github.com/brianmario/yajl-ruby",
            "commands":["/usr/bin/env", "ruby", os.path.join(PARSERS_DIR, "test_yajl.rb")]
        },
    "Ruby Oj (strict mode)":
        {
-           "url":"",
+           "url":"https://github.com/ohler55/oj",
            "commands":["/usr/bin/env", "ruby", os.path.join(PARSERS_DIR, "test_oj_strict.rb")]
        },
    "Ruby Oj (compat mode)":
        {
-           "url":"",
+           "url":"https://github.com/ohler55/oj",
            "commands":["/usr/bin/env", "ruby", os.path.join(PARSERS_DIR, "test_oj_compat.rb")]
        },
    "Crystal":
