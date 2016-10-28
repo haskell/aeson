@@ -1,5 +1,16 @@
 For the latest version of this document, please see [https://github.com/bos/aeson/blob/master/changelog.md](https://github.com/bos/aeson/blob/master/changelog.md).
 
+#### WIP
+
+[JSONTestSuite](https://github.com/nst/JSONTestSuite) cleanups:
+
+* The parser now rejects numbers for which
+  [the integer portion contains a leading zero](https://github.com/bos/aeson/commit/3fb7c155f2255482b1b9566ec5c1eaf9895d630e)
+  or [a decimal point is not followed by at least one digit](https://github.com/bos/aeson/commit/ecfca35a45286dbe2bbaf5f62354be393bc59b66),
+  per RFC 7159.
+
+
+
 #### 1.0.2.1
 
 * Fixes a regression where a bunch of valid characters caused an
