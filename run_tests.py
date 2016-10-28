@@ -76,6 +76,21 @@ programs = {
            "url":"",
            "commands":["/usr/bin/env", "ruby", os.path.join(PARSERS_DIR, "test_json_re.rb")]
        },
+   "Ruby Yajl":
+       {
+           "url":"",
+           "commands":["/usr/bin/env", "ruby", os.path.join(PARSERS_DIR, "test_yajl.rb")]
+       },
+   "Ruby Oj (strict mode)":
+       {
+           "url":"",
+           "commands":["/usr/bin/env", "ruby", os.path.join(PARSERS_DIR, "test_oj_strict.rb")]
+       },
+   "Ruby Oj (compat mode)":
+       {
+           "url":"",
+           "commands":["/usr/bin/env", "ruby", os.path.join(PARSERS_DIR, "test_oj_compat.rb")]
+       },
    "Crystal":
        {
            "url":"https://github.com/crystal-lang/crystal",
