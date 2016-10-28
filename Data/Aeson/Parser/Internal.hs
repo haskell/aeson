@@ -36,8 +36,11 @@ module Data.Aeson.Parser.Internal
 import Prelude ()
 import Prelude.Compat
 
+import Control.Applicative ((<|>))
+import Control.Monad (void, when)
 import Data.Aeson.Types.Internal (IResult(..), JSONPath, Result(..), Value(..))
-import Data.Attoparsec.ByteString.Char8 (Parser, char, endOfInput, scientific, skipSpace, string)
+import Data.Attoparsec.ByteString.Char8 (Parser, char, decimal, endOfInput, isDigit_w8, signed, skipSpace, string)
+import Data.Scientific (Scientific)
 import Data.Text (Text)
 import Data.Vector as Vector (Vector, empty, fromListN, reverse)
 import qualified Data.Attoparsec.ByteString as A
@@ -45,6 +48,7 @@ import qualified Data.Attoparsec.Lazy as L
 import qualified Data.ByteString as B
 import qualified Data.ByteString.Lazy as L
 import qualified Data.HashMap.Strict as H
+import qualified Data.Scientific as Sci
 import Data.Aeson.Parser.Unescape
 
 #if MIN_VERSION_ghc_prim(0,3,1)
@@ -289,3 +293,39 @@ jsonEOF = json <* skipSpace <* endOfInput
 -- end-of-input.  See also: 'json''.
 jsonEOF' :: Parser Value
 jsonEOF' = json' <* skipSpace <* endOfInput
+
+------------------ Copy-pasted and adapted from attoparsec ------------------
+
+-- A strict pair
+data SP = SP !Integer {-# UNPACK #-}!Int
+
+{-# INLINE scientific #-}
+scientific :: Parser Scientific
+scientific = do
+  let minus = 45
+      plus  = 43
+  sign <- A.peekWord8'
+  let !positive = sign == plus || sign /= minus
+  when (sign == plus || sign == minus) $
+    void A.anyWord8
+
+  n <- decimal
+
+  let f fracDigits = SP (B.foldl' step n fracDigits)
+                        (negate $ B.length fracDigits)
+      step a w = a * 10 + fromIntegral (w - 48)
+
+  dotty <- A.peekWord8
+  -- '.' -> ascii 46
+  SP c e <- case dotty of
+              Just 46 -> A.anyWord8 *> (f <$> A.takeWhile isDigit_w8)
+              _       -> pure (SP n 0)
+
+  let !signedCoeff | positive  =  c
+                   | otherwise = -c
+
+  let littleE = 101
+      bigE    = 69
+  (A.satisfy (\ex -> ex == littleE || ex == bigE) *>
+      fmap (Sci.scientific signedCoeff . (e +)) (signed decimal)) <|>
+    return (Sci.scientific signedCoeff    e)
