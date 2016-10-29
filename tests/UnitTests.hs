@@ -670,7 +670,6 @@ _blacklist = HashSet.fromList [
   , "n_string_unescaped_crtl_char.json"
   , "n_string_unescaped_newline.json"
   , "n_string_unescaped_tab.json"
-  , "n_structure_whitespace_formfeed.json"
   , "string_1_escaped_invalid_codepoint.json"
   , "string_1_invalid_codepoint.json"
   , "string_1_invalid_codepoints.json"

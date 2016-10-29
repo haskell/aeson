@@ -39,7 +39,7 @@ import Prelude.Compat
 import Control.Applicative ((<|>))
 import Control.Monad (void, when)
 import Data.Aeson.Types.Internal (IResult(..), JSONPath, Result(..), Value(..))
-import Data.Attoparsec.ByteString.Char8 (Parser, char, decimal, endOfInput, isDigit_w8, signed, skipSpace, string)
+import Data.Attoparsec.ByteString.Char8 (Parser, char, decimal, endOfInput, isDigit_w8, signed, string)
 import Data.Scientific (Scientific)
 import Data.Text (Text)
 import Data.Vector as Vector (Vector, empty, fromListN, reverse)
@@ -294,6 +294,12 @@ jsonEOF = json <* skipSpace <* endOfInput
 -- end-of-input.  See also: 'json''.
 jsonEOF' :: Parser Value
 jsonEOF' = json' <* skipSpace <* endOfInput
+
+-- | The only valid whitespace in a JSON document is space, newline,
+-- carriage return, and tab.
+skipSpace :: Parser ()
+skipSpace = A.skipWhile $ \w -> w == 0x20 || w == 0x0a || w == 0x0d || w == 0x09
+{-# INLINE skipSpace #-}
 
 ------------------ Copy-pasted and adapted from attoparsec ------------------
 
