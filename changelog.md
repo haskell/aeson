@@ -2,13 +2,30 @@ For the latest version of this document, please see [https://github.com/bos/aeso
 
 #### WIP
 
-[JSONTestSuite](https://github.com/nst/JSONTestSuite) cleanups:
+[JSONTestSuite](https://github.com/nst/JSONTestSuite) cleanups, all
+motivated by tighter RFC 7159 compliance:
 
 * The parser now rejects numbers for which
-  [the integer portion contains a leading zero](https://github.com/bos/aeson/commit/3fb7c155f2255482b1b9566ec5c1eaf9895d630e)
-  or [a decimal point is not followed by at least one digit](https://github.com/bos/aeson/commit/ecfca35a45286dbe2bbaf5f62354be393bc59b66),
-  per RFC 7159.
+  [the integer portion contains a leading zero](https://github.com/bos/aeson/commit/3fb7c155f2255482b1b9566ec5c1eaf9895d630e).
+* The parser now rejects numbers for which
+  [a decimal point is not followed by at least one digit](https://github.com/bos/aeson/commit/ecfca35a45286dbe2bbaf5f62354be393bc59b66),
+* The parser now rejects documents that contain [whitespace outside the
+  set {space, newline, carriage return, tab}](https://github.com/bos/aeson/commit/8ef622c2ad8d4a109884e17c2792238a2a320e44).
 
+Over 90% of JSONTestSuite tests currently pass. The remainder can be
+categorised as follows:
+
+* The string parser is strict with Unicode compliance where the RFC
+  leaves room for implementation-defined behaviour (tests prefixed
+  with "`i_string_`". (This is necessary because the `text` library
+  cannot accommodate invalid Unicode.)
+
+* The parser does not (and will not) support UTF-16, UTF-32, or byte
+  order marks (BOM).
+
+* The parser accepts unescaped control characters, even though the RFC
+  states that control characters must be escaped. (This may change at
+  some point, but doesn't seem important.)
 
 
 #### 1.0.2.1
