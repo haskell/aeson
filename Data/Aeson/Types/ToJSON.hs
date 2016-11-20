@@ -2165,6 +2165,13 @@ instance ToJSON a => ToJSON (Semigroup.Option a) where
 -- tagged
 -------------------------------------------------------------------------------
 
+instance ToJSON1 Proxy where
+    liftToJSON _ _ _ = Null
+    {-# INLINE liftToJSON #-}
+
+    liftToEncoding _ _ _ = E.null_
+    {-# INLINE liftToEncoding #-}
+
 instance ToJSON (Proxy a) where
     toJSON _ = Null
     {-# INLINE toJSON #-}
@@ -2172,6 +2179,13 @@ instance ToJSON (Proxy a) where
     toEncoding _ = E.null_
     {-# INLINE toEncoding #-}
 
+
+instance ToJSON2 Tagged where
+    liftToJSON2 _ _ t _ (Tagged x) = t x
+    {-# INLINE liftToJSON2 #-}
+
+    liftToEncoding2 _ _ t _ (Tagged x) = t x
+    {-# INLINE liftToEncoding2 #-}
 
 instance ToJSON1 (Tagged a) where
     liftToJSON t _ (Tagged x) = t x
@@ -2186,7 +2200,6 @@ instance ToJSON b => ToJSON (Tagged a b) where
 
     toEncoding = toEncoding1
     {-# INLINE toEncoding #-}
-
 
 instance ToJSONKey b => ToJSONKey (Tagged a b) where
     toJSONKey = contramapToJSONKeyFunction unTagged toJSONKey
