@@ -1,6 +1,8 @@
 {-# LANGUAGE CPP #-}
 {-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE Rank2Types #-}
 {-# LANGUAGE RecordWildCards #-}
 #if __GLASGOW_HASKELL__ >= 800
@@ -70,6 +72,7 @@ import Control.Applicative (Alternative(..))
 import Control.Arrow (first)
 import Control.DeepSeq (NFData(..))
 import Control.Monad (MonadPlus(..), ap)
+import Control.Monad.Error.Class (MonadError (..))
 import Data.Char (isLower, isUpper, toLower, isAlpha, isAlphaNum)
 import Data.Data (Data)
 import Data.Foldable (foldl')
@@ -312,6 +315,14 @@ instance Monoid (Parser a) where
     {-# INLINE mempty #-}
     mappend = (<>)
     {-# INLINE mappend #-}
+
+instance MonadError String Parser where
+    throwError = Fail.fail
+    {-# INLINE throwError #-}
+
+    catchError a handler = Parser $ \path kf ks ->
+        let kf' _ msg = runParser (handler msg) path kf ks
+        in runParser a path kf' ks
 
 apP :: Parser (a -> b) -> Parser a -> Parser b
 apP d e = do
