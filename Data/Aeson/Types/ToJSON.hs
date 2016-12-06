@@ -615,6 +615,11 @@ instance ToJSON1 [] where
     {-# INLINE liftToEncoding #-}
 
 instance (ToJSON a) => ToJSON [a] where
+    {-# SPECIALIZE instance ToJSON String #-}
+    {-# SPECIALIZE instance ToJSON [String] #-}
+    {-# SPECIALIZE instance ToJSON [Array] #-}
+    {-# SPECIALIZE instance ToJSON [Object] #-}
+
     toJSON = toJSON1
     {-# INLINE toJSON #-}
 
@@ -1865,6 +1870,8 @@ instance ToJSON1 Vector where
     {-# INLINE liftToEncoding #-}
 
 instance (ToJSON a) => ToJSON (Vector a) where
+    {-# SPECIALIZE instance ToJSON Array #-}
+
     toJSON = toJSON1
     {-# INLINE toJSON #-}
 
@@ -1936,6 +1943,8 @@ instance ToJSONKey k => ToJSON1 (H.HashMap k) where
     {-# INLINE liftToEncoding #-}
 
 instance (ToJSON v, ToJSONKey k) => ToJSON (H.HashMap k v) where
+    {-# SPECIALIZE instance ToJSON Object #-}
+
     toJSON = toJSON1
     {-# INLINE toJSON #-}
 
