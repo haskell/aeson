@@ -25,6 +25,7 @@ module Data.Aeson.Parser.Time
 import Prelude ()
 import Prelude.Compat
 
+import Control.Applicative ((<|>))
 import Control.Monad (void, when)
 import Data.Aeson.Internal.Time (toPico)
 import Data.Attoparsec.Text as A
@@ -49,11 +50,7 @@ run p t = case A.parseOnly (p <* endOfInput) t of
 -- | Parse a date of the form @[+,-]YYYY-MM-DD@.
 day :: Parser Day
 day = do
-  absOrNeg <- choice
-    [ char '-' *> pure negate
-    , char '+' *> pure id
-    , pure id
-    ]
+  absOrNeg <- negate <$ char '-' <|> id <$ char '+' <|> pure id
   y <- decimal <* char '-'
   m <- twoDigits <* char '-'
   d <- twoDigits
