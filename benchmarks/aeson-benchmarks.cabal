@@ -53,6 +53,7 @@ library
     time,
     transformers,
     unordered-containers >= 0.2.3.0,
+    uuid-types >= 1.0.3 && <1.1,
     vector >= 0.7.1
 
   if flag(bytestring-builder)

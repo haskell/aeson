@@ -25,6 +25,7 @@ import Test.QuickCheck (Arbitrary(..), elements,  oneof)
 import Types
 import qualified Data.DList as DList
 import qualified Data.HashMap.Strict as HM
+import qualified Data.UUID.Types as UUID
 
 #if !MIN_VERSION_QuickCheck(2,9,0)
 import Control.Applicative (Const(..))
@@ -218,3 +219,10 @@ makeVersion b = Version b []
 instance Arbitrary a => Arbitrary (Identity a) where
     arbitrary = Identity <$> arbitrary
 #endif
+
+instance Arbitrary UUID.UUID where
+    arbitrary = UUID.fromWords
+        <$> arbitrary
+        <*> arbitrary
+        <*> arbitrary
+        <*> arbitrary
