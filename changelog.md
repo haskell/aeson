@@ -27,6 +27,7 @@ categorised as follows:
   states that control characters must be escaped. (This may change at
   some point, but doesn't seem important.)
 
+- Days BCE are properly encoded.
 
 #### 1.0.2.1
 
