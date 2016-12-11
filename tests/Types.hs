@@ -15,9 +15,11 @@ import Data.Data
 import Data.Functor.Compose (Compose (..))
 import Data.Functor.Identity (Identity (..))
 import Data.Text
+import Data.Time (Day (..), fromGregorian)
 import GHC.Generics
-import Test.QuickCheck (Property, counterexample)
+import Test.QuickCheck (Arbitrary (..), Property, counterexample)
 import qualified Data.Map as Map
+import Data.Aeson
 
 type I = Identity
 type Compose3  f g h = Compose (Compose f g) h
@@ -115,3 +117,19 @@ deriving instance Generic EitherTextInt
 failure :: Show a => String -> String -> a -> Property
 failure func msg v = counterexample
                      (func ++ " failed: " ++ msg ++ ", " ++ show v) False
+
+newtype BCEDay = BCEDay Day
+  deriving (Eq, Show)
+
+zeroDay :: Day
+zeroDay = fromGregorian 0 0 0
+
+instance Arbitrary BCEDay where
+    arbitrary = fmap (BCEDay . ModifiedJulianDay . (+ toModifiedJulianDay zeroDay)) arbitrary
+
+instance ToJSON BCEDay where
+    toJSON (BCEDay d)     = toJSON d
+    toEncoding (BCEDay d) = toEncoding d
+
+instance FromJSON BCEDay where
+    parseJSON = fmap BCEDay . parseJSON
