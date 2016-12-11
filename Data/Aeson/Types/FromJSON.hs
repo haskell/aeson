@@ -1725,11 +1725,20 @@ instance FromJSON a => FromJSON (Semigroup.Option a) where
 -- tagged
 -------------------------------------------------------------------------------
 
+instance FromJSON1 Proxy where
+    {-# INLINE liftParseJSON #-}
+    liftParseJSON _ _ Null = pure Proxy
+    liftParseJSON _ _ v    = typeMismatch "Proxy" v
+
 instance FromJSON (Proxy a) where
     {-# INLINE parseJSON #-}
     parseJSON Null = pure Proxy
     parseJSON v    = typeMismatch "Proxy" v
 
+
+instance FromJSON2 Tagged where
+    liftParseJSON2 _ _ p _ = fmap Tagged . p
+    {-# INLINE liftParseJSON2 #-}
 
 instance FromJSON1 (Tagged a) where
     liftParseJSON p _ = fmap Tagged . p
