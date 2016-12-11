@@ -605,18 +605,17 @@ unescapeString = do
 
 -- JSONTestSuite
 
-jsonTestSuiteTest :: FilePath -> L.ByteString -> Test
-jsonTestSuiteTest path payload =
-    testCase fileName .
-    assertBool fileName $
-    case take 2 fileName of
+jsonTestSuiteTest :: FilePath -> Test
+jsonTestSuiteTest path = testCase fileName $ do
+    payload <- L.readFile path
+    let result = eitherDecode payload :: Either String Value
+    assertBool fileName $ case take 2 fileName of
       "i_" -> isRight result
       "n_" -> isLeft result
       "y_" -> isRight result
       _    -> isRight result -- test_transform tests have inconsistent names
   where
     fileName = takeFileName path
-    result   = eitherDecode payload :: Either String Value
 
 -- Build a collection of tests based on the current contents of the
 -- JSONTestSuite test directories.
@@ -637,8 +636,7 @@ jsonTestSuite = do
     let ok name = takeExtension name == ".json" &&
                   not (name `HashSet.member` blacklist)
     return . map (dir </>) . filter ok $ entries
-  fmap (testGroup "JSONTestSuite") . forM testPaths $ \path ->
-    jsonTestSuiteTest path <$> L.readFile path
+  return $ testGroup "JSONTestSuite" $ map jsonTestSuiteTest testPaths
 
 -- The set expected-to-be-failing JSONTestSuite tests.
 -- Not all of these failures are genuine bugs.
