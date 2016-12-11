@@ -194,7 +194,7 @@ day dd = encodeYear yr <>
         encodeYear y
             | y >= 1000 = B.integerDec y
             | y >= 0    = BP.primBounded (ascii4 (padYear y)) ()
-            | y >= -999 = BP.primBounded (ascii5 ('-',padYear y)) ()
+            | y >= -999 = BP.primBounded (ascii5 ('-',padYear (- y))) ()
             | otherwise = B.integerDec y
         padYear y =
             let (ab,c) = fromIntegral y `quotRem` 10
