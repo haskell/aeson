@@ -43,7 +43,7 @@ import Data.Scientific (Scientific)
 import Data.Sequence (Seq)
 import Data.Tagged (Tagged(..))
 import Data.Text (Text)
-import Data.Time (UTCTime, Day, fromGregorian)
+import Data.Time (UTCTime, fromGregorian)
 import Data.Time.Format (parseTime)
 import Data.Time.Locale.Compat (defaultTimeLocale)
 import Data.Word (Word8)
@@ -330,6 +330,8 @@ jsonDecodingExamples = [
   , MaybeExample "Word8 3.14" "3.14" (Nothing :: Maybe Word8)
   , MaybeExample "Word8 -1"   "-1"   (Nothing :: Maybe Word8)
   , MaybeExample "Word8 300"  "300"  (Nothing :: Maybe Word8)
+
+  , MaybeExample "Day -0000-02-03" "\"-0000-02-03\"" (Just (fromGregorian 0 2 3))
   ]
 
 jsonExamples :: [Example]
