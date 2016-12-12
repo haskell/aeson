@@ -43,7 +43,7 @@ import Data.Scientific (Scientific)
 import Data.Sequence (Seq)
 import Data.Tagged (Tagged(..))
 import Data.Text (Text)
-import Data.Time (UTCTime)
+import Data.Time (UTCTime, Day, fromGregorian)
 import Data.Time.Format (parseTime)
 import Data.Time.Locale.Compat (defaultTimeLocale)
 import Data.Word (Word8)
@@ -98,6 +98,10 @@ tests = testGroup "unit" [
   , testGroup "utctime" [
       testCase "good" $ utcTimeGood
     , testCase "bad"  $ utcTimeBad
+    ]
+  , testGroup "day" [
+      testCase "encode normal" $ dayEncodeCE
+    , testCase "encode BCE" $ dayEncodeBCE
     ]
   , testGroup "formatError" [
       testCase "example 1" $ formatErrorExample
@@ -241,6 +245,20 @@ utcTimeBad = do
     verifyFailParse (s :: LT.Text) =
       let (dec :: Maybe UTCTime) = decode . LT.encodeUtf8 $ (LT.concat ["\"", s, "\""]) in
       assertEqual "verify failure" Nothing dec
+
+dayEncodeCE :: Assertion
+dayEncodeCE = do
+    let ceDay = fromGregorian 1234 12 5
+    assertEqual "Encode a CE day works appropriately" (encode ceDay) "\"1234-12-05\""
+
+dayEncodeBCE :: Assertion
+dayEncodeBCE = do
+    let zeroDay  = fromGregorian 0 6 11
+        bceDay   = fromGregorian (-100) 5 13
+        wayEarly = fromGregorian (-10000) 3 3
+    assertEqual "Encode a zero year day works appropriately" (encode zeroDay) "\"0000-06-11\""
+    assertEqual "Encode a BCE day works appropriately" (encode bceDay) "\"-0100-05-13\""
+    assertEqual "Encode a really early day works appropriately" (encode wayEarly) "\"-10000-03-03\""
 
 -- Non identifier keys should be escaped & enclosed in brackets
 formatErrorExample :: Assertion
