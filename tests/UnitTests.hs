@@ -76,6 +76,7 @@ import qualified Data.Text.Lazy.Builder as TLB
 import qualified Data.Text.Lazy.Encoding as LT
 import qualified Data.Text.Lazy.Encoding as TLE
 import qualified Data.Tree as Tree
+import qualified Data.UUID.Types as UUID
 import qualified Data.Vector as Vector
 
 tests :: Test
@@ -368,6 +369,9 @@ jsonExamples =
   , Example "Float" "3.14" (3.14 :: Float)
   , Example "Pico" "3.14" (3.14 :: Pico)
   , Example "Scientific" "3.14" (3.14 :: Scientific)
+
+  , Example "UUID" "\"c2cc10e1-57d6-4b6f-9899-38d972112d8c\"" $ UUID.fromWords
+      0xc2cc10e1 0x57d64b6f 0x989938d9 0x72112d8c
 
   , Example "Set Int" "[1,2,3]" (Set.fromList [3, 2, 1] :: Set.Set Int)
   , Example "IntSet"  "[1,2,3]" (IntSet.fromList [3, 2, 1])

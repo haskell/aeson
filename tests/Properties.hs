@@ -41,6 +41,7 @@ import qualified Data.HashMap.Strict as H
 import qualified Data.Map as Map
 import qualified Data.Text as T
 import qualified Data.Text.Lazy as LT
+import qualified Data.UUID.Types as UUID
 import qualified Data.Vector as V
 
 encodeDouble :: Double -> Double -> Property
@@ -217,6 +218,7 @@ tests = testGroup "properties" [
     , testProperty "Seq" $ roundTripEq (undefined :: Seq Int)
     , testProperty "Rational" $ roundTripEq (undefined :: Rational)
     , testProperty "Ratio Int" $ roundTripEq (undefined :: Ratio Int)
+    , testProperty "UUID" $ roundTripEq UUID.nil
     , testGroup "functors"
       [ testProperty "Identity Char" $ roundTripEq (undefined :: I Int)
 
@@ -278,6 +280,7 @@ tests = testGroup "properties" [
 #endif
     , testProperty "Version" $ roundTripKey (undefined :: Version)
     , testProperty "Lazy Text" $ roundTripKey (undefined :: LT.Text)
+    , testProperty "UUID" $ roundTripKey UUID.nil
     ]
   , testGroup "toFromJSON" [
       testProperty "Integer" (toFromJSON :: Integer -> Property)

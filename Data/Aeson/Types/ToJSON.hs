@@ -113,12 +113,16 @@ import qualified Data.Text as T
 import qualified Data.Text.Encoding as T
 import qualified Data.Text.Lazy as LT
 import qualified Data.Tree as Tree
+import qualified Data.UUID.Types as UUID
 import qualified Data.Vector as V
 import qualified Data.Vector.Generic as VG
 import qualified Data.Vector.Mutable as VM
 import qualified Data.Vector.Primitive as VP
 import qualified Data.Vector.Storable as VS
 import qualified Data.Vector.Unboxed as VU
+
+import qualified Data.Aeson.Encoding.Builder as EB
+import qualified Data.ByteString.Builder as B
 
 #if !(MIN_VERSION_bytestring(0,10,0))
 import Foreign.ForeignPtr (withForeignPtr)
@@ -1857,6 +1861,17 @@ instance (ToJSON v) => ToJSON (Tree.Tree v) where
     toEncoding = toEncoding1
     {-# INLINE toEncoding #-}
 
+-------------------------------------------------------------------------------
+-- uuid
+-------------------------------------------------------------------------------
+
+instance ToJSON UUID.UUID where
+    toJSON = toJSON . UUID.toText
+    toEncoding = E.unsafeToEncoding . EB.quote . B.byteString . UUID.toASCIIBytes
+
+instance ToJSONKey UUID.UUID where
+    toJSONKey = ToJSONKeyText UUID.toText $
+        E.unsafeToEncoding . EB.quote . B.byteString . UUID.toASCIIBytes
 
 -------------------------------------------------------------------------------
 -- vector

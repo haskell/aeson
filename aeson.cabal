@@ -117,6 +117,7 @@ library
     time >= 1.1.1.4,
     time-locale-compat >= 0.1.1 && < 0.2,
     unordered-containers >= 0.2.5.0,
+    uuid-types >= 1.0.3 && <1.1,
     vector >= 0.8
 
   if flag(bytestring-builder)
@@ -198,6 +199,7 @@ test-suite tests
     time,
     time-locale-compat,
     unordered-containers,
+    uuid-types,
     vector,
     quickcheck-instances >=0.3.12
 
