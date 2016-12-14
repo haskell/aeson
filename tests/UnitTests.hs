@@ -330,7 +330,7 @@ jsonDecodingExamples = [
   , MaybeExample "Word8 3.14" "3.14" (Nothing :: Maybe Word8)
   , MaybeExample "Word8 -1"   "-1"   (Nothing :: Maybe Word8)
   , MaybeExample "Word8 300"  "300"  (Nothing :: Maybe Word8)
-
+  -- Negative zero year, encoding never produces such:
   , MaybeExample "Day -0000-02-03" "\"-0000-02-03\"" (Just (fromGregorian 0 2 3))
   ]
 
