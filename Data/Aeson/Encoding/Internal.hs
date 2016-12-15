@@ -124,6 +124,9 @@ data Series = Empty
 pair :: Text -> Encoding -> Series
 pair name val = Value $ retagEncoding $ text name >< colon >< val
 
+pair' :: Encoding' Text -> Encoding -> Series
+pair' name val = Value $ retagEncoding $ retagEncoding name >< colon >< val
+
 instance Semigroup Series where
     Empty   <> a       = a
     a       <> Empty   = a
