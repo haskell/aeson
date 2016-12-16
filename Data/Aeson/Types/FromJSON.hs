@@ -1361,7 +1361,7 @@ instance (FromJSON a) => FromJSON (Identity a) where
     parseJSONList = liftParseJSONList parseJSON parseJSONList
     {-# INLINE parseJSONList #-}
 
-instance (FromJSONKey a, FromJSON a) => FromJSONKey (Identity a) where
+instance (FromJSONKey a) => FromJSONKey (Identity a) where
     fromJSONKey = coerceFromJSONKeyFunction (fromJSONKey :: FromJSONKeyFunction a)
     fromJSONKeyList = coerceFromJSONKeyFunction (fromJSONKeyList :: FromJSONKeyFunction [a])
 
