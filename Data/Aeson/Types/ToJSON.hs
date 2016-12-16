@@ -1670,7 +1670,7 @@ instance (ToJSON a) => ToJSON (Identity a) where
     toEncodingList = liftToEncodingList toEncoding toEncodingList
     {-# INLINE toEncodingList #-}
 
-instance (ToJSONKey a, ToJSON a) => ToJSONKey (Identity a) where
+instance (ToJSONKey a) => ToJSONKey (Identity a) where
     toJSONKey = contramapToJSONKeyFunction runIdentity toJSONKey
     toJSONKeyList = contramapToJSONKeyFunction (map runIdentity) toJSONKeyList
 
