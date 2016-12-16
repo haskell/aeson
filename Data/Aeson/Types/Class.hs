@@ -76,11 +76,18 @@ module Data.Aeson.Types.Class
     -- * Functions
     , fromJSON
     , ifromJSON
+    , typeMismatch
+    , parseField
+    , parseFieldMaybe
+    , parseFieldMaybe'
+    , liftParseField
+    , liftParseFieldMaybe
+    , liftParseFieldMaybe'
+    -- ** Operators
     , (.:)
     , (.:?)
     , (.:!)
     , (.!=)
-    , typeMismatch
     ) where
 
 import Prelude ()
