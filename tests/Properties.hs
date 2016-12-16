@@ -203,6 +203,7 @@ tests = testGroup "properties" [
     , testProperty "Lazy Text" $ roundTripEq LT.empty
     , testProperty "Foo" $ roundTripEq (undefined :: Foo)
     , testProperty "Day" $ roundTripEq (undefined :: Day)
+    , testProperty "BCE Day" $ roundTripEq (undefined :: BCEDay)
     , testProperty "DotNetTime" $ roundTripEq (undefined :: Approx DotNetTime)
     , testProperty "LocalTime" $ roundTripEq (undefined :: LocalTime)
     , testProperty "TimeOfDay" $ roundTripEq (undefined :: TimeOfDay)

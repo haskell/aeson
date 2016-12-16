@@ -43,7 +43,7 @@ import Data.Scientific (Scientific)
 import Data.Sequence (Seq)
 import Data.Tagged (Tagged(..))
 import Data.Text (Text)
-import Data.Time (UTCTime)
+import Data.Time (UTCTime, fromGregorian)
 import Data.Time.Format (parseTime)
 import Data.Time.Locale.Compat (defaultTimeLocale)
 import Data.Word (Word8)
@@ -331,6 +331,8 @@ jsonDecodingExamples = [
   , MaybeExample "Word8 3.14" "3.14" (Nothing :: Maybe Word8)
   , MaybeExample "Word8 -1"   "-1"   (Nothing :: Maybe Word8)
   , MaybeExample "Word8 300"  "300"  (Nothing :: Maybe Word8)
+  -- Negative zero year, encoding never produces such:
+  , MaybeExample "Day -0000-02-03" "\"-0000-02-03\"" (Just (fromGregorian 0 2 3))
   ]
 
 jsonExamples :: [Example]
@@ -395,6 +397,12 @@ jsonExamples =
   , Example "Maybe Char" "\"x\""              (pure 'x' :: Maybe Char)
   , Example "Maybe String" "\"foo\""          (pure "foo" :: Maybe String)
   , Example "Maybe [Identity Char]" "\"xy\""  (pure [pure 'x', pure 'y'] :: Maybe [Identity Char])
+
+  , Example "Day; year >= 1000" "\"1999-10-12\""        (fromGregorian 1999    10 12)
+  , Example "Day; year > 0 && < 1000" "\"0500-03-04\""  (fromGregorian 500     3  4)
+  , Example "Day; year == 0" "\"0000-02-20\""           (fromGregorian 0       2  20)
+  , Example "Day; year < 0" "\"-0234-01-01\""           (fromGregorian (-234)  1  1)
+  , Example "Day; year < -1000" "\"-1234-01-01\""       (fromGregorian (-1234) 1  1)
 
   , Example "Product I Maybe Int" "[1,2]"         (Pair (pure 1) (pure 2) :: Product I Maybe Int)
   , Example "Product I Maybe Int" "[1,null]"      (Pair (pure 1) Nothing :: Product I Maybe Int)
