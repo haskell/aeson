@@ -13,6 +13,7 @@ module Data.Aeson.Encoding.Internal
     , Series (..)
     , pairs
     , pair
+    , pair'
     -- * Predicates
     , nullEncoding
     -- * Encoding constructors
@@ -122,7 +123,7 @@ data Series = Empty
             deriving (Typeable)
 
 pair :: Text -> Encoding -> Series
-pair name val = Value $ retagEncoding $ text name >< colon >< val
+pair name val = pair' (text name) val
 
 pair' :: Encoding' Text -> Encoding -> Series
 pair' name val = Value $ retagEncoding $ retagEncoding name >< colon >< val
