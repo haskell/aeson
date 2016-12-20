@@ -93,9 +93,9 @@ module Data.Aeson.Types
     , parseField
     , parseFieldMaybe
     , parseFieldMaybe'
-    , liftParseField
-    , liftParseFieldMaybe
-    , liftParseFieldMaybe'
+    , explicitParseField
+    , explicitParseFieldMaybe
+    , explicitParseFieldMaybe'
 
     , listEncoding
     , listValue

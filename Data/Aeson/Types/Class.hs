@@ -80,9 +80,9 @@ module Data.Aeson.Types.Class
     , parseField
     , parseFieldMaybe
     , parseFieldMaybe'
-    , liftParseField
-    , liftParseFieldMaybe
-    , liftParseFieldMaybe'
+    , explicitParseField
+    , explicitParseFieldMaybe
+    , explicitParseFieldMaybe'
     -- ** Operators
     , (.:)
     , (.:?)
