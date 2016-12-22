@@ -2,6 +2,22 @@ For the latest version of this document, please see [https://github.com/bos/aeso
 
 #### WIP
 
+* The operators for parsing fields now have named aliases:
+  -  `.:` => `parseField`
+  -  `.:?` => `parseFieldMaybe`
+  -  `.:!` => `parseFieldMaybe'`
+  - These functions now also have variants with explicit parser functions: `explicitParseField`, `explicitParseFieldMaybe`, "explicitParseFieldMaybe'`
+Thanks to Oleg Grenrus.
+
+* `ToJSONKey (Identity a)` and `FromJSONKey (Identity a)` no longer require the unnecessary `FromJSON a` constraint. Thanks to Oleg Grenrus.
+
+* Added `Data.Aeson.Encoding.pair'` which is a more general version of `Data.Aeson.Encoding.pair'`. Thanks to Andrew Martin.
+
+* `Day`s BCE are properly encoded, and `+` is now a valid prefix for other dates. Thanks to Matt Parsons.
+
+* Some commonly used ToJSON instances are now specialized in order to improve compile time. Thanks to Bartosz Nitka.
+
+
 [JSONTestSuite](https://github.com/nst/JSONTestSuite) cleanups, all
 motivated by tighter RFC 7159 compliance:
 
@@ -22,12 +38,9 @@ categorised as follows:
 
 * The parser does not (and will not) support UTF-16, UTF-32, or byte
   order marks (BOM).
-
 * The parser accepts unescaped control characters, even though the RFC
   states that control characters must be escaped. (This may change at
   some point, but doesn't seem important.)
-
-- Days BCE are properly encoded.
 
 #### 1.0.2.1
 
