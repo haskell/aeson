@@ -306,7 +306,7 @@ encodeUtf8BuilderEscaped be =
               where
                 go !i !op
                   | i < iendTmp = case A.unsafeIndex arr i of
-                      w | w <= 0x7F -> do
+                      w | w <= 0x7F ->
                             BP.runB be (fromIntegral w) op >>= go (i + 1)
                         | w <= 0x7FF -> do
                             poke8 0 $ (w `shiftR` 6) + 0xC0
