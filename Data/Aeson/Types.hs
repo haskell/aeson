@@ -90,6 +90,12 @@ module Data.Aeson.Types
     , (.:!)
     , (.!=)
     , object
+    , parseField
+    , parseFieldMaybe
+    , parseFieldMaybe'
+    , explicitParseField
+    , explicitParseFieldMaybe
+    , explicitParseFieldMaybe'
 
     , listEncoding
     , listValue

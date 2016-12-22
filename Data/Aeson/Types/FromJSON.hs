@@ -59,11 +59,18 @@ module Data.Aeson.Types.FromJSON
     -- * Functions
     , fromJSON
     , ifromJSON
+    , typeMismatch
+    , parseField
+    , parseFieldMaybe
+    , parseFieldMaybe'
+    , explicitParseField
+    , explicitParseFieldMaybe
+    , explicitParseFieldMaybe'
+    -- ** Operators
     , (.:)
     , (.:?)
     , (.:!)
     , (.!=)
-    , typeMismatch
 
     -- * Internal
     , parseOptionalFieldWith
@@ -654,9 +661,7 @@ ifromJSON = iparse parseJSON
 -- in an object for it to be valid.  If the key and value are
 -- optional, use '.:?' instead.
 (.:) :: (FromJSON a) => Object -> Text -> Parser a
-obj .: key = case H.lookup key obj of
-               Nothing -> fail $ "key " ++ show key ++ " not present"
-               Just v  -> parseJSON v <?> Key key
+(.:) = explicitParseField parseJSON
 {-# INLINE (.:) #-}
 
 -- | Retrieve the value associated with the given key of an 'Object'. The
@@ -667,9 +672,7 @@ obj .: key = case H.lookup key obj of
 -- from an object without affecting its validity.  If the key and
 -- value are mandatory, use '.:' instead.
 (.:?) :: (FromJSON a) => Object -> Text -> Parser (Maybe a)
-obj .:? key = case H.lookup key obj of
-               Nothing -> pure Nothing
-               Just v  -> parseJSON v <?> Key key
+(.:?) = explicitParseFieldMaybe parseJSON
 {-# INLINE (.:?) #-}
 
 -- | Retrieve the value associated with the given key of an 'Object'.
@@ -679,10 +682,46 @@ obj .:? key = case H.lookup key obj of
 -- This differs from '.:?' by attempting to parse 'Null' the same as any
 -- other JSON value, instead of interpreting it as 'Nothing'.
 (.:!) :: (FromJSON a) => Object -> Text -> Parser (Maybe a)
-obj .:! key = case H.lookup key obj of
-               Nothing -> pure Nothing
-               Just v  -> Just <$> parseJSON v <?> Key key
+(.:!) = explicitParseFieldMaybe' parseJSON
 {-# INLINE (.:!) #-}
+
+-- | Function variant of '.:'.
+parseField :: (FromJSON a) => Object -> Text -> Parser a
+parseField = (.:)
+{-# INLINE parseField #-}
+
+-- | Function variant of '.:?'.
+parseFieldMaybe :: (FromJSON a) => Object -> Text -> Parser (Maybe a)
+parseFieldMaybe = (.:?)
+{-# INLINE parseFieldMaybe #-}
+
+-- | Function variant of '.:!'.
+parseFieldMaybe' :: (FromJSON a) => Object -> Text -> Parser (Maybe a)
+parseFieldMaybe' = (.:!)
+{-# INLINE parseFieldMaybe' #-}
+
+-- | Variant of '.:' with explicit parser function.
+--
+-- E.g. @'explicitParseField' 'parseJSON1' :: ('FromJSON1' f, 'FromJSON' a) -> 'Object' -> 'Text' -> 'Parser' (f a)@
+explicitParseField :: (Value -> Parser a) -> Object -> Text -> Parser a
+explicitParseField p obj key = case H.lookup key obj of
+    Nothing -> fail $ "key " ++ show key ++ " not present"
+    Just v  -> p v <?> Key key
+{-# INLINE explicitParseField #-}
+
+-- | Variant of '.:?' with explicit parser function.
+explicitParseFieldMaybe :: (Value -> Parser a) -> Object -> Text -> Parser (Maybe a)
+explicitParseFieldMaybe p obj key = case H.lookup key obj of
+    Nothing -> pure Nothing
+    Just v  -> liftParseJSON p (listParser p) v <?> Key key -- listParser isn't used by maybe instance.
+{-# INLINE explicitParseFieldMaybe #-}
+
+-- | Variant of '.:!' with explicit parser function.
+explicitParseFieldMaybe' :: (Value -> Parser a) -> Object -> Text -> Parser (Maybe a)
+explicitParseFieldMaybe' p obj key = case H.lookup key obj of
+    Nothing -> pure Nothing
+    Just v  -> Just <$> p v <?> Key key
+{-# INLINE explicitParseFieldMaybe' #-}
 
 -- | Helper for use in combination with '.:?' to provide default
 -- values for optional JSON object fields.
