@@ -16,6 +16,8 @@ import Control.Monad
 import Data.Aeson.Types
 import Data.Function (on)
 import Data.Functor.Compose (Compose (..))
+import Data.Functor.Identity (Identity (..))
+import Data.Hashable (Hashable (..))
 import Data.Proxy (Proxy(..))
 import Data.Tagged (Tagged(..))
 import Data.Time (ZonedTime(..), TimeZone(..))

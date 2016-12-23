@@ -5,21 +5,25 @@
 {-# LANGUAGE GADTs #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE StandaloneDeriving #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 
 module Types where
 
 import Prelude ()
 import Prelude.Compat
 
+import Math.NumberTheory.Logarithms (intLog2)
 import Data.Data
 import Data.Functor.Compose (Compose (..))
 import Data.Functor.Identity (Identity (..))
+import Data.Hashable (Hashable (..))
 import Data.Text
 import Data.Time (Day (..), fromGregorian)
 import GHC.Generics
-import Test.QuickCheck (Arbitrary (..), Property, counterexample)
+import Test.QuickCheck (Arbitrary (..), Property, counterexample, scale)
 import qualified Data.Map as Map
 import Data.Aeson
+import Data.Aeson.Types
 
 type I = Identity
 type Compose3  f g h = Compose (Compose f g) h
@@ -133,3 +137,29 @@ instance ToJSON BCEDay where
 
 instance FromJSON BCEDay where
     parseJSON = fmap BCEDay . parseJSON
+
+-- | Scale the size of Arbitrary with ''
+newtype LogScaled a = LogScaled { getLogScaled :: a }
+  deriving (Eq, Ord, Show)
+
+instance Hashable a => Hashable (LogScaled a) where
+    hashWithSalt salt (LogScaled a) = hashWithSalt salt a
+
+instance Arbitrary a => Arbitrary (LogScaled a) where
+    arbitrary = fmap LogScaled $ scale (\x -> intLog2 $ x + 1) arbitrary
+    shrink = fmap LogScaled . shrink . getLogScaled
+
+instance ToJSON a => ToJSON (LogScaled a) where
+    toJSON (LogScaled d)     = toJSON d
+    toEncoding (LogScaled d) = toEncoding d
+
+instance FromJSON a => FromJSON (LogScaled a) where
+    parseJSON = fmap LogScaled . parseJSON
+
+instance (ToJSONKey a) => ToJSONKey (LogScaled a) where
+    toJSONKey = contramapToJSONKeyFunction getLogScaled toJSONKey
+    toJSONKeyList = contramapToJSONKeyFunction (fmap getLogScaled) toJSONKeyList
+
+instance (FromJSONKey a) => FromJSONKey (LogScaled a) where
+    fromJSONKey = fmap LogScaled fromJSONKey
+    fromJSONKeyList = coerceFromJSONKeyFunction (fromJSONKeyList :: FromJSONKeyFunction [a])
