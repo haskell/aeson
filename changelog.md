@@ -2,6 +2,8 @@ For the latest version of this document, please see [https://github.com/bos/aeso
 
 # 1.1.0.0
 
+* Added instances for `UUID`.
+
 * The operators for parsing fields now have named aliases:
   -  `.:` => `parseField`
   -  `.:?` => `parseFieldMaybe`
