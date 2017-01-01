@@ -163,10 +163,12 @@ test-suite tests
     DataFamilies.Encoders
     DataFamilies.Types
     Encoders
+    ErrorMessages
     Functions
     Instances
     Options
     Properties
+    SerializationFormatSpec
     Types
     UnitTests
     UnitTests.NullaryConstructors
