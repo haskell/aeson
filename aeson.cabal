@@ -179,7 +179,7 @@ test-suite tests
     HUnit,
     QuickCheck >= 2.8 && <2.9.3,
     aeson,
-    arithmoi >=0.4.3.0 && <0.5,
+    integer-logarithms >= 1 && <1.1,
     attoparsec,
     base,
     base-compat,
