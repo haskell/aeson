@@ -1,6 +1,8 @@
 resolver: nightly-2016-12-22
 packages:
 - '.'
+extra-deps:
+- integer-logarithms-1
 flags:
   aeson:
     fast: true

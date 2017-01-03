@@ -3,6 +3,7 @@ packages:
 - benchmarks
 extra-deps:
 - semigroups-0.18.2
+- integer-logarithms-1
 flags:
   semigroups:
     bytestring-builder: false
