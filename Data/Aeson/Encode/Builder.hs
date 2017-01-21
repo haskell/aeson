@@ -1,5 +1,4 @@
-{-# LANGUAGE BangPatterns      #-}
-{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE BangPatterns, OverloadedStrings #-}
 
 -- |
 -- Module:      Data.Aeson.Encode.Builder
@@ -36,23 +35,22 @@ module Data.Aeson.Encode.Builder
     , ascii5
     ) where
 
-import           Data.Aeson.Internal.Time
-import           Data.Aeson.Types.Internal          (Encoding (..), Value (..))
-import           Data.ByteString.Builder            as B
-import           Data.ByteString.Builder.Prim       as BP
-import           Data.ByteString.Builder.Scientific (scientificBuilder)
-import           Data.Char                          (chr, ord)
-import qualified Data.HashMap.Strict                as HMS
-import           Data.Monoid                        ((<>))
-import           Data.Scientific                    (Scientific, base10Exponent,
-                                                     coefficient)
-import qualified Data.Text                          as T
-import qualified Data.Text.Encoding                 as TE
-import           Data.Time                          (UTCTime (..))
-import           Data.Time.Calendar                 (Day (..), toGregorian)
-import           Data.Time.LocalTime
-import qualified Data.Vector                        as V
-import           Data.Word                          (Word8)
+import Data.Aeson.Internal.Time
+import Data.Aeson.Types.Internal (Encoding(..), Value(..))
+import Data.ByteString.Builder as B
+import Data.ByteString.Builder.Prim as BP
+import Data.ByteString.Builder.Scientific (scientificBuilder)
+import Data.Char (chr, ord)
+import Data.Monoid ((<>))
+import Data.Scientific (Scientific, base10Exponent, coefficient)
+import Data.Time (UTCTime(..))
+import Data.Time.Calendar (Day(..), toGregorian)
+import Data.Time.LocalTime
+import Data.Word (Word8)
+import qualified Data.HashMap.Strict as HMS
+import qualified Data.Text as T
+import qualified Data.Text.Encoding as TE
+import qualified Data.Vector as V
 
 -- | Encode a JSON value to a "Data.ByteString" 'B.Builder'.
 --
