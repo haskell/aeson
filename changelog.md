@@ -1,5 +1,9 @@
 For the latest version of this document, please see [https://github.com/bos/aeson/blob/master/changelog.md](https://github.com/bos/aeson/blob/master/changelog.md).
 
+### 0.11.3.0
+
+* Backported support for `Day`s BCE from aeson-1.1.0.0
+
 ### 0.11.2.0
 
 * Enable `PolyKinds` to generalize `Proxy`, `Tagged`, and `Const` instances.
