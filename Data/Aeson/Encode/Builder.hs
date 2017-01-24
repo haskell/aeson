@@ -181,12 +181,13 @@ day dd = encodeYear yr <>
         !(T dh dl)  = twoDigits d
         encodeYear y
             | y >= 1000 = B.integerDec y
-            | y > 0 =
-                let (ab,c) = fromIntegral y `quotRem` 10
-                    (a,b)  = ab `quotRem` 10
-                in BP.primBounded (ascii4 ('0',(digit a,(digit b,digit c)))) ()
-            | otherwise =
-                error "Data.Aeson.Encode.Builder.day:  years BCE not supported"
+            | y >= 0    = BP.primBounded (ascii4 (padYear y)) ()
+            | y >= -999 = BP.primBounded (ascii5 ('-',padYear (- y))) ()
+            | otherwise = B.integerDec y
+        padYear y =
+            let (ab,c) = fromIntegral y `quotRem` 10
+                (a,b)  = ab `quotRem` 10
+            in ('0',(digit a,(digit b,digit c)))
 {-# INLINE day #-}
 
 timeOfDay :: TimeOfDay -> Builder
