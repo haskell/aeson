@@ -274,9 +274,9 @@ eitherDecodeStrict' =
 -- > {-# LANGUAGE OverloadedStrings #-}
 -- >
 -- > instance FromJSON Person where
--- >   parseJSON = withObject "Person" $ \v -> Person
--- >     <$> v .: "name"
--- >     <*> v .: "age"
+-- >     parseJSON = withObject "Person" $ \v -> Person
+-- >         <$> v .: "name"
+-- >         <*> v .: "age"
 --
 -- We can now parse the JSON data like so:
 --
