@@ -46,14 +46,14 @@ extra-source-files:
     benchmarks/Makefile
     benchmarks/Typed/*.hs
     benchmarks/json-data/*.json
-    include/overlapping-compat.h
-    include/incoherent-compat.h
+    cbits/*.c
     changelog.md
     examples/*.cabal
     examples/*.hs
     examples/Twitter/*.hs
     include/*.h
-    cbits/*.c
+    tests/JSONTestSuite/test_parsing/*.json
+    tests/JSONTestSuite/test_transform/*.json
 
 flag developer
   description: operate in developer mode
