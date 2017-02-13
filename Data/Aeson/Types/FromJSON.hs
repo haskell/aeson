@@ -288,7 +288,7 @@ genericLiftParseJSON opts pj pjl = fmap to1 . gParseJSON opts (From1Args pj pjl)
 -- * 'typeMismatch' produces an informative message for cases when the
 -- value encountered is not of the expected type
 --
--- An example type and instance:
+-- An example type and instance using 'typeMismatch':
 --
 -- @
 -- \-- Allow ourselves to write 'Text' literals.
@@ -297,14 +297,27 @@ genericLiftParseJSON opts pj pjl = fmap to1 . gParseJSON opts (From1Args pj pjl)
 -- data Coord = Coord { x :: Double, y :: Double }
 --
 -- instance FromJSON Coord where
---   parseJSON ('Object' v) = Coord    '<$>'
---                          v '.:' \"x\" '<*>'
---                          v '.:' \"y\"
+--     parseJSON ('Object' v) = Coord
+--         '<$>' v '.:' \"x\" 
+--         '<*>' v '.:' \"y\"
 --
---   \-- We do not expect a non-'Object' value here.
---   \-- We could use 'mzero' to fail, but 'typeMismatch'
---   \-- gives a much more informative error message.
---   parseJSON invalid    = 'typeMismatch' \"Coord\" invalid
+--     \-- We do not expect a non-'Object' value here.
+--     \-- We could use 'mzero' to fail, but 'typeMismatch'
+--     \-- gives a much more informative error message.
+--     parseJSON invalid    = 'typeMismatch' \"Coord\" invalid
+-- @
+--
+-- For this common case of only being concerned with a single
+-- type of JSON value, the functions @withObject@, @withNumber@, etc.
+-- are provided. Their use is to be preferred when possible, since
+-- they are more terse. Using @withObject@, we can rewrite the above instance 
+-- (assuming the same language extension and data type) as:
+--
+-- @
+-- instance FromJSON Coord where
+--     parseJSON = withObject \"Coord\" $ \v -> Coord
+--         '<$>' v '.:' \"x\" 
+--         '<*>' v '.:' \"y\"
 -- @
 --
 -- Instead of manually writing your 'FromJSON' instance, there are two options
