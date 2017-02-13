@@ -274,11 +274,9 @@ eitherDecodeStrict' =
 -- > {-# LANGUAGE OverloadedStrings #-}
 -- >
 -- > instance FromJSON Person where
--- >     parseJSON (Object v) = Person <$>
--- >                            v .: "name" <*>
--- >                            v .: "age"
--- >     -- A non-Object value is of the wrong type, so fail.
--- >     parseJSON _          = empty
+-- >     parseJSON = withObject "Person" $ \v -> Person
+-- >         <$> v .: "name"
+-- >         <*> v .: "age"
 --
 -- We can now parse the JSON data like so:
 --
