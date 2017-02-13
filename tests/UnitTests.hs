@@ -39,7 +39,6 @@ import Instances ()
 import System.Directory (doesDirectoryExist, getDirectoryContents)
 import System.Exit (exitWith, ExitCode(ExitFailure))
 import System.FilePath ((</>), takeExtension, takeFileName)
-import System.IO (hPutStrLn, stderr)
 import Test.Framework (Test, testGroup)
 import Test.Framework.Providers.HUnit (testCase)
 import Test.HUnit (Assertion, assertBool, assertFailure, assertEqual)
@@ -422,11 +421,6 @@ jsonTestSuite :: IO Test
 jsonTestSuite = do
   let suitePath = "tests/JSONTestSuite"
   exists <- doesDirectoryExist suitePath
-  unless exists $ do
-    hPutStrLn stderr $ "git clone https://github.com/nst/JSONTestSuite " ++
-                       suitePath
-    exitWith (ExitFailure 1)
-  -- ignore test_transform for now
   let suites = ["test_parsing", "test_transform"]
   testPaths <- fmap (sort . concat) . forM suites $ \suite -> do
     let dir = suitePath </> suite
