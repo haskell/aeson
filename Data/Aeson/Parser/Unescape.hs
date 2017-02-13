@@ -1,21 +1,28 @@
+{-# LANGUAGE CPP                      #-}
+
+#ifdef CFFI
 {-# LANGUAGE ForeignFunctionInterface #-}
 {-# LANGUAGE MagicHash                #-}
 {-# LANGUAGE UnliftedFFITypes         #-}
+#endif
 
 module Data.Aeson.Parser.Unescape (
   unescapeText
 ) where
 
+#ifndef CFFI
+
 import           Control.Exception          (evaluate, throw, try)
 import           Control.Monad              (when)
 import           Data.ByteString            as B
-import           Data.Bits                  (shiftL, shiftR, (.&.), (.|.))
+import           Data.Bits                  (Bits, shiftL, shiftR, (.&.), (.|.))
 import           Data.Text                  (Text)
 import qualified Data.Text.Array            as A
 import           Data.Text.Encoding.Error   (UnicodeException (..))
 import           Data.Text.Internal.Private (runText)
 import           Data.Text.Unsafe           (unsafeDupablePerformIO)
 import           Data.Word                  (Word8, Word16, Word32)
+import           GHC.ST                     (ST)
 
 -- Different UTF states.
 data Utf = 
@@ -48,16 +55,28 @@ data State =
 -- References: 
 -- http://bjoern.hoehrmann.de/utf-8/decoder/dfa/
 -- https://github.com/jwilm/vte/blob/master/utf8parse/src/table.rs.in
+
+setByte1 :: (Num a, Bits b, Bits a, Integral b) => a -> b -> a
 setByte1 point word = point .|. fromIntegral (word .&. 0x3f)
 {-# INLINE setByte1 #-}
+
+setByte2 :: (Num a, Bits b, Bits a, Integral b) => a -> b -> a
 setByte2 point word = point .|. ((fromIntegral $ word .&. 0x3f) `shiftL` 6)
 {-# INLINE setByte2 #-}
+
+setByte2Top :: (Num a, Bits b, Bits a, Integral b) => a -> b -> a
 setByte2Top point word = point .|. ((fromIntegral $ word .&. 0x1f) `shiftL` 6)
 {-# INLINE setByte2Top #-}
+
+setByte3 :: (Num a, Bits b, Bits a, Integral b) => a -> b -> a
 setByte3 point word = point .|. ((fromIntegral $ word .&. 0x3f) `shiftL` 12)
 {-# INLINE setByte3 #-}
+
+setByte3Top :: (Num a, Bits b, Bits a, Integral b) => a -> b -> a
 setByte3Top point word = point .|. ((fromIntegral $ word .&. 0xf) `shiftL` 12)
 {-# INLINE setByte3Top #-}
+
+setByte4 :: (Num a, Bits b, Bits a, Integral b) => a -> b -> a
 setByte4 point word = point .|. ((fromIntegral $ word .&. 0x7) `shiftL` 18)
 {-# INLINE setByte4 #-}
 
@@ -100,6 +119,7 @@ decode UtfTail2 point word = case word of
 
 decode UtfTail1 point word = case word of
   w | 0x80 <= w && w <= 0xbf -> (UtfGround, setByte1 point word)
+  _                          -> throwDecodeError
 
 {-# INLINE decode #-}
 
@@ -144,15 +164,15 @@ unescapeText' bs = runText $ \done -> do
       len = B.length bs
 
       runUtf dest pos st point c = case decode st point c of
-        (UtfGround, 92) -> -- \
+        (UtfGround, 92) -> -- Backslash
             return (pos, StateBackslash)
         (UtfGround, w) | w <= 0xffff -> 
             writeAndReturn dest pos (fromIntegral w) StateNone
         (UtfGround, w) -> do
             write dest pos (0xd7c0 + fromIntegral (w `shiftR` 10))
             writeAndReturn dest (pos + 1) (0xdc00 + fromIntegral (w .&. 0x3ff)) StateNone
-        (st, p) -> 
-            return (pos, StateUtf st p)
+        (st', p) -> 
+            return (pos, StateUtf st' p)
 
       {-# INLINE runUtf #-}
 
@@ -168,15 +188,15 @@ unescapeText' bs = runText $ \done -> do
 
       -- In the middle of escaping a backslash.
       f dest (pos, StateBackslash)  34 = writeAndReturn dest pos 34 StateNone -- "
-      f dest (pos, StateBackslash)  92 = writeAndReturn dest pos 92 StateNone -- \
+      f dest (pos, StateBackslash)  92 = writeAndReturn dest pos 92 StateNone -- Backslash
       f dest (pos, StateBackslash)  47 = writeAndReturn dest pos 47 StateNone -- /
       f dest (pos, StateBackslash)  98 = writeAndReturn dest pos  8 StateNone -- b
       f dest (pos, StateBackslash) 102 = writeAndReturn dest pos 12 StateNone -- f
       f dest (pos, StateBackslash) 110 = writeAndReturn dest pos 10 StateNone -- n
       f dest (pos, StateBackslash) 114 = writeAndReturn dest pos 13 StateNone -- r
       f dest (pos, StateBackslash) 116 = writeAndReturn dest pos  9 StateNone -- t
-      f dest (pos, StateBackslash) 117 = return (pos, StateU0)                -- u
-      f dest (pos, StateBackslash) _   = throwDecodeError
+      f    _ (pos, StateBackslash) 117 = return (pos, StateU0)                -- u
+      f    _ (  _, StateBackslash) _   = throwDecodeError
 
       -- Processing '\u'.
       f _ (pos, StateU0) c = 
@@ -207,7 +227,7 @@ unescapeText' bs = runText $ \done -> do
         writeAndReturn dest pos u st
 
       -- Handle surrogates.
-      f _ (pos, StateS0) 92 = return (pos, StateS1) -- \
+      f _ (pos, StateS0) 92 = return (pos, StateS1) -- Backslash
       f _ (  _, StateS0)  _ = throwDecodeError
 
       f _ (pos, StateS1) 117 = return (pos, StateSU0) -- u
@@ -239,10 +259,12 @@ unescapeText' bs = runText $ \done -> do
 
 {-# INLINE unescapeText' #-}
 
+write :: A.MArray s -> Int -> Word16 -> ST s ()
 write dest pos char =
   A.unsafeWrite dest pos char
 {-# INLINE write #-}
 
+writeAndReturn :: A.MArray s -> Int -> Word16 -> t -> ST s (Int, t)
 writeAndReturn dest pos char res = do
   write dest pos char
   return (pos + 1, res)
@@ -255,9 +277,9 @@ throwDecodeError =
 {-# INLINE throwDecodeError #-}
 
 
+#else
+-- FFI version.
 
-
-{-
 import           Control.Exception          (evaluate, throw, try)
 import           Control.Monad.ST.Unsafe    (unsafeIOToST, unsafeSTToIO)
 import           Data.ByteString            as B
@@ -297,7 +319,8 @@ unescapeText' (PS fp off len) = runText $ \done -> do
  where
   desc = "Data.Text.Internal.Encoding.decodeUtf8: Invalid UTF-8 stream"
 {-# INLINE unescapeText' #-}
--}
+
+#endif
 
 unescapeText :: ByteString -> Either UnicodeException Text
 unescapeText = unsafeDupablePerformIO . try . evaluate . unescapeText'
