@@ -38,6 +38,7 @@ description:
     (A note on naming: in Greek mythology, Aeson was the father of Jason.)
 
 extra-source-files:
+    *.yaml
     README.markdown
     benchmarks/*.cabal
     benchmarks/*.hs
