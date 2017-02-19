@@ -1,27 +1,28 @@
 {-# LANGUAGE ForeignFunctionInterface #-}
-{-# LANGUAGE MagicHash                #-}
-{-# LANGUAGE UnliftedFFITypes         #-}
+{-# LANGUAGE MagicHash #-}
+{-# LANGUAGE UnliftedFFITypes #-}
 
-module Data.Aeson.Parser.Unescape (
-  unescapeText
-) where
+module Data.Aeson.Parser.Unescape
+    (
+      unescapeText
+    ) where
 
-import           Control.Exception          (evaluate, throw, try)
-import           Control.Monad.ST.Unsafe    (unsafeIOToST, unsafeSTToIO)
-import           Data.ByteString            as B
-import           Data.ByteString.Internal   as B hiding (c2w)
-import qualified Data.Text.Array            as A
-import           Data.Text.Encoding.Error   (UnicodeException (..))
-import           Data.Text.Internal         (Text (..))
-import           Data.Text.Internal.Private (runText)
-import           Data.Text.Unsafe           (unsafeDupablePerformIO)
-import           Data.Word                  (Word8)
-import           Foreign.C.Types            (CInt (..), CSize (..))
-import           Foreign.ForeignPtr         (withForeignPtr)
-import           Foreign.Marshal.Utils      (with)
-import           Foreign.Ptr                (Ptr, plusPtr)
-import           Foreign.Storable           (peek)
-import           GHC.Base                   (MutableByteArray#)
+import Control.Exception (evaluate, throw, try)
+import Control.Monad.ST.Unsafe (unsafeIOToST, unsafeSTToIO)
+import Data.ByteString as B
+import Data.ByteString.Internal as B hiding (c2w)
+import Data.Text.Encoding.Error (UnicodeException (..))
+import Data.Text.Internal (Text (..))
+import Data.Text.Internal.Private (runText)
+import Data.Text.Unsafe (unsafeDupablePerformIO)
+import Data.Word (Word8)
+import Foreign.C.Types (CInt (..), CSize (..))
+import Foreign.ForeignPtr (withForeignPtr)
+import Foreign.Marshal.Utils (with)
+import Foreign.Ptr (Ptr, plusPtr)
+import Foreign.Storable (peek)
+import GHC.Base (MutableByteArray#)
+import qualified Data.Text.Array as A
 
 foreign import ccall unsafe "_js_decode_string" c_js_decode
     :: MutableByteArray# s -> Ptr CSize
