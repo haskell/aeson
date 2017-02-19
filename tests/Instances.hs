@@ -16,8 +16,6 @@ import Control.Monad
 import Data.Aeson.Types
 import Data.Function (on)
 import Data.Functor.Compose (Compose (..))
-import Data.Functor.Identity (Identity (..))
-import Data.Hashable (Hashable (..))
 import Data.Proxy (Proxy(..))
 import Data.Tagged (Tagged(..))
 import Data.Time (ZonedTime(..), TimeZone(..))
@@ -31,8 +29,8 @@ import qualified Data.UUID.Types as UUID
 
 #if !MIN_VERSION_QuickCheck(2,9,0)
 import Control.Applicative (Const(..))
-import Data.List.NonEmpty (NonEmpty(..))
 import Data.Functor.Identity (Identity (..))
+import Data.List.NonEmpty (NonEmpty(..))
 import Data.Version
 import Test.QuickCheck (getNonNegative, listOf1, resize)
 #endif

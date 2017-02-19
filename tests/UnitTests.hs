@@ -17,7 +17,7 @@ module UnitTests
 import Prelude ()
 import Prelude.Compat
 
-import Control.Monad (forM, forM_, unless)
+import Control.Monad (forM, forM_)
 import Data.Aeson ((.=), (.:), (.:?), (.:!), FromJSON(..), FromJSONKeyFunction(..), FromJSONKey(..), ToJSON1(..), decode, eitherDecode, encode, genericToEncoding, genericToJSON, object, withObject)
 import Data.Aeson.Internal (JSONPathElement(..), formatError)
 import Data.Aeson.TH (deriveJSON, deriveToJSON, deriveToJSON1)
@@ -36,8 +36,7 @@ import Data.Time.Format (parseTime)
 import Data.Time.Locale.Compat (defaultTimeLocale)
 import GHC.Generics (Generic)
 import Instances ()
-import System.Directory (doesDirectoryExist, getDirectoryContents)
-import System.Exit (exitWith, ExitCode(ExitFailure))
+import System.Directory (getDirectoryContents)
 import System.FilePath ((</>), takeExtension, takeFileName)
 import Test.Framework (Test, testGroup)
 import Test.Framework.Providers.HUnit (testCase)
@@ -424,7 +423,6 @@ jsonTestSuiteTest path = testCase fileName $ do
 jsonTestSuite :: IO Test
 jsonTestSuite = do
   let suitePath = "tests/JSONTestSuite"
-  exists <- doesDirectoryExist suitePath
   let suites = ["test_parsing", "test_transform"]
   testPaths <- fmap (sort . concat) . forM suites $ \suite -> do
     let dir = suitePath </> suite
