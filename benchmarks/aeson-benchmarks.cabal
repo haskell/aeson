@@ -10,7 +10,7 @@ flag bytestring-builder
   manual: False
 
 library
-  hs-source-dirs: .. .
+  hs-source-dirs: .. . ../ffi ../pure
   c-sources:  ../cbits/unescape_string.c
   exposed-modules:
     Data.Aeson
@@ -24,6 +24,8 @@ library
     Data.Aeson.Parser.Internal
     Data.Aeson.Parser.Time
     Data.Aeson.Parser.Unescape
+    Data.Aeson.Parser.UnescapeFFI
+    Data.Aeson.Parser.UnescapePure
     Data.Aeson.TH
     Data.Aeson.Text
     Data.Aeson.Types
@@ -177,7 +179,7 @@ executable aeson-benchmark-json-parse
 
 executable aeson-benchmark-dates
   main-is: Dates.hs
-  ghc-options: -Wall -O2 -rtsopts
+  ghc-options: -Wall -O2 -rtsopts -fsimpl-tick-factor=200
   build-depends:
     base,
     base-compat,

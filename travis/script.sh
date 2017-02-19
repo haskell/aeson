@@ -4,7 +4,7 @@ set -ex
 
 case $BUILD in
   stack)
-    stack build --test --haddock
+    stack build --test --haddock --no-terminal
     ;;
   cabal)
     if [ -f configure.ac ]; then autoreconf -i; fi

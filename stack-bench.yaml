@@ -1,9 +1,4 @@
-resolver: lts-6.5
+resolver: lts-8.5
 packages:
+- '.'
 - benchmarks
-extra-deps:
-- semigroups-0.18.2
-- integer-logarithms-1
-flags:
-  semigroups:
-    bytestring-builder: false
