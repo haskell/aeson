@@ -1,0 +1,6 @@
+resolver: lts-8.1
+packages:
+- '.'
+flags:
+  aeson:
+    fast: true
