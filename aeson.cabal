@@ -70,6 +70,11 @@ flag bytestring-builder
   default: False
   manual: False
 
+flag cffi
+  description: Controls whether to include c-ffi bits or pure haskell
+  default: True
+  manual: True
+
 library
   default-language: Haskell2010
 
@@ -150,7 +155,12 @@ library
     ghc-options: -O2
 
   include-dirs: include
-  c-sources:  cbits/unescape_string.c
+  if impl(ghcjs) || !flag(cffi)
+    hs-source-dirs: . pure
+  else
+    c-sources:  cbits/unescape_string.c
+    cpp-options: -DCFFI
+    hs-source-dirs: . ffi
 
 test-suite tests
   default-language: Haskell2010
