@@ -50,7 +50,7 @@ import qualified Data.ByteString.Unsafe as B
 import qualified Data.ByteString.Lazy as L
 import qualified Data.HashMap.Strict as H
 import qualified Data.Scientific as Sci
-import Data.Aeson.Parser.Unescape
+import Data.Aeson.Parser.Unescape (unescapeText)
 
 #if MIN_VERSION_ghc_prim(0,3,1)
 import GHC.Base (Int#, (==#), isTrue#, word2Int#)

@@ -51,9 +51,11 @@ extra-source-files:
     examples/*.cabal
     examples/*.hs
     examples/Twitter/*.hs
+    ffi/Data/Aeson/Parser/*.hs
     include/*.h
     tests/JSONTestSuite/test_parsing/*.json
     tests/JSONTestSuite/test_transform/*.json
+    pure/Data/Aeson/Parser/*.hs
 
 flag developer
   description: operate in developer mode
@@ -77,6 +79,7 @@ flag cffi
 
 library
   default-language: Haskell2010
+  hs-source-dirs: .
 
   exposed-modules:
     Data.Aeson
@@ -156,18 +159,25 @@ library
 
   include-dirs: include
   if impl(ghcjs) || !flag(cffi)
-    hs-source-dirs: . pure
+    hs-source-dirs: pure
+    other-modules: Data.Aeson.Parser.UnescapePure
   else
-    c-sources:  cbits/unescape_string.c
+    c-sources: cbits/unescape_string.c
     cpp-options: -DCFFI
-    hs-source-dirs: . ffi
+    hs-source-dirs: ffi
+    other-modules: Data.Aeson.Parser.UnescapeFFI
 
 test-suite tests
   default-language: Haskell2010
-  type:           exitcode-stdio-1.0
-  hs-source-dirs: tests
-  main-is:        Tests.hs
+  type: exitcode-stdio-1.0
+  hs-source-dirs: tests ffi pure
+  main-is: Tests.hs
+  c-sources: cbits/unescape_string.c
+  ghc-options: -Wall -threaded -rtsopts
+
   other-modules:
+    Data.Aeson.Parser.UnescapeFFI
+    Data.Aeson.Parser.UnescapePure
     DataFamilies.Properties
     DataFamilies.Instances
     DataFamilies.Encoders
@@ -182,8 +192,6 @@ test-suite tests
     Types
     UnitTests
     UnitTests.NullaryConstructors
-
-  ghc-options: -Wall -threaded -rtsopts
 
   build-depends:
     HUnit,

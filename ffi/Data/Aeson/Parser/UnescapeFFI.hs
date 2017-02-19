@@ -2,7 +2,7 @@
 {-# LANGUAGE MagicHash #-}
 {-# LANGUAGE UnliftedFFITypes #-}
 
-module Data.Aeson.Parser.Unescape
+module Data.Aeson.Parser.UnescapeFFI
     (
       unescapeText
     ) where

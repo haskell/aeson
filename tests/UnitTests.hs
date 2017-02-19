@@ -54,6 +54,10 @@ import qualified Data.Text.Lazy.Encoding as TLE
 import qualified ErrorMessages
 import qualified SerializationFormatSpec
 
+-- Asserts that we can use both modules at once in the test suite.
+import Data.Aeson.Parser.UnescapeFFI ()
+import Data.Aeson.Parser.UnescapePure ()
+
 tests :: Test
 tests = testGroup "unit" [
     testGroup "SerializationFormatSpec" SerializationFormatSpec.tests

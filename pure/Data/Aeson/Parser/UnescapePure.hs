@@ -1,4 +1,4 @@
-module Data.Aeson.Parser.Unescape
+module Data.Aeson.Parser.UnescapePure
     (
       unescapeText
     ) where
