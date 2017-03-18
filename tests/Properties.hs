@@ -33,7 +33,7 @@ import Instances ()
 import Numeric.Natural (Natural)
 import Test.Framework (Test, testGroup)
 import Test.Framework.Providers.QuickCheck2 (testProperty)
-import Test.QuickCheck (Arbitrary(..), Property, (===), (.&&.), counterexample)
+import Test.QuickCheck (Arbitrary(..), Property, Testable, (===), (.&&.), counterexample)
 import Types
 import qualified Data.Attoparsec.Lazy as L
 import qualified Data.ByteString.Lazy.Char8 as L
@@ -149,6 +149,11 @@ type S4 = Sum4 Int8 ZonedTime T.Text (Map.Map String Int)
 -- Value properties
 --------------------------------------------------------------------------------
 
+-- | Add the formatted @Value@ to the printed counterexample when the property
+-- fails.
+checkValue :: Testable a => (Value -> a) -> Value -> Property
+checkValue prop v = counterexample (L.unpack (encode v)) (prop v)
+
 isString :: Value -> Bool
 isString (String _) = True
 isString _          = False
@@ -181,6 +186,12 @@ isUntaggedValueETI (Bool _)   = True
 isUntaggedValueETI (Number _) = True
 isUntaggedValueETI (Array a)  = length a == 2
 isUntaggedValueETI _          = False
+
+isEmptyArray :: Value -> Property
+isEmptyArray = checkValue isEmptyArray'
+
+isEmptyArray' :: Value -> Bool
+isEmptyArray' = (Array mempty ==)
 
 
 --------------------------------------------------------------------------------
@@ -427,6 +438,12 @@ tests = testGroup "properties" [
           , testProperty "ObjectWithSingleField" (toParseJSON thGADTParseJSONDefault thGADTToJSONDefault)
           ]
         ]
+      , testGroup "OneConstructor" [
+          testProperty "default" (isEmptyArray . thOneConstructorToJSONDefault)
+        , testGroup "roundTrip" [
+            testProperty "default" (toParseJSON thOneConstructorParseJSONDefault thOneConstructorToJSONDefault)
+          ]
+        ]
       ]
     , testGroup "toEncoding" [
         testProperty "NullaryString" $
@@ -466,6 +483,9 @@ tests = testGroup "properties" [
         thSomeTypeLiftToJSONObjectWithSingleField `sameAs1` thSomeTypeLiftToEncodingObjectWithSingleField
       , testProperty "SomeTypeObjectWithSingleField unary agree" $
         thSomeTypeToEncodingObjectWithSingleField `sameAs1Agree` thSomeTypeLiftToEncodingObjectWithSingleField
+
+      , testProperty "OneConstructor" $
+        thOneConstructorToJSONDefault `sameAs` thOneConstructorToEncodingDefault
       ]
     ]
   ]

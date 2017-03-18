@@ -341,3 +341,16 @@ thGADTToEncodingDefault = $(mkToEncoding defaultOptions ''GADT)
 
 thGADTParseJSONDefault :: Value -> Parser (GADT String)
 thGADTParseJSONDefault = $(mkParseJSON defaultOptions ''GADT)
+
+--------------------------------------------------------------------------------
+-- OneConstructor encoders/decoders
+--------------------------------------------------------------------------------
+
+thOneConstructorToJSONDefault :: OneConstructor -> Value
+thOneConstructorToJSONDefault = $(mkToJSON defaultOptions ''OneConstructor)
+
+thOneConstructorToEncodingDefault :: OneConstructor -> Encoding
+thOneConstructorToEncodingDefault = $(mkToEncoding defaultOptions ''OneConstructor)
+
+thOneConstructorParseJSONDefault :: Value -> Parser OneConstructor
+thOneConstructorParseJSONDefault = $(mkParseJSON defaultOptions ''OneConstructor)
