@@ -224,6 +224,9 @@ test-suite tests
   if impl(ghc >= 7.8)
     build-depends: hashable-time >= 0.2 && <0.3
 
+  if flag(fast)
+    ghc-options: -fno-enable-rewrite-rules
+
 source-repository head
   type:     git
   location: git://github.com/bos/aeson.git
