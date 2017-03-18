@@ -42,3 +42,9 @@ optsUntaggedValue :: Options
 optsUntaggedValue = optsDefault
     { sumEncoding = UntaggedValue
     }
+
+optsTagSingleConstructors :: Options
+optsTagSingleConstructors = optsDefault
+                            { tagSingleConstructors = True
+                            , allNullaryToStringTag = False
+                            }
