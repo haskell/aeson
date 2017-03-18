@@ -493,6 +493,7 @@ showOptions =
         ++ ", omitNothingFields = False"
         ++ ", sumEncoding = TaggedObject {tagFieldName = \"tag\", contentsFieldName = \"contents\"}"
         ++ ", unwrapUnaryRecords = False"
+        ++ ", tagSingleConstructors = False"
         ++ "}")
         (show defaultOptions)
 
