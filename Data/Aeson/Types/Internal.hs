@@ -554,18 +554,18 @@ data SumEncoding =
     -- the 'contentsFieldName' field.
   | UntaggedValue
     -- ^ Constructor names won't be encoded. Instead only the contents of the
-    -- constructor will be encoded as if the type had single constructor. JSON
+    -- constructor will be encoded as if the type had a single constructor. JSON
     -- encodings have to be disjoint for decoding to work properly.
     --
     -- When decoding, constructors are tried in the order of definition. If some
     -- encodings overlap, the first one defined will succeed.
     --
-    -- /Note:/ Nullary constructors are encoded as the string (using
+    -- /Note:/ Nullary constructors are encoded as strings (using
     -- 'constructorTagModifier'). Having a nullary constructor alongside a
     -- single field constructor that encodes to a string leads to ambiguity.
     --
     -- /Note:/ Only the last error is kept when decoding, so in the case of
-    -- mailformed JSON, only an error for the last constructor will be reported.
+    -- malformed JSON, only an error for the last constructor will be reported.
   | ObjectWithSingleField
     -- ^ A constructor will be encoded to an object with a single
     -- field named after the constructor tag (modified by the
