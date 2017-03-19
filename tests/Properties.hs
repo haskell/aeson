@@ -235,7 +235,7 @@ tests = testGroup "properties" [
       [ testProperty "Identity Char" $ roundTripEq (undefined :: I Int)
 
       , testProperty "Identity Char" $ roundTripEq (undefined :: I Char)
-      , testProperty "Identity [Char]" $ roundTripEq (undefined :: I [Char])
+      , testProperty "Identity [Char]" $ roundTripEq (undefined :: I String)
       , testProperty "[Identity Char]" $ roundTripEq (undefined :: [I Char])
 
       , testProperty "Compose I  I  Int" $ roundTripEq (undefined :: LogScaled (Compose I  I  Int))

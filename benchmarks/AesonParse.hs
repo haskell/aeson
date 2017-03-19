@@ -8,7 +8,6 @@ import Prelude ()
 import Prelude.Compat
 
 import "aeson-benchmarks" Data.Aeson
-import Control.Exception
 import Control.Monad
 import Data.Attoparsec.ByteString (IResult(..), parseWith)
 import Data.Time.Clock
@@ -21,7 +20,7 @@ main = do
   (bs:cnt:args) <- getArgs
   let count = read cnt :: Int
       blkSize = read bs
-  forM_ args $ \arg -> bracket (openFile arg ReadMode) hClose $ \h -> do
+  forM_ args $ \arg -> withFile arg ReadMode $ \h -> do
     putStrLn $ arg ++ ":"
     start <- getCurrentTime
     let loop !good !bad

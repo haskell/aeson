@@ -22,22 +22,22 @@ main = do
   defaultMain [
       bgroup "decode" [
         bgroup "UTCTime" [
-          env file1 $ \ ~bs -> bench "whole" $ nf utcTime bs
-        , env file2 $ \ ~bs -> bench "fractional" $ nf utcTime bs
+          env file1 $ \bs -> bench "whole" $ nf utcTime bs
+        , env file2 $ \bs -> bench "fractional" $ nf utcTime bs
         ]
       , bgroup "ZonedTime" [
-          env file1 $ \ ~bs -> bench "whole" $ nf zTime bs
-        , env file2 $ \ ~bs -> bench "fractional" $ nf zTime bs
+          env file1 $ \bs -> bench "whole" $ nf zTime bs
+        , env file2 $ \bs -> bench "fractional" $ nf zTime bs
         ]
       ]
     , bgroup "encode" [
         bgroup "UTCTime" [
-          env (utcTime <$> file1) $ \ ~ts -> bench "whole" $ nf encode ts
-        , env (utcTime <$> file2) $ \ ~ts -> bench "fractional" $ nf encode ts
+          env (utcTime <$> file1) $ \ts -> bench "whole" $ nf encode ts
+        , env (utcTime <$> file2) $ \ts -> bench "fractional" $ nf encode ts
         ]
       , bgroup "ZonedTime" [
-          env (zTime <$> file1) $ \ ~ts -> bench "whole" $ nf encode ts
-        , env (zTime <$> file2) $ \ ~ts -> bench "fractional" $ nf encode ts
+          env (zTime <$> file1) $ \ts -> bench "whole" $ nf encode ts
+        , env (zTime <$> file2) $ \ts -> bench "fractional" $ nf encode ts
         ]
       ]
     ]

@@ -292,7 +292,7 @@ encodeUtf8BuilderEscaped be =
       where
         iend = off + len
 
-        outerLoop !i0 !br@(B.BufferRange op0 ope)
+        outerLoop !i0 br@(B.BufferRange op0 ope)
           | i0 >= iend       = k br
           | outRemaining > 0 = goPartial (i0 + min outRemaining inpRemaining)
           -- TODO: Use a loop with an integrated bound's check if outRemaining

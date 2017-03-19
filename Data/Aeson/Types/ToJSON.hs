@@ -1,4 +1,3 @@
-{-# LANGUAGE BangPatterns #-}
 {-# LANGUAGE CPP #-}
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE DefaultSignatures #-}
@@ -131,6 +130,8 @@ import Foreign.Ptr (plusPtr)
 import qualified Data.ByteString.Internal as S
 import qualified Data.ByteString.Lazy.Internal as L
 #endif
+
+{-# ANN module ("HLint: ignore Reduce duplication"::String) #-}
 
 toJSONPair :: (a -> Value) -> (b -> Value) -> (a, b) -> Value
 toJSONPair a b = liftToJSON2 a (listValue a) b (listValue b)
@@ -2809,8 +2810,8 @@ packChunks :: L.ByteString -> S.ByteString
 packChunks lbs =
     S.unsafeCreate (fromIntegral $ L.length lbs) (copyChunks lbs)
   where
-    copyChunks !L.Empty                         !_pf = return ()
-    copyChunks !(L.Chunk (S.PS fpbuf o l) lbs') !pf  = do
+    copyChunks L.Empty                         _pf = return ()
+    copyChunks (L.Chunk (S.PS fpbuf o l) lbs') pf  = do
         withForeignPtr fpbuf $ \pbuf ->
             copyBytes pf (pbuf `plusPtr` o) l
         copyChunks lbs' (pf `plusPtr` l)

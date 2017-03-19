@@ -7,7 +7,6 @@ import Prelude ()
 import Prelude.Compat
 
 import Control.DeepSeq
-import Control.Exception
 import Control.Monad
 import Data.Aeson
 import Data.Attoparsec.ByteString (IResult(..), parseWith)
@@ -25,7 +24,7 @@ main = do
         (c:a) -> (c,a)
         [] -> error "Unexpected empty list"
   let count = read cnt :: Int
-  forM_ args $ \arg -> bracket (openFile arg ReadMode) hClose $ \h -> do
+  forM_ args $ \arg -> withFile arg ReadMode $ \h -> do
     putStrLn $ arg ++ ":"
     let refill = B.hGet h 16384
     result0 <- parseWith refill json =<< refill
@@ -35,7 +34,7 @@ main = do
     start <- getCurrentTime
     let loop !n r
             | n >= count = return ()
-            | otherwise = {-# SCC "loop" #-} do
+            | otherwise = {-# SCC "loop" #-}
           rnf (encode r) `seq` loop (n+1) r
     loop 0 r0
     delta <- flip diffUTCTime start `fmap` getCurrentTime

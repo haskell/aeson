@@ -1,5 +1,7 @@
 {-# LANGUAGE CPP #-}
+#ifdef HAS_BOTH_AESON_AND_BENCHMARKS
 {-# LANGUAGE PackageImports #-}
+#endif
 
 {-# OPTIONS_GHC -fno-warn-unused-imports #-}
 

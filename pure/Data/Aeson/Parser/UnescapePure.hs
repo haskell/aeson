@@ -52,23 +52,23 @@ setByte1 point word = point .|. fromIntegral (word .&. 0x3f)
 {-# INLINE setByte1 #-}
 
 setByte2 :: (Num a, Bits b, Bits a, Integral b) => a -> b -> a
-setByte2 point word = point .|. ((fromIntegral $ word .&. 0x3f) `shiftL` 6)
+setByte2 point word = point .|. (fromIntegral (word .&. 0x3f) `shiftL` 6)
 {-# INLINE setByte2 #-}
 
 setByte2Top :: (Num a, Bits b, Bits a, Integral b) => a -> b -> a
-setByte2Top point word = point .|. ((fromIntegral $ word .&. 0x1f) `shiftL` 6)
+setByte2Top point word = point .|. (fromIntegral (word .&. 0x1f) `shiftL` 6)
 {-# INLINE setByte2Top #-}
 
 setByte3 :: (Num a, Bits b, Bits a, Integral b) => a -> b -> a
-setByte3 point word = point .|. ((fromIntegral $ word .&. 0x3f) `shiftL` 12)
+setByte3 point word = point .|. (fromIntegral (word .&. 0x3f) `shiftL` 12)
 {-# INLINE setByte3 #-}
 
 setByte3Top :: (Num a, Bits b, Bits a, Integral b) => a -> b -> a
-setByte3Top point word = point .|. ((fromIntegral $ word .&. 0xf) `shiftL` 12)
+setByte3Top point word = point .|. (fromIntegral (word .&. 0xf) `shiftL` 12)
 {-# INLINE setByte3Top #-}
 
 setByte4 :: (Num a, Bits b, Bits a, Integral b) => a -> b -> a
-setByte4 point word = point .|. ((fromIntegral $ word .&. 0x7) `shiftL` 18)
+setByte4 point word = point .|. (fromIntegral (word .&. 0x7) `shiftL` 18)
 {-# INLINE setByte4 #-}
 
 decode :: Utf -> Word32 -> Word8 -> (Utf, Word32)
@@ -207,12 +207,12 @@ unescapeText' bs = runText $ \done -> do
         let u = w' .|. w in
 
         -- Get next state based on surrogates.
-        let st =
-              if u >= 0xd800 && u <= 0xdbff then -- High surrogate.
+        let st
+              | u >= 0xd800 && u <= 0xdbff = -- High surrogate.
                 StateS0
-              else if u >= 0xdc00 && u <= 0xdfff then -- Low surrogate.
+              | u >= 0xdc00 && u <= 0xdfff = -- Low surrogate.
                 throwDecodeError
-              else
+              | otherwise =
                 StateNone
         in
         writeAndReturn dest pos u st

@@ -19,4 +19,8 @@ case $BUILD in
     SRC_TGZ=$(cabal info . | awk '{print $2;exit}').tar.gz &&
       (cd dist && cabal install --force-reinstalls "$SRC_TGZ")
     ;;
+  hlint)
+    stack install hlint --resolver lts-8 --system-ghc --no-terminal
+    make lint
+    ;;
 esac

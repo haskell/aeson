@@ -43,7 +43,7 @@ d :: T
 d = Record
     { testOne = 1234.56789
     , testTwo = True
-    , testThree = Product "Hello World!" 'a' $
+    , testThree = Product "Hello World!" 'a'
                     Record
                     { testOne   = 9876.54321
                     , testTwo   = False
@@ -80,7 +80,7 @@ d' :: T'
 d' = Record'
     { testOne' = 1234.56789
     , testTwo' = True
-    , testThree' = Product' "Hello World!" 'a' $
+    , testThree' = Product' "Hello World!" 'a'
                     Record'
                     { testOne'   = 9876.54321
                     , testTwo'   = False

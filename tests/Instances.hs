@@ -3,7 +3,6 @@
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RecordWildCards #-}
-{-# LANGUAGE StandaloneDeriving #-}
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 
 module Instances () where
@@ -44,6 +43,8 @@ import Data.Hashable.Time ()
 #if !MIN_VERSION_base(4,8,0) && !MIN_VERSION_QuickCheck(2,8,3)
 import Numeric.Natural
 #endif
+
+{-# ANN module ("HLint: ignore Use fewer imports"::String) #-}
 
 -- "System" types.
 
