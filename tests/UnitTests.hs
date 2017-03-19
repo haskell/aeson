@@ -91,6 +91,7 @@ tests = testGroup "unit" [
   , testGroup "FromJSONKey" $ fmap (testCase "-") fromJSONKeyAssertions
   , testCase "PR #455" pr455
   , testCase "Unescape string (PR #477)" unescapeString
+  , testCase "Show Options" showOptions
   ]
 
 roundTripCamel :: String -> Assertion
@@ -482,6 +483,20 @@ pr455 = assertEqual "FooCons FooNil"
   where
     foo :: Foo Int
     foo = FooCons FooNil
+
+showOptions :: Assertion
+showOptions =
+    assertEqual
+        "Show Options"
+        (  "Options {"
+        ++   "fieldLabelModifier =~ \"exampleField\""
+        ++ ", constructorTagModifier =~ \"ExampleConstructor\""
+        ++ ", allNullaryToStringTag = True"
+        ++ ", omitNothingFields = False"
+        ++ ", sumEncoding = TaggedObject {tagFieldName = \"tag\", contentsFieldName = \"contents\"}"
+        ++ ", unwrapUnaryRecords = False"
+        ++ "}")
+        (show defaultOptions)
 
 deriveJSON defaultOptions{omitNothingFields=True} ''MyRecord
 
