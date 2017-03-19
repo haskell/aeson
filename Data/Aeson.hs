@@ -76,8 +76,8 @@ module Data.Aeson
     -- ** Generic JSON classes and options
     , GFromJSON(..)
     , FromArgs(..)
-    , GToJSON(..)
-    , GToEncoding(..)
+    , GToJSON
+    , GToEncoding
     , ToArgs(..)
     , Zero
     , One

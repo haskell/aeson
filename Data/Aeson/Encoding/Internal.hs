@@ -13,6 +13,7 @@ module Data.Aeson.Encoding.Internal
     , Series (..)
     , pairs
     , pair
+    , pairStr
     , pair'
     -- * Predicates
     , nullEncoding
@@ -124,6 +125,11 @@ data Series = Empty
 
 pair :: Text -> Encoding -> Series
 pair name val = pair' (text name) val
+{-# INLINE pair #-}
+
+pairStr :: String -> Encoding -> Series
+pairStr name val = pair' (string name) val
+{-# INLINE pairStr #-}
 
 pair' :: Encoding' Text -> Encoding -> Series
 pair' name val = Value $ retagEncoding $ retagEncoding name >< colon >< val
