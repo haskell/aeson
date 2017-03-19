@@ -403,44 +403,27 @@ isNullary :: Con -> Bool
 isNullary (NormalC _ []) = True
 isNullary _ = False
 
-sumToValue :: Options -> Bool -> Name -> Q Exp -> Q Exp
-sumToValue opts multiCons conName exp
+sumToValue :: Options -> Bool -> Bool -> Name -> Q Exp -> Q Exp
+sumToValue opts multiCons nullary conName exp
     | multiCons =
         case sumEncoding opts of
           TwoElemArray ->
               [|Array|] `appE` ([|V.fromList|] `appE` listE [conStr opts conName, exp])
           TaggedObject{tagFieldName, contentsFieldName} ->
-              [|A.object|] `appE` listE
-                [ infixApp [|T.pack tagFieldName|]     [|(.=)|] (conStr opts conName)
-                , infixApp [|T.pack contentsFieldName|] [|(.=)|] exp
-                ]
+              let tag      = infixApp [|T.pack tagFieldName|]      [|(.=)|] (conStr opts conName)
+                  contents = infixApp [|T.pack contentsFieldName|] [|(.=)|] exp
+              in
+                  [|A.object|] `appE` listE (if nullary then [tag] else [tag, contents])
           ObjectWithSingleField ->
               [|A.object|] `appE` listE
                 [ infixApp (conTxt opts conName) [|(.=)|] exp
                 ]
+          UntaggedValue | nullary -> conStr opts conName
           UntaggedValue -> exp
     | otherwise = exp
 
-nullarySumToValue :: Options -> Bool -> Name -> Q Exp
-nullarySumToValue opts multiCons conName =
-    case sumEncoding opts of
-      TaggedObject{tagFieldName} ->
-          [|A.object|] `appE` listE
-            [ infixApp [|T.pack tagFieldName|] [|(.=)|] (conStr opts conName)
-            ]
-      UntaggedValue -> conStr opts conName
-      _ -> sumToValue opts multiCons conName [e|toJSON ([] :: [()])|]
-
 -- | Generates code to generate the JSON encoding of a single constructor.
 argsToValue :: JSONClass -> [(Name, Name)] -> Options -> Bool -> Con -> Q Match
--- Nullary constructors. Generates code that explicitly matches against the
--- constructor even though it doesn't contain data. This is useful to prevent
--- type errors.
-argsToValue jc tjs opts multiCons (NormalC conName []) = do
-    ([], _) <- reifyConTys jc tjs conName
-    match (conP conName [])
-          (normalB (nullarySumToValue opts multiCons conName))
-          []
 
 -- Polyadic constructors with special case for unary constructors.
 argsToValue jc tjs opts multiCons (NormalC conName ts) = do
@@ -471,7 +454,7 @@ argsToValue jc tjs opts multiCons (NormalC conName ts) = do
                          (varE 'V.create `appE`
                            doE (newMV:stmts++[ret]))
     match (conP conName $ map varP args)
-          (normalB $ sumToValue opts multiCons conName js)
+          (normalB $ sumToValue opts multiCons (null ts) conName js)
           []
 
 -- Records.
@@ -538,7 +521,7 @@ argsToValue jc tjs opts multiCons (InfixC _ conName _) = do
     ar <- newName "argR"
     match (infixP (varP al) conName (varP ar))
           ( normalB
-          $ sumToValue opts multiCons conName
+          $ sumToValue opts multiCons False conName
           $ [|toJSON|] `appE` listE [ dispatchToJSON jc conName tvMap aTy
                                         `appE` varE a
                                     | (a, aTy) <- [(al,alTy), (ar,arTy)]
@@ -580,41 +563,27 @@ array exp = [|E.wrapArray|] `appE` exp
 object :: ExpQ -> ExpQ
 object exp = [|E.wrapObject|] `appE` exp
 
-sumToEncoding :: Options -> Bool -> Name -> Q Exp -> Q Exp
-sumToEncoding opts multiCons conName exp
+sumToEncoding :: Options -> Bool -> Bool -> Name -> Q Exp -> Q Exp
+sumToEncoding opts multiCons nullary conName exp
     | multiCons =
         let fexp = exp in
         case sumEncoding opts of
           TwoElemArray ->
             array (encStr opts conName <%> fexp)
           TaggedObject{tagFieldName, contentsFieldName} ->
-            object $
-            ([|E.text (T.pack tagFieldName)|] <:> encStr opts conName) <%>
-            ([|E.text (T.pack contentsFieldName)|] <:> fexp)
+            let tag      = [|E.text (T.pack tagFieldName)|]      <:> encStr opts conName
+                contents = [|E.text (T.pack contentsFieldName)|] <:> fexp
+            in
+              object $
+                if nullary then tag else tag <%> contents
           ObjectWithSingleField ->
             object (encStr opts conName <:> fexp)
+          UntaggedValue | nullary -> encStr opts conName
           UntaggedValue -> exp
     | otherwise = exp
 
-nullarySumToEncoding :: Options -> Bool -> Name -> Q Exp
-nullarySumToEncoding opts multiCons conName =
-    case sumEncoding opts of
-      TaggedObject{tagFieldName} ->
-          object $
-            [|E.text (T.pack tagFieldName)|] <:> encStr opts conName
-      UntaggedValue -> encStr opts conName
-      _ -> sumToEncoding opts multiCons conName [e|toEncoding ([] :: [()])|]
-
 -- | Generates code to generate the JSON encoding of a single constructor.
 argsToEncoding :: JSONClass -> [(Name, Name)] -> Options -> Bool -> Con -> Q Match
--- Nullary constructors. Generates code that explicitly matches against the
--- constructor even though it doesn't contain data. This is useful to prevent
--- type errors.
-argsToEncoding jc tes opts multiCons (NormalC conName []) = do
-    ([], _) <- reifyConTys jc tes conName
-    match (conP conName [])
-          (normalB (nullarySumToEncoding opts multiCons conName))
-          []
 
 -- Polyadic constructors with special case for unary constructors.
 argsToEncoding jc tes opts multiCons (NormalC conName ts) = do
@@ -622,6 +591,9 @@ argsToEncoding jc tes opts multiCons (NormalC conName ts) = do
     let len = length ts
     args <- newNameList "arg" len
     js <- case zip args argTys of
+            -- Nullary constructors are converted to an empty array.
+            [] -> return [| E.emptyArray_ |]
+
             -- Single argument is directly converted.
             [(e,eTy)] -> return (dispatchToEncoding jc conName tvMap eTy
                                    `appE` varE e)
@@ -632,7 +604,7 @@ argsToEncoding jc tes opts multiCons (NormalC conName ts) = do
                                           | (x,xTy) <- es
                                           ]))
     match (conP conName $ map varP args)
-          (normalB $ sumToEncoding opts multiCons conName js)
+          (normalB $ sumToEncoding opts multiCons (null ts) conName js)
           []
 
 -- Records.
@@ -701,7 +673,7 @@ argsToEncoding jc tes opts multiCons (InfixC _ conName _) = do
     ([alTy,arTy], tvMap) <- reifyConTys jc tes conName
     match (infixP (varP al) conName (varP ar))
           ( normalB
-          $ sumToEncoding opts multiCons conName
+          $ sumToEncoding opts multiCons False conName
           $ array (foldr1 (<%>) [ dispatchToEncoding jc conName tvMap aTy
                                     `appE` varE a
                                 | (a,aTy) <- [(al,alTy), (ar,arTy)]
