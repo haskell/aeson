@@ -20,14 +20,13 @@ module Data.Aeson.Internal.Time
 import Prelude ()
 import Prelude.Compat
 
-import Data.Fixed (Pico)
 import Data.Int (Int64)
 import Data.Time
 import Unsafe.Coerce (unsafeCoerce)
 
 #if MIN_VERSION_base(4,7,0)
 
-import Data.Fixed (Fixed(MkFixed))
+import Data.Fixed (Pico, Fixed(MkFixed))
 
 toPico :: Integer -> Pico
 toPico = MkFixed
@@ -36,6 +35,8 @@ fromPico :: Pico -> Integer
 fromPico (MkFixed i) = i
 
 #else
+
+import Data.Fixed (Pico)
 
 toPico :: Integer -> Pico
 toPico = unsafeCoerce

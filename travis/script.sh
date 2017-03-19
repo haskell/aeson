@@ -20,6 +20,7 @@ case $BUILD in
       (cd dist && cabal install --force-reinstalls "$SRC_TGZ")
     ;;
   hlint)
+    stack build --fast aeson --stack-yaml stack-lts8.yaml --system-ghc --no-terminal
     stack install hlint --resolver lts-8 --system-ghc --no-terminal
     make lint
     ;;
