@@ -2,7 +2,6 @@
 {-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE Rank2Types #-}
-{-# LANGUAGE RecordWildCards #-}
 #if __GLASGOW_HASKELL__ >= 800
 -- a) THQ works on cross-compilers and unregisterised GHCs
 -- b) may make compilation faster as no dynamic loading is ever needed (not sure about this)
@@ -75,6 +74,7 @@ import Data.Data (Data)
 import Data.Foldable (foldl')
 import Data.HashMap.Strict (HashMap)
 import Data.Hashable (Hashable(..))
+import Data.List (intercalate)
 import Data.Scientific (Scientific)
 import Data.Semigroup (Semigroup((<>)))
 import Data.String (IsString(..))
@@ -527,16 +527,17 @@ data Options = Options
     }
 
 instance Show Options where
-  show Options{..} = "Options {" ++
-    "fieldLabelModifier =~ " ++
-      show (fieldLabelModifier "exampleField") ++ ", " ++
-    "constructorTagModifier =~ " ++
-      show (constructorTagModifier "ExampleConstructor") ++ ", " ++
-    "allNullaryToStringTag = " ++ show allNullaryToStringTag ++ ", " ++
-    "omitNothingFields = " ++ show omitNothingFields ++ ", " ++
-    "sumEncoding = " ++ show sumEncoding ++ ", " ++
-    "unwrapUnaryRecords = " ++ show unwrapUnaryRecords ++
-    "}"
+  show (Options f c a o s u) =
+       "Options {"
+    ++ intercalate ", "
+      [ "fieldLabelModifier =~ " ++ show (f "exampleField")
+      , "constructorTagModifier =~ " ++ show (c "ExampleConstructor")
+      , "allNullaryToStringTag = " ++ show a
+      , "omitNothingFields = " ++ show o
+      , "sumEncoding = " ++ show s
+      , "unwrapUnaryRecords = " ++ show u
+      ]
+    ++ "}"
 
 -- | Specifies how to encode constructors of a sum datatype.
 data SumEncoding =
