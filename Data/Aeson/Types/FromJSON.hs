@@ -621,43 +621,44 @@ instance (FromJSON a) => FromJSON [a] where
 -- Functions
 -------------------------------------------------------------------------------
 
--- | @withObject expected f value@ applies @f@ to the 'Object' when @value@ is an @Object@
---   and fails using @'typeMismatch' expected@ otherwise.
+-- | @'withObject' expected f value@ applies @f@ to the 'Object' when @value@
+--   is an 'Object' and fails using @'typeMismatch' expected@ otherwise.
 withObject :: String -> (Object -> Parser a) -> Value -> Parser a
 withObject _        f (Object obj) = f obj
 withObject expected _ v            = typeMismatch expected v
 {-# INLINE withObject #-}
 
--- | @withText expected f value@ applies @f@ to the 'Text' when @value@ is a @String@
---   and fails using @'typeMismatch' expected@ otherwise.
+-- | @'withText' expected f value@ applies @f@ to the 'Text' when @value@ is a
+--   'String' and fails using @'typeMismatch' expected@ otherwise.
 withText :: String -> (Text -> Parser a) -> Value -> Parser a
 withText _        f (String txt) = f txt
 withText expected _ v            = typeMismatch expected v
 {-# INLINE withText #-}
 
--- | @withArray expected f value@ applies @f@ to the 'Array' when @value@ is an @Array@
---   and fails using @'typeMismatch' expected@ otherwise.
+-- | @'withArray' expected f value@ applies @f@ to the 'Array' when @value@ is
+-- an 'Array' and fails using @'typeMismatch' expected@ otherwise.
 withArray :: String -> (Array -> Parser a) -> Value -> Parser a
 withArray _        f (Array arr) = f arr
 withArray expected _ v           = typeMismatch expected v
 {-# INLINE withArray #-}
 
--- | @withNumber expected f value@ applies @f@ to the 'Number' when @value@ is a 'Number'.
---   and fails using @'typeMismatch' expected@ otherwise.
+-- | @'withNumber' expected f value@ applies @f@ to the 'Number' when @value@
+-- is a 'Number' and fails using @'typeMismatch' expected@ otherwise.
 withNumber :: String -> (Number -> Parser a) -> Value -> Parser a
 withNumber expected f = withScientific expected (f . scientificToNumber)
 {-# INLINE withNumber #-}
 {-# DEPRECATED withNumber "Use withScientific instead" #-}
 
--- | @withScientific expected f value@ applies @f@ to the 'Scientific' number when @value@ is a 'Number'.
---   and fails using @'typeMismatch' expected@ otherwise.
+-- | @'withScientific' expected f value@ applies @f@ to the 'Scientific' number
+-- when @value@ is a 'Number' and fails using @'typeMismatch' expected@
+-- otherwise.
 withScientific :: String -> (Scientific -> Parser a) -> Value -> Parser a
 withScientific _        f (Number scientific) = f scientific
 withScientific expected _ v                   = typeMismatch expected v
 {-# INLINE withScientific #-}
 
--- | @withBool expected f value@ applies @f@ to the 'Bool' when @value@ is a @Bool@
---   and fails using @'typeMismatch' expected@ otherwise.
+-- | @'withBool' expected f value@ applies @f@ to the 'Bool' when @value@ is a
+-- 'Bool' and fails using @'typeMismatch' expected@ otherwise.
 withBool :: String -> (Bool -> Parser a) -> Value -> Parser a
 withBool _        f (Bool arr) = f arr
 withBool expected _ v          = typeMismatch expected v
