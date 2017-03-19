@@ -281,12 +281,12 @@ genericLiftParseJSON opts pj pjl = fmap to1 . gParseJSON opts (From1Args pj pjl)
 --
 -- The basic ways to signal a failed conversion are as follows:
 --
--- * 'empty' and 'mzero' work, but are terse and uninformative
+-- * 'empty' and 'mzero' work, but are terse and uninformative;
 --
--- * 'fail' yields a custom error message
+-- * 'fail' yields a custom error message;
 --
 -- * 'typeMismatch' produces an informative message for cases when the
--- value encountered is not of the expected type
+-- value encountered is not of the expected type.
 --
 -- An example type and instance using 'typeMismatch':
 --
@@ -296,27 +296,27 @@ genericLiftParseJSON opts pj pjl = fmap to1 . gParseJSON opts (From1Args pj pjl)
 --
 -- data Coord = Coord { x :: Double, y :: Double }
 --
--- instance FromJSON Coord where
---     parseJSON ('Object' v) = Coord
---         '<$>' v '.:' \"x\" 
+-- instance 'FromJSON' Coord where
+--     'parseJSON' ('Object' v) = Coord
+--         '<$>' v '.:' \"x\"
 --         '<*>' v '.:' \"y\"
 --
 --     \-- We do not expect a non-'Object' value here.
 --     \-- We could use 'mzero' to fail, but 'typeMismatch'
 --     \-- gives a much more informative error message.
---     parseJSON invalid    = 'typeMismatch' \"Coord\" invalid
+--     'parseJSON' invalid    = 'typeMismatch' \"Coord\" invalid
 -- @
 --
 -- For this common case of only being concerned with a single
--- type of JSON value, the functions @withObject@, @withNumber@, etc.
+-- type of JSON value, the functions 'withObject', 'withNumber', etc.
 -- are provided. Their use is to be preferred when possible, since
--- they are more terse. Using @withObject@, we can rewrite the above instance 
+-- they are more terse. Using 'withObject', we can rewrite the above instance
 -- (assuming the same language extension and data type) as:
 --
 -- @
--- instance FromJSON Coord where
---     parseJSON = withObject \"Coord\" $ \v -> Coord
---         '<$>' v '.:' \"x\" 
+-- instance 'FromJSON' Coord where
+--     'parseJSON' = 'withObject' \"Coord\" $ \v -> Coord
+--         '<$>' v '.:' \"x\"
 --         '<*>' v '.:' \"y\"
 -- @
 --
@@ -325,7 +325,7 @@ genericLiftParseJSON opts pj pjl = fmap to1 . gParseJSON opts (From1Args pj pjl)
 --
 -- * "Data.Aeson.TH" provides Template Haskell functions which will derive an
 -- instance at compile time. The generated instance is optimized for your type
--- so will probably be more efficient than the following two options:
+-- so it will probably be more efficient than the following option.
 --
 -- * The compiler can provide a default generic implementation for
 -- 'parseJSON'.
@@ -343,18 +343,21 @@ genericLiftParseJSON opts pj pjl = fmap to1 . gParseJSON opts (From1Args pj pjl)
 --
 -- data Coord = Coord { x :: Double, y :: Double } deriving 'Generic'
 --
--- instance FromJSON Coord
+-- instance 'FromJSON' Coord
 -- @
 --
--- If @DefaultSignatures@ doesn't give exactly the results you want,
+-- If the default implementation doesn't give exactly the results you want,
 -- you can customize the generic decoding with only a tiny amount of
 -- effort, using 'genericParseJSON' with your preferred 'Options':
 --
 -- @
--- instance FromJSON Coord where
---     parseJSON = 'genericParseJSON' 'defaultOptions'
+-- customOptions = 'defaultOptions'
+--                 { 'fieldLabelModifier' = 'map' 'Data.Char.toUpper'
+--                 }
+--
+-- instance 'FromJSON' Coord where
+--     'parseJSON' = 'genericParseJSON' customOptions
 -- @
-
 class FromJSON a where
     parseJSON :: Value -> Parser a
 
@@ -516,7 +519,7 @@ typeMismatch expected actual =
 --
 -- * "Data.Aeson.TH" provides Template Haskell functions which will derive an
 -- instance at compile time. The generated instance is optimized for your type
--- so will probably be more efficient than the following two options:
+-- so it will probably be more efficient than the following option.
 --
 -- * The compiler can provide a default generic implementation for
 -- 'liftParseJSON'.
@@ -534,16 +537,20 @@ typeMismatch expected actual =
 --
 -- data Pair a b = Pair { pairFst :: a, pairSnd :: b } deriving 'Generic1'
 --
--- instance FromJSON a => FromJSON1 (Pair a)
+-- instance 'FromJSON' a => 'FromJSON1' (Pair a)
 -- @
 --
--- If @DefaultSignatures@ doesn't give exactly the results you want,
+-- If the default implementation doesn't give exactly the results you want,
 -- you can customize the generic decoding with only a tiny amount of
 -- effort, using 'genericLiftParseJSON' with your preferred 'Options':
 --
 -- @
--- instance FromJSON a => FromJSON1 (Pair a) where
---     liftParseJSON = 'genericLiftParseJSON' 'defaultOptions'
+-- customOptions = 'defaultOptions'
+--                 { 'fieldLabelModifier' = 'map' 'Data.Char.toUpper'
+--                 }
+--
+-- instance 'FromJSON' a => 'FromJSON1' (Pair a) where
+--     'liftParseJSON' = 'genericLiftParseJSON' customOptions
 -- @
 class FromJSON1 f where
     liftParseJSON :: (Value -> Parser a) -> (Value -> Parser [a]) -> Value -> Parser (f a)
