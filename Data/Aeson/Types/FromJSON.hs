@@ -346,9 +346,9 @@ genericLiftParseJSON opts pj pjl = fmap to1 . gParseJSON opts (From1Args pj pjl)
 -- instance 'FromJSON' Coord
 -- @
 --
--- If the default implementation doesn't give exactly the results you want,
--- you can customize the generic decoding with only a tiny amount of
--- effort, using 'genericParseJSON' with your preferred 'Options':
+-- The default implementation will be equivalent to
+-- @parseJSON = 'genericParseJSON' 'defaultOptions'@; If you need different
+-- options, you can customize the generic decoding by defining:
 --
 -- @
 -- customOptions = 'defaultOptions'

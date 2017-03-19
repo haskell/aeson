@@ -205,6 +205,9 @@ genericLiftToEncoding opts te tel = gToEncoding opts (To1Args te tel) . from1
 
 -- | A type that can be converted to JSON.
 --
+-- Instances in general /must/ specify 'toJSON' and /should/ (but don't need
+-- to) specify 'toEncoding'.
+--
 -- An example type and instance:
 --
 -- @
@@ -230,11 +233,9 @@ genericLiftToEncoding opts te tel = gToEncoding opts (To1Args te tel) . from1
 -- 'toJSON'.
 --
 -- To use the second, simply add a @deriving 'Generic'@ clause to your
--- datatype and declare a 'ToJSON' instance for your datatype without giving
--- definitions for 'toJSON' or 'toEncoding'.
---
--- For example, the previous example can be simplified to a more
--- minimal instance:
+-- datatype and declare a 'ToJSON' instance. If you require nothing other than
+-- 'defaultOptions', it is sufficient to write (and this is the only
+-- alternative where the default 'toJSON' implementation is sufficient):
 --
 -- @
 -- {-\# LANGUAGE DeriveGeneric \#-}
@@ -247,26 +248,8 @@ genericLiftToEncoding opts te tel = gToEncoding opts (To1Args te tel) . from1
 --     'toEncoding' = 'genericToEncoding' 'defaultOptions'
 -- @
 --
--- Why do we provide an implementation for 'toEncoding' here?  The
--- 'toEncoding' function is a relatively new addition to this class.
--- To allow users of older versions of this library to upgrade without
--- having to edit all of their instances or encounter surprising
--- incompatibilities, the default implementation of 'toEncoding' uses
--- 'toJSON'.  This produces correct results, but since it performs an
--- intermediate conversion to a 'Value', it will be less efficient
--- than directly emitting an 'Encoding'.  Our one-liner definition of
--- 'toEncoding' above bypasses the intermediate 'Value'.
---
--- If the default implementation doesn't give exactly the results you want,
--- you can customize the generic encoding with only a tiny amount of
--- effort, using 'genericToJSON' and 'genericToEncoding' with your
--- preferred 'Options'.
---
--- The following examples ensure that 'toEncoding' represents the same
--- encoding as 'toJSON'.
---
--- - A typical implementation defines both 'toJSON' and 'toEncoding'
---   with the same options.
+-- If on the other hand you wish to customize the generic decoding, you have
+-- to implement both methods:
 --
 -- @
 -- customOptions = 'defaultOptions'
@@ -278,23 +261,24 @@ genericLiftToEncoding opts te tel = gToEncoding opts (To1Args te tel) . from1
 --     'toEncoding' = 'genericToEncoding' customOptions
 -- @
 --
--- - A minimal definition of 'ToJSON' is given by 'toJSON'.
---   This is most useful to define an instance manually when
---   the generic options are not satisfactory.
+-- Previous versions of this library only had the 'toJSON' method. Adding
+-- 'toEncoding' had to reasons:
 --
--- @
--- instance 'ToJSON' Coord where
---      'toJSON' (Coord x y) = 'Array' (toJSON [x, y])
--- @
+-- 1. toEncoding is more efficient for the common case that the output of
+-- 'toJSON' is directly serialized to a @ByteString@.
+-- Further, expressing either method in terms of the other would be
+-- non-optimal.
 --
--- - The default implementation of 'toJSON' uses 'defaultOptions'. If you leave
---   'toJSON' implicit while providing a more efficient explicit implementation
---   of 'toEncoding', then it *must* be equivalent to using 'defaultOptions'.
---
--- @
--- instance ToJSON Coord where
---     'toEncoding' = 'genericToEncoding' 'defaultOptions'
--- @
+-- 2. The choice of defaults allows a smooth transition for existing users:
+-- Existing instances that do not define 'toEncoding' still
+-- compile and have the correct semantics. This is ensured by making
+-- the default implementation of 'toEncoding' use 'toJSON'. This produces
+-- correct results, but since it performs an intermediate conversion to a
+-- 'Value', it will be less efficient than directly emitting an 'Encoding'.
+-- (this also means that specifying nothing more than
+-- @instance ToJSON Coord@ would be sufficient as a generically decoding
+-- instance, but there probably exists no good reason to not specify
+-- 'toEncoding' in new instances.)
 class ToJSON a where
     -- | Convert a Haskell value to a JSON-friendly intermediate type.
     toJSON     :: a -> Value
