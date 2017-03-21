@@ -205,6 +205,9 @@ genericLiftToEncoding opts te tel = gToEncoding opts (To1Args te tel) . from1
 
 -- | A type that can be converted to JSON.
 --
+-- Instances in general /must/ specify 'toJSON' and /should/ (but don't need
+-- to) specify 'toEncoding'.
+--
 -- An example type and instance:
 --
 -- @
@@ -213,10 +216,10 @@ genericLiftToEncoding opts te tel = gToEncoding opts (To1Args te tel) . from1
 --
 -- data Coord = Coord { x :: Double, y :: Double }
 --
--- instance ToJSON Coord where
---   toJSON (Coord x y) = 'object' [\"x\" '.=' x, \"y\" '.=' y]
+-- instance 'ToJSON' Coord where
+--   'toJSON' (Coord x y) = 'object' [\"x\" '.=' x, \"y\" '.=' y]
 --
---   toEncoding (Coord x y) = 'pairs' (\"x\" '.=' x '<>' \"y\" '.=' y)
+--   'toEncoding' (Coord x y) = 'pairs' (\"x\" '.=' x '<>' \"y\" '.=' y)
 -- @
 --
 -- Instead of manually writing your 'ToJSON' instance, there are two options
@@ -224,17 +227,15 @@ genericLiftToEncoding opts te tel = gToEncoding opts (To1Args te tel) . from1
 --
 -- * "Data.Aeson.TH" provides Template Haskell functions which will derive an
 -- instance at compile time. The generated instance is optimized for your type
--- so will probably be more efficient than the following two options:
+-- so it will probably be more efficient than the following option.
 --
 -- * The compiler can provide a default generic implementation for
 -- 'toJSON'.
 --
 -- To use the second, simply add a @deriving 'Generic'@ clause to your
--- datatype and declare a 'ToJSON' instance for your datatype without giving
--- definitions for 'toJSON' or 'toEncoding'.
---
--- For example, the previous example can be simplified to a more
--- minimal instance:
+-- datatype and declare a 'ToJSON' instance. If you require nothing other than
+-- 'defaultOptions', it is sufficient to write (and this is the only
+-- alternative where the default 'toJSON' implementation is sufficient):
 --
 -- @
 -- {-\# LANGUAGE DeriveGeneric \#-}
@@ -243,30 +244,41 @@ genericLiftToEncoding opts te tel = gToEncoding opts (To1Args te tel) . from1
 --
 -- data Coord = Coord { x :: Double, y :: Double } deriving 'Generic'
 --
--- instance ToJSON Coord where
---     toEncoding = 'genericToEncoding' 'defaultOptions'
+-- instance 'ToJSON' Coord where
+--     'toEncoding' = 'genericToEncoding' 'defaultOptions'
 -- @
 --
--- Why do we provide an implementation for 'toEncoding' here?  The
--- 'toEncoding' function is a relatively new addition to this class.
--- To allow users of older versions of this library to upgrade without
--- having to edit all of their instances or encounter surprising
--- incompatibilities, the default implementation of 'toEncoding' uses
--- 'toJSON'.  This produces correct results, but since it performs an
--- intermediate conversion to a 'Value', it will be less efficient
--- than directly emitting an 'Encoding'.  Our one-liner definition of
--- 'toEncoding' above bypasses the intermediate 'Value'.
---
--- If @DefaultSignatures@ doesn't give exactly the results you want,
--- you can customize the generic encoding with only a tiny amount of
--- effort, using 'genericToJSON' and 'genericToEncoding' with your
--- preferred 'Options':
+-- If on the other hand you wish to customize the generic decoding, you have
+-- to implement both methods:
 --
 -- @
--- instance ToJSON Coord where
---     toJSON     = 'genericToJSON' 'defaultOptions'
---     toEncoding = 'genericToEncoding' 'defaultOptions'
+-- customOptions = 'defaultOptions'
+--                 { 'fieldLabelModifier' = 'map' 'Data.Char.toUpper'
+--                 }
+--
+-- instance 'ToJSON' Coord where
+--     'toJSON'     = 'genericToJSON' customOptions
+--     'toEncoding' = 'genericToEncoding' customOptions
 -- @
+--
+-- Previous versions of this library only had the 'toJSON' method. Adding
+-- 'toEncoding' had to reasons:
+--
+-- 1. toEncoding is more efficient for the common case that the output of
+-- 'toJSON' is directly serialized to a @ByteString@.
+-- Further, expressing either method in terms of the other would be
+-- non-optimal.
+--
+-- 2. The choice of defaults allows a smooth transition for existing users:
+-- Existing instances that do not define 'toEncoding' still
+-- compile and have the correct semantics. This is ensured by making
+-- the default implementation of 'toEncoding' use 'toJSON'. This produces
+-- correct results, but since it performs an intermediate conversion to a
+-- 'Value', it will be less efficient than directly emitting an 'Encoding'.
+-- (this also means that specifying nothing more than
+-- @instance ToJSON Coord@ would be sufficient as a generically decoding
+-- instance, but there probably exists no good reason to not specify
+-- 'toEncoding' in new instances.)
 class ToJSON a where
     -- | Convert a Haskell value to a JSON-friendly intermediate type.
     toJSON     :: a -> Value
@@ -288,8 +300,8 @@ class ToJSON a where
     -- extension, and then have GHC generate a method body as follows.
     --
     -- @
-    -- instance ToJSON Coord where
-    --     toEncoding = 'genericToEncoding' 'defaultOptions'
+    -- instance 'ToJSON' Coord where
+    --     'toEncoding' = 'genericToEncoding' 'defaultOptions'
     -- @
 
     toEncoding :: a -> Encoding
@@ -491,7 +503,7 @@ contramapToJSONKeyFunction h x = case x of
 --
 -- * "Data.Aeson.TH" provides Template Haskell functions which will derive an
 -- instance at compile time. The generated instance is optimized for your type
--- so will probably be more efficient than the following two options:
+-- so it will probably be more efficient than the following option.
 --
 -- * The compiler can provide a default generic implementation for
 -- 'toJSON1'.
@@ -509,19 +521,25 @@ contramapToJSONKeyFunction h x = case x of
 --
 -- data Pair = Pair { pairFst :: a, pairSnd :: b } deriving 'Generic1'
 --
--- instance ToJSON a => ToJSON1 (Pair a)
+-- instance 'ToJSON' a => 'ToJSON1' (Pair a)
 -- @
 --
--- If @DefaultSignatures@ doesn't give exactly the results you want,
+-- If the default implementation doesn't give exactly the results you want,
 -- you can customize the generic encoding with only a tiny amount of
 -- effort, using 'genericLiftToJSON' and 'genericLiftToEncoding' with
 -- your preferred 'Options':
 --
 -- @
--- instance ToJSON a => ToJSON1 (Pair a) where
---     liftToJSON     = 'genericLiftToJSON' 'defaultOptions'
---     liftToEncoding = 'genericLiftToEncoding' 'defaultOptions'
+-- customOptions = 'defaultOptions'
+--                 { 'fieldLabelModifier' = 'map' 'Data.Char.toUpper'
+--                 }
+--
+-- instance 'ToJSON' a => 'ToJSON1' (Pair a) where
+--     'liftToJSON'     = 'genericLiftToJSON' customOptions
+--     'liftToEncoding' = 'genericLiftToEncoding' customOptions
 -- @
+--
+-- See also 'ToJSON'.
 class ToJSON1 f where
     liftToJSON :: (a -> Value) -> ([a] -> Value) -> f a -> Value
 
@@ -588,7 +606,7 @@ toEncoding2 = liftToEncoding2 toEncoding toEncodingList toEncoding toEncodingLis
 -- @
 -- newtype F a = F [a]
 --
--- -- This instance encodes String as an array of chars
+-- -- This instance encodes 'String' as an array of chars
 -- instance 'ToJSON1' F where
 --     'liftToJSON'     tj _ (F xs) = 'liftToJSON'     tj ('listValue'    tj) xs
 --     'liftToEncoding' te _ (F xs) = 'liftToEncoding' te ('listEncoding' te) xs
