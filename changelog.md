@@ -1,5 +1,11 @@
 For the latest version of this document, please see [https://github.com/bos/aeson/blob/master/changelog.md](https://github.com/bos/aeson/blob/master/changelog.md).
 
+### 1.1.2.0
+
+* Fix an accidental change in the format of `deriveJSON`. Thanks to Xia Li-yao!
+
+* Documentation improvements regarding `ToJSON`, `FromJSON`, and `SumEncoding`. Thanks to Xia Li-yao and Lennart Spitzner!
+
 ### 1.1.1.0
 
 * Added a pure implementation of the C FFI code, the C FFI code. If you wish to use the pure haskell version set the `cffi` flag to `False`. This should make aeson compile when C isn't available, such as for GHCJS. Thanks to James Parker & Marcin Tolysz!
