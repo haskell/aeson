@@ -29,6 +29,9 @@ import Data.Text (Text)
 import GHC.Generics (Generic)
 import Prelude hiding (id)
 
+{-# ANN module "Hlint: ignore Use camelCase" #-}
+{-# ANN module "Hlint: ignore Use newtype instead of data" #-}
+
 data Metadata = Metadata {
     result_type :: Text
   } deriving (Eq, Show, Typeable, Data, Generic)

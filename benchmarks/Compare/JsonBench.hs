@@ -3,7 +3,6 @@
 -- https://github.com/chadaustin/buffer-builder/blob/master/test.json
 
 {-# LANGUAGE BangPatterns #-}
-{-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE MagicHash #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RecordWildCards #-}
@@ -65,10 +64,10 @@ instance NFData Gender where rnf !_ = ()
 instance NFData Fruit where rnf !_ = ()
 
 instance NFData Friend where
-    rnf Friend {..} = (rnf fId) `seq` (rnf fName) `seq` ()
+    rnf Friend {..} = rnf fId `seq` rnf fName `seq` ()
 
 instance NFData User where
-    rnf User {..} = (rnf uId) `seq` (rnf uIndex) `seq` (rnf uGuid) `seq` (rnf uIsActive) `seq` (rnf uBalance) `seq` (rnf uPicture) `seq` (rnf uAge) `seq` (rnf uEyeColor) `seq` (rnf uName) `seq` (rnf uGender) `seq` (rnf uCompany) `seq` (rnf uEmail) `seq` (rnf uPhone) `seq` (rnf uAddress) `seq` (rnf uAbout) `seq` (rnf uRegistered) `seq` (rnf uLatitude) `seq` (rnf uLongitude) `seq` (rnf uTags) `seq` (rnf uFriends) `seq` (rnf uGreeting) `seq` (rnf uFavouriteFruit) `seq` ()
+    rnf User {..} = rnf uId `seq` rnf uIndex `seq` rnf uGuid `seq` rnf uIsActive `seq` rnf uBalance `seq` rnf uPicture `seq` rnf uAge `seq` rnf uEyeColor `seq` rnf uName `seq` rnf uGender `seq` rnf uCompany `seq` rnf uEmail `seq` rnf uPhone `seq` rnf uAddress `seq` rnf uAbout `seq` rnf uRegistered `seq` rnf uLatitude `seq` rnf uLongitude `seq` rnf uTags `seq` rnf uFriends `seq` rnf uGreeting `seq` rnf uFavouriteFruit `seq` ()
 
 eyeColorTable :: [(Text, EyeColor)]
 eyeColorTable = [("brown", Brown), ("green", Green), ("blue", Blue)]

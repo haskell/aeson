@@ -97,16 +97,16 @@ value1000 = value 1000
 value10000 = value 10000
 
 encodedValue10 :: LBS.ByteString
-encodedValue10 = B.encode $ value10
+encodedValue10 = B.encode value10
 
 encodedValue100 :: LBS.ByteString
-encodedValue100 = B.encode $ value100
+encodedValue100 = B.encode value100
 
 encodedValue1000 :: LBS.ByteString
-encodedValue1000 = B.encode $ value1000
+encodedValue1000 = B.encode value1000
 
 encodedValue10000 :: LBS.ByteString
-encodedValue10000 = B.encode $ value10000
+encodedValue10000 = B.encode value10000
 
 -------------------------------------------------------------------------------
 -- Helpers

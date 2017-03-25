@@ -74,14 +74,14 @@ tests = testGroup "unit" [
         assertEqual "" "camel_api_case" (camelTo2 '_' "CamelAPICase")
     ]
   , testGroup "encoding" [
-      testCase "goodProducer" $ goodProducer
+      testCase "goodProducer" goodProducer
     ]
   , testGroup "utctime" [
-      testCase "good" $ utcTimeGood
-    , testCase "bad"  $ utcTimeBad
+      testCase "good" utcTimeGood
+    , testCase "bad"  utcTimeBad
     ]
   , testGroup "formatError" [
-      testCase "example 1" $ formatErrorExample
+      testCase "example 1" formatErrorExample
     ]
   , testGroup ".:, .:?, .:!" $ fmap (testCase "-") dotColonMark
   , testGroup "JSONPath" $ fmap (testCase "-") jsonPath
@@ -187,11 +187,9 @@ utcTimeGood = do
   where
     parseWithRead :: String -> LT.Text -> UTCTime
     parseWithRead f s =
-      case parseTime defaultTimeLocale f . LT.unpack $ s of
-        Nothing -> error "parseTime input malformed"
-        Just t  -> t
+      fromMaybe (error "parseTime input malformed") . parseTime defaultTimeLocale f . LT.unpack $ s
     parseWithAeson :: LT.Text -> Maybe UTCTime
-    parseWithAeson s = decode . LT.encodeUtf8 $ (LT.concat ["\"", s, "\""])
+    parseWithAeson s = decode . LT.encodeUtf8 $ LT.concat ["\"", s, "\""]
 
 -- Test that a few non-timezone qualified timestamp formats get
 -- rejected if decoding to UTCTime.
@@ -207,7 +205,7 @@ utcTimeBad = do
   verifyFailParse "2015-01-03 12:13.000Z" -- decimal at the end, but no seconds
   where
     verifyFailParse (s :: LT.Text) =
-      let (dec :: Maybe UTCTime) = decode . LT.encodeUtf8 $ (LT.concat ["\"", s, "\""]) in
+      let (dec :: Maybe UTCTime) = decode . LT.encodeUtf8 $ LT.concat ["\"", s, "\""] in
       assertEqual "verify failure" Nothing dec
 
 -- Non identifier keys should be escaped & enclosed in brackets
@@ -235,11 +233,11 @@ dotColonMark = [
   , assertEqual ".:  42"          (Just (T1 (Just 42))) (decode ex2 :: Maybe T1)
   , assertEqual ".:  null"        (Just (T1 Nothing))   (decode ex3 :: Maybe T1)
 
-  , assertEqual ".:? not-present" (Just (T2 (Nothing))) (decode ex1 :: Maybe T2)
+  , assertEqual ".:? not-present" (Just (T2 Nothing))   (decode ex1 :: Maybe T2)
   , assertEqual ".:? 42"          (Just (T2 (Just 42))) (decode ex2 :: Maybe T2)
   , assertEqual ".:? null"        (Just (T2 Nothing))   (decode ex3 :: Maybe T2)
 
-  , assertEqual ".:! not-present" (Just (T3 (Nothing))) (decode ex1 :: Maybe T3)
+  , assertEqual ".:! not-present" (Just (T3 Nothing))   (decode ex1 :: Maybe T3)
   , assertEqual ".:! 42"          (Just (T3 (Just 42))) (decode ex2 :: Maybe T3)
   , assertEqual ".:! null"        Nothing               (decode ex3 :: Maybe T3)
   ]

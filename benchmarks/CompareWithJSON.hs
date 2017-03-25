@@ -9,6 +9,7 @@ import Blaze.ByteString.Builder (toLazyByteString)
 import Blaze.ByteString.Builder.Char.Utf8 (fromString)
 import Control.DeepSeq (NFData(rnf))
 import Criterion.Main
+import Data.Maybe (fromMaybe)
 import qualified Data.Aeson as A
 import qualified Data.Aeson.Text as A
 import qualified Data.ByteString.Lazy as BL
@@ -35,14 +36,10 @@ decodeJ s =
     J.Error _ -> error "fail to parse via JSON"
 
 decodeA :: BL.ByteString -> A.Value
-decodeA s = case A.decode s of
-              Just v -> v
-              Nothing -> error "fail to parse via Aeson"
+decodeA s = fromMaybe (error "fail to parse via Aeson") $ A.decode s
 
 decodeA' :: BL.ByteString -> A.Value
-decodeA' s = case A.decode' s of
-               Just v -> v
-               Nothing -> error "fail to parse via Aeson"
+decodeA' s = fromMaybe (error "fail to parse via Aeson") $ A.decode' s
 
 encodeJ :: J.JSValue -> BL.ByteString
 encodeJ = toLazyByteString . fromString . J.encode

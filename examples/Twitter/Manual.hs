@@ -1,10 +1,13 @@
 -- Manually write instances.
 
 {-# LANGUAGE CPP #-}
-{-# LANGUAGE PackageImports #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RecordWildCards #-}
 {-# OPTIONS_GHC -fno-warn-orphans #-}
+
+#ifdef HAS_BOTH_AESON_AND_BENCHMARKS
+{-# LANGUAGE PackageImports #-}
+#endif
 
 module Twitter.Manual
     (

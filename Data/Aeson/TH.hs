@@ -1629,7 +1629,7 @@ buildTypeInstanceFromTys tyConName jc dataCxt varTysOrig isDataFamily = do
         --   instance C (Fam [Char])
         remainingTysOrigSubst :: [Type]
         remainingTysOrigSubst =
-          map (substNamesWithKindStar (union droppedKindVarNames kvNames'))
+          map (substNamesWithKindStar (droppedKindVarNames `union` kvNames'))
             $ take remainingLength varTysOrig
 
         remainingTysOrigSubst' :: [Type]
@@ -2118,7 +2118,7 @@ createKindChain :: Int -> Kind
 createKindChain = go starK
   where
     go :: Kind -> Int -> Kind
-    go k !0 = k
+    go k 0 = k
 #if MIN_VERSION_template_haskell(2,8,0)
     go k !n = go (AppT (AppT ArrowT StarT) k) (n - 1)
 #else
@@ -2245,7 +2245,7 @@ substNameWithKind :: Name -> Kind -> Type -> Type
 substNameWithKind n k = substKind (M.singleton n k)
 
 substNamesWithKindStar :: [Name] -> Type -> Type
-substNamesWithKindStar ns t = foldr' (flip substNameWithKind starK) t ns
+substNamesWithKindStar ns t = foldr' (`substNameWithKind` starK) t ns
 
 -------------------------------------------------------------------------------
 -- Error messages
@@ -2394,13 +2394,12 @@ data StarKindStatus = NotKindStar
 
 -- | Does a Type have kind * or k (for some kind variable k)?
 canRealizeKindStar :: Type -> StarKindStatus
-canRealizeKindStar t
-  | hasKindStar t = KindStar
-  | otherwise = case t of
+canRealizeKindStar t = case t of
+    _ | hasKindStar t -> KindStar
 #if MIN_VERSION_template_haskell(2,8,0)
-                     SigT _ (VarT k) -> IsKindVar k
+    SigT _ (VarT k) -> IsKindVar k
 #endif
-                     _               -> NotKindStar
+    _ -> NotKindStar
 
 -- | Returns 'Just' the kind variable 'Name' of a 'StarKindStatus' if it exists.
 -- Otherwise, returns 'Nothing'.

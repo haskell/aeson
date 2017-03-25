@@ -221,6 +221,8 @@ jstring_ = {-# SCC "jstring_" #-} do
                     in Just (S a')
 
 data S = S Int#
+-- This hint will no longer trigger once hlint > 1.9.41 is released.
+{-# ANN S ("HLint: ignore Use newtype instead of data" :: String) #-}
 #else
     startState              = False
     go a c
