@@ -1,11 +1,14 @@
 resolver: lts-6.30
 packages:
 - '.'
+- iso8601-attoparsec
 extra-deps:
 - semigroups-0.18.2
 - integer-logarithms-1
 flags:
   aeson:
+    fast: true
+  iso8601-attoparsec:
     fast: true
   semigroups:
     bytestring-builder: false

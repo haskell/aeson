@@ -1,8 +1,11 @@
 resolver: lts-7.19
 packages:
 - '.'
+- iso8601-attoparsec
 extra-deps:
 - integer-logarithms-1
 flags:
   aeson:
+    fast: true
+  iso8601-attoparsec:
     fast: true

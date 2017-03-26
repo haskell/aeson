@@ -1,8 +1,9 @@
-resolver: nightly-2017-02-29
+resolver: nightly-2017-03-25
 packages:
 - '.'
-extra-deps:
-- integer-logarithms-1
+- iso8601-attoparsec
 flags:
   aeson:
+    fast: true
+  iso8601-attoparsec:
     fast: true
