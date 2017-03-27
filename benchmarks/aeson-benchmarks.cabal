@@ -10,7 +10,7 @@ flag bytestring-builder
   manual: False
 
 library
-  hs-source-dirs: .. . ../ffi ../pure
+  hs-source-dirs: .. . ../ffi ../pure ../attoparsec-iso8601
   c-sources:  ../cbits/unescape_string.c
   exposed-modules:
     Data.Aeson
@@ -34,6 +34,8 @@ library
     Data.Aeson.Types.Generic
     Data.Aeson.Types.Internal
     Data.Aeson.Types.ToJSON
+    Data.Attoparsec.Time
+    Data.Attoparsec.Time.Internal
 
   build-depends:
     attoparsec >= 0.13.0.1,

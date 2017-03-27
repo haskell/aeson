@@ -1,9 +1,9 @@
 resolver: lts-8.1
 packages:
 - '.'
-- iso8601-attoparsec
+- attoparsec-iso8601
 flags:
   aeson:
     fast: true
-  iso8601-attoparsec:
+  attoparsec-iso8601:
     fast: true

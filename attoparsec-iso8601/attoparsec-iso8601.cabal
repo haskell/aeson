@@ -1,17 +1,21 @@
-name:                iso8601-attoparsec
-version:             1.0.0.0
-synopsis:            Parsing of ISO 8601 dates, originally from aeson.
-description:         Parsing of ISO 8601 dates, originally from aeson.
-homepage:            https://github.com/bergmark/iso8601-attoparsec#readme
-license:             BSD3
-license-file:        LICENSE
-author:              Adam Bergmark
-maintainer:          adam@bergmark.nl
-copyright:           2016
-category:            Web
-build-type:          Simple
-extra-source-files:  README.md
-cabal-version:       >=1.10
+name:            attoparsec-iso8601
+version:         1.0.0.0
+synopsis:        Parsing of ISO 8601 dates, originally from aeson.
+description:     Parsing of ISO 8601 dates, originally from aeson.
+license:         BSD3
+license-file:    LICENSE
+category:        Parsing
+copyright:       (c) 2011-2016 Bryan O'Sullivan
+                 (c) 2011 MailRank, Inc.
+author:          Bryan O'Sullivan <bos@serpentine.com>
+maintainer:      Adam Bergmark <adam@bergmark.nl>
+stability:       experimental
+cabal-version:   >=1.10
+homepage:        https://github.com/bos/aeson
+bug-reports:     https://github.com/bos/aeson/issues
+build-type:      Simple
+extra-source-files:
+  README.md
 
 flag developer
   description: operate in developer mode
