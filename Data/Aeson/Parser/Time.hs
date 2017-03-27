@@ -30,26 +30,31 @@ run p t = case A.parseOnly (p <* A.endOfInput) t of
 -- | Parse a date of the form @[+,-]YYYY-MM-DD@.
 day :: Parser Day
 day = T.day
+{-# INLINE day #-}
 
 -- | Parse a time of the form @HH:MM[:SS[.SSS]]@.
 timeOfDay :: Parser Local.TimeOfDay
 timeOfDay = T.timeOfDay
+{-# INLINE timeOfDay #-}
 
 -- | Parse a time zone, and return 'Nothing' if the offset from UTC is
 -- zero. (This makes some speedups possible.)
 timeZone :: Parser (Maybe Local.TimeZone)
 timeZone = T.timeZone
+{-# INLINE timeZone #-}
 
 -- | Parse a date and time, of the form @YYYY-MM-DD HH:MM[:SS[.SSS]]@.
 -- The space may be replaced with a @T@.  The number of seconds is optional
 -- and may be followed by a fractional component.
 localTime :: Parser Local.LocalTime
 localTime = T.localTime
+{-# INLINE localTime #-}
 
 -- | Behaves as 'zonedTime', but converts any time zone offset into a
 -- UTC time.
 utcTime :: Parser UTCTime
 utcTime = T.utcTime
+{-# INLINE utcTime #-}
 
 -- | Parse a date with time zone info. Acceptable formats:
 --
@@ -64,3 +69,4 @@ utcTime = T.utcTime
 -- (also optional) are minutes.
 zonedTime :: Parser Local.ZonedTime
 zonedTime = T.zonedTime
+{-# INLINE zonedTime #-}
