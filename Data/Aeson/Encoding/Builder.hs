@@ -234,7 +234,6 @@ timeOfDay64 (TOD h m s)
     pico       = 1000000000000 -- number of picoseconds  in 1 second
     micro      =       1000000 -- number of microseconds in 1 second
     milli      =          1000 -- number of milliseconds in 1 second
-{-# INLINE timeOfDay64 #-}
 
 timeZone :: TimeZone -> Builder
 timeZone (TimeZone off _ _)
