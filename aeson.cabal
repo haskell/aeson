@@ -74,8 +74,8 @@ flag bytestring-builder
   manual: False
 
 flag cffi
-  description: Controls whether to include c-ffi bits or pure haskell
-  default: True
+  description: Controls whether to include c-ffi bits or pure haskell. Default to False for security.
+  default: False
   manual: True
 
 library
