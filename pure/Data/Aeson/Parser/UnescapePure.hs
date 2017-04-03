@@ -255,8 +255,6 @@ unescapeText' bs = runText $ \done -> do
 
       {-# INLINE f #-}
 
-{-# INLINE unescapeText' #-}
-
 write :: A.MArray s -> Int -> Word16 -> ST s ()
 write dest pos char =
     A.unsafeWrite dest pos char
