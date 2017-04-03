@@ -14,6 +14,7 @@ module Data.Aeson.Encoding
     , Series
     , pairs
     , pair
+    , pairStr
     , pair'
     -- * Predicates
     , nullEncoding

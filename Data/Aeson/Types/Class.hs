@@ -1,4 +1,5 @@
 {-# LANGUAGE CPP #-}
+{-# LANGUAGE ConstraintKinds #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE GADTs #-}
@@ -36,8 +37,8 @@ module Data.Aeson.Types.Class
     -- * Generic JSON classes
     , GFromJSON(..)
     , FromArgs(..)
-    , GToJSON(..)
-    , GToEncoding(..)
+    , GToJSON
+    , GToEncoding
     , ToArgs(..)
     , Zero
     , One
@@ -94,4 +95,10 @@ import Prelude ()
 
 import Data.Aeson.Types.FromJSON
 import Data.Aeson.Types.Generic (One, Zero)
-import Data.Aeson.Types.ToJSON
+import Data.Aeson.Types.ToJSON hiding (GToJSON)
+import qualified Data.Aeson.Types.ToJSON as ToJSON
+import Data.Aeson.Types.Internal (Value)
+import Data.Aeson.Encoding (Encoding)
+
+type GToJSON = ToJSON.GToJSON Value
+type GToEncoding = ToJSON.GToJSON Encoding
