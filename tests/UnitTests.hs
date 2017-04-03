@@ -18,11 +18,11 @@ import Prelude ()
 import Prelude.Compat
 
 import Control.Monad (forM, forM_)
-import Data.Aeson ((.=), (.:), (.:?), (.:!), FromJSON(..), FromJSONKeyFunction(..), FromJSONKey(..), ToJSON1(..), decode, eitherDecode, encode, genericToEncoding, genericToJSON, object, withObject)
+import Data.Aeson ((.=), (.:), (.:?), (.:!), FromJSON(..), FromJSONKeyFunction(..), FromJSONKey(..), ToJSON1(..), decode, eitherDecode, encode, fromJSON, genericParseJSON, genericToEncoding, genericToJSON, object, withObject)
 import Data.Aeson.Internal (JSONPathElement(..), formatError)
 import Data.Aeson.TH (deriveJSON, deriveToJSON, deriveToJSON1)
 import Data.Aeson.Text (encodeToTextBuilder)
-import Data.Aeson.Types (Options(..), ToJSON(..), Value, camelTo, camelTo2, defaultOptions, omitNothingFields)
+import Data.Aeson.Types (Options(..), Result(Success), ToJSON(..), Value(Null), camelTo, camelTo2, defaultOptions, omitNothingFields, parse)
 import Data.Char (toUpper)
 import Data.Either.Compat (isLeft, isRight)
 import Data.Hashable (hash)
@@ -92,6 +92,7 @@ tests = testGroup "unit" [
   , testCase "PR #455" pr455
   , testCase "Unescape string (PR #477)" unescapeString
   , testCase "Show Options" showOptions
+  , testGroup "SingleMaybeField" singleMaybeField
   ]
 
 roundTripCamel :: String -> Assertion
@@ -496,7 +497,26 @@ showOptions =
         ++ "}")
         (show defaultOptions)
 
+newtype SingleMaybeField = SingleMaybeField { smf :: Maybe Int }
+  deriving (Eq, Show, Generic)
+
+singleMaybeField :: [Test]
+singleMaybeField = do
+  (gName, gToJSON, gToEncoding, gFromJSON) <-
+    [ ("generic", genericToJSON opts, genericToEncoding opts, parse (genericParseJSON opts))
+    , ("th", toJSON, toEncoding, fromJSON) ]
+  return $
+    testCase gName $ do
+      assertEqual "toJSON"     Null (gToJSON v)
+      assertEqual "toEncoding" (toEncoding (gToJSON v)) (gToEncoding v)
+      assertEqual "fromJSON"   (Success v) (gFromJSON Null)
+  where
+    v = SingleMaybeField Nothing
+    opts = defaultOptions{omitNothingFields=True,unwrapUnaryRecords=True}
+
 deriveJSON defaultOptions{omitNothingFields=True} ''MyRecord
 
 deriveToJSON  defaultOptions ''Foo
 deriveToJSON1 defaultOptions ''Foo
+
+deriveJSON defaultOptions{omitNothingFields=True,unwrapUnaryRecords=True} ''SingleMaybeField
