@@ -1,3 +1,10 @@
+-- WARNING: This file is security sensitive as it uses unsafeWrite which does
+-- not check bounds. Any changes should be made with care and I would love to
+-- get informed about them, just cc me in any PR targetting this file: @eskimor
+-- I would be happy to review the changes!
+
+-- The security check at the end (pos > length) only works if pos grows
+-- monotonously, if this condition does not hold, the check is flawed.
 module Data.Aeson.Parser.UnescapePure
     (
       unescapeText
@@ -145,8 +152,8 @@ unescapeText' bs = runText $ \done -> do
     dest <- A.new len
     (pos, finalState) <- B.foldl' (f' dest) (return (0, StateNone)) bs
 
-    -- Check final state.
-    when ( finalState /= StateNone)
+    -- Check final state. Currently pos gets only increased over time, so this check should catch overflows.
+    when ( finalState /= StateNone || pos > len)
       throwDecodeError
 
     done dest pos -- TODO: pos, pos-1??? XXX
@@ -247,8 +254,6 @@ unescapeText' bs = runText $ \done -> do
           writeAndReturn dest pos u StateNone
 
       {-# INLINE f #-}
-
-{-# INLINE unescapeText' #-}
 
 write :: A.MArray s -> Int -> Word16 -> ST s ()
 write dest pos char =
