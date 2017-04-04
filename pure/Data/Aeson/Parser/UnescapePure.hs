@@ -1,7 +1,7 @@
 -- WARNING: This file is security sensitive as it uses unsafeWrite which does
--- not check bounds. Any changes should be made with care and I would love to
--- get informed about them, just cc me in any PR targetting this file: @eskimor
--- I would be happy to review the changes!
+-- not check bounds. Any changes should be made with care and we would love to
+-- get informed about them, just cc us in any PR targetting this file: @eskimor @jprider63
+-- We would be happy to review the changes!
 
 -- The security check at the end (pos > length) only works if pos grows
 -- monotonously, if this condition does not hold, the check is flawed.
