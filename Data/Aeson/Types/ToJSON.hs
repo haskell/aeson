@@ -659,6 +659,18 @@ instance GToJSON enc One Par1 where
     -- function passed in as an argument:
     gToJSON _opts (To1Args tj _) = tj . unPar1
 
+instance ( ConsToJSON enc arity a
+         , AllNullary          (C1 c a) allNullary
+         , SumToJSON enc arity (C1 c a) allNullary
+         ) => GToJSON enc arity (D1 d (C1 c a)) where
+    -- The option 'tagSingleConstructors' determines whether to wrap
+    -- a single-constructor type.
+    gToJSON opts targs
+        | tagSingleConstructors opts = (unTagged :: Tagged allNullary enc -> enc)
+                                     . sumToJSON opts targs
+                                     . unM1
+        | otherwise = consToJSON opts targs . unM1 . unM1
+
 instance (ConsToJSON enc arity a) => GToJSON enc arity (C1 c a) where
     -- Constructors need to be encoded differently depending on whether they're
     -- a record or not. This distinction is made by 'consToJSON':

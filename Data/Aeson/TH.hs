@@ -341,7 +341,7 @@ consToValue jc opts cons = do
     matches tjs = case cons of
       -- A single constructor is directly encoded. The constructor itself may be
       -- forgotten.
-      [con] -> [argsToValue jc tjs opts False con]
+      [con] | not (tagSingleConstructors opts) -> [argsToValue jc tjs opts False con]
       _ | allNullaryToStringTag opts && all isNullary cons ->
               [ match (conP conName []) (normalB $ conStr opts conName) []
               | con <- cons
@@ -384,7 +384,7 @@ consToEncoding jc opts cons = do
     matches tes = case cons of
       -- A single constructor is directly encoded. The constructor itself may be
       -- forgotten.
-      [con] -> [argsToEncoding jc tes opts False con]
+      [con] | not (tagSingleConstructors opts) -> [argsToEncoding jc tes opts False con]
       -- Encode just the name of the constructor of a sum type iff all the
       -- constructors are nullary.
       _ | allNullaryToStringTag opts && all isNullary cons ->
@@ -792,7 +792,9 @@ consFromJSON jc tName opts cons = do
 
   where
     lamExpr value pjs = case cons of
-      [con] -> parseArgs jc pjs tName opts con (Right value)
+      [con]
+        | not (tagSingleConstructors opts)
+            -> parseArgs jc pjs tName opts con (Right value)
       _ | sumEncoding opts == UntaggedValue
             -> parseUntaggedValue pjs cons value
         | otherwise

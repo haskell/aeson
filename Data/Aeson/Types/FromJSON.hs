@@ -791,6 +791,19 @@ instance GFromJSON arity U1 where
         | isEmptyArray v = pure U1
         | otherwise      = typeMismatch "unit constructor (U1)" v
 
+instance ( ConsFromJSON arity a
+         , AllNullary         (C1 c a) allNullary
+         , ParseSum     arity (C1 c a) allNullary
+         ) => GFromJSON arity (D1 d (C1 c a)) where
+    -- The option 'tagSingleConstructors' determines whether to wrap
+    -- a single-constructor type.
+    gParseJSON opts fargs
+        | tagSingleConstructors opts
+            = fmap M1
+            . (unTagged :: Tagged allNullary (Parser (C1 c a p)) -> Parser (C1 c a p))
+            . parseSum opts fargs
+        | otherwise = fmap M1 . fmap M1 . consParseJSON opts fargs
+
 instance (ConsFromJSON arity a) => GFromJSON arity (C1 c a) where
     -- Constructors need to be decoded differently depending on whether they're
     -- a record or not. This distinction is made by consParseJSON:
@@ -837,19 +850,19 @@ class ParseSum arity f allNullary where
     parseSum :: Options -> FromArgs arity a
              -> Value -> Tagged allNullary (Parser (f a))
 
-instance ( SumFromString           (a :+: b)
-         , FromPair          arity (a :+: b)
-         , FromTaggedObject  arity (a :+: b)
-         , FromUntaggedValue arity (a :+: b)
-         ) => ParseSum       arity (a :+: b) True where
+instance ( SumFromString           f
+         , FromPair          arity f
+         , FromTaggedObject  arity f
+         , FromUntaggedValue arity f
+         ) => ParseSum       arity f True where
     parseSum opts fargs
         | allNullaryToStringTag opts = Tagged . parseAllNullarySum    opts
         | otherwise                  = Tagged . parseNonAllNullarySum opts fargs
 
-instance ( FromPair          arity (a :+: b)
-         , FromTaggedObject  arity (a :+: b)
-         , FromUntaggedValue arity (a :+: b)
-         ) => ParseSum       arity (a :+: b) False where
+instance ( FromPair          arity f
+         , FromTaggedObject  arity f
+         , FromUntaggedValue arity f
+         ) => ParseSum       arity f False where
     parseSum opts fargs = Tagged . parseNonAllNullarySum opts fargs
 
 --------------------------------------------------------------------------------
@@ -875,11 +888,11 @@ instance (Constructor c) => SumFromString (C1 c U1) where
 
 --------------------------------------------------------------------------------
 
-parseNonAllNullarySum :: ( FromPair          arity (a :+: b)
-                         , FromTaggedObject  arity (a :+: b)
-                         , FromUntaggedValue arity (a :+: b)
+parseNonAllNullarySum :: ( FromPair          arity f
+                         , FromTaggedObject  arity f
+                         , FromUntaggedValue arity f
                          ) => Options -> FromArgs arity c
-                           -> Value -> Parser ((a :+: b) c)
+                           -> Value -> Parser (f c)
 parseNonAllNullarySum opts fargs =
     case sumEncoding opts of
       TaggedObject{..} ->

@@ -354,3 +354,31 @@ thOneConstructorToEncodingDefault = $(mkToEncoding defaultOptions ''OneConstruct
 
 thOneConstructorParseJSONDefault :: Value -> Parser OneConstructor
 thOneConstructorParseJSONDefault = $(mkParseJSON defaultOptions ''OneConstructor)
+
+thOneConstructorToJSONTagged :: OneConstructor -> Value
+thOneConstructorToJSONTagged = $(mkToJSON optsTagSingleConstructors ''OneConstructor)
+
+thOneConstructorToEncodingTagged :: OneConstructor -> Encoding
+thOneConstructorToEncodingTagged = $(mkToEncoding optsTagSingleConstructors ''OneConstructor)
+
+thOneConstructorParseJSONTagged :: Value -> Parser OneConstructor
+thOneConstructorParseJSONTagged = $(mkParseJSON optsTagSingleConstructors ''OneConstructor)
+
+
+gOneConstructorToJSONDefault :: OneConstructor -> Value
+gOneConstructorToJSONDefault = genericToJSON defaultOptions
+
+gOneConstructorToEncodingDefault :: OneConstructor -> Encoding
+gOneConstructorToEncodingDefault = genericToEncoding defaultOptions
+
+gOneConstructorParseJSONDefault :: Value -> Parser OneConstructor
+gOneConstructorParseJSONDefault = genericParseJSON defaultOptions
+
+gOneConstructorToJSONTagged :: OneConstructor -> Value
+gOneConstructorToJSONTagged = genericToJSON optsTagSingleConstructors
+
+gOneConstructorToEncodingTagged :: OneConstructor -> Encoding
+gOneConstructorToEncodingTagged = genericToEncoding optsTagSingleConstructors
+
+gOneConstructorParseJSONTagged :: Value -> Parser OneConstructor
+gOneConstructorParseJSONTagged = genericParseJSON optsTagSingleConstructors

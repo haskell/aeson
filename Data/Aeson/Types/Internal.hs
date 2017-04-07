@@ -524,10 +524,13 @@ data Options = Options
     , unwrapUnaryRecords :: Bool
       -- ^ Hide the field name when a record constructor has only one
       -- field, like a newtype.
+    , tagSingleConstructors :: Bool
+      -- ^ Encode types with a single constructor as sums,
+      -- so that `allNullaryToStringTag` and `sumEncoding` apply.
     }
 
 instance Show Options where
-  show (Options f c a o s u) =
+  show (Options f c a o s u t) =
        "Options {"
     ++ intercalate ", "
       [ "fieldLabelModifier =~ " ++ show (f "exampleField")
@@ -536,6 +539,7 @@ instance Show Options where
       , "omitNothingFields = " ++ show o
       , "sumEncoding = " ++ show s
       , "unwrapUnaryRecords = " ++ show u
+      , "tagSingleConstructors = " ++ show t
       ]
     ++ "}"
 
@@ -589,6 +593,7 @@ data SumEncoding =
 -- , 'omitNothingFields'       = False
 -- , 'sumEncoding'             = 'defaultTaggedObject'
 -- , 'unwrapUnaryRecords'      = False
+-- , 'tagSingleConstructors'   = False
 -- }
 -- @
 defaultOptions :: Options
@@ -599,6 +604,7 @@ defaultOptions = Options
                  , omitNothingFields       = False
                  , sumEncoding             = defaultTaggedObject
                  , unwrapUnaryRecords      = False
+                 , tagSingleConstructors   = False
                  }
 
 -- | Default 'TaggedObject' 'SumEncoding' options:

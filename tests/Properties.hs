@@ -168,11 +168,14 @@ isTaggedObjectValue (Object obj) = "tag"      `H.member` obj &&
 isTaggedObjectValue _            = False
 
 isNullaryTaggedObject :: Value -> Bool
-isNullaryTaggedObject obj = isTaggedObject obj && isObjectWithSingleField obj
+isNullaryTaggedObject obj = isTaggedObject' obj && isObjectWithSingleField obj
 
-isTaggedObject :: Value -> Bool
-isTaggedObject (Object obj) = "tag" `H.member` obj
-isTaggedObject _            = False
+isTaggedObject :: Value -> Property
+isTaggedObject = checkValue isTaggedObject'
+
+isTaggedObject' :: Value -> Bool
+isTaggedObject' (Object obj) = "tag" `H.member` obj
+isTaggedObject' _            = False
 
 isObjectWithSingleField :: Value -> Bool
 isObjectWithSingleField (Object obj) = H.size obj == 1
@@ -338,6 +341,14 @@ tests = testGroup "properties" [
 #endif
           ]
         ]
+      , testGroup "OneConstructor" [
+          testProperty "default" (isEmptyArray . gOneConstructorToJSONDefault)
+        , testProperty "Tagged"  (isTaggedObject . gOneConstructorToJSONTagged)
+        , testGroup "roundTrip" [
+            testProperty "default" (toParseJSON gOneConstructorParseJSONDefault gOneConstructorToJSONDefault)
+          , testProperty "Tagged"  (toParseJSON gOneConstructorParseJSONTagged  gOneConstructorToJSONTagged)
+          ]
+        ]
       ]
     , testGroup "toEncoding" [
         testProperty "NullaryString" $
@@ -386,6 +397,11 @@ tests = testGroup "properties" [
 
       , testProperty "SomeTypeOmitNothingFields" $
         gSomeTypeToJSONOmitNothingFields `sameAs` gSomeTypeToEncodingOmitNothingFields
+
+      , testProperty "OneConstructorDefault" $
+        gOneConstructorToJSONDefault `sameAs` gOneConstructorToEncodingDefault
+      , testProperty "OneConstructorTagged" $
+        gOneConstructorToJSONTagged `sameAs` gOneConstructorToEncodingTagged
       ]
     ]
   , testGroup "template-haskell" [
@@ -440,8 +456,10 @@ tests = testGroup "properties" [
         ]
       , testGroup "OneConstructor" [
           testProperty "default" (isEmptyArray . thOneConstructorToJSONDefault)
+        , testProperty "Tagged"  (isTaggedObject . thOneConstructorToJSONTagged)
         , testGroup "roundTrip" [
             testProperty "default" (toParseJSON thOneConstructorParseJSONDefault thOneConstructorToJSONDefault)
+          , testProperty "Tagged"  (toParseJSON thOneConstructorParseJSONTagged  thOneConstructorToJSONTagged)
           ]
         ]
       ]
@@ -484,8 +502,10 @@ tests = testGroup "properties" [
       , testProperty "SomeTypeObjectWithSingleField unary agree" $
         thSomeTypeToEncodingObjectWithSingleField `sameAs1Agree` thSomeTypeLiftToEncodingObjectWithSingleField
 
-      , testProperty "OneConstructor" $
+      , testProperty "OneConstructorDefault" $
         thOneConstructorToJSONDefault `sameAs` thOneConstructorToEncodingDefault
+      , testProperty "OneConstructorTagged" $
+        thOneConstructorToJSONTagged `sameAs` thOneConstructorToEncodingTagged
       ]
     ]
   ]
