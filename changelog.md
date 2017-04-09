@@ -1,5 +1,17 @@
 For the latest version of this document, please see [https://github.com/bos/aeson/blob/master/changelog.md](https://github.com/bos/aeson/blob/master/changelog.md).
 
+## 1.2.0.0
+
+* `tagSingleConstructors`, an option to encode single-constructor types as tagged sums was added to `Options`. It is disabled by default for backward compatibility.
+
+* The `cffi` flag is now turned on by default, this means C FFI code is no longer used by default. You can flip the flag to get C implementation.
+
+* The `Options` constructor is no longer exposed to prevent new options from being breaking changes, use `defaultOptions` instead.
+
+* The contents of `GToJSON` and `GToEncoding` are no longer exposed.
+
+* Some INLINE pragmas were removed to avoid GHC running out of simplifier ticks.
+
 ### 1.1.2.0
 
 * Fix an accidental change in the format of `deriveJSON`. Thanks to Xia Li-yao!
