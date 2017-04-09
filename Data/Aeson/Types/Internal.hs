@@ -49,7 +49,16 @@ module Data.Aeson.Types.Internal
     , object
 
     -- * Generic and TH encoding configuration
-    , Options(..)
+    , Options(
+          fieldLabelModifier
+        , constructorTagModifier
+        , allNullaryToStringTag
+        , omitNothingFields
+        , sumEncoding
+        , unwrapUnaryRecords
+        , tagSingleConstructors
+        )
+
     , SumEncoding(..)
     , defaultOptions
     , defaultTaggedObject
