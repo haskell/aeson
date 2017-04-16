@@ -1671,6 +1671,17 @@ instance FromJSONKey LocalTime where
     fromJSONKey = FromJSONKeyTextParser (Time.run Time.localTime)
 
 
+-- | Supported string formats:
+--
+-- @YYYY-MM-DD HH:MM Z@
+-- @YYYY-MM-DD HH:MM:SS Z@
+-- @YYYY-MM-DD HH:MM:SS.SSS Z@
+--
+-- The first space may instead be a @T@, and the second space is
+-- optional.  The @Z@ represents UTC.  The @Z@ may be replaced with a
+-- time zone offset of the form @+0000@ or @-08:00@, where the first
+-- two digits are hours, the @:@ is optional and the second two digits
+-- (also optional) are minutes.
 instance FromJSON ZonedTime where
     parseJSON = withText "ZonedTime" (Time.run Time.zonedTime)
 
