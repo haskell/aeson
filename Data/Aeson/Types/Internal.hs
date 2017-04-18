@@ -373,7 +373,7 @@ hashValue :: Int -> Value -> Int
 #if MIN_VERSION_unordered_containers(0,2,6)
 hashValue s (Object o)   = s `hashWithSalt` (0::Int) `hashWithSalt` o
 #else
-hashValue s (Object o)   = foldl' hashWithSalt
+hashValue s (Object o)   = foldl hashWithSalt
                               (s `hashWithSalt` (0::Int)) assocHashesSorted
   where
     assocHashesSorted = sort [hash k `hashWithSalt` v | (k, v) <- H.toList o]
