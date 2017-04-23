@@ -202,7 +202,7 @@ test-suite tests
     attoparsec,
     base,
     base-compat,
-    base-orphans >= 0.5.3 && <0.6,
+    base-orphans >= 0.5.3 && <0.7,
     base16-bytestring,
     containers,
     directory,
