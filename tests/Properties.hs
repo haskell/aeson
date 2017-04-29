@@ -4,7 +4,7 @@
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 
-module Properties where
+module Properties (module Properties) where
 
 import Prelude ()
 import Prelude.Compat

@@ -2,7 +2,7 @@
 {-# LANGUAGE GADTs #-}
 {-# LANGUAGE TemplateHaskell #-}
 
-module DataFamilies.Encoders where
+module DataFamilies.Encoders (module DataFamilies.Encoders) where
 
 import Prelude ()
 import Prelude.Compat

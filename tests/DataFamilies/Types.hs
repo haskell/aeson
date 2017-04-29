@@ -8,7 +8,7 @@
 {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE TypeFamilies #-}
 
-module DataFamilies.Types where
+module DataFamilies.Types (module DataFamilies.Types) where
 
 import Prelude ()
 import Prelude.Compat

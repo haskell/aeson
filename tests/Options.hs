@@ -1,4 +1,4 @@
-module Options where
+module Options (module Options) where
 
 import Prelude ()
 import Prelude.Compat

@@ -2,7 +2,7 @@
 {-# LANGUAGE GADTs #-}
 {-# LANGUAGE TemplateHaskell #-}
 
-module Encoders where
+module Encoders (module Encoders) where
 
 import Prelude ()
 import Prelude.Compat

@@ -1,6 +1,6 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 
-module Main where
+module Main (main) where
 
 import qualified Data.Aeson as Aeson
 import qualified Data.ByteString as Bytes
