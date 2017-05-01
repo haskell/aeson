@@ -7,7 +7,7 @@
 {-# LANGUAGE StandaloneDeriving #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 
-module Types where
+module Types (module Types) where
 
 import Prelude ()
 import Prelude.Compat

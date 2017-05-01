@@ -1539,8 +1539,8 @@ instance (FromJSONKey k, Ord k) => FromJSON1 (M.Map k) where
         FromJSONKeyTextParser f -> withObject "Map k v" $
             H.foldrWithKey (\k v m -> M.insert <$> f k <?> Key k <*> p v <?> Key k <*> m) (pure M.empty)
         FromJSONKeyValue f -> withArray "Map k v" $ \arr ->
-            M.fromList <$> (Tr.sequence .
-                zipWith (parseIndexedJSONPair f p) [0..] . V.toList $ arr)
+            fmap M.fromList . Tr.sequence .
+                zipWith (parseIndexedJSONPair f p) [0..] . V.toList $ arr
     {-# INLINE liftParseJSON #-}
 
 instance (FromJSONKey k, Ord k, FromJSON v) => FromJSON (M.Map k v) where
@@ -1619,8 +1619,8 @@ instance (FromJSONKey k, Eq k, Hashable k) => FromJSON1 (H.HashMap k) where
         FromJSONKeyTextParser f -> withObject "HashMap k v" $
             H.foldrWithKey (\k v m -> H.insert <$> f k <?> Key k <*> p v <?> Key k <*> m) (pure H.empty)
         FromJSONKeyValue f -> withArray "Map k v" $ \arr ->
-            H.fromList <$> (Tr.sequence .
-                zipWith (parseIndexedJSONPair f p) [0..] . V.toList $ arr)
+            fmap H.fromList . Tr.sequence .
+                zipWith (parseIndexedJSONPair f p) [0..] . V.toList $ arr
       where
         uc :: Parser (H.HashMap Text v) -> Parser (H.HashMap k v)
         uc = unsafeCoerce
