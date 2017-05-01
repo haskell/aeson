@@ -4,7 +4,6 @@ module Data.Aeson.Parser.Time
     , day
     , localTime
     , timeOfDay
-    , timeZone
     , utcTime
     , zonedTime
     ) where
@@ -36,12 +35,6 @@ day = T.day
 timeOfDay :: Parser Local.TimeOfDay
 timeOfDay = T.timeOfDay
 {-# INLINE timeOfDay #-}
-
--- | Parse a time zone, and return 'Nothing' if the offset from UTC is
--- zero. (This makes some speedups possible.)
-timeZone :: Parser (Maybe Local.TimeZone)
-timeZone = T.timeZone
-{-# INLINE timeZone #-}
 
 -- | Parse a date and time, of the form @YYYY-MM-DD HH:MM[:SS[.SSS]]@.
 -- The space may be replaced with a @T@.  The number of seconds is optional

@@ -1,0 +1,46 @@
+package:
+  - name: aeson
+  - section:
+    - name: library
+    - message:
+      - name: Weeds exported
+      - module:
+        - name: Data.Aeson.Types.Generic
+        - identifier: [And]
+      - module:
+        - name: Data.Attoparsec.Time
+        - identifier: [timeZone]
+      - module:
+        - name: Data.Aeson.Encoding.Builder
+        - identifier:
+          - array
+          - ascii2
+          - ascii4
+          - ascii5
+          - bool
+          - object
+    - message:
+      - name: Excessive other-modules entry
+      - module: Data.Aeson.Parser.Unescape
+      - module: Data.Aeson.Parser.UnescapePure
+    - message:
+      - name: Missing other-modules entry
+      - module: Data.Aeson.Parser.UnescapePure
+  - section:
+    - name: test:tests
+    - message:
+      - name: Weeds exported
+      - module:
+        - name: Encoders
+        - identifier:
+          - inc
+      - module:
+        - name: Data.Aeson.Parser.UnescapeFFI
+        - identifier: [unescapeText]
+      - module:
+        - name: Data.Aeson.Parser.UnescapePure
+        - identifier: [unescapeText]
+    - message:
+      - name: Excessive other-modules entry
+      - module: Data.Aeson.Parser.UnescapeFFI
+      - module: Data.Aeson.Parser.UnescapePure

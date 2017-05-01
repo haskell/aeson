@@ -4,7 +4,20 @@
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 
-module Properties (module Properties) where
+module Properties
+    (
+      tests
+
+    , is2ElemArray
+    , isNullaryTaggedObject
+    , isObjectWithSingleField
+    , isString
+    , isTaggedObject
+    , isTaggedObjectValue
+    , isUntaggedValueETI
+    , sameAs
+    , toParseJSON
+    ) where
 
 import Prelude ()
 import Prelude.Compat
@@ -94,11 +107,6 @@ roundTripKey
     :: (Ord a, Hashable a, FromJSONKey a, ToJSONKey a, Show a)
     => a -> HashMap a Int -> Map a Int -> Property
 roundTripKey _ h m = roundTripEq h h .&&. roundTripEq m m
-
-infix 4 ==~
-(==~) :: (ApproxEq a, Show a) => a -> a -> Property
-x ==~ y =
-  counterexample (show x ++ " /= " ++ show y) (x =~ y)
 
 toFromJSON :: (Arbitrary a, Eq a, FromJSON a, ToJSON a, Show a) => a -> Property
 toFromJSON x = case ifromJSON (toJSON x) of

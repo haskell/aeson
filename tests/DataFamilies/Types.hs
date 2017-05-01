@@ -18,7 +18,7 @@ import Types (ApproxEq(..))
 
 data family Nullary a
 data instance Nullary Int  = C1 | C2 | C3 deriving (Eq, Show)
-data instance Nullary Char = C4           deriving (Eq, Show)
+-- data instance Nullary Char = C4           deriving (Eq, Show)
 
 data family SomeType a b c
 data instance SomeType c () a = Nullary
@@ -49,6 +49,6 @@ deriving instance Show (GADT a)
 -- data families on GHC 7.4.
 
 $(deriveAll0 'C1)
-$(deriveAll0 'C4)
+-- $(deriveAll0 'C4)
 $(deriveAll0 'Approx)
 $(deriveAll0 'Nullary)
