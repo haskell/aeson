@@ -1,4 +1,13 @@
-module Options (module Options) where
+module Options
+    (
+      opts2ElemArray
+    , optsUnwrapUnaryRecords
+    , optsTaggedObject
+    , optsObjectWithSingleField
+    , optsOmitNothingFields
+    , optsUntaggedValue
+    , optsTagSingleConstructors
+    ) where
 
 import Prelude ()
 import Prelude.Compat

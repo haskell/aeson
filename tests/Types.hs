@@ -125,11 +125,11 @@ failure func msg v = counterexample
 newtype BCEDay = BCEDay Day
   deriving (Eq, Show)
 
-zeroDay :: Day
-zeroDay = fromGregorian 0 0 0
-
 instance Arbitrary BCEDay where
     arbitrary = fmap (BCEDay . ModifiedJulianDay . (+ toModifiedJulianDay zeroDay)) arbitrary
+        where
+            zeroDay :: Day
+            zeroDay = fromGregorian 0 0 0
 
 instance ToJSON BCEDay where
     toJSON (BCEDay d)     = toJSON d

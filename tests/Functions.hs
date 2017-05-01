@@ -1,14 +1,14 @@
 module Functions
     (
-      approxEq
+      appEq
     , approxEqWith
     ) where
 
 import Prelude ()
 import Prelude.Compat
 
-approxEq :: (Fractional a, Ord a) => a -> a -> Bool
-approxEq = approxEqWith 1e-15 1e-15
+appEq :: (Fractional a, Ord a) => a -> a -> Bool
+appEq = approxEqWith 1e-15 1e-15
 
 approxEqWith :: (Fractional a, Ord a) => a -> a -> a -> a -> Bool
 approxEqWith maxAbsoluteError maxRelativeError a b =

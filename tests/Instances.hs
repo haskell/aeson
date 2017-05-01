@@ -19,7 +19,7 @@ import Data.Proxy (Proxy(..))
 import Data.Tagged (Tagged(..))
 import Data.Time (ZonedTime(..), TimeZone(..))
 import Data.Time.Clock (UTCTime(..))
-import Functions
+import Functions (appEq, approxEqWith)
 import Test.QuickCheck (Arbitrary(..), elements,  oneof)
 import Types
 import qualified Data.DList as DList
@@ -70,12 +70,12 @@ instance ApproxEq DotNetTime where
 instance ApproxEq Float where
     a =~ b
       | isNaN a && isNaN b = True
-      | otherwise          = approxEq a b
+      | otherwise          = appEq a b
 
 instance ApproxEq Double where
     a =~ b
       | isNaN a && isNaN b = True
-      | otherwise          = approxEq a b
+      | otherwise          = appEq a b
 
 instance (ApproxEq k, Eq v) => ApproxEq (HM.HashMap k v) where
     a =~ b = and $ zipWith eq (HM.toList a) (HM.toList b)
@@ -89,7 +89,7 @@ instance Arbitrary Foo where
 
 instance Eq Foo where
     a == b = fooInt a == fooInt b &&
-             fooDouble a `approxEq` fooDouble b &&
+             fooDouble a `appEq` fooDouble b &&
              fooTuple a == fooTuple b
 
 instance ToJSON Foo where

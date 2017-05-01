@@ -498,7 +498,7 @@ showOptions =
         ++ "}")
         (show defaultOptions)
 
-newtype SingleMaybeField = SingleMaybeField { smf :: Maybe Int }
+newtype SingleMaybeField = SingleMaybeField { _smf :: Maybe Int }
   deriving (Eq, Show, Generic)
 
 singleMaybeField :: [Test]

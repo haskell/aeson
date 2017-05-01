@@ -1,5 +1,6 @@
 {-# LANGUAGE CPP #-}
 {-# LANGUAGE GADTs #-}
+{-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE TemplateHaskell #-}
 
 module Encoders (module Encoders) where
@@ -303,11 +304,13 @@ thApproxParseJSONDefault = $(mkParseJSON defaultOptions ''Approx)
 gApproxToJSONUnwrap :: Approx String -> Value
 gApproxToJSONUnwrap = genericToJSON optsUnwrapUnaryRecords
 
-gApproxToEncodingUnwrap :: Approx String -> Encoding
-gApproxToEncodingUnwrap = genericToEncoding optsUnwrapUnaryRecords
+-- TODO Test this
+-- gApproxToEncodingUnwrap :: Approx String -> Encoding
+-- gApproxToEncodingUnwrap = genericToEncoding optsUnwrapUnaryRecords
 
-gApproxParseJSONUnwrap :: Value -> Parser (Approx String)
-gApproxParseJSONUnwrap = genericParseJSON optsUnwrapUnaryRecords
+-- TODO Test this
+-- gApproxParseJSONUnwrap :: Value -> Parser (Approx String)
+-- gApproxParseJSONUnwrap = genericParseJSON optsUnwrapUnaryRecords
 
 
 gApproxToJSONDefault :: Approx String -> Value
@@ -316,8 +319,9 @@ gApproxToJSONDefault = genericToJSON defaultOptions
 gApproxToEncodingDefault :: Approx String -> Encoding
 gApproxToEncodingDefault = genericToEncoding defaultOptions
 
-gApproxParseJSONDefault :: Value -> Parser (Approx String)
-gApproxParseJSONDefault = genericParseJSON defaultOptions
+-- TODO Test this
+-- gApproxParseJSONDefault :: Value -> Parser (Approx String)
+-- gApproxParseJSONDefault = genericParseJSON defaultOptions
 
 --------------------------------------------------------------------------------
 -- GADT encoders/decoders
