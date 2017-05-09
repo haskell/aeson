@@ -1,5 +1,6 @@
 {-# LANGUAGE CPP #-}
 {-# LANGUAGE DeriveDataTypeable #-}
+{-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE Rank2Types #-}
 #if __GLASGOW_HASKELL__ >= 800
@@ -92,6 +93,7 @@ import Data.Time (UTCTime)
 import Data.Time.Format (FormatTime)
 import Data.Typeable (Typeable)
 import Data.Vector (Vector)
+import GHC.Generics (Generic)
 import qualified Control.Monad.Fail as Fail
 import qualified Data.HashMap.Strict as H
 import qualified Data.Scientific as S
@@ -342,7 +344,7 @@ data Value = Object !Object
            | Number !Scientific
            | Bool !Bool
            | Null
-             deriving (Eq, Read, Show, Typeable, Data)
+             deriving (Eq, Read, Show, Typeable, Data, Generic)
 
 -- | A newtype wrapper for 'UTCTime' that uses the same non-standard
 -- serialization format as Microsoft .NET, whose
