@@ -115,6 +115,10 @@ module Data.Aeson.TH
     , mkParseJSON
     , mkLiftParseJSON
     , mkLiftParseJSON2
+
+    , Dec
+    , Name
+    , Q
     ) where
 
 import Prelude ()
