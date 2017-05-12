@@ -24,4 +24,9 @@ case $BUILD in
     stack install hlint-2.0.5 --stack-yaml stack-lts8.yaml --system-ghc --no-terminal
     make lint
     ;;
+  weeder)
+    stack build --fast aeson --stack-yaml stack-lts8.yaml --system-ghc --no-terminal
+    stack install weeder --resolver nightly --system-ghc --no-terminal
+    weeder
+    ;;
 esac
