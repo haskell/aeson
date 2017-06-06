@@ -2,6 +2,8 @@ resolver: nightly-2017-03-25
 packages:
 - '.'
 - attoparsec-iso8601
+extra-deps:
+- quickcheck-instances-0.3.14
 flags:
   aeson:
     fast: true

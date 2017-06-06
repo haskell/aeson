@@ -4,6 +4,7 @@ packages:
 - attoparsec-iso8601
 extra-deps:
 - integer-logarithms-1
+- quickcheck-instances-0.3.14
 flags:
   aeson:
     fast: true
