@@ -44,6 +44,8 @@ module Data.Aeson.Types.Internal
     , parseEither
     , parseMaybe
     , modifyFailure
+    , parserThrowError
+    , parserCatchError
     , formatError
     , (<?>)
     -- * Constructors and accessors
@@ -507,7 +509,22 @@ p <?> pathElem = Parser $ \path kf ks -> runParser p (pathElem:path) kf ks
 --
 -- Since 0.6.2.0
 modifyFailure :: (String -> String) -> Parser a -> Parser a
-modifyFailure f (Parser p) = Parser $ \path kf ks -> p path (\p' m -> kf p' (f m)) ks
+modifyFailure f (Parser p) = Parser $ \path kf ks ->
+    p path (\p' m -> kf p' (f m)) ks
+
+-- | Throw a parser error with an additional path.
+--
+-- @since 1.2.1.0
+parserThrowError :: JSONPath -> String -> Parser a
+parserThrowError path' msg = Parser $ \path kf _ks ->
+    kf (reverse path ++ path') msg
+
+-- | A handler function to handle previous errors and return to normal execution.
+--
+-- @since 1.2.1.0
+parserCatchError :: Parser a -> (JSONPath -> String -> Parser a) -> Parser a
+parserCatchError (Parser p) handler = Parser $ \path kf ks ->
+    p path (\e msg -> runParser (handler e msg) path kf ks) ks
 
 --------------------------------------------------------------------------------
 -- Generic and TH encoding configuration

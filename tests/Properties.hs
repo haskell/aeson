@@ -113,6 +113,23 @@ modifyFailureProp orig added =
     result :: Result ()
     result = parse parser ()
 
+parserThrowErrorProp :: String -> Property
+parserThrowErrorProp msg =
+    result === Error msg
+  where
+    parser = const $ parserThrowError [] msg
+    result :: Result ()
+    result = parse parser ()
+
+parserCatchErrorProp :: String -> Property
+parserCatchErrorProp msg =
+    result === Success msg
+  where
+    -- Fail, catch, use error message as a successful parse
+    parser = const $ parserCatchError (fail msg) (\_ err -> pure err)
+    result :: Result String
+    result = parse parser ()
+
 -- | Perform a structural comparison of the results of two encoding
 -- methods. Compares decoded values to account for HashMap-driven
 -- variation in JSON object key ordering.
@@ -306,6 +323,8 @@ tests = testGroup "properties" [
     ]
   , testGroup "failure messages" [
       testProperty "modify failure" modifyFailureProp
+    , testProperty "parserThrowError" parserThrowErrorProp
+    , testProperty "parserCatchError" parserCatchErrorProp
     ]
   , testGroup "generic" [
       testGroup "toJSON" [
