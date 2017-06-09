@@ -127,7 +127,7 @@ parserCatchErrorProp :: [String] -> String -> Property
 parserCatchErrorProp path msg =
     result === Success ([I.Key "outer", I.Key "inner"] ++ jsonPath, msg)
   where
-    parser = parserCatchError outer (\p err -> pure (p, err))
+    parser = parserCatchError outer (curry pure)
 
     outer = inner I.<?> I.Key "outer"
     inner = parserThrowError jsonPath msg I.<?> I.Key "inner"
