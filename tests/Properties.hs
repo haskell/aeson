@@ -13,6 +13,7 @@ import Control.Applicative (Const)
 import Data.Aeson (eitherDecode, encode)
 import Data.Aeson.Encoding (encodingToLazyByteString)
 import Data.Aeson.Internal (IResult(..), formatError, ifromJSON, iparse)
+import qualified Data.Aeson.Internal as I
 import Data.Aeson.Parser (value)
 import Data.Aeson.Types
 import Data.DList (DList)
@@ -121,14 +122,20 @@ parserThrowErrorProp msg =
     result :: Result ()
     result = parse parser ()
 
-parserCatchErrorProp :: String -> Property
-parserCatchErrorProp msg =
-    result === Success msg
+-- | Tests (also) that we catch the JSONPath and it has elements in the right order.
+parserCatchErrorProp :: [String] -> String -> Property
+parserCatchErrorProp path msg =
+    result === Success ([I.Key "outer", I.Key "inner"] ++ jsonPath, msg)
   where
-    -- Fail, catch, use error message as a successful parse
-    parser = const $ parserCatchError (fail msg) (\_ err -> pure err)
-    result :: Result String
-    result = parse parser ()
+    parser = parserCatchError outer (\p err -> pure (p, err))
+
+    outer = inner I.<?> I.Key "outer"
+    inner = parserThrowError jsonPath msg I.<?> I.Key "inner"
+
+    result :: Result (I.JSONPath, String)
+    result = parse (const parser) ()
+
+    jsonPath = map (I.Key . T.pack) path
 
 -- | Perform a structural comparison of the results of two encoding
 -- methods. Compares decoded values to account for HashMap-driven
