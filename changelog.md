@@ -4,7 +4,7 @@ For the latest version of this document, please see [https://github.com/bos/aeso
 
 * `tagSingleConstructors`, an option to encode single-constructor types as tagged sums was added to `Options`. It is disabled by default for backward compatibility.
 
-* The `cffi` flag is now turned on by default, this means C FFI code is no longer used by default. You can flip the flag to get C implementation.
+* The `cffi` flag is now turned off (`False`) by default, this means C FFI code is no longer used by default. You can flip the flag to get C implementation.
 
 * The `Options` constructor is no longer exposed to prevent new options from being breaking changes, use `defaultOptions` instead.
 
