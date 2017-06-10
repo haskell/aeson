@@ -13,6 +13,7 @@ import Control.Applicative (Const)
 import Data.Aeson (eitherDecode, encode)
 import Data.Aeson.Encoding (encodingToLazyByteString)
 import Data.Aeson.Internal (IResult(..), formatError, ifromJSON, iparse)
+import qualified Data.Aeson.Internal as I
 import Data.Aeson.Parser (value)
 import Data.Aeson.Types
 import Data.DList (DList)
@@ -112,6 +113,29 @@ modifyFailureProp orig added =
     parser = const $ modifyFailure (added ++) $ fail orig
     result :: Result ()
     result = parse parser ()
+
+parserThrowErrorProp :: String -> Property
+parserThrowErrorProp msg =
+    result === Error msg
+  where
+    parser = const $ parserThrowError [] msg
+    result :: Result ()
+    result = parse parser ()
+
+-- | Tests (also) that we catch the JSONPath and it has elements in the right order.
+parserCatchErrorProp :: [String] -> String -> Property
+parserCatchErrorProp path msg =
+    result === Success ([I.Key "outer", I.Key "inner"] ++ jsonPath, msg)
+  where
+    parser = parserCatchError outer (curry pure)
+
+    outer = inner I.<?> I.Key "outer"
+    inner = parserThrowError jsonPath msg I.<?> I.Key "inner"
+
+    result :: Result (I.JSONPath, String)
+    result = parse (const parser) ()
+
+    jsonPath = map (I.Key . T.pack) path
 
 -- | Perform a structural comparison of the results of two encoding
 -- methods. Compares decoded values to account for HashMap-driven
@@ -306,6 +330,8 @@ tests = testGroup "properties" [
     ]
   , testGroup "failure messages" [
       testProperty "modify failure" modifyFailureProp
+    , testProperty "parserThrowError" parserThrowErrorProp
+    , testProperty "parserCatchError" parserCatchErrorProp
     ]
   , testGroup "generic" [
       testGroup "toJSON" [

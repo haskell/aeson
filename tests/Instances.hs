@@ -16,7 +16,6 @@ import Data.Aeson.Types
 import Data.Function (on)
 import Data.Functor.Compose (Compose (..))
 import Data.Proxy (Proxy(..))
-import Data.Tagged (Tagged(..))
 import Data.Time (ZonedTime(..), TimeZone(..))
 import Data.Time.Clock (UTCTime(..))
 import Functions
@@ -24,7 +23,6 @@ import Test.QuickCheck (Arbitrary(..), elements,  oneof)
 import Types
 import qualified Data.DList as DList
 import qualified Data.HashMap.Strict as HM
-import qualified Data.UUID.Types as UUID
 
 #if !MIN_VERSION_QuickCheck(2,9,0)
 import Control.Applicative (Const(..))
@@ -193,9 +191,6 @@ instance Arbitrary Natural where
 instance Arbitrary (Proxy a) where
     arbitrary = pure Proxy
 
-instance Arbitrary b => Arbitrary (Tagged a b) where
-    arbitrary = Tagged <$> arbitrary
-
 instance Arbitrary a => Arbitrary (DList.DList a) where
     arbitrary = DList.fromList <$> arbitrary
 
@@ -220,10 +215,3 @@ makeVersion b = Version b []
 instance Arbitrary a => Arbitrary (Identity a) where
     arbitrary = Identity <$> arbitrary
 #endif
-
-instance Arbitrary UUID.UUID where
-    arbitrary = UUID.fromWords
-        <$> arbitrary
-        <*> arbitrary
-        <*> arbitrary
-        <*> arbitrary

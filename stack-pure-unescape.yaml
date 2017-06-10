@@ -1,6 +1,8 @@
 resolver: lts-8.1
 packages:
 - '.'
+extra-deps:
+- quickcheck-instances-0.3.14
 flags:
   aeson:
     fast: true

@@ -3,8 +3,13 @@ packages:
 - '.'
 - attoparsec-iso8601
 extra-deps:
-- semigroups-0.18.2
 - integer-logarithms-1
+- QuickCheck-2.9.2
+- quickcheck-instances-0.3.14
+- semigroups-0.18.2
+- tagged-0.8.5
+- transformers-compat-0.5.1.4
+flags:
 flags:
   aeson:
     fast: true
