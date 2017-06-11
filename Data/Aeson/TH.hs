@@ -408,8 +408,8 @@ encStr opts = appE [|E.text|] . conTxt opts
 
 -- | If constructor is nullary.
 isNullary :: ConstructorInfo -> Bool
-isNullary (ConstructorInfo { constructorVariant = NormalConstructor
-                           , constructorFields  = tys }) = null tys
+isNullary ConstructorInfo { constructorVariant = NormalConstructor
+                          , constructorFields  = tys } = null tys
 isNullary _ = False
 
 sumToValue :: Options -> Bool -> Bool -> Name -> Q Exp -> Q Exp
@@ -436,9 +436,9 @@ argsToValue :: JSONClass -> TyVarMap -> Options -> Bool -> ConstructorInfo -> Q 
 
 -- Polyadic constructors with special case for unary constructors.
 argsToValue jc tvMap opts multiCons
-  (ConstructorInfo { constructorName    = conName
-                   , constructorVariant = NormalConstructor
-                   , constructorFields  = argTys }) = do
+  ConstructorInfo { constructorName    = conName
+                  , constructorVariant = NormalConstructor
+                  , constructorFields  = argTys } = do
     argTys' <- mapM resolveTypeSynonyms argTys
     let len = length argTys'
     args <- newNameList "arg" len
@@ -471,9 +471,9 @@ argsToValue jc tvMap opts multiCons
 
 -- Records.
 argsToValue jc tvMap opts multiCons
-  info@(ConstructorInfo { constructorName    = conName
-                        , constructorVariant = RecordConstructor fields
-                        , constructorFields  = argTys }) =
+  info@ConstructorInfo { constructorName    = conName
+                       , constructorVariant = RecordConstructor fields
+                       , constructorFields  = argTys } =
     case (unwrapUnaryRecords opts, not multiCons, argTys) of
       (True,True,[_]) -> argsToValue jc tvMap opts multiCons
                                      (info{constructorVariant = NormalConstructor})
@@ -533,9 +533,9 @@ argsToValue jc tvMap opts multiCons
 
 -- Infix constructors.
 argsToValue jc tvMap opts multiCons
-  (ConstructorInfo { constructorName    = conName
-                   , constructorVariant = InfixConstructor
-                   , constructorFields  = argTys }) = do
+  ConstructorInfo { constructorName    = conName
+                  , constructorVariant = InfixConstructor
+                  , constructorFields  = argTys } = do
     [alTy, arTy] <- mapM resolveTypeSynonyms argTys
     al <- newName "argL"
     ar <- newName "argR"
@@ -595,12 +595,11 @@ argsToEncoding :: JSONClass -> TyVarMap -> Options -> Bool -> ConstructorInfo ->
 
 -- Polyadic constructors with special case for unary constructors.
 argsToEncoding jc tvMap opts multiCons
-  (ConstructorInfo { constructorName    = conName
-                   , constructorVariant = NormalConstructor
-                   , constructorFields  = argTys }) = do
+  ConstructorInfo { constructorName    = conName
+                  , constructorVariant = NormalConstructor
+                  , constructorFields  = argTys } = do
     argTys' <- mapM resolveTypeSynonyms argTys
-    let len = length argTys'
-    args <- newNameList "arg" len
+    args <- newNameList "arg" $ length argTys'
     js <- case zip args argTys' of
             -- Nullary constructors are converted to an empty array.
             [] -> return [| E.emptyArray_ |]
@@ -620,9 +619,9 @@ argsToEncoding jc tvMap opts multiCons
 
 -- Records.
 argsToEncoding jc tvMap opts multiCons
-  info@(ConstructorInfo { constructorName    = conName
-                        , constructorVariant = RecordConstructor fields
-                        , constructorFields  = argTys }) = do
+  info@ConstructorInfo { constructorName    = conName
+                       , constructorVariant = RecordConstructor fields
+                       , constructorFields  = argTys } =
     case (unwrapUnaryRecords opts, not multiCons, argTys) of
       (True,True,[_]) -> argsToEncoding jc tvMap opts multiCons
                                         (info{constructorVariant = NormalConstructor})
@@ -684,9 +683,9 @@ argsToEncoding jc tvMap opts multiCons
 
 -- Infix constructors.
 argsToEncoding jc tvMap opts multiCons
-  (ConstructorInfo { constructorName    = conName
-                   , constructorVariant = InfixConstructor
-                   , constructorFields  = argTys }) = do
+  ConstructorInfo { constructorName    = conName
+                  , constructorVariant = InfixConstructor
+                  , constructorFields  = argTys } = do
     al <- newName "argL"
     ar <- newName "argR"
     [alTy,arTy] <- mapM resolveTypeSynonyms argTys
@@ -910,9 +909,9 @@ consFromJSON jc tName opts vars cons = do
                (map (\x -> parseValue tvMap x conVal) cons')
 
     parseValue _tvMap
-        (ConstructorInfo { constructorName    = conName
-                         , constructorVariant = NormalConstructor
-                         , constructorFields  = [] })
+        ConstructorInfo { constructorName    = conName
+                        , constructorVariant = NormalConstructor
+                        , constructorFields  = [] }
         conVal = do
       str <- newName "str"
       caseE (varE conVal)
@@ -1093,32 +1092,32 @@ parseArgs :: JSONClass -- ^ The FromJSON variant being derived.
           -> Q Exp
 -- Nullary constructors.
 parseArgs _ _ _ _
-  (ConstructorInfo { constructorName    = conName
-                   , constructorVariant = NormalConstructor
-                   , constructorFields  = [] })
+  ConstructorInfo { constructorName    = conName
+                  , constructorVariant = NormalConstructor
+                  , constructorFields  = [] }
   (Left _) =
     [|pure|] `appE` conE conName
 parseArgs _ _ tName _
-  (ConstructorInfo { constructorName    = conName
-                   , constructorVariant = NormalConstructor
-                   , constructorFields  = [] })
+  ConstructorInfo { constructorName    = conName
+                  , constructorVariant = NormalConstructor
+                  , constructorFields  = [] }
   (Right valName) =
     caseE (varE valName) $ parseNullaryMatches tName conName
 
 -- Unary constructors.
 parseArgs jc tvMap _ _
-  (ConstructorInfo { constructorName    = conName
-                   , constructorVariant = NormalConstructor
-                   , constructorFields  = [argTy] })
+  ConstructorInfo { constructorName    = conName
+                  , constructorVariant = NormalConstructor
+                  , constructorFields  = [argTy] }
   contents = do
     argTy' <- resolveTypeSynonyms argTy
     matchCases contents $ parseUnaryMatches jc tvMap argTy' conName
 
 -- Polyadic constructors.
 parseArgs jc tvMap tName _
-  (ConstructorInfo { constructorName    = conName
-                   , constructorVariant = NormalConstructor
-                   , constructorFields  = argTys })
+  ConstructorInfo { constructorName    = conName
+                  , constructorVariant = NormalConstructor
+                  , constructorFields  = argTys }
   contents = do
     argTys' <- mapM resolveTypeSynonyms argTys
     let len = genericLength argTys'
@@ -1126,16 +1125,16 @@ parseArgs jc tvMap tName _
 
 -- Records.
 parseArgs jc tvMap tName opts
-  (ConstructorInfo { constructorName    = conName
-                   , constructorVariant = RecordConstructor fields
-                   , constructorFields  = argTys })
+  ConstructorInfo { constructorName    = conName
+                  , constructorVariant = RecordConstructor fields
+                  , constructorFields  = argTys }
   (Left (_, obj)) = do
     argTys' <- mapM resolveTypeSynonyms argTys
     parseRecord jc tvMap argTys' opts tName conName fields obj
 parseArgs jc tvMap tName opts
-  info@(ConstructorInfo { constructorName    = conName
-                        , constructorVariant = RecordConstructor fields
-                        , constructorFields  = argTys })
+  info@ConstructorInfo { constructorName    = conName
+                       , constructorVariant = RecordConstructor fields
+                       , constructorFields  = argTys }
   (Right valName) =
     case (unwrapUnaryRecords opts,argTys) of
       (True,[_])-> parseArgs jc tvMap tName opts
@@ -1153,9 +1152,9 @@ parseArgs jc tvMap tName opts
 -- Infix constructors. Apart from syntax these are the same as
 -- polyadic constructors.
 parseArgs jc tvMap tName _
-  (ConstructorInfo { constructorName    = conName
-                   , constructorVariant = InfixConstructor
-                   , constructorFields  = argTys })
+  ConstructorInfo { constructorName    = conName
+                  , constructorVariant = InfixConstructor
+                  , constructorFields  = argTys }
   contents = do
     argTys' <- mapM resolveTypeSynonyms argTys
     matchCases contents $ parseProduct jc tvMap argTys' tName conName 2
