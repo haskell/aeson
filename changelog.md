@@ -2,7 +2,11 @@ For the latest version of this document, please see [https://github.com/bos/aeso
 
 ## 1.2.1.0
 
-* Add `parserThrowError` and `parserCatchError` combinators.
+* Add `parserThrowError` and `parserCatchError` combinators, thanks to Oleg Grenrus.
+
+* Add `Generic` instance for `Value`, thanks to Xia Li-yao.
+
+* Fix a mistake in the 1.2.0.0 changelog, the `cffi` flag is disabled by default! Thanks to dbaynard.
 
 ## 1.2.0.0
 
