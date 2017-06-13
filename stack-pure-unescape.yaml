@@ -3,6 +3,7 @@ packages:
 - '.'
 extra-deps:
 - quickcheck-instances-0.3.14
+- th-abstraction-0.2.2.0
 flags:
   aeson:
     fast: true

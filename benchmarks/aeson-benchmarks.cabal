@@ -54,6 +54,7 @@ library
     tagged >=0.8.3 && <0.9,
     template-haskell >= 2.4,
     text >= 1.1.1.0,
+    th-abstraction >= 0.2.2 && < 0.3,
     time,
     transformers,
     unordered-containers >= 0.2.3.0,
