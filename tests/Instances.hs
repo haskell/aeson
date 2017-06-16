@@ -14,8 +14,6 @@ import Control.Applicative (empty)
 import Control.Monad
 import Data.Aeson.Types
 import Data.Function (on)
-import Data.Functor.Compose (Compose (..))
-import Data.Proxy (Proxy(..))
 import Data.Time (ZonedTime(..), TimeZone(..))
 import Data.Time.Clock (UTCTime(..))
 import Functions
@@ -30,6 +28,11 @@ import Data.Functor.Identity (Identity (..))
 import Data.List.NonEmpty (NonEmpty(..))
 import Data.Version
 import Test.QuickCheck (getNonNegative, listOf1, resize)
+#endif
+
+#if !MIN_VERSION_QuickCheck(2,10,0)
+import Data.Functor.Compose (Compose (..))
+import Data.Proxy (Proxy(..))
 #endif
 
 import Data.Orphans ()
@@ -188,14 +191,16 @@ instance Arbitrary Natural where
   arbitrary = fromInteger . abs <$> arbitrary
 #endif
 
+#if !MIN_VERSION_QuickCheck(2,10,0)
 instance Arbitrary (Proxy a) where
     arbitrary = pure Proxy
 
-instance Arbitrary a => Arbitrary (DList.DList a) where
-    arbitrary = DList.fromList <$> arbitrary
-
 instance Arbitrary (f (g a)) => Arbitrary (Compose f g a) where
     arbitrary = Compose <$> arbitrary
+#endif
+
+instance Arbitrary a => Arbitrary (DList.DList a) where
+    arbitrary = DList.fromList <$> arbitrary
 
 #if !MIN_VERSION_QuickCheck(2,9,0)
 instance Arbitrary a => Arbitrary (Const a b) where
