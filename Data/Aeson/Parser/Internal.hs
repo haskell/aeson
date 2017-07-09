@@ -206,7 +206,7 @@ value' = parser <?> "valid json"
 
 -- | Parse a quoted JSON string.
 jstring :: Parser Text
-jstring = (A.word8 DOUBLE_QUOTE <?> "double qoutes") *> jstring_
+jstring = A.word8 DOUBLE_QUOTE *> jstring_
 
 -- | Parse a string without a leading quote.
 jstring_ :: Parser Text
