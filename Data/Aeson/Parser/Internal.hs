@@ -39,7 +39,8 @@ import Prelude.Compat
 import Control.Applicative ((<|>))
 import Control.Monad (void, when)
 import Data.Aeson.Types.Internal (IResult(..), JSONPath, Result(..), Value(..))
-import Data.Attoparsec.ByteString.Char8 (Parser, char, decimal, endOfInput, isDigit_w8, signed, string)
+import Data.Attoparsec.ByteString.Char8 (Parser, (<?>), char, decimal, endOfInput, isDigit_w8, signed, string)
+import Data.List (intercalate)
 import Data.Scientific (Scientific)
 import Data.Text (Text)
 import Data.Vector as Vector (Vector, empty, fromListN, reverse)
@@ -165,43 +166,47 @@ arrayValues val = do
 -- implementations in other languages conform to that same restriction
 -- to preserve interoperability and security.
 value :: Parser Value
-value = do
-  skipSpace
-  w <- A.peekWord8'
-  case w of
-    DOUBLE_QUOTE  -> A.anyWord8 *> (String <$> jstring_)
-    OPEN_CURLY    -> A.anyWord8 *> object_
-    OPEN_SQUARE   -> A.anyWord8 *> array_
-    C_f           -> string "false" *> pure (Bool False)
-    C_t           -> string "true" *> pure (Bool True)
-    C_n           -> string "null" *> pure Null
-    _              | w >= 48 && w <= 57 || w == 45
-                  -> Number <$> scientific
-      | otherwise -> fail "not a valid json value"
+value = parser <?> "valid json"
+  where
+  parser = do
+    skipSpace
+    w <- A.peekWord8'
+    case w of
+      DOUBLE_QUOTE  -> A.anyWord8 *> (String <$> jstring_)
+      OPEN_CURLY    -> A.anyWord8 *> object_
+      OPEN_SQUARE   -> A.anyWord8 *> array_
+      C_f           -> string "false" *> pure (Bool False)
+      C_t           -> string "true" *> pure (Bool True)
+      C_n           -> string "null" *> pure Null
+      _              | w >= 48 && w <= 57 || w == 45
+                    -> Number <$> scientific
+        | otherwise -> fail "not a valid json value"
 
 -- | Strict version of 'value'. See also 'json''.
 value' :: Parser Value
-value' = do
-  skipSpace
-  w <- A.peekWord8'
-  case w of
-    DOUBLE_QUOTE  -> do
-                     !s <- A.anyWord8 *> jstring_
-                     return (String s)
-    OPEN_CURLY    -> A.anyWord8 *> object_'
-    OPEN_SQUARE   -> A.anyWord8 *> array_'
-    C_f           -> string "false" *> pure (Bool False)
-    C_t           -> string "true" *> pure (Bool True)
-    C_n           -> string "null" *> pure Null
-    _              | w >= 48 && w <= 57 || w == 45
-                  -> do
-                     !n <- scientific
-                     return (Number n)
-      | otherwise -> fail "not a valid json value"
+value' = parser <?> "valid json"
+  where
+  parser = do
+    skipSpace
+    w <- A.peekWord8'
+    case w of
+      DOUBLE_QUOTE  -> do
+                       !s <- A.anyWord8 *> jstring_
+                       return (String s)
+      OPEN_CURLY    -> A.anyWord8 *> object_'
+      OPEN_SQUARE   -> A.anyWord8 *> array_'
+      C_f           -> string "false" *> pure (Bool False)
+      C_t           -> string "true" *> pure (Bool True)
+      C_n           -> string "null" *> pure Null
+      _              | w >= 48 && w <= 57 || w == 45
+                    -> do
+                       !n <- scientific
+                       return (Number n)
+        | otherwise -> fail "not a valid json value"
 
 -- | Parse a quoted JSON string.
 jstring :: Parser Text
-jstring = A.word8 DOUBLE_QUOTE *> jstring_
+jstring = (A.word8 DOUBLE_QUOTE <?> "double qoutes") *> jstring_
 
 -- | Parse a string without a leading quote.
 jstring_ :: Parser Text
@@ -257,7 +262,8 @@ eitherDecodeWith p to s =
       L.Done _ v     -> case to v of
                           ISuccess a      -> Right a
                           IError path msg -> Left (path, msg)
-      L.Fail _ _ msg -> Left ([], msg)
+      L.Fail _ namedFailures msg -> Left ([], failMsg)
+        where failMsg = intercalate ", " (msg : namedFailures)
 {-# INLINE eitherDecodeWith #-}
 
 eitherDecodeStrictWith :: Parser Value -> (Value -> IResult a) -> B.ByteString
