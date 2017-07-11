@@ -12,6 +12,7 @@ flag bytestring-builder
 library
   hs-source-dirs: .. . ../ffi ../pure ../attoparsec-iso8601
   c-sources:  ../cbits/unescape_string.c
+  -- cpp-options: -DCFFI
   exposed-modules:
     Data.Aeson
     Data.Aeson.Encoding

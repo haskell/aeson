@@ -9,6 +9,9 @@ module Data.Aeson.Stream (
     parseValue,
     ) where
 
+import Prelude ()
+import Prelude.Compat
+
 import Control.DeepSeq (NFData (..))
 import Control.Monad (ap)
 import Data.Aeson.Parser.Internal (jstring_, scientific)
@@ -69,18 +72,18 @@ tokenStream :: BSL.ByteString -> [Token]
 tokenStream = runTokenParser value [] . skipSpace
   where
     end :: TokenParser
-    end = TokenParser $ \_ bs ->
+    end = TokenParser $ \ !_ !bs ->
         if BSL.null bs
         then []
         else [TkError $ "Expecting end-of-input, got " ++ BSL8.unpack (BSL.take 30 bs)]
 
     value :: TokenParser
-    value = TokenParser $ \ks bs -> case BSL.uncons bs of
+    value = TokenParser $ \ !ks !bs -> case BSL.uncons bs of
         Nothing -> [TkError "Expecting JSON value, got end-of-input"]
-        Just (w, bs') -> valueCase ks w bs bs'
+        Just (!w, !bs') -> valueCase ks w bs bs'
 
     {-# INLINE valueCase #-}
-    valueCase ks w bs bs' = case w of
+    valueCase !ks !w !bs !bs' = case w of
             123 {- { -} -> TkObjectOpen : runTokenParser record0 (recordK : ks) (skipSpace bs')
             91  {- [ -} -> TkArrayOpen : runTokenParser array0 (arrayK : ks) (skipSpace bs')
             34  {- " -} -> case A.parse jstring_ bs' of
@@ -98,9 +101,9 @@ tokenStream = runTokenParser value [] . skipSpace
             _ -> [TkError $ "Expecting JSON value, got " ++ BSL8.unpack (BSL.take 30 bs)]
 
     record0 :: TokenParser
-    record0 = TokenParser $ \ks bs -> case BSL.uncons bs of
+    record0 = TokenParser $ \ !ks !bs -> case BSL.uncons bs of
         Nothing -> [TkError "Expecting record key, got end-of-input"]
-        Just (w, bs') -> case w of
+        Just (!w, !bs') -> case w of
             34 {- " -}  -> case A.parse jstring_ bs' of
                 A.Fail _ _ err -> [TkError err]
                 A.Done bs'' t  -> TkKey t : runTokenParser recordV ks (skipSpace bs'')
@@ -108,40 +111,40 @@ tokenStream = runTokenParser value [] . skipSpace
             _ -> [TkError $ "Expecting record key or '}', got " ++ BSL8.unpack (BSL.take 30 bs)]
 
     record1 :: TokenParser
-    record1 = TokenParser $ \ks bs -> case BSL.uncons bs of
+    record1 = TokenParser $ \ !ks !bs -> case BSL.uncons bs of
         Nothing -> [TkError "Expecting record key, got end-of-input"]
-        Just (w, bs') -> case w of
+        Just (!w, !bs') -> case w of
             34 {- " -}  -> case A.parse jstring_ bs' of
                 A.Fail _ _ err -> [TkError err]
                 A.Done bs'' t  -> TkKey t : runTokenParser recordV ks (skipSpace bs'')
             _ -> [TkError $ "Expecting record key, got " ++ BSL8.unpack (BSL.take 30 bs)]
 
     recordV :: TokenParser
-    recordV = TokenParser $ \ks bs -> case BSL.uncons bs of
+    recordV = TokenParser $ \ !ks !bs -> case BSL.uncons bs of
         Nothing -> [TkError "Expecting ':', got end-of-input"]
-        Just (w, bs') -> case w of
+        Just (!w, !bs') -> case w of
             58 {- : -} -> runTokenParser value ks (skipSpace bs')
             _ -> [TkError $ "Expecting ':', got " ++ BSL8.unpack (BSL.take 30 bs)]
 
     recordK  :: TokenParser
-    recordK = TokenParser $ \ks bs -> case BSL.uncons bs of
+    recordK = TokenParser $ \ !ks !bs -> case BSL.uncons bs of
         Nothing -> [TkError "Expecting ',' or '}', got end-of-input"]
-        Just (w, bs') -> case w of
+        Just (!w, !bs') -> case w of
             44  {- , -} -> runTokenParser record1 (recordK : ks) (skipSpace bs')
             125 {- } -} -> TkObjectClose : pop ks bs'
             _ -> [TkError $ "Expecting ',' or '}', got " ++ BSL8.unpack (BSL.take 30 bs)]
 
     array0 :: TokenParser
-    array0 = TokenParser $ \ks bs -> case BSL.uncons bs of
+    array0 = TokenParser $ \ !ks !bs -> case BSL.uncons bs of
         Nothing -> [TkError "Expecting JSON value or ']', got end-of-input"]
-        Just (w, bs') -> case w of
+        Just (!w, !bs') -> case w of
             93 {- ] -} -> TkArrayClose : pop (tail ks) bs'
             _          -> valueCase ks w bs bs'
 
     arrayK  :: TokenParser
-    arrayK = TokenParser $ \ks bs -> case BSL.uncons bs of
+    arrayK = TokenParser $ \ !ks !bs -> case BSL.uncons bs of
         Nothing -> [TkError "Expecting ',' or ']', got end-of-input"]
-        Just (w, bs') -> case w of
+        Just (!w, !bs') -> case w of
             44 {- , -} -> runTokenParser value (arrayK : ks) (skipSpace bs')
             93 {- ] -} -> TkArrayClose : pop ks bs'
             _ -> [TkError $ "Expecting ',' or ']', got " ++ BSL8.unpack (BSL.take 30 bs)]
