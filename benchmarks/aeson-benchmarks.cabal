@@ -166,6 +166,7 @@ executable aeson-benchmark-compare-with-json
     criterion,
     deepseq,
     json,
+    json-stream,
     text
 
 executable aeson-benchmark-aeson-encode
