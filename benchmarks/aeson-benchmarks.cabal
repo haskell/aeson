@@ -27,6 +27,7 @@ library
     Data.Aeson.Parser.Unescape
     Data.Aeson.Parser.UnescapeFFI
     Data.Aeson.Parser.UnescapePure
+    Data.Aeson.Stream
     Data.Aeson.TH
     Data.Aeson.Text
     Data.Aeson.Types
