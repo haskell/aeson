@@ -160,7 +160,7 @@ benchDecodeHM name val = bgroup name
     ,  bench "Identity"        $ nf (decodeHMB proxyT1)   val
     ,  bench "Coerce"          $ nf (decodeHMB proxyT2)   val
     ,  bench "Parser"          $ nf (decodeHMB proxyT3)   val
-    ,  bench "aeson-0.11"      $ nf (decodeHMA proxyText) val
+    ,  bench "aeson-hackage"   $ nf (decodeHMA proxyText) val
     ,  bench "Tagged Text"     $ nf (decodeHMB $ proxyTagged proxyText) val
     ,  bench "Tagged Identity" $ nf (decodeHMB $ proxyTagged proxyT1)   val
     ,  bench "Tagged Coerce"   $ nf (decodeHMB $ proxyTagged proxyT2)   val
@@ -172,11 +172,11 @@ benchDecodeMap
     -> LBS.ByteString
     -> Benchmark
 benchDecodeMap name val = bgroup name
-    [  bench "Text"        $ nf (decodeMapB proxyText) val
-    ,  bench "Identity"    $ nf (decodeMapB proxyT1)   val
-    ,  bench "Coerce"      $ nf (decodeMapB proxyT2)   val
-    ,  bench "Parser"      $ nf (decodeMapB proxyT3)   val
-    ,  bench "aeson-0.11"  $ nf (decodeMapA proxyText) val
+    [  bench "Text"           $ nf (decodeMapB proxyText) val
+    ,  bench "Identity"       $ nf (decodeMapB proxyT1)   val
+    ,  bench "Coerce"         $ nf (decodeMapB proxyT2)   val
+    ,  bench "Parser"         $ nf (decodeMapB proxyT3)   val
+    ,  bench "aeson-hackage"  $ nf (decodeMapA proxyText) val
     ]
 
 benchEncodeHM

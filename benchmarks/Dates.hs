@@ -1,3 +1,4 @@
+{-# OPTIONS_GHC -fsimpl-tick-factor=0 #-}
 module Main (main) where
 
 import Prelude ()
