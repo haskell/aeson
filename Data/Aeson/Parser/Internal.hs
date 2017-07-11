@@ -23,6 +23,8 @@ module Data.Aeson.Parser.Internal
       json, jsonEOF
     , value
     , jstring
+    , jstring_
+    , scientific
     -- * Strict parsers
     , json', jsonEOF'
     , value'

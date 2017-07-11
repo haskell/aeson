@@ -86,9 +86,10 @@ library
     Data.Aeson
     Data.Aeson.Encoding
     Data.Aeson.Parser
+    Data.Aeson.Stream
+    Data.Aeson.TH
     Data.Aeson.Text
     Data.Aeson.Types
-    Data.Aeson.TH
 
     Data.Aeson.Encoding.Internal
     Data.Aeson.Internal
