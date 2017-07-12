@@ -125,7 +125,9 @@ executable aeson-benchmark-typed
   cpp-options: -DHAS_BOTH_AESON_AND_BENCHMARKS
   other-modules:
     Twitter
+    Twitter.Generic
     Twitter.Manual
+    Twitter.Options
     Twitter.TH
     Typed.Common
     Typed.Generic

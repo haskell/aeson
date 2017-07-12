@@ -1,5 +1,8 @@
 -- Use GHC generics to automatically generate good instances.
+
 {-# LANGUAGE CPP #-}
+{-# LANGUAGE PackageImports #-}
+
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 
 module Twitter.Generic
@@ -11,39 +14,64 @@ module Twitter.Generic
     ) where
 
 import Prelude ()
-import Prelude.Compat
+import Prelude.Compat ()
 
 import Twitter
+import Twitter.Options
 
 #ifndef HAS_BOTH_AESON_AND_BENCHMARKS
-import Data.Aeson (ToJSON, FromJSON)
+import Data.Aeson (ToJSON (..), FromJSON (..), genericToJSON, genericToEncoding, genericParseJSON)
 #else
-import "aeson" Data.Aeson (ToJSON, FromJSON)
+import "aeson" Data.Aeson (ToJSON (..), FromJSON (..), genericToJSON, genericToEncoding, genericParseJSON)
 import qualified "aeson-benchmarks" Data.Aeson as B
 #endif
 
-instance ToJSON Metadata
-instance FromJSON Metadata
+instance ToJSON Metadata where
+    toJSON = genericToJSON twitterOptions
+    toEncoding = genericToEncoding twitterOptions
+instance FromJSON Metadata where
+    parseJSON = genericParseJSON twitterOptions
 
-instance ToJSON Geo
-instance FromJSON Geo
+instance ToJSON Geo where
+    toJSON = genericToJSON twitterOptions
+    toEncoding = genericToEncoding twitterOptions
+instance FromJSON Geo where
+    parseJSON = genericParseJSON twitterOptions
 
-instance ToJSON Story
-instance FromJSON Story
+instance ToJSON Story where
+    toJSON = genericToJSON twitterOptions
+    toEncoding = genericToEncoding twitterOptions
+instance FromJSON Story where
+    parseJSON = genericParseJSON twitterOptions
 
-instance ToJSON Result
-instance FromJSON Result
+instance ToJSON Result where
+    toJSON = genericToJSON twitterOptions
+    toEncoding = genericToEncoding twitterOptions
+instance FromJSON Result where
+    parseJSON = genericParseJSON twitterOptions
 
 #ifdef HAS_BOTH_AESON_AND_BENCHMARKS
-instance B.ToJSON Metadata
-instance B.FromJSON Metadata
+instance B.ToJSON Metadata where
+    toJSON = B.genericToJSON btwitterOptions
+    toEncoding = B.genericToEncoding btwitterOptions
+instance B.FromJSON Metadata where
+    parseJSON = B.genericParseJSON btwitterOptions
 
-instance B.ToJSON Geo
-instance B.FromJSON Geo
+instance B.ToJSON Geo where
+    toJSON = B.genericToJSON btwitterOptions
+    toEncoding = B.genericToEncoding btwitterOptions
+instance B.FromJSON Geo where
+    parseJSON = B.genericParseJSON btwitterOptions
 
-instance B.ToJSON Story
-instance B.FromJSON Story
+instance B.ToJSON Story where
+    toJSON = B.genericToJSON btwitterOptions
+    toEncoding = B.genericToEncoding btwitterOptions
+instance B.FromJSON Story where
+    parseJSON = B.genericParseJSON btwitterOptions
 
-instance B.ToJSON Result
-instance B.FromJSON Result
+instance B.ToJSON Result where
+    toJSON = B.genericToJSON btwitterOptions
+    toEncoding = B.genericToEncoding btwitterOptions
+instance B.FromJSON Result where
+    parseJSON = B.genericParseJSON btwitterOptions
 #endif

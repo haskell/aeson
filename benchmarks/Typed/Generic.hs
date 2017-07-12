@@ -7,7 +7,7 @@ import Prelude.Compat
 import "aeson" Data.Aeson hiding (Result)
 import Criterion
 import Data.ByteString.Lazy as L
-import Twitter.TH
+import Twitter.Generic
 import Typed.Common
 import qualified "aeson-benchmarks" Data.Aeson as B
 
