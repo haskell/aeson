@@ -1,9 +1,12 @@
 -- Use Template Haskell to generate good instances.
 
 {-# LANGUAGE CPP #-}
-{-# LANGUAGE PackageImports #-}
 {-# LANGUAGE TemplateHaskell #-}
 {-# OPTIONS_GHC -fno-warn-orphans #-}
+
+#ifdef HAS_BOTH_AESON_AND_BENCHMARKS
+{-# LANGUAGE PackageImports #-}
+#endif
 
 module Twitter.TH
     (

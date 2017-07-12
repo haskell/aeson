@@ -1,5 +1,9 @@
 {-# LANGUAGE CPP #-}
+
+#ifdef HAS_BOTH_AESON_AND_BENCHMARKS
 {-# LANGUAGE PackageImports #-}
+#endif
+
 module Twitter.Options (module Twitter.Options) where
 
 #ifndef HAS_BOTH_AESON_AND_BENCHMARKS
