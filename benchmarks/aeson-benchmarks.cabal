@@ -249,3 +249,13 @@ executable aeson-benchmark-foldable
     text,
     unordered-containers,
     vector
+
+executable aeson-count-laureates
+  main-is: CountLaureates.hs
+  ghc-options: -Wall -rtsopts
+  build-depends:
+    aeson-benchmarks,
+    base,
+    base-compat,
+    bytestring,
+    vector
