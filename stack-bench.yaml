@@ -1,10 +1,13 @@
 resolver: lts-8.5
-packages:
 # We use aeson in the snapshot to
 # - avoid recompilation of criterion
 # - compare against it
-
 # - '.'
+#
+# Also we use separate working directory to avoid "unregistering aeson"
+# caused recompilations
+work-dir: .stack-work-bench
+packages:
 - benchmarks
 extra-deps:
 - aeson-1.2.1.0

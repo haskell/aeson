@@ -4,6 +4,7 @@ dist-newstyle
 .cabal-sandbox/
 cabal.sandbox.config
 .stack-work/
+.stack-work-bench/
 
 *.o
 *.hi
