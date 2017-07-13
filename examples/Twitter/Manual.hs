@@ -15,6 +15,10 @@ module Twitter.Manual
     , Geo(..)
     , Story(..)
     , Result(..)
+#ifdef HAS_BOTH_AESON_AND_BENCHMARKS
+    -- * object parsers
+    , R (..)
+#endif
     ) where
 
 import Prelude ()
@@ -30,6 +34,11 @@ import Data.Aeson hiding (Result)
 #else
 import "aeson" Data.Aeson hiding (Result)
 import qualified "aeson-benchmarks" Data.Aeson as B
+import qualified "aeson-benchmarks" Data.Aeson.Types as B
+import qualified "aeson-benchmarks" Data.Aeson.Types.ObjectParser as B
+
+import qualified Data.HashSet as HS
+
 #endif
 
 instance ToJSON Metadata where
@@ -156,6 +165,8 @@ instance FromJSON Result where
     <*> v .: "query"
   parseJSON _ = empty
 
+
+
 #ifdef HAS_BOTH_AESON_AND_BENCHMARKS
 instance B.ToJSON Metadata where
   toJSON Metadata{..} = B.object [
@@ -220,8 +231,8 @@ instance B.ToJSON Story where
     <> "source"            B..= source
 
 instance B.FromJSON Story where
-  parseJSON (B.Object v) = Story <$>
-        v B..: "from_user_id_str"
+  parseJSON = B.withObject "Story" $ \v -> Story
+    <$> v B..: "from_user_id_str"
     <*> v B..: "profile_image_url"
     <*> v B..: "created_at"
     <*> v B..: "from_user"
@@ -235,7 +246,28 @@ instance B.FromJSON Story where
     <*> v B..: "iso_language_code"
     <*> v B..: "to_user_id_str"
     <*> v B..: "source"
-  parseJSON _ = empty
+
+storyObjectParser :: B.ObjectParser Story
+storyObjectParser = Story
+    <$> B.objectField "from_user_id_str"
+    <*> B.objectField "profile_image_url"
+    <*> B.objectField "created_at"
+    <*> B.objectField "from_user"
+    <*> B.objectField "id_str"
+    <*> B.objectField "metadata"
+    <*> B.objectField "to_user_id"
+    <*> B.objectField "text"
+    <*> B.objectField "id"
+    <*> B.objectField "from_user_id"
+    <*> B.objectField "geo"
+    <*> B.objectField "iso_language_code"
+    <*> B.objectField "to_user_id_str"
+    <*> B.objectField "source"
+
+parseStory :: B.Value -> B.Parser Story
+parseStory =  B.withObjectParser' "Story" storyObjectParser
+    mempty
+    (HS.fromList ["to_user", "place"])
 
 instance B.ToJSON Result where
   toJSON Result{..} = B.object [
@@ -279,4 +311,25 @@ instance B.FromJSON Result where
     <*> v B..: "max_id_str"
     <*> v B..: "query"
   parseJSON _ = empty
+
+newtype R = R { getR :: Result }
+
+instance B.FromJSON R where
+    parseJSON = B.withObjectParser' "Result" (fmap R resultObjectParser)
+        mempty
+        (HS.fromList ["warning"])
+
+resultObjectParser :: B.ObjectParser Result
+resultObjectParser = Result
+    <$> B.explicitObjectField "results" (B.listParser parseStory)
+    <*> B.objectField "max_id"
+    <*> B.objectField "since_id"
+    <*> B.objectField "refresh_url"
+    <*> B.objectField "next_page"
+    <*> B.objectField "results_per_page"
+    <*> B.objectField "page"
+    <*> B.objectField "completed_in"
+    <*> B.objectField "since_id_str"
+    <*> B.objectField "max_id_str"
+    <*> B.objectField "query"
 #endif

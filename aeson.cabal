@@ -104,11 +104,12 @@ library
     Data.Aeson.Parser.Internal
     Data.Aeson.Parser.Unescape
     Data.Aeson.Parser.Time
+    Data.Aeson.Types.Class
     Data.Aeson.Types.FromJSON
     Data.Aeson.Types.Generic
-    Data.Aeson.Types.ToJSON
-    Data.Aeson.Types.Class
     Data.Aeson.Types.Internal
+    Data.Aeson.Types.ObjectParser
+    Data.Aeson.Types.ToJSON
     Data.Attoparsec.Time
     Data.Attoparsec.Time.Internal
 
