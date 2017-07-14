@@ -235,8 +235,6 @@ jstring_ = {-# SCC "jstring_" #-} do
             `orI#` (w `andI#` 0x1f# ==# w)     -- c < 0x20
 
 data S = S Int# Int#
--- This hint will no longer trigger once hlint > 1.9.41 is released.
-{-# ANN S ("HLint: ignore Use newtype instead of data" :: String) #-}
 #else
   s <- A.scan startState go <* A.anyWord8
   case unescapeText s of
