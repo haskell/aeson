@@ -1,3 +1,4 @@
+{-# LANGUAGE PackageImports #-}
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 
 module Main (main) where
@@ -10,8 +11,11 @@ import Blaze.ByteString.Builder.Char.Utf8 (fromString)
 import Control.DeepSeq (NFData(rnf))
 import Criterion.Main
 import Data.Maybe (fromMaybe)
-import qualified Data.Aeson as A
-import qualified Data.Aeson.Text as A
+import qualified "aeson-benchmarks" Data.Aeson as A
+import qualified "aeson-benchmarks" Data.Aeson.Text as A
+import qualified "aeson-benchmarks" Data.Aeson.Parser.Internal as I
+import qualified "aeson" Data.Aeson as B
+import qualified Data.ByteString as BS
 import qualified Data.ByteString.Lazy as BL
 import qualified Data.Text.Lazy          as TL
 import qualified Data.Text.Lazy.Builder  as TLB
@@ -41,6 +45,19 @@ decodeA s = fromMaybe (error "fail to parse via Aeson") $ A.decode s
 decodeA' :: BL.ByteString -> A.Value
 decodeA' s = fromMaybe (error "fail to parse via Aeson") $ A.decode' s
 
+decodeAS :: BS.ByteString -> A.Value
+decodeAS s = fromMaybe (error "fail to parse via Aeson") $ A.decodeStrict' s
+
+decodeB :: BL.ByteString -> B.Value
+decodeB s = fromMaybe (error "fail to parse via Aeson") $ B.decode s
+
+decodeBS :: BS.ByteString -> B.Value
+decodeBS s = fromMaybe (error "fail to parse via Aeson") $ B.decodeStrict' s
+
+decodeIP :: BL.ByteString -> A.Value
+decodeIP s = fromMaybe (error "fail to parse via Parser.decodeWith") $
+    I.decodeWith I.jsonEOF A.fromJSON s
+
 encodeJ :: J.JSValue -> BL.ByteString
 encodeJ = toLazyByteString . fromString . J.encode
 
@@ -55,19 +72,27 @@ main = do
   let enFile = "json-data/twitter100.json"
       jpFile = "json-data/jp100.json"
   enA <- BL.readFile enFile
+  enS <- BS.readFile enFile
   enJ <- readFile enFile
   jpA <- BL.readFile jpFile
+  jpS <- BS.readFile jpFile
   jpJ <- readFile jpFile
   defaultMain [
       bgroup "decode" [
         bgroup "en" [
-          bench "aeson/lazy" $ nf decodeA enA
-        , bench "aeson/strict" $ nf decodeA' enA
-        , bench "json"  $ nf decodeJ enJ
+          bench "aeson/lazy"     $ nf decodeA enA
+        , bench "aeson/strict"   $ nf decodeA' enA
+        , bench "aeson/stricter" $ nf decodeAS enS
+        , bench "aeson/hackage"  $ nf decodeB enA
+        , bench "aeson/hackage'" $ nf decodeBS enS
+        , bench "aeson/parser"   $ nf decodeIP enA
+        , bench "json"           $ nf decodeJ enJ
         ]
       , bgroup "jp" [
-          bench "aeson" $ nf decodeA jpA
-        , bench "json"  $ nf decodeJ jpJ
+          bench "aeson"          $ nf decodeA jpA
+        , bench "aeson/stricter" $ nf decodeAS jpS
+        , bench "aeson/hackage"  $ nf decodeB jpA
+        , bench "json"           $ nf decodeJ jpJ
         ]
       ]
     , bgroup "encode" [

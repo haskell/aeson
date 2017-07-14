@@ -83,6 +83,13 @@ executable aeson-benchmark-compare
   main-is: Compare.hs
   hs-source-dirs: ../examples .
   ghc-options: -Wall -O2 -rtsopts
+  other-modules:
+    Compare.BufferBuilder
+    Compare.JsonBench
+    Compare.JsonBuilder
+    Twitter
+    Twitter.Manual
+    Typed.Common
   build-depends:
     aeson-benchmarks,
     base,
@@ -116,6 +123,16 @@ executable aeson-benchmark-typed
   -- We must help ourself in situations when there is both
   -- aeson and aeson-benchmakrs
   cpp-options: -DHAS_BOTH_AESON_AND_BENCHMARKS
+  other-modules:
+    Twitter
+    Twitter.Generic
+    Twitter.Manual
+    Twitter.Options
+    Twitter.TH
+    Typed.Common
+    Typed.Generic
+    Typed.Manual
+    Typed.TH
   build-depends:
     aeson,
     aeson-benchmarks,
@@ -136,7 +153,9 @@ executable aeson-benchmark-typed
 executable aeson-benchmark-compare-with-json
   main-is: CompareWithJSON.hs
   ghc-options: -Wall -O2 -rtsopts
+  cpp-options: -DHAS_BOTH_AESON_AND_BENCHMARKS
   build-depends:
+    aeson,
     aeson-benchmarks,
     base,
     base-compat,

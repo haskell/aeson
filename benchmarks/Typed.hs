@@ -13,4 +13,7 @@ main = defaultMain [
     Generic.benchmarks
   , Manual.benchmarks
   , TH.benchmarks
+  , Generic.decodeBenchmarks
+  , Manual.decodeBenchmarks
+  , TH.decodeBenchmarks
   ]
