@@ -53,8 +53,9 @@ import qualified Data.Scientific as Sci
 import Data.Aeson.Parser.Unescape (unescapeText)
 
 #if MIN_VERSION_ghc_prim(0,3,1)
-import GHC.Base (Int#, (==#), isTrue#, word2Int#)
+import GHC.Base (Int#, (==#), isTrue#, word2Int#, orI#, andI#)
 import GHC.Word (Word8(W8#))
+import qualified Data.Text.Encoding as TE
 #endif
 
 #define BACKSLASH 92
@@ -207,23 +208,39 @@ jstring = A.word8 DOUBLE_QUOTE *> jstring_
 jstring_ :: Parser Text
 {-# INLINE jstring_ #-}
 jstring_ = {-# SCC "jstring_" #-} do
+#if MIN_VERSION_ghc_prim(0,3,1)
+  (s, S _ escaped) <- A.runScanner startState go <* A.anyWord8
+  -- We escape only if there are
+  -- non-ascii (over 7bit) characters or backslash present.
+  --
+  -- Note: if/when text will have fast ascii -> text conversion
+  -- (e.g. uses utf8 encoding) we can have further speedup.
+  if isTrue# escaped
+    then case unescapeText s of
+      Right r  -> return r
+      Left err -> fail $ show err
+    else return (TE.decodeUtf8 s)
+ where
+    startState              = S 0# 0#
+    go (S skip escaped) (W8# c)
+      | isTrue# skip        = Just (S 0# escaped')
+      | isTrue# (w ==# 34#) = Nothing   -- double quote
+      | otherwise           = Just (S skip' escaped')
+      where
+        w = word2Int# c
+        skip' = w ==# 92# -- backslash
+        escaped' = escaped
+            `orI#` (w `andI#` 0x80# ==# 0x80#) -- c >= 0x80
+            `orI#` skip'
+            `orI#` (w `andI#` 0x1f# ==# w)     -- c < 0x20
+
+data S = S Int# Int#
+#else
   s <- A.scan startState go <* A.anyWord8
   case unescapeText s of
     Right r  -> return r
     Left err -> fail $ show err
  where
-#if MIN_VERSION_ghc_prim(0,3,1)
-    startState              = S 0#
-    go (S a) (W8# c)
-      | isTrue# a                     = Just (S 0#)
-      | isTrue# (word2Int# c ==# 34#) = Nothing   -- double quote
-      | otherwise = let a' = word2Int# c ==# 92#  -- backslash
-                    in Just (S a')
-
-data S = S Int#
--- This hint will no longer trigger once hlint > 1.9.41 is released.
-{-# ANN S ("HLint: ignore Use newtype instead of data" :: String) #-}
-#else
     startState              = False
     go a c
       | a                  = Just False

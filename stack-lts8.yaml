@@ -1,4 +1,4 @@
-resolver: lts-8.1
+resolver: lts-8.5
 packages:
 - '.'
 - attoparsec-iso8601
