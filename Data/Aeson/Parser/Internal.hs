@@ -23,6 +23,8 @@ module Data.Aeson.Parser.Internal
       json, jsonEOF
     , value
     , jstring
+    , jstring_
+    , scientific
     -- * Strict parsers
     , json', jsonEOF'
     , value'
@@ -317,7 +319,7 @@ decimal0 = do
     then fail "leading zero"
     else return (B.foldl' step 0 digits)
 
-{-# INLINE scientific #-}
+-- | Parse a JSON number.
 scientific :: Parser Scientific
 scientific = do
   let minus = 45
@@ -347,3 +349,4 @@ scientific = do
   (A.satisfy (\ex -> ex == littleE || ex == bigE) *>
       fmap (Sci.scientific signedCoeff . (e +)) (signed decimal)) <|>
     return (Sci.scientific signedCoeff    e)
+{-# INLINE scientific #-}

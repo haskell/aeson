@@ -93,6 +93,7 @@ library
     Data.Aeson.Encoding.Internal
     Data.Aeson.Internal
     Data.Aeson.Internal.Time
+    Data.Aeson.Parser.Internal
 
   -- Deprecated modules
   exposed-modules:
@@ -101,7 +102,6 @@ library
   other-modules:
     Data.Aeson.Encoding.Builder
     Data.Aeson.Internal.Functions
-    Data.Aeson.Parser.Internal
     Data.Aeson.Parser.Unescape
     Data.Aeson.Parser.Time
     Data.Aeson.Types.FromJSON

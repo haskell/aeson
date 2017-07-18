@@ -33,6 +33,7 @@ module Data.Aeson.Parser
       json
     , value
     , jstring
+    , scientific
     -- * Strict parsers
     -- $strict
     , json'
@@ -46,7 +47,7 @@ module Data.Aeson.Parser
 
 import Prelude ()
 
-import Data.Aeson.Parser.Internal (decodeStrictWith, decodeWith, eitherDecodeStrictWith, eitherDecodeWith, json, json', jstring, value, value')
+import Data.Aeson.Parser.Internal (decodeStrictWith, decodeWith, eitherDecodeStrictWith, eitherDecodeWith, json, json', jstring, scientific, value, value')
 
 -- $lazy
 --
