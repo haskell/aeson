@@ -199,7 +199,7 @@ test-suite tests
 
   build-depends:
     HUnit,
-    QuickCheck >= 2.8 && <2.9.3,
+    QuickCheck >= 2.8 && <2.11,
     aeson,
     integer-logarithms >= 1 && <1.1,
     attoparsec,
