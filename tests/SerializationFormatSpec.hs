@@ -22,6 +22,7 @@ import Control.Applicative (Const(..))
 import Data.Aeson (FromJSON(..), decode, encode, genericParseJSON, genericToEncoding, genericToJSON)
 import Data.Aeson.Types (Options(..), SumEncoding(..), ToJSON(..), defaultOptions)
 import Data.Fixed (Pico)
+import Data.Foldable (for_, toList)
 import Data.Functor.Compose (Compose(..))
 import Data.Functor.Identity (Identity(..))
 import Data.Functor.Product (Product(..))
@@ -65,122 +66,134 @@ tests =
 jsonExamples :: [Example]
 jsonExamples =
   [
-    Example "Either Left" "{\"Left\":1}"  (Left 1 :: Either Int Int)
-  , Example "Either Right" "{\"Right\":1}"  (Right 1 :: Either Int Int)
-  , Example "Nothing"  "null"  (Nothing :: Maybe Int)
-  , Example "Just"  "1"  (Just 1 :: Maybe Int)
-  , Example "Proxy Int" "null"  (Proxy :: Proxy Int)
-  , Example "Tagged Char Int" "1"  (Tagged 1 :: Tagged Char Int)
+    example "Either Left" "{\"Left\":1}"  (Left 1 :: Either Int Int)
+  , example "Either Right" "{\"Right\":1}"  (Right 1 :: Either Int Int)
+  , example "Nothing"  "null"  (Nothing :: Maybe Int)
+  , example "Just"  "1"  (Just 1 :: Maybe Int)
+  , example "Proxy Int" "null"  (Proxy :: Proxy Int)
+  , example "Tagged Char Int" "1"  (Tagged 1 :: Tagged Char Int)
 #if __GLASGOW_HASKELL__ >= 708
     -- Test Tagged instance is polykinded
-  , Example "Tagged 123 Int" "1"  (Tagged 1 :: Tagged 123 Int)
+  , example "Tagged 123 Int" "1"  (Tagged 1 :: Tagged 123 Int)
 #endif
-  , Example "Const Char Int" "\"c\""  (Const 'c' :: Const Char Int)
-  , Example "Tuple" "[1,2]"  ((1, 2) :: (Int, Int))
-  , Example "NonEmpty" "[1,2,3]"  (1 :| [2, 3] :: NonEmpty Int)
-  , Example "Seq" "[1,2,3]"  (Seq.fromList [1, 2, 3] ::  Seq.Seq Int)
-  , Example "DList" "[1,2,3]"  (DList.fromList [1, 2, 3] :: DList.DList Int)
-  , Example "()" "[]"  ()
+  , example "Const Char Int" "\"c\""  (Const 'c' :: Const Char Int)
+  , example "Tuple" "[1,2]"  ((1, 2) :: (Int, Int))
+  , example "NonEmpty" "[1,2,3]"  (1 :| [2, 3] :: NonEmpty Int)
+  , example "Seq" "[1,2,3]"  (Seq.fromList [1, 2, 3] ::  Seq.Seq Int)
+  , example "DList" "[1,2,3]"  (DList.fromList [1, 2, 3] :: DList.DList Int)
+  , example "()" "[]"  ()
 
-  , Example "HashMap Int Int"          "{\"0\":1,\"2\":3}"  (HM.fromList [(0,1),(2,3)] :: HM.HashMap Int Int)
-  , Example "Map Int Int"              "{\"0\":1,\"2\":3}"  (M.fromList [(0,1),(2,3)] :: M.Map Int Int)
-  , Example "Map (Tagged Int Int) Int" "{\"0\":1,\"2\":3}"  (M.fromList [(Tagged 0,1),(Tagged 2,3)] :: M.Map (Tagged Int Int) Int)
-  , Example "Map [Int] Int"            "[[[0],1],[[2],3]]"  (M.fromList [([0],1),([2],3)] :: M.Map [Int] Int)
-  , Example "Map [Char] Int"           "{\"ab\":1,\"cd\":3}"  (M.fromList [("ab",1),("cd",3)] :: M.Map String Int)
-  , Example "Map [I Char] Int"         "{\"ab\":1,\"cd\":3}"  (M.fromList [(map pure "ab",1),(map pure "cd",3)] :: M.Map [I Char] Int)
+  , Example "HashMap Int Int"
+        [ "{\"0\":1,\"2\":3}", "{\"2\":3,\"0\":1}"]
+        (HM.fromList [(0,1),(2,3)] :: HM.HashMap Int Int)
+  , Example "Map Int Int"
+        [ "{\"0\":1,\"2\":3}", "{\"2\":3,\"0\":1}"]
+        (M.fromList [(0,1),(2,3)] :: M.Map Int Int)
+  , Example "Map (Tagged Int Int) Int"
+        [ "{\"0\":1,\"2\":3}", "{\"2\":3,\"0\":1}"]
+        (M.fromList [(Tagged 0,1),(Tagged 2,3)] :: M.Map (Tagged Int Int) Int)
+  , example "Map [Int] Int"
+        "[[[0],1],[[2],3]]"
+        (M.fromList [([0],1),([2],3)] :: M.Map [Int] Int)
+  , Example "Map [Char] Int"
+        [ "{\"ab\":1,\"cd\":3}", "{\"cd\":3,\"ab\":1}" ]
+        (M.fromList [("ab",1),("cd",3)] :: M.Map String Int)
+  , Example "Map [I Char] Int"
+        [ "{\"ab\":1,\"cd\":3}", "{\"cd\":3,\"ab\":1}" ]
+        (M.fromList [(map pure "ab",1),(map pure "cd",3)] :: M.Map [I Char] Int)
 
-  , Example "nan :: Double" "null"  (Approx $ 0/0 :: Approx Double)
+  , example "nan :: Double" "null"  (Approx $ 0/0 :: Approx Double)
 
-  , Example "Ordering LT" "\"LT\"" LT
-  , Example "Ordering EQ" "\"EQ\"" EQ
-  , Example "Ordering GT" "\"GT\"" GT
+  , example "Ordering LT" "\"LT\"" LT
+  , example "Ordering EQ" "\"EQ\"" EQ
+  , example "Ordering GT" "\"GT\"" GT
 
-  , Example "Float" "3.14" (3.14 :: Float)
-  , Example "Pico" "3.14" (3.14 :: Pico)
-  , Example "Scientific" "3.14" (3.14 :: Scientific)
+  , example "Float" "3.14" (3.14 :: Float)
+  , example "Pico" "3.14" (3.14 :: Pico)
+  , example "Scientific" "3.14" (3.14 :: Scientific)
 
-  , Example "UUID" "\"c2cc10e1-57d6-4b6f-9899-38d972112d8c\"" $ UUID.fromWords
+  , example "UUID" "\"c2cc10e1-57d6-4b6f-9899-38d972112d8c\"" $ UUID.fromWords
       0xc2cc10e1 0x57d64b6f 0x989938d9 0x72112d8c
 
-  , Example "Set Int" "[1,2,3]" (Set.fromList [3, 2, 1] :: Set.Set Int)
-  , Example "IntSet"  "[1,2,3]" (IntSet.fromList [3, 2, 1])
-  , Example "IntMap" "[[1,2],[3,4]]" (IntMap.fromList [(3,4), (1,2)] :: IntMap.IntMap Int)
-  , Example "Vector" "[1,2,3]" (Vector.fromList [1, 2, 3] :: Vector.Vector Int)
-  , Example "HashSet Int" "[1,2,3]" (HashSet.fromList [3, 2, 1] :: HashSet.HashSet Int)
-  , Example "Tree Int" "[1,[[2,[[3,[]],[4,[]]]],[5,[]]]]" (let n = Tree.Node in n 1 [n 2 [n 3 [], n 4 []], n 5 []] :: Tree.Tree Int)
+  , example "Set Int" "[1,2,3]" (Set.fromList [3, 2, 1] :: Set.Set Int)
+  , example "IntSet"  "[1,2,3]" (IntSet.fromList [3, 2, 1])
+  , example "IntMap" "[[1,2],[3,4]]" (IntMap.fromList [(3,4), (1,2)] :: IntMap.IntMap Int)
+  , example "Vector" "[1,2,3]" (Vector.fromList [1, 2, 3] :: Vector.Vector Int)
+  , example "HashSet Int" "[1,2,3]" (HashSet.fromList [3, 2, 1] :: HashSet.HashSet Int)
+  , example "Tree Int" "[1,[[2,[[3,[]],[4,[]]]],[5,[]]]]" (let n = Tree.Node in n 1 [n 2 [n 3 [], n 4 []], n 5 []] :: Tree.Tree Int)
 
   -- Three separate cases, as ordering in HashMap is not defined
-  , Example "HashMap Float Int, NaN" "{\"NaN\":1}"  (Approx $ HM.singleton (0/0) 1 :: Approx (HM.HashMap Float Int))
-  , Example "HashMap Float Int, Infinity" "{\"Infinity\":1}"  (HM.singleton (1/0) 1 :: HM.HashMap Float Int)
-  , Example "HashMap Float Int, +Infinity" "{\"-Infinity\":1}"  (HM.singleton (negate 1/0) 1 :: HM.HashMap Float Int)
+  , example "HashMap Float Int, NaN" "{\"NaN\":1}"  (Approx $ HM.singleton (0/0) 1 :: Approx (HM.HashMap Float Int))
+  , example "HashMap Float Int, Infinity" "{\"Infinity\":1}"  (HM.singleton (1/0) 1 :: HM.HashMap Float Int)
+  , example "HashMap Float Int, +Infinity" "{\"-Infinity\":1}"  (HM.singleton (negate 1/0) 1 :: HM.HashMap Float Int)
 
   -- Functors
-  , Example "Identity Int" "1"  (pure 1 :: Identity Int)
+  , example "Identity Int" "1"  (pure 1 :: Identity Int)
 
-  , Example "Identity Char" "\"x\""      (pure 'x' :: Identity Char)
-  , Example "Identity String" "\"foo\""  (pure "foo" :: Identity String)
-  , Example "[Identity Char]" "\"xy\""   ([pure 'x', pure 'y'] :: [Identity Char])
+  , example "Identity Char" "\"x\""      (pure 'x' :: Identity Char)
+  , example "Identity String" "\"foo\""  (pure "foo" :: Identity String)
+  , example "[Identity Char]" "\"xy\""   ([pure 'x', pure 'y'] :: [Identity Char])
 
-  , Example "Maybe Char" "\"x\""              (pure 'x' :: Maybe Char)
-  , Example "Maybe String" "\"foo\""          (pure "foo" :: Maybe String)
-  , Example "Maybe [Identity Char]" "\"xy\""  (pure [pure 'x', pure 'y'] :: Maybe [Identity Char])
+  , example "Maybe Char" "\"x\""              (pure 'x' :: Maybe Char)
+  , example "Maybe String" "\"foo\""          (pure "foo" :: Maybe String)
+  , example "Maybe [Identity Char]" "\"xy\""  (pure [pure 'x', pure 'y'] :: Maybe [Identity Char])
 
-  , Example "Day; year >= 1000" "\"1999-10-12\""        (fromGregorian 1999    10 12)
-  , Example "Day; year > 0 && < 1000" "\"0500-03-04\""  (fromGregorian 500     3  4)
-  , Example "Day; year == 0" "\"0000-02-20\""           (fromGregorian 0       2  20)
-  , Example "Day; year < 0" "\"-0234-01-01\""           (fromGregorian (-234)  1  1)
-  , Example "Day; year < -1000" "\"-1234-01-01\""       (fromGregorian (-1234) 1  1)
+  , example "Day; year >= 1000" "\"1999-10-12\""        (fromGregorian 1999    10 12)
+  , example "Day; year > 0 && < 1000" "\"0500-03-04\""  (fromGregorian 500     3  4)
+  , example "Day; year == 0" "\"0000-02-20\""           (fromGregorian 0       2  20)
+  , example "Day; year < 0" "\"-0234-01-01\""           (fromGregorian (-234)  1  1)
+  , example "Day; year < -1000" "\"-1234-01-01\""       (fromGregorian (-1234) 1  1)
 
-  , Example "Product I Maybe Int" "[1,2]"         (Pair (pure 1) (pure 2) :: Product I Maybe Int)
-  , Example "Product I Maybe Int" "[1,null]"      (Pair (pure 1) Nothing :: Product I Maybe Int)
-  , Example "Product I [] Char" "[\"a\",\"foo\"]" (Pair (pure 'a') "foo" :: Product I [] Char)
+  , example "Product I Maybe Int" "[1,2]"         (Pair (pure 1) (pure 2) :: Product I Maybe Int)
+  , example "Product I Maybe Int" "[1,null]"      (Pair (pure 1) Nothing :: Product I Maybe Int)
+  , example "Product I [] Char" "[\"a\",\"foo\"]" (Pair (pure 'a') "foo" :: Product I [] Char)
 
-  , Example "Sum I [] Int: InL"  "{\"InL\":1}"       (InL (pure 1) :: Sum I [] Int)
-  , Example "Sum I [] Int: InR"  "{\"InR\":[1,2]}"   (InR [1, 2] :: Sum I [] Int)
-  , Example "Sum I [] Char: InR" "{\"InR\":\"foo\"}" (InR "foo" :: Sum I [] Char)
+  , example "Sum I [] Int: InL"  "{\"InL\":1}"       (InL (pure 1) :: Sum I [] Int)
+  , example "Sum I [] Int: InR"  "{\"InR\":[1,2]}"   (InR [1, 2] :: Sum I [] Int)
+  , example "Sum I [] Char: InR" "{\"InR\":\"foo\"}" (InR "foo" :: Sum I [] Char)
 
-  , Example "Compose I  I  Int" "1"      (pure 1 :: Compose I I   Int)
-  , Example "Compose I  [] Int" "[1]"    (pure 1 :: Compose I []  Int)
-  , Example "Compose [] I  Int" "[1]"    (pure 1 :: Compose [] I  Int)
-  , Example "Compose [] [] Int" "[[1]]"  (pure 1 :: Compose [] [] Int)
+  , example "Compose I  I  Int" "1"      (pure 1 :: Compose I I   Int)
+  , example "Compose I  [] Int" "[1]"    (pure 1 :: Compose I []  Int)
+  , example "Compose [] I  Int" "[1]"    (pure 1 :: Compose [] I  Int)
+  , example "Compose [] [] Int" "[[1]]"  (pure 1 :: Compose [] [] Int)
 
-  , Example "Compose I  I  Char" "\"x\""    (pure 'x' :: Compose I  I  Char)
-  , Example "Compose I  [] Char" "\"x\""    (pure 'x' :: Compose I  [] Char)
-  , Example "Compose [] I  Char" "\"x\""    (pure 'x' :: Compose [] I  Char)
-  , Example "Compose [] [] Char" "[\"x\"]"  (pure 'x' :: Compose [] [] Char)
+  , example "Compose I  I  Char" "\"x\""    (pure 'x' :: Compose I  I  Char)
+  , example "Compose I  [] Char" "\"x\""    (pure 'x' :: Compose I  [] Char)
+  , example "Compose [] I  Char" "\"x\""    (pure 'x' :: Compose [] I  Char)
+  , example "Compose [] [] Char" "[\"x\"]"  (pure 'x' :: Compose [] [] Char)
 
-  , Example "Compose3 I  I  I  Char" "\"x\""      (pure 'x' :: Compose3 I  I  I  Char)
-  , Example "Compose3 I  I  [] Char" "\"x\""      (pure 'x' :: Compose3 I  I  [] Char)
-  , Example "Compose3 I  [] I  Char" "\"x\""      (pure 'x' :: Compose3 I  [] I  Char)
-  , Example "Compose3 I  [] [] Char" "[\"x\"]"    (pure 'x' :: Compose3 I  [] [] Char)
-  , Example "Compose3 [] I  I  Char" "\"x\""      (pure 'x' :: Compose3 [] I  I  Char)
-  , Example "Compose3 [] I  [] Char" "[\"x\"]"    (pure 'x' :: Compose3 [] I  [] Char)
-  , Example "Compose3 [] [] I  Char" "[\"x\"]"    (pure 'x' :: Compose3 [] [] I  Char)
-  , Example "Compose3 [] [] [] Char" "[[\"x\"]]"  (pure 'x' :: Compose3 [] [] [] Char)
+  , example "Compose3 I  I  I  Char" "\"x\""      (pure 'x' :: Compose3 I  I  I  Char)
+  , example "Compose3 I  I  [] Char" "\"x\""      (pure 'x' :: Compose3 I  I  [] Char)
+  , example "Compose3 I  [] I  Char" "\"x\""      (pure 'x' :: Compose3 I  [] I  Char)
+  , example "Compose3 I  [] [] Char" "[\"x\"]"    (pure 'x' :: Compose3 I  [] [] Char)
+  , example "Compose3 [] I  I  Char" "\"x\""      (pure 'x' :: Compose3 [] I  I  Char)
+  , example "Compose3 [] I  [] Char" "[\"x\"]"    (pure 'x' :: Compose3 [] I  [] Char)
+  , example "Compose3 [] [] I  Char" "[\"x\"]"    (pure 'x' :: Compose3 [] [] I  Char)
+  , example "Compose3 [] [] [] Char" "[[\"x\"]]"  (pure 'x' :: Compose3 [] [] [] Char)
 
-  , Example "Compose3' I  I  I  Char" "\"x\""      (pure 'x' :: Compose3' I  I  I  Char)
-  , Example "Compose3' I  I  [] Char" "\"x\""      (pure 'x' :: Compose3' I  I  [] Char)
-  , Example "Compose3' I  [] I  Char" "\"x\""      (pure 'x' :: Compose3' I  [] I  Char)
-  , Example "Compose3' I  [] [] Char" "[\"x\"]"    (pure 'x' :: Compose3' I  [] [] Char)
-  , Example "Compose3' [] I  I  Char" "\"x\""      (pure 'x' :: Compose3' [] I  I  Char)
-  , Example "Compose3' [] I  [] Char" "[\"x\"]"    (pure 'x' :: Compose3' [] I  [] Char)
-  , Example "Compose3' [] [] I  Char" "[\"x\"]"    (pure 'x' :: Compose3' [] [] I  Char)
-  , Example "Compose3' [] [] [] Char" "[[\"x\"]]"  (pure 'x' :: Compose3' [] [] [] Char)
+  , example "Compose3' I  I  I  Char" "\"x\""      (pure 'x' :: Compose3' I  I  I  Char)
+  , example "Compose3' I  I  [] Char" "\"x\""      (pure 'x' :: Compose3' I  I  [] Char)
+  , example "Compose3' I  [] I  Char" "\"x\""      (pure 'x' :: Compose3' I  [] I  Char)
+  , example "Compose3' I  [] [] Char" "[\"x\"]"    (pure 'x' :: Compose3' I  [] [] Char)
+  , example "Compose3' [] I  I  Char" "\"x\""      (pure 'x' :: Compose3' [] I  I  Char)
+  , example "Compose3' [] I  [] Char" "[\"x\"]"    (pure 'x' :: Compose3' [] I  [] Char)
+  , example "Compose3' [] [] I  Char" "[\"x\"]"    (pure 'x' :: Compose3' [] [] I  Char)
+  , example "Compose3' [] [] [] Char" "[[\"x\"]]"  (pure 'x' :: Compose3' [] [] [] Char)
 
-  , Example "MyEither Int String: Left"  "42"      (MyLeft 42     :: MyEither Int String)
-  , Example "MyEither Int String: Right" "\"foo\"" (MyRight "foo" :: MyEither Int String)
+  , example "MyEither Int String: Left"  "42"      (MyLeft 42     :: MyEither Int String)
+  , example "MyEither Int String: Right" "\"foo\"" (MyRight "foo" :: MyEither Int String)
 
   -- newtypes from Monoid/Semigroup
-  , Example "Monoid.Dual Int" "2" (pure 2 :: Monoid.Dual Int)
-  , Example "Monoid.First Int" "2" (pure 2 :: Monoid.First Int)
-  , Example "Monoid.Last Int" "2" (pure 2 :: Monoid.Last Int)
-  , Example "Semigroup.Min Int" "2" (pure 2 :: Semigroup.Min Int)
-  , Example "Semigroup.Max Int" "2" (pure 2 :: Semigroup.Max Int)
-  , Example "Semigroup.First Int" "2" (pure 2 :: Semigroup.First Int)
-  , Example "Semigroup.Last Int" "2" (pure 2 :: Semigroup.Last Int)
-  , Example "Semigroup.WrappedMonoid Int" "2" (Semigroup.WrapMonoid 2 :: Semigroup.WrappedMonoid Int)
-  , Example "Semigroup.Option Just" "2" (pure 2 :: Semigroup.Option Int)
-  , Example "Semigroup.Option Nothing" "null" (Semigroup.Option (Nothing :: Maybe Bool))
+  , example "Monoid.Dual Int" "2" (pure 2 :: Monoid.Dual Int)
+  , example "Monoid.First Int" "2" (pure 2 :: Monoid.First Int)
+  , example "Monoid.Last Int" "2" (pure 2 :: Monoid.Last Int)
+  , example "Semigroup.Min Int" "2" (pure 2 :: Semigroup.Min Int)
+  , example "Semigroup.Max Int" "2" (pure 2 :: Semigroup.Max Int)
+  , example "Semigroup.First Int" "2" (pure 2 :: Semigroup.First Int)
+  , example "Semigroup.Last Int" "2" (pure 2 :: Semigroup.Last Int)
+  , example "Semigroup.WrappedMonoid Int" "2" (Semigroup.WrapMonoid 2 :: Semigroup.WrappedMonoid Int)
+  , example "Semigroup.Option Just" "2" (pure 2 :: Semigroup.Option Int)
+  , example "Semigroup.Option Nothing" "null" (Semigroup.Option (Nothing :: Maybe Bool))
   ]
 
 jsonEncodingExamples :: [Example]
@@ -188,9 +201,9 @@ jsonEncodingExamples =
   [
   -- Maybe serialising is lossy
   -- https://github.com/bos/aeson/issues/376
-    Example "Just Nothing" "null" (Just Nothing :: Maybe (Maybe Int))
+    example "Just Nothing" "null" (Just Nothing :: Maybe (Maybe Int))
   -- infinities cannot be recovered, null is decoded as NaN
-  , Example "inf :: Double" "null" (Approx $ 1/0 :: Approx Double)
+  , example "inf :: Double" "null" (Approx $ 1/0 :: Approx Double)
   ]
 
 jsonDecodingExamples :: [Example]
@@ -214,10 +227,14 @@ jsonDecodingExamples = [
 data Example where
     Example
         :: (Eq a, Show a, ToJSON a, FromJSON a)
-        => String -> L.ByteString -> a -> Example
+        => String -> [L.ByteString] -> a -> Example -- empty bytestring will fail, any p [] == False
     MaybeExample
         :: (Eq a, Show a, FromJSON a)
         => String -> L.ByteString -> Maybe a -> Example
+
+example :: (Eq a, Show a, ToJSON a, FromJSON a)
+        => String -> L.ByteString -> a -> Example
+example n bs x = Example n [bs] x
 
 data MyEither a b = MyLeft a | MyRight b
   deriving (Generic, Show, Eq)
@@ -230,16 +247,25 @@ instance (FromJSON a, FromJSON b) => FromJSON (MyEither a b) where
     parseJSON = genericParseJSON defaultOptions { sumEncoding = UntaggedValue }
 
 assertJsonExample :: Example -> Test
-assertJsonExample (Example name bs val) = testCase name $ do
-    assertEqual "encode"           bs         (encode val)
-    assertEqual "encode/via value" bs         (encode $ toJSON val)
-    assertEqual "decode"           (Just val) (decode bs)
+assertJsonExample (Example name bss val) = testCase name $ do
+    assertSomeEqual "encode"           bss        (encode val)
+    assertSomeEqual "encode/via value" bss        (encode $ toJSON val)
+    for_ bss $ \bs ->
+        assertEqual "decode"           (Just val) (decode bs)
 assertJsonExample (MaybeExample name bs mval) = testCase name $
     assertEqual "decode" mval (decode bs)
 
 assertJsonEncodingExample :: Example -> Test
-assertJsonEncodingExample (Example name bs val) = testCase name $ do
-    assertEqual "encode"           bs (encode val)
-    assertEqual "encode/via value" bs (encode $ toJSON val)
+assertJsonEncodingExample (Example name bss val) = testCase name $ do
+    assertSomeEqual "encode"           bss (encode val)
+    assertSomeEqual "encode/via value" bss (encode $ toJSON val)
 assertJsonEncodingExample (MaybeExample name _ _) = testCase name $
     assertFailure "cannot encode MaybeExample"
+
+assertSomeEqual :: (Eq a, Show a, Foldable f) => String -> f a -> a -> IO ()
+assertSomeEqual preface expected actual
+    | actual `elem` expected = return ()
+    | otherwise = assertFailure $ preface
+        ++ ": expecting one of " ++ show (toList expected)
+        ++ ", got " ++ show actual
+
