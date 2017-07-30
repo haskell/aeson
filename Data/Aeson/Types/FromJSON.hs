@@ -1035,6 +1035,14 @@ instance INCOHERENT_ (Selector s, FromJSON a) =>
           label = fieldLabelModifier opts $
                     selName (undefined :: t s (K1 i (Maybe a)) p)
 
+-- Parse an Option like a Maybe.
+instance INCOHERENT_ (Selector s, FromJSON a) =>
+  FromRecord arity (S1 s (K1 i (Semigroup.Option a))) where
+    parseRecord opts fargs lab obj = wrap <$> parseRecord opts fargs lab obj
+      where
+        wrap :: S1 s (K1 i (Maybe a)) p -> S1 s (K1 i (Semigroup.Option a)) p
+        wrap (M1 (K1 a)) = M1 (K1 (Semigroup.Option a))
+
 --------------------------------------------------------------------------------
 
 class FromProduct arity f where
