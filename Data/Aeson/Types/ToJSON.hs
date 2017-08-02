@@ -20,6 +20,7 @@
 #endif
 
 #include "overlapping-compat.h"
+#include "incoherent-compat.h"
 
 -- TODO: Drop this when we remove support for Data.Attoparsec.Number
 {-# OPTIONS_GHC -fno-warn-deprecations #-}
@@ -1009,7 +1010,7 @@ instance ( Selector s
     recordToPairs = fieldToPair
     {-# INLINE recordToPairs #-}
 
-instance OVERLAPPING_
+instance INCOHERENT_
     ( Selector s
     , GToJSON enc arity (K1 i (Maybe a))
     , GKeyValue enc pairs
