@@ -252,6 +252,11 @@ incoherentInstancesNeededParseJSONString :: FromJSON a => Value -> Parser (Incoh
 incoherentInstancesNeededParseJSONString = case () of
   _ | True  -> $(mkParseJSON defaultOptions ''IncoherentInstancesNeeded)
     | False -> genericParseJSON defaultOptions
+
+incoherentInstancesNeededToJSON :: ToJSON a => IncoherentInstancesNeeded a -> Value
+incoherentInstancesNeededToJSON = case () of
+  _ | True  -> $(mkToJSON defaultOptions ''IncoherentInstancesNeeded)
+    | False -> genericToJSON defaultOptions
 #endif
 
 -------------------------------------------------------------------------------
