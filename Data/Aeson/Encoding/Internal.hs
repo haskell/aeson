@@ -81,7 +81,7 @@ newtype Encoding' tag = Encoding {
       -- ^ Acquire the underlying bytestring builder.
     } deriving (Typeable)
 
--- | Often used synonnym for 'Encoding''.
+-- | Often used synonym for 'Encoding''.
 type Encoding = Encoding' Value
 
 -- | Make Encoding from Builder.
