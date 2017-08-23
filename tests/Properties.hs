@@ -248,6 +248,7 @@ tests = testGroup "properties" [
     , testProperty "UTCTime" $ roundTripEq (undefined :: UTCTime)
     , testProperty "ZonedTime" $ roundTripEq (undefined :: ZonedTime)
     , testProperty "NominalDiffTime" $ roundTripEq (undefined :: NominalDiffTime)
+    , testProperty "DiffTime" $ roundTripEq (undefined :: DiffTime)
     , testProperty "Version" $ roundTripEq (undefined :: Version)
     , testProperty "Natural" $ roundTripEq (undefined :: Natural)
     , testProperty "Proxy" $ roundTripEq (undefined :: Proxy Int)

@@ -84,7 +84,7 @@ import Data.Ratio (Ratio, denominator, numerator)
 import Data.Scientific (Scientific)
 import Data.Tagged (Tagged(..))
 import Data.Text (Text, pack)
-import Data.Time (Day, LocalTime, NominalDiffTime, TimeOfDay, UTCTime, ZonedTime)
+import Data.Time (Day, DiffTime, LocalTime, NominalDiffTime, TimeOfDay, UTCTime, ZonedTime)
 import Data.Time.Format (FormatTime, formatTime)
 import Data.Time.Locale.Compat (defaultTimeLocale)
 import Data.Vector (Vector)
@@ -1911,7 +1911,16 @@ stringEncoding = String
     . E.encodingToLazyByteString
 {-# INLINE stringEncoding #-}
 
+
 instance ToJSON NominalDiffTime where
+    toJSON = Number . realToFrac
+    {-# INLINE toJSON #-}
+
+    toEncoding = E.scientific . realToFrac
+    {-# INLINE toEncoding #-}
+
+
+instance ToJSON DiffTime where
     toJSON = Number . realToFrac
     {-# INLINE toJSON #-}
 
