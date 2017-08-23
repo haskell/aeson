@@ -27,7 +27,7 @@ import Data.Proxy (Proxy)
 import Data.Ratio (Ratio)
 import Data.Sequence (Seq)
 import Data.Tagged (Tagged)
-import Data.Time (Day, LocalTime, NominalDiffTime, TimeOfDay, UTCTime, ZonedTime)
+import Data.Time (Day, DiffTime, LocalTime, NominalDiffTime, TimeOfDay, UTCTime, ZonedTime)
 import Data.Version (Version)
 import Encoders
 import Instances ()
