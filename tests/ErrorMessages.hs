@@ -12,6 +12,7 @@ import Prelude.Compat
 import Data.Aeson (FromJSON(..), eitherDecode)
 import Data.Proxy (Proxy(..))
 import Instances ()
+import Numeric.Natural (Natural)
 import Test.Framework (Test)
 import Test.Framework.Providers.HUnit (testCase)
 import Test.HUnit (Assertion, assertFailure, assertEqual)
@@ -22,6 +23,8 @@ tests :: [Test]
 tests =
     [
       testCase "Int" int
+    , testCase "Integer" integer
+    , testCase "Natural" natural
     , testCase "String" string
     , testCase "HashMap" hashMap
     ]
@@ -33,6 +36,17 @@ int = do
   t "[]" $ expected "Int" "Array"
   t "{}" $ expected "Int" "Object"
   t "null" $ expected "Int" "Null"
+
+integer :: Assertion
+integer = do
+  let t = test (Proxy :: Proxy Integer)
+  t "44.44" $ expected "Integer" "floating number 44.44"
+
+natural :: Assertion
+natural = do
+  let t = test (Proxy :: Proxy Natural)
+  t "44.44" $ expected "Natural" "floating number 44.44"
+  t "-50" $ expected "Natural" "negative number -50"
 
 string :: Assertion
 string = do
