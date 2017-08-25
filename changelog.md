@@ -3,6 +3,9 @@ For the latest version of this document, please see [https://github.com/bos/aeso
 ## Upcoming
 
 * Add `FromJSON` and `ToJSON` instances for `DiffTime`, thanks to Víctor López Juan
+* Fix handling of fractions when parsing Natural.
+  Change text in error messages for Integral types to make them follow the common pattern.
+  PVP level is "Non-breaking change".
 
 ## 1.2.1.0
 

@@ -8,7 +8,7 @@ Changes that affect users of aeson should be mentioned in `changelog.md`. It sho
   * When it should be used
   * What it supersedes
 
-Add this entry under an `# Upcoming` header above existing releases.
+Add this entry under an `## Upcoming` header above existing releases.
 
 The exact format of entries is not important as we'll go through everything before a release is made.
 

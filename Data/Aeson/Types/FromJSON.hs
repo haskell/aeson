@@ -188,7 +188,7 @@ parseIntegralFromScientific :: forall a. Integral a => String -> Scientific -> P
 parseIntegralFromScientific expected s =
     case Scientific.floatingOrInteger s :: Either Double a of
         Right x -> pure x
-        Left _  -> fail $ "Floating number specified for " ++ expected ++ ": " ++ show s
+        Left _  -> fail $ "expected " ++ expected ++ ", encountered floating number " ++ show s
 {-# INLINE parseIntegralFromScientific #-}
 
 parseIntegral :: Integral a => String -> Value -> Parser a
@@ -1273,16 +1273,20 @@ instance FromJSONKey Integer where
     fromJSONKey = FromJSONKeyTextParser $ parseIntegralText "Integer"
 
 instance FromJSON Natural where
-    parseJSON = withScientific "Natural" $ \s ->
-      if Scientific.coefficient s < 0
-        then fail $ "Expected a Natural number but got the negative number: " <> show s
-        else pure $ truncate s
+    parseJSON value = do
+        integer :: Integer <- parseIntegral "Natural" value
+        if integer < 0 then
+            fail $ "expected Natural, encountered negative number " <> show integer
+        else
+            pure $ fromIntegral integer
 
 instance FromJSONKey Natural where
-    fromJSONKey = FromJSONKeyTextParser $ \t -> parseScientificText t >>= \s ->
-      if Scientific.coefficient s < 0
-        then fail $ "Expected a Natural number but got the negative number: " <> show s
-        else pure $ truncate s
+    fromJSONKey = FromJSONKeyTextParser $ \text -> do
+        integer :: Integer <- parseIntegralText "Natural" text
+        if integer < 0 then
+            fail $ "expected Natural, encountered negative number " <> show integer
+        else
+            pure $ fromIntegral integer
 
 instance FromJSON Int8 where
     parseJSON = parseBoundedIntegral "Int8"
