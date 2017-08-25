@@ -1,5 +1,11 @@
 For the latest version of this document, please see [https://github.com/bos/aeson/blob/master/changelog.md](https://github.com/bos/aeson/blob/master/changelog.md).
 
+## Upcoming
+
+* Fix handling of fractions when parsing Natural.
+  Change text in error messages for Integral types to make them follow the common pattern.
+  PVP level is "Non-breaking change".
+
 ## 1.2.1.0
 
 * Add `parserThrowError` and `parserCatchError` combinators, thanks to Oleg Grenrus.
