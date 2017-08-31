@@ -48,3 +48,9 @@ optsTagSingleConstructors = optsDefault
                             { tagSingleConstructors = True
                             , allNullaryToStringTag = False
                             }
+
+optsOptionField :: Options
+optsOptionField = optsDefault
+                  { fieldLabelModifier = const "field"
+                  , omitNothingFields = True
+                  }

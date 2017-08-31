@@ -35,6 +35,10 @@ import Data.Functor.Compose (Compose (..))
 import Data.Proxy (Proxy(..))
 #endif
 
+#if !MIN_VERSION_QuickCheck(3,16,0)
+import Data.Semigroup (Option (..))
+#endif
+
 import Data.Orphans ()
 import Test.QuickCheck.Instances ()
 #if MIN_VERSION_base(4,7,0)
@@ -174,6 +178,10 @@ instance Arbitrary EitherTextInt where
 instance Arbitrary (GADT String) where
     arbitrary = GADT <$> arbitrary
 
+instance Arbitrary OptionField where
+    arbitrary = OptionField <$> arbitrary
+
+
 instance ApproxEq Char where
     (=~) = (==)
 
@@ -219,4 +227,9 @@ makeVersion b = Version b []
 
 instance Arbitrary a => Arbitrary (Identity a) where
     arbitrary = Identity <$> arbitrary
+#endif
+
+#if !MIN_VERSION_quickcheck_instances(0,3,16)
+instance Arbitrary a => Arbitrary (Option a) where
+    arbitrary = Option <$> arbitrary
 #endif

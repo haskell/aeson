@@ -235,6 +235,33 @@ gSomeTypeToJSONOmitNothingFields = genericToJSON optsOmitNothingFields
 gSomeTypeToEncodingOmitNothingFields :: SomeType Int -> Encoding
 gSomeTypeToEncodingOmitNothingFields = genericToEncoding optsOmitNothingFields
 
+
+--------------------------------------------------------------------------------
+-- Option fields
+--------------------------------------------------------------------------------
+
+thOptionFieldToJSON :: OptionField -> Value
+thOptionFieldToJSON = $(mkToJSON optsOptionField 'OptionField)
+
+thOptionFieldToEncoding :: OptionField -> Encoding
+thOptionFieldToEncoding = $(mkToEncoding optsOptionField 'OptionField)
+
+thOptionFieldParseJSON :: Value -> Parser OptionField
+thOptionFieldParseJSON = $(mkParseJSON optsOptionField 'OptionField)
+
+gOptionFieldToJSON :: OptionField -> Value
+gOptionFieldToJSON = genericToJSON optsOptionField
+
+gOptionFieldToEncoding :: OptionField -> Encoding
+gOptionFieldToEncoding = genericToEncoding optsOptionField
+
+gOptionFieldParseJSON :: Value -> Parser OptionField
+gOptionFieldParseJSON = genericParseJSON optsOptionField
+
+thMaybeFieldToJSON :: MaybeField -> Value
+thMaybeFieldToJSON = $(mkToJSON optsOptionField 'MaybeField)
+
+
 --------------------------------------------------------------------------------
 -- IncoherentInstancesNeeded
 --------------------------------------------------------------------------------

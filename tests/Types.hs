@@ -17,6 +17,7 @@ import Data.Data
 import Data.Functor.Compose (Compose (..))
 import Data.Functor.Identity (Identity (..))
 import Data.Hashable (Hashable (..))
+import Data.Semigroup (Option)
 import Data.Text
 import Data.Time (Day (..), fromGregorian)
 import GHC.Generics
@@ -104,6 +105,10 @@ deriving instance Data (GADT String)
 deriving instance Eq   (GADT a)
 deriving instance Show (GADT a)
 
+newtype MaybeField = MaybeField { maybeField :: Maybe Int }
+newtype OptionField = OptionField { optionField :: Option Int }
+  deriving (Eq, Show)
+
 deriving instance Generic Foo
 deriving instance Generic UFoo
 deriving instance Generic OneConstructor
@@ -116,6 +121,7 @@ deriving instance Generic (SomeType a)
 #if __GLASGOW_HASKELL__ >= 706
 deriving instance Generic1 SomeType
 #endif
+deriving instance Generic OptionField
 deriving instance Generic EitherTextInt
 
 failure :: Show a => String -> String -> a -> Property

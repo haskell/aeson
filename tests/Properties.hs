@@ -25,6 +25,7 @@ import Data.List.NonEmpty (NonEmpty)
 import Data.Map (Map)
 import Data.Proxy (Proxy)
 import Data.Ratio (Ratio)
+import Data.Semigroup (Option(..))
 import Data.Sequence (Seq)
 import Data.Tagged (Tagged)
 import Data.Time (Day, DiffTime, LocalTime, NominalDiffTime, TimeOfDay, UTCTime, ZonedTime)
@@ -376,6 +377,11 @@ tests = testGroup "properties" [
           , testProperty "Tagged"  (toParseJSON gOneConstructorParseJSONTagged  gOneConstructorToJSONTagged)
           ]
         ]
+      , testGroup "OptionField" [
+          testProperty "like Maybe" $
+          \x -> gOptionFieldToJSON (OptionField (Option x)) === thMaybeFieldToJSON (MaybeField x)
+        , testProperty "roundTrip" (toParseJSON gOptionFieldParseJSON gOptionFieldToJSON)
+        ]
       ]
     , testGroup "toEncoding" [
         testProperty "NullaryString" $
@@ -429,6 +435,9 @@ tests = testGroup "properties" [
         gOneConstructorToJSONDefault `sameAs` gOneConstructorToEncodingDefault
       , testProperty "OneConstructorTagged" $
         gOneConstructorToJSONTagged `sameAs` gOneConstructorToEncodingTagged
+
+      , testProperty "OptionField" $
+        gOptionFieldToJSON `sameAs` gOptionFieldToEncoding
       ]
     ]
   , testGroup "template-haskell" [
@@ -489,6 +498,11 @@ tests = testGroup "properties" [
           , testProperty "Tagged"  (toParseJSON thOneConstructorParseJSONTagged  thOneConstructorToJSONTagged)
           ]
         ]
+      , testGroup "OptionField" [
+          testProperty "like Maybe" $
+          \x -> thOptionFieldToJSON (OptionField (Option x)) === thMaybeFieldToJSON (MaybeField x)
+        , testProperty "roundTrip" (toParseJSON thOptionFieldParseJSON thOptionFieldToJSON)
+        ]
       ]
     , testGroup "toEncoding" [
         testProperty "NullaryString" $
@@ -533,6 +547,9 @@ tests = testGroup "properties" [
         thOneConstructorToJSONDefault `sameAs` thOneConstructorToEncodingDefault
       , testProperty "OneConstructorTagged" $
         thOneConstructorToJSONTagged `sameAs` thOneConstructorToEncodingTagged
+
+      , testProperty "OptionField" $
+        thOptionFieldToJSON `sameAs` thOptionFieldToEncoding
       ]
     ]
   ]
