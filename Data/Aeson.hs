@@ -87,7 +87,22 @@ module Data.Aeson
     , genericLiftToEncoding
     , genericParseJSON
     , genericLiftParseJSON
+    -- ** Generic and TH encoding configuration
+    , Options
     , defaultOptions
+    -- *** Options fields
+    -- $optionsFields
+    , fieldLabelModifier
+    , constructorTagModifier
+    , allNullaryToStringTag
+    , omitNothingFields
+    , sumEncoding
+    , unwrapUnaryRecords
+    , tagSingleConstructors
+    -- *** Options utilities
+    , SumEncoding(..)
+    , camelTo2
+    , defaultTaggedObject
 
     -- * Inspecting @'Value's@
     , withObject
