@@ -85,7 +85,6 @@ $('deriveJSON' 'defaultOptions' ''(,,,))
 @
 
 -}
-
 module Data.Aeson.TH
     (
       -- * Encoding configuration
@@ -160,6 +159,7 @@ import qualified Data.Text as T (Text, pack, unpack)
 import qualified Data.Vector as V (unsafeIndex, null, length, create, fromList)
 import qualified Data.Vector.Mutable as VM (unsafeNew, unsafeWrite)
 
+{-# ANN module "Hlint: ignore Reduce duplication" #-}
 
 --------------------------------------------------------------------------------
 -- Convenience

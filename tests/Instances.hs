@@ -28,8 +28,6 @@ import Test.QuickCheck.Instances ()
 import Data.Hashable.Time ()
 #endif
 
-{-# ANN module ("HLint: ignore Use fewer imports"::String) #-}
-
 -- "System" types.
 
 instance Arbitrary DotNetTime where
@@ -157,17 +155,15 @@ instance Arbitrary EitherTextInt where
 instance Arbitrary (GADT String) where
     arbitrary = GADT <$> arbitrary
 
+instance Arbitrary OptionField where
+    arbitrary = OptionField <$> arbitrary
+
+
 instance ApproxEq Char where
     (=~) = (==)
 
 instance (ApproxEq a) => ApproxEq [a] where
     a =~ b = length a == length b && all (uncurry (=~)) (zip a b)
-
--- Version tags are deprecated, so we avoid using them in the Arbitrary
--- instance. However, the recommended constructor 'makeVersion' is not
--- exported by "Data.Version" until base-4.8.0.0. For previous versions,
--- a definition is given below.
-
 
 instance Arbitrary a => Arbitrary (DList.DList a) where
     arbitrary = DList.fromList <$> arbitrary
