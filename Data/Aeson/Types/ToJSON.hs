@@ -91,6 +91,7 @@ import Data.Vector (Vector)
 import Data.Version (Version, showVersion)
 import Data.Word (Word16, Word32, Word64, Word8)
 import Foreign.Storable (Storable)
+import Foreign.C.Types (CTime (..))
 import GHC.Generics
 import Numeric.Natural (Natural)
 import qualified Data.Aeson.Encoding as E
@@ -1366,7 +1367,6 @@ instance ToJSONKey Int64 where
     toJSONKey = toJSONKeyTextEnc E.int64Text
     {-# INLINE toJSONKey #-}
 
-
 instance ToJSON Word where
     toJSON = Number . fromIntegral
     {-# INLINE toJSON #-}
@@ -1426,6 +1426,12 @@ instance ToJSONKey Word64 where
     toJSONKey = toJSONKeyTextEnc E.word64Text
     {-# INLINE toJSONKey #-}
 
+instance ToJSON CTime where
+    toJSON (CTime i) = toJSON i
+    {-# INLINE toJSON #-}
+
+    toEncoding (CTime i) = toEncoding i
+    {-# INLINE toEncoding #-}
 
 instance ToJSON Text where
     toJSON = String

@@ -109,6 +109,7 @@ import Data.Vector (Vector)
 import Data.Version (Version, parseVersion)
 import Data.Word (Word16, Word32, Word64, Word8)
 import Foreign.Storable (Storable)
+import Foreign.C.Types (CTime (..))
 import GHC.Generics
 import Numeric.Natural (Natural)
 import Text.ParserCombinators.ReadP (readP_to_S)
@@ -1347,6 +1348,9 @@ instance FromJSON Word64 where
 instance FromJSONKey Word64 where
     fromJSONKey = FromJSONKeyTextParser $ parseBoundedIntegralText "Word64"
 
+instance FromJSON CTime where
+    parseJSON = fmap CTime . parseJSON
+    {-# INLINE parseJSON #-}
 
 instance FromJSON Text where
     parseJSON = withText "Text" pure
