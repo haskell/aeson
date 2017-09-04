@@ -1,0 +1,12 @@
+resolver: lts-9.3
+packages:
+- '.'
+- attoparsec-iso8601
+extra-deps:
+- quickcheck-instances-0.3.16
+- QuickCheck-2.10.0.1
+flags:
+  aeson:
+    fast: true
+  attoparsec-iso8601:
+    fast: true
