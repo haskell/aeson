@@ -1,10 +1,7 @@
-resolver: nightly-2017-03-25
+resolver: nightly-2017-09-04
 packages:
 - '.'
 - attoparsec-iso8601
-extra-deps:
-- quickcheck-instances-0.3.14
-- th-abstraction-0.2.2.0
 flags:
   aeson:
     fast: true
