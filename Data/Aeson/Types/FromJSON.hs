@@ -101,7 +101,7 @@ import Data.Ratio ((%), Ratio)
 import Data.Scientific (Scientific)
 import Data.Tagged (Tagged(..))
 import Data.Text (Text, pack, unpack)
-import Data.Time (Day, LocalTime, NominalDiffTime, TimeOfDay, UTCTime, ZonedTime)
+import Data.Time (Day, DiffTime, LocalTime, NominalDiffTime, TimeOfDay, UTCTime, ZonedTime)
 import Data.Time.Format (parseTime)
 import Data.Time.Locale.Compat (defaultTimeLocale)
 import Data.Traversable as Tr (sequence)
@@ -1702,6 +1702,15 @@ instance FromJSONKey UTCTime where
 -- @1e1000000000@.
 instance FromJSON NominalDiffTime where
     parseJSON = withScientific "NominalDiffTime" $ pure . realToFrac
+    {-# INLINE parseJSON #-}
+
+
+-- | /WARNING:/ Only parse lengths of time from trusted input
+-- since an attacker could easily fill up the memory of the target
+-- system by specifying a scientific number with a big exponent like
+-- @1e1000000000@.
+instance FromJSON DiffTime where
+    parseJSON = withScientific "DiffTime" $ pure . realToFrac
     {-# INLINE parseJSON #-}
 
 -------------------------------------------------------------------------------

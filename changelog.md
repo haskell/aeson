@@ -1,5 +1,9 @@
 For the latest version of this document, please see [https://github.com/bos/aeson/blob/master/changelog.md](https://github.com/bos/aeson/blob/master/changelog.md).
 
+## Upcoming
+
+* Add `FromJSON` and `ToJSON` instances for `DiffTime`, thanks to Víctor López Juan
+
 ## 1.2.1.0
 
 * Add `parserThrowError` and `parserCatchError` combinators, thanks to Oleg Grenrus.
