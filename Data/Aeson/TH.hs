@@ -154,6 +154,7 @@ import qualified Data.Foldable as F (all)
 import qualified Data.HashMap.Strict as H (lookup, toList)
 import qualified Data.List.NonEmpty as NE (length, reverse)
 import qualified Data.Map as M (fromList, keys, lookup , singleton, size)
+import qualified Data.Semigroup as Semigroup (Option(..))
 import qualified Data.Set as Set (empty, insert, member)
 import qualified Data.Text as T (Text, pack, unpack)
 import qualified Data.Vector as V (unsafeIndex, null, length, create, fromList)
@@ -487,26 +488,28 @@ argsToValue jc tvMap opts multiCons
                                                       restFields
                   | otherwise = listE $ map toPair argCons
 
-            argCons = zip3 args argTys' fields
+            argCons = zip3 (map varE args) argTys' fields
 
             maybeFields = [|catMaybes|] `appE` listE (map maybeToPair maybes)
 
             restFields = listE $ map toPair rest
 
-            (maybes, rest) = partition isMaybe argCons
+            (maybes0, rest0) = partition isMaybe argCons
+            (options, rest) = partition isOption rest0
+            maybes = maybes0 ++ map optionToMaybe options
 
             maybeToPair (arg, argTy, field) =
                 infixApp ([|keyValuePairWith|]
                             `appE` dispatchToJSON jc conName tvMap argTy
                             `appE` toFieldName field)
                          [|(<$>)|]
-                         (varE arg)
+                         arg
 
             toPair (arg, argTy, field) =
                 [|keyValuePairWith|]
                   `appE` dispatchToJSON jc conName tvMap argTy
                   `appE` toFieldName field
-                  `appE` varE arg
+                  `appE` arg
 
             toFieldName field = [|T.pack|] `appE` fieldLabelExp opts field
 
@@ -552,6 +555,13 @@ argsToValue jc tvMap opts multiCons
 isMaybe :: (a, Type, b) -> Bool
 isMaybe (_, AppT (ConT t) _, _) = t == ''Maybe
 isMaybe _                       = False
+
+isOption :: (a, Type, b) -> Bool
+isOption (_, AppT (ConT t) _, _) = t == ''Semigroup.Option
+isOption _                       = False
+
+optionToMaybe :: (ExpQ, b, c) -> (ExpQ, b, c)
+optionToMaybe (a, b, c) = ([|Semigroup.getOption|] `appE` a, b, c)
 
 (<^>) :: ExpQ -> ExpQ -> ExpQ
 (<^>) a b = infixApp a [|(E.><)|] b
@@ -637,13 +647,15 @@ argsToEncoding jc tvMap opts multiCons
                                                       restFields
                   | otherwise = listE (map toPair argCons)
 
-            argCons = zip3 args argTys' fields
+            argCons = zip3 (map varE args) argTys' fields
 
             maybeFields = [|catMaybes|] `appE` listE (map maybeToPair maybes)
 
             restFields = listE (map toPair rest)
 
-            (maybes, rest) = partition isMaybe argCons
+            (maybes0, rest0) = partition isMaybe argCons
+            (options, rest) = partition isOption rest0
+            maybes = maybes0 ++ map optionToMaybe options
 
             maybeToPair (arg, argTy, field) =
                 infixApp
@@ -655,12 +667,12 @@ argsToEncoding jc tvMap opts multiCons
                     [|(.)|]
                     (dispatchToEncoding jc conName tvMap argTy))
                   [|(<$>)|]
-                  (varE arg)
+                  arg
 
             toPair (arg, argTy, field) =
               toFieldName field
                 <:> dispatchToEncoding jc conName tvMap argTy
-                      `appE` varE arg
+                      `appE` arg
 
             toFieldName field = [|E.text|] `appE`
                                 ([|T.pack|] `appE` fieldLabelExp opts field)
@@ -1233,6 +1245,11 @@ instance OVERLAPPABLE_ LookupField a where
 
 instance INCOHERENT_ LookupField (Maybe a) where
     lookupField pj _ _ = parseOptionalFieldWith pj
+
+instance INCOHERENT_ LookupField (Semigroup.Option a) where
+    lookupField pj tName rec obj key =
+        fmap Semigroup.Option
+             (lookupField (fmap Semigroup.getOption . pj) tName rec obj key)
 
 lookupFieldWith :: (Value -> Parser a) -> String -> String
                 -> Object -> T.Text -> Parser a

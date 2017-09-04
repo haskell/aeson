@@ -1023,6 +1023,19 @@ instance INCOHERENT_
     recordToPairs opts targs m1 = fieldToPair opts targs m1
     {-# INLINE recordToPairs #-}
 
+instance INCOHERENT_
+    ( Selector s
+    , GToJSON enc arity (K1 i (Maybe a))
+    , GKeyValue enc pairs
+    , Monoid pairs
+    ) => RecordToPairs enc pairs arity (S1 s (K1 i (Semigroup.Option a)))
+  where
+    recordToPairs opts targs = recordToPairs opts targs . unwrap
+      where
+        unwrap :: S1 s (K1 i (Semigroup.Option a)) p -> S1 s (K1 i (Maybe a)) p
+        unwrap (M1 (K1 (Semigroup.Option a))) = M1 (K1 a)
+    {-# INLINE recordToPairs #-}
+
 fieldToPair :: (Selector s
                , GToJSON enc arity a
                , GKeyValue enc pairs)
