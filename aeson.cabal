@@ -199,7 +199,7 @@ test-suite tests
 
   build-depends:
     HUnit,
-    QuickCheck >= 2.8 && <2.11,
+    QuickCheck >= 2.10.0.1 && < 2.11,
     aeson,
     integer-logarithms >= 1 && <1.1,
     attoparsec,
@@ -226,7 +226,7 @@ test-suite tests
     unordered-containers,
     uuid-types,
     vector,
-    quickcheck-instances >=0.3.14
+    quickcheck-instances >= 0.3.16
 
   if flag(bytestring-builder)
     build-depends: bytestring >= 0.9 && < 0.10.4,

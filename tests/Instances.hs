@@ -22,27 +22,10 @@ import Types
 import qualified Data.DList as DList
 import qualified Data.HashMap.Strict as HM
 
-#if !MIN_VERSION_QuickCheck(2,9,0)
-import Control.Applicative (Const(..))
-import Data.Functor.Identity (Identity (..))
-import Data.List.NonEmpty (NonEmpty(..))
-import Data.Version
-import Test.QuickCheck (getNonNegative, listOf1, resize)
-#endif
-
-#if !MIN_VERSION_QuickCheck(2,10,0)
-import Data.Functor.Compose (Compose (..))
-import Data.Proxy (Proxy(..))
-#endif
-
 import Data.Orphans ()
 import Test.QuickCheck.Instances ()
 #if MIN_VERSION_base(4,7,0)
 import Data.Hashable.Time ()
-#endif
-
-#if !MIN_VERSION_base(4,8,0) && !MIN_VERSION_QuickCheck(2,8,3)
-import Numeric.Natural
 #endif
 
 {-# ANN module ("HLint: ignore Use fewer imports"::String) #-}
@@ -186,37 +169,5 @@ instance (ApproxEq a) => ApproxEq [a] where
 -- a definition is given below.
 
 
-#if !MIN_VERSION_base(4,8,0) && !MIN_VERSION_QuickCheck(2,8,3)
-instance Arbitrary Natural where
-  arbitrary = fromInteger . abs <$> arbitrary
-#endif
-
-#if !MIN_VERSION_QuickCheck(2,10,0)
-instance Arbitrary (Proxy a) where
-    arbitrary = pure Proxy
-
-instance Arbitrary (f (g a)) => Arbitrary (Compose f g a) where
-    arbitrary = Compose <$> arbitrary
-#endif
-
 instance Arbitrary a => Arbitrary (DList.DList a) where
     arbitrary = DList.fromList <$> arbitrary
-
-#if !MIN_VERSION_QuickCheck(2,9,0)
-instance Arbitrary a => Arbitrary (Const a b) where
-    arbitrary = Const <$> arbitrary
-
-instance Arbitrary a => Arbitrary (NonEmpty a) where
-    arbitrary = (:|) <$> arbitrary <*> arbitrary
-
-instance Arbitrary Version where
-    arbitrary = makeVersion . fmap getNonNegative <$> resize 4 (listOf1 arbitrary)
-
-#if !MIN_VERSION_base(4,8,0)
-makeVersion :: [Int] -> Version
-makeVersion b = Version b []
-#endif
-
-instance Arbitrary a => Arbitrary (Identity a) where
-    arbitrary = Identity <$> arbitrary
-#endif
