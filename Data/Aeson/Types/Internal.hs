@@ -43,9 +43,11 @@ module Data.Aeson.Types.Internal
     , parse
     , parseEither
     , parseMaybe
+    , liftP2
     , modifyFailure
     , parserThrowError
     , parserCatchError
+    , parserCatchErrors
     , formatError
     , (<?>)
     -- * Constructors and accessors
@@ -87,6 +89,7 @@ import Data.Foldable (foldl')
 import Data.HashMap.Strict (HashMap)
 import Data.Hashable (Hashable(..))
 import Data.List (intercalate)
+import Data.List.NonEmpty (NonEmpty((:|)))
 import Data.Scientific (Scientific)
 import Data.Semigroup (Semigroup((<>)))
 import Data.String (IsString(..))
@@ -98,6 +101,7 @@ import Data.Vector (Vector)
 import GHC.Generics (Generic)
 import qualified Control.Monad.Fail as Fail
 import qualified Data.HashMap.Strict as H
+import qualified Data.List.NonEmpty as NonEmpty
 import qualified Data.Scientific as S
 import qualified Data.Vector as V
 import qualified Language.Haskell.TH.Syntax as TH
@@ -118,7 +122,7 @@ data JSONPathElement = Key Text
 type JSONPath = [JSONPathElement]
 
 -- | The internal result of running a 'Parser'.
-data IResult a = IError JSONPath String
+data IResult a = IError (NonEmpty (JSONPath, String))
                | ISuccess a
                deriving (Eq, Show, Typeable)
 
@@ -133,15 +137,15 @@ instance NFData JSONPathElement where
 
 instance (NFData a) => NFData (IResult a) where
     rnf (ISuccess a)      = rnf a
-    rnf (IError path err) = rnf path `seq` rnf err
+    rnf (IError err) = rnf err
 
 instance (NFData a) => NFData (Result a) where
     rnf (Success a) = rnf a
     rnf (Error err) = rnf err
 
 instance Functor IResult where
-    fmap f (ISuccess a)      = ISuccess (f a)
-    fmap _ (IError path err) = IError path err
+    fmap f (ISuccess a) = ISuccess (f a)
+    fmap _ (IError err) = IError err
     {-# INLINE fmap #-}
 
 instance Functor Result where
@@ -153,15 +157,15 @@ instance Monad IResult where
     return = pure
     {-# INLINE return #-}
 
-    ISuccess a      >>= k = k a
-    IError path err >>= _ = IError path err
+    ISuccess a >>= k = k a
+    IError err >>= _ = IError err
     {-# INLINE (>>=) #-}
 
     fail = Fail.fail
     {-# INLINE fail #-}
 
 instance Fail.MonadFail IResult where
-    fail err = IError [] err
+    fail err = IError (([], err) :| [])
     {-# INLINE fail #-}
 
 instance Monad Result where
@@ -238,11 +242,11 @@ instance Monoid (Result a) where
     {-# INLINE mappend #-}
 
 instance Foldable IResult where
-    foldMap _ (IError _ _) = mempty
+    foldMap _ (IError _)   = mempty
     foldMap f (ISuccess y) = f y
     {-# INLINE foldMap #-}
 
-    foldr _ z (IError _ _) = z
+    foldr _ z (IError _)   = z
     foldr f z (ISuccess y) = f y z
     {-# INLINE foldr #-}
 
@@ -256,8 +260,8 @@ instance Foldable Result where
     {-# INLINE foldr #-}
 
 instance Traversable IResult where
-    traverse _ (IError path err) = pure (IError path err)
-    traverse f (ISuccess a)      = ISuccess <$> f a
+    traverse _ (IError err) = pure (IError err)
+    traverse f (ISuccess a) = ISuccess <$> f a
     {-# INLINE traverse #-}
 
 instance Traversable Result where
@@ -266,7 +270,7 @@ instance Traversable Result where
     {-# INLINE traverse #-}
 
 -- | Failure continuation.
-type Failure f r   = JSONPath -> String -> f r
+type Failure f r   = NonEmpty (JSONPath, String) -> f r
 -- | Success continuation.
 type Success a f r = a -> f r
 
@@ -289,7 +293,7 @@ instance Monad Parser where
     {-# INLINE fail #-}
 
 instance Fail.MonadFail Parser where
-    fail msg = Parser $ \path kf _ks -> kf (reverse path) msg
+    fail msg = Parser $ \path kf _ks -> kf ((reverse path, msg) :| [])
     {-# INLINE fail #-}
 
 instance Functor Parser where
@@ -309,10 +313,11 @@ instance Alternative Parser where
     (<|>) = mplus
     {-# INLINE (<|>) #-}
 
+{- TODO accumulate errors -}
 instance MonadPlus Parser where
     mzero = fail "mzero"
     {-# INLINE mzero #-}
-    mplus a b = Parser $ \path kf ks -> let kf' _ _ = runParser b path kf ks
+    mplus a b = Parser $ \path kf ks -> let kf' _ = runParser b path kf ks
                                          in runParser a path kf' ks
     {-# INLINE mplus #-}
 
@@ -332,6 +337,14 @@ apP d e = do
   a <- e
   return (b a)
 {-# INLINE apP #-}
+
+-- | A variant of 'liftA2' that lazily accumulates errors from both subparsers.
+liftP2 :: (a -> b -> c) -> Parser a -> Parser b -> Parser c
+liftP2 f pa pb = Parser $ \path kf ks ->
+  runParser pa path
+    (\(e :| es) -> kf (e :| es ++ runParser pb path NonEmpty.toList (const [])))
+    (\a -> runParser pb path kf (\b -> ks (f a b)))
+{-# INLINE liftP2 #-}
 
 -- | A JSON \"object\" (key\/value map).
 type Object = HashMap Text Value
@@ -423,7 +436,7 @@ emptyObject = Object H.empty
 
 -- | Run a 'Parser'.
 parse :: (a -> Parser b) -> a -> Result b
-parse m v = runParser (m v) [] (const Error) Success
+parse m v = runParser (m v) [] (Error . snd . NonEmpty.head) Success
 {-# INLINE parse #-}
 
 -- | Run a 'Parser'.
@@ -433,14 +446,14 @@ iparse m v = runParser (m v) [] IError ISuccess
 
 -- | Run a 'Parser' with a 'Maybe' result type.
 parseMaybe :: (a -> Parser b) -> a -> Maybe b
-parseMaybe m v = runParser (m v) [] (\_ _ -> Nothing) Just
+parseMaybe m v = runParser (m v) [] (const Nothing) Just
 {-# INLINE parseMaybe #-}
 
 -- | Run a 'Parser' with an 'Either' result type.  If the parse fails,
 -- the 'Left' payload will contain an error message.
 parseEither :: (a -> Parser b) -> a -> Either String b
 parseEither m v = runParser (m v) [] onError Right
-  where onError path msg = Left (formatError path msg)
+  where onError ((path, err) :| _) = Left (formatError path err)
 {-# INLINE parseEither #-}
 
 -- | Annotate an error message with a
@@ -510,21 +523,26 @@ p <?> pathElem = Parser $ \path kf ks -> runParser p (pathElem:path) kf ks
 -- Since 0.6.2.0
 modifyFailure :: (String -> String) -> Parser a -> Parser a
 modifyFailure f (Parser p) = Parser $ \path kf ks ->
-    p path (\p' m -> kf p' (f m)) ks
+    p path (\m -> kf ((fmap . fmap) f m)) ks
 
 -- | Throw a parser error with an additional path.
 --
 -- @since 1.2.1.0
 parserThrowError :: JSONPath -> String -> Parser a
 parserThrowError path' msg = Parser $ \path kf _ks ->
-    kf (reverse path ++ path') msg
+    kf ((reverse path ++ path', msg) :| [])
 
 -- | A handler function to handle previous errors and return to normal execution.
 --
 -- @since 1.2.1.0
 parserCatchError :: Parser a -> (JSONPath -> String -> Parser a) -> Parser a
-parserCatchError (Parser p) handler = Parser $ \path kf ks ->
-    p path (\e msg -> runParser (handler e msg) path kf ks) ks
+parserCatchError p handler = parserCatchErrors p (\((e, msg) :| _) -> handler e msg)
+
+-- | A handler function to handle multiple previous errors and return to normal
+-- execution.
+parserCatchErrors :: Parser a -> (NonEmpty (JSONPath, String) -> Parser a) -> Parser a
+parserCatchErrors (Parser p) handler = Parser $ \path kf ks ->
+    p path (\es -> runParser (handler es) path kf ks) ks
 
 --------------------------------------------------------------------------------
 -- Generic and TH encoding configuration

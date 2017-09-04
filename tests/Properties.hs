@@ -21,7 +21,7 @@ import Data.Functor.Compose (Compose (..))
 import Data.HashMap.Strict (HashMap)
 import Data.Hashable (Hashable)
 import Data.Int (Int8)
-import Data.List.NonEmpty (NonEmpty)
+import Data.List.NonEmpty (NonEmpty((:|)))
 import Data.Map (Map)
 import Data.Proxy (Proxy)
 import Data.Ratio (Ratio)
@@ -59,8 +59,8 @@ toParseJSON :: (Eq a, Show a) =>
                (Value -> Parser a) -> (a -> Value) -> a -> Property
 toParseJSON parsejson tojson x =
     case iparse parsejson . tojson $ x of
-      IError path msg -> failure "parse" (formatError path msg) x
-      ISuccess x'     -> x === x'
+      IError ((path, msg) :| _) -> failure "parse" (formatError path msg) x
+      ISuccess x' -> x === x'
 
 toParseJSON1
     :: (Eq (f Int), Show (f Int))
@@ -78,15 +78,15 @@ roundTripEnc :: (FromJSON a, ToJSON a, Show a) =>
 roundTripEnc eq _ i =
     case fmap ifromJSON . L.parse value . encode $ i of
       L.Done _ (ISuccess v)      -> v `eq` i
-      L.Done _ (IError path err) -> failure "fromJSON" (formatError path err) i
+      L.Done _ (IError ((path, err) :| _)) -> failure "fromJSON" (formatError path err) i
       L.Fail _ _ err             -> failure "parse" err i
 
 roundTripNoEnc :: (FromJSON a, ToJSON a, Show a) =>
              (a -> a -> Property) -> a -> a -> Property
 roundTripNoEnc eq _ i =
     case ifromJSON . toJSON $ i of
-      (ISuccess v)      -> v `eq` i
-      (IError path err) -> failure "fromJSON" (formatError path err) i
+      ISuccess v -> v `eq` i
+      IError ((path, err) :| _) -> failure "fromJSON" (formatError path err) i
 
 roundTripEq :: (Eq a, FromJSON a, ToJSON a, Show a) => a -> a -> Property
 roundTripEq x y = roundTripEnc (===) x y .&&. roundTripNoEnc (===) x y
@@ -104,7 +104,7 @@ x ==~ y =
 
 toFromJSON :: (Arbitrary a, Eq a, FromJSON a, ToJSON a, Show a) => a -> Property
 toFromJSON x = case ifromJSON (toJSON x) of
-                IError path err -> failure "fromJSON" (formatError path err) x
+                IError ((path, err) :| _) -> failure "fromJSON" (formatError path err) x
                 ISuccess x'     -> x === x'
 
 modifyFailureProp :: String -> String -> Bool
