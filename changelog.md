@@ -1,13 +1,18 @@
 For the latest version of this document, please see [https://github.com/bos/aeson/blob/master/changelog.md](https://github.com/bos/aeson/blob/master/changelog.md).
 
-## Upcoming
+### 1.2.2.0
 
-* Add `FromJSON` and `ToJSON` instances for `DiffTime`, thanks to Víctor López Juan
-* Fix handling of fractions when parsing Natural.
-  Change text in error messages for Integral types to make them follow the common pattern.
-  PVP level is "Non-breaking change".
+* Add `FromJSON` and `ToJSON` instances for
+  * `DiffTime`, thanks to Víctor López Juan.
+  * `CTime`, thanks to Daniel Díaz.
+* Fix handling of fractions when parsing Natural, thanks to Yuriy Syrovetskiy.
+* Change text in error messages for Integral types to make them follow the common pattern, thanks to Yuriy Syrovetskiy.
+* Add missing `INCOHERENT` pragma for `RecordToPair`, thanks to Xia Li-yao.
+* Everything related to `Options` is now exported from `Data.Aeson`, thanks to Xia Li-yao.
+* Optimizations to not escape text in clear cases, thanks to Oleg Grenrus.
+* Some documentation fixes, thanks to Phil de Joux & Xia Li-yao.
 
-## 1.2.1.0
+### 1.2.1.0
 
 * Add `parserThrowError` and `parserCatchError` combinators, thanks to Oleg Grenrus.
 
