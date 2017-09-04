@@ -104,7 +104,19 @@ module Data.Aeson.Types
     , listParser
 
     -- * Generic and TH encoding configuration
-    , Options(..)
+    , Options
+
+    -- ** Options fields
+    -- $optionsFields
+    , fieldLabelModifier
+    , constructorTagModifier
+    , allNullaryToStringTag
+    , omitNothingFields
+    , sumEncoding
+    , unwrapUnaryRecords
+    , tagSingleConstructors
+
+    -- ** Options utilities
     , SumEncoding(..)
     , camelTo
     , camelTo2
@@ -124,3 +136,6 @@ import Data.Foldable (toList)
 foldable :: (Foldable t, ToJSON a) => t a -> Encoding
 foldable = toEncoding . toList
 {-# INLINE foldable #-}
+
+-- $optionsFields
+-- The functions here are in fact record fields of the 'Options' type.

@@ -531,6 +531,9 @@ parserCatchError (Parser p) handler = Parser $ \path kf ks ->
 --------------------------------------------------------------------------------
 
 -- | Options that specify how to encode\/decode your datatype to\/from JSON.
+--
+-- Options can be set using record syntax on 'defaultOptions' with the fields
+-- below.
 data Options = Options
     { fieldLabelModifier :: String -> String
       -- ^ Function applied to field labels.
