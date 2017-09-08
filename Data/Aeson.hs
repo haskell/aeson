@@ -381,7 +381,7 @@ eitherDecodeStrict' =
 -- The 'Object' type contains JSON objects:
 --
 -- > λ> decode "{\"name\":\"Dave\",\"age\":2}" :: Maybe Object
--- > Just (fromList) [("name",String "Dave"),("age",Number 2)]
+-- > Just (fromList [("name",String "Dave"),("age",Number 2)])
 --
 -- You can extract values from it with a parser using 'parse',
 -- 'parseEither' or, in this example, 'parseMaybe':
