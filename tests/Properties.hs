@@ -143,7 +143,10 @@ parserCatchErrorProp path msg =
 -- variation in JSON object key ordering.
 sameAs :: (a -> Value) -> (a -> Encoding) -> a -> Property
 sameAs toVal toEnc v =
-  eitherDecode (encodingToLazyByteString (toEnc v)) === Right (toVal v)
+  counterexample (show s) $
+    eitherDecode s === Right (toVal v)
+  where
+    s = encodingToLazyByteString (toEnc v)
 
 sameAs1
     :: (forall a. LiftToJSON f a)
