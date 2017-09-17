@@ -1,3 +1,5 @@
+{-# LANGUAGE CPP #-}
+
 -- |
 -- Module:      Data.Aeson
 -- Copyright:   (c) 2011-2016 Bryan O'Sullivan
@@ -120,6 +122,7 @@ module Data.Aeson
     , (.:!)
     , (.!=)
     , object
+    , embeddedJSON
     -- * Parsing
     , json
     , json'
@@ -135,6 +138,7 @@ import Data.Aeson.Types
 import Data.Aeson.Types.Internal (JSONPath, formatError)
 import qualified Data.ByteString as B
 import qualified Data.ByteString.Lazy as L
+import qualified Data.Text.Encoding as T
 
 -- | Efficiently serialize a JSON value as a lazy 'L.ByteString'.
 --
@@ -220,6 +224,15 @@ eitherDecodeStrict' =
   eitherFormatError . eitherDecodeStrictWith jsonEOF' ifromJSON
 {-# INLINE eitherDecodeStrict' #-}
 
+-- | Decode a nested JSON-encoded string.
+embeddedJSON :: (FromJSON a) => String -> (Value -> Parser a)
+embeddedJSON str = withText str (either fail return . eitherDecode . fromStrict . T.encodeUtf8)
+  where
+#if MIN_VERSION_bytestring(0, 9, 2)
+  fromStrict = L.fromChunks . (:[])
+#else
+  fromStrict = L.fromStrict
+#endif
 -- $use
 --
 -- This section contains basic information on the different ways to
