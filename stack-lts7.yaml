@@ -3,8 +3,12 @@ packages:
 - '.'
 - attoparsec-iso8601
 extra-deps:
+- QuickCheck-2.10.0.1
+- base-compat-0.9.3
+- hashable-1.2.6.1
 - integer-logarithms-1
-- quickcheck-instances-0.3.14
+- quickcheck-instances-0.3.16
+- test-framework-quickcheck2-0.3.0.4
 - th-abstraction-0.2.2.0
 flags:
   aeson:

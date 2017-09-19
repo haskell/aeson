@@ -8,6 +8,10 @@
 -- For Data.Aeson.Types.camelTo
 {-# OPTIONS_GHC -fno-warn-deprecations #-}
 
+#if MIN_VERSION_base(4,9,0)
+{-# OPTIONS_GHC -fno-warn-unused-top-binds #-}
+#endif
+
 module UnitTests
     (
       ioTests
