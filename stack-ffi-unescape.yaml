@@ -1,0 +1,7 @@
+resolver: nightly-2017-09-04
+packages:
+- '.'
+flags:
+  aeson:
+    fast: true
+    cffi: true
