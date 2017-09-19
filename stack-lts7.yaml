@@ -5,6 +5,8 @@ packages:
 extra-deps:
 - integer-logarithms-1
 - quickcheck-instances-0.3.14
+- QuickCheck-2.9.2
+- test-framework-quickcheck2-0.3.0.4
 - th-abstraction-0.2.2.0
 flags:
   aeson:
