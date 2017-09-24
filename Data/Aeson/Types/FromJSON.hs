@@ -316,7 +316,7 @@ genericLiftParseJSON opts pj pjl = fmap to1 . gParseJSON opts (From1Args pj pjl)
 --
 -- @
 -- instance 'FromJSON' Coord where
---     'parseJSON' = 'withObject' \"Coord\" $ \v -> Coord
+--     'parseJSON' = 'withObject' \"Coord\" $ \\v -> Coord
 --         '<$>' v '.:' \"x\"
 --         '<*>' v '.:' \"y\"
 -- @
