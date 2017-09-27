@@ -36,6 +36,7 @@ module Data.Aeson.Types
     , ToJSON(..)
     , KeyValue(..)
     , liftP2
+    , (<*>+)
     , modifyFailure
     , parserThrowError
     , parserCatchError
