@@ -18,6 +18,7 @@ module Data.Aeson.Internal
     , JSONPath
     , (<?>)
     , formatError
+    , formatErrors
     , ifromJSON
     , iparse
     ) where

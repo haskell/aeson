@@ -33,6 +33,8 @@ module Data.Aeson.Parser.Internal
     , decodeStrictWith
     , eitherDecodeWith
     , eitherDecodeStrictWith
+    , verboseDecodeWith
+    , verboseDecodeStrictWith
     ) where
 
 import Prelude ()
@@ -287,6 +289,24 @@ eitherDecodeStrictWith p to s =
       ISuccess a -> Right a
       IError (e :| _) -> Left e
 {-# INLINE eitherDecodeStrictWith #-}
+
+verboseDecodeWith :: Parser Value -> (Value -> IResult a) -> L.ByteString
+                  -> Either (NonEmpty (JSONPath, String)) a
+verboseDecodeWith p to s =
+    case L.parse p s of
+      L.Done _ v     -> case to v of
+                          ISuccess a -> Right a
+                          IError   e -> Left  e
+      L.Fail _ _ msg -> Left (([], msg) :| [])
+{-# INLINE verboseDecodeWith #-}
+
+verboseDecodeStrictWith :: Parser Value -> (Value -> IResult a) -> B.ByteString
+                        -> Either (NonEmpty (JSONPath, String)) a
+verboseDecodeStrictWith p to s =
+    case either (\e -> IError (([], e) :| [])) to (A.parseOnly p s) of
+      ISuccess a -> Right a
+      IError   e -> Left  e
+{-# INLINE verboseDecodeStrictWith #-}
 
 -- $lazy
 --

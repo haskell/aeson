@@ -37,12 +37,16 @@ module Data.Aeson
     , decode'
     , eitherDecode
     , eitherDecode'
+    , verboseDecode
+    , verboseDecode'
     , encode
     -- ** Variants for strict bytestrings
     , decodeStrict
     , decodeStrict'
     , eitherDecodeStrict
     , eitherDecodeStrict'
+    , verboseDecodeStrict
+    , verboseDecodeStrict'
     -- * Core JSON types
     , Value(..)
     , Encoding
@@ -131,9 +135,14 @@ import Prelude.Compat
 
 import Data.Aeson.Types.FromJSON (ifromJSON)
 import Data.Aeson.Encoding (encodingToLazyByteString)
-import Data.Aeson.Parser.Internal (decodeWith, decodeStrictWith, eitherDecodeWith, eitherDecodeStrictWith, jsonEOF, json, jsonEOF', json')
+import Data.Aeson.Parser.Internal
+  ( decodeWith, decodeStrictWith
+  , eitherDecodeWith, eitherDecodeStrictWith
+  , verboseDecodeWith, verboseDecodeStrictWith
+  , jsonEOF, json, jsonEOF', json')
 import Data.Aeson.Types
-import Data.Aeson.Types.Internal (JSONPath, formatError)
+import Data.Aeson.Types.Internal (JSONPath, formatError, formatErrors)
+import Data.List.NonEmpty (NonEmpty)
 import qualified Data.ByteString as B
 import qualified Data.ByteString.Lazy as L
 
@@ -220,6 +229,35 @@ eitherDecodeStrict' :: (FromJSON a) => B.ByteString -> Either String a
 eitherDecodeStrict' =
   eitherFormatError . eitherDecodeStrictWith jsonEOF' ifromJSON
 {-# INLINE eitherDecodeStrict' #-}
+
+eitherFormatErrors
+  :: Either (NonEmpty (JSONPath, String)) a -> Either (NonEmpty String) a
+eitherFormatErrors = either (Left . formatErrors) Right
+{-# INLINE eitherFormatErrors #-}
+
+-- | Like 'decode' but returns one or more error messages when decoding fails.
+verboseDecode :: (FromJSON a) => L.ByteString -> Either (NonEmpty String) a
+verboseDecode = eitherFormatErrors . verboseDecodeWith jsonEOF ifromJSON
+{-# INLINE verboseDecode #-}
+
+-- | Like 'decodeStrict' but returns one or more error messages when decoding
+-- fails.
+verboseDecodeStrict :: (FromJSON a) => B.ByteString -> Either (NonEmpty String) a
+verboseDecodeStrict =
+  eitherFormatErrors . verboseDecodeStrictWith jsonEOF ifromJSON
+{-# INLINE verboseDecodeStrict #-}
+
+-- | Like 'decode'' but returns one or more error messages when decoding fails.
+verboseDecode' :: (FromJSON a) => L.ByteString -> Either (NonEmpty String) a
+verboseDecode' = eitherFormatErrors . verboseDecodeWith jsonEOF' ifromJSON
+{-# INLINE verboseDecode' #-}
+
+-- | Like 'decodeStrict'' but returns one or more error messages when decoding
+-- fails.
+verboseDecodeStrict' :: (FromJSON a) => B.ByteString -> Either (NonEmpty String) a
+verboseDecodeStrict' =
+  eitherFormatErrors . verboseDecodeStrictWith jsonEOF' ifromJSON
+{-# INLINE verboseDecodeStrict' #-}
 
 -- $use
 --
