@@ -49,6 +49,7 @@ module Data.Aeson.Types.Internal
     , parserCatchError
     , parserCatchErrors
     , formatError
+    , formatErrors
     , (<?>)
     -- * Constructors and accessors
     , object
@@ -483,6 +484,10 @@ formatError path msg = "Error in " ++ format "$" path ++ ": " ++ msg
     escapeChar '\'' = "\\'"
     escapeChar '\\' = "\\\\"
     escapeChar c    = [c]
+
+-- | Annotate a list of error messages.
+formatErrors :: Functor f => f (JSONPath, String) -> f String
+formatErrors = fmap (uncurry formatError)
 
 -- | A key\/value pair for an 'Object'.
 type Pair = (Text, Value)
