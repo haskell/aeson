@@ -44,6 +44,7 @@ module Data.Aeson.Types.Internal
     , parseEither
     , parseMaybe
     , liftP2
+    , (<*>+)
     , modifyFailure
     , parserThrowError
     , parserCatchError
@@ -339,13 +340,21 @@ apP d e = do
   return (b a)
 {-# INLINE apP #-}
 
--- | A variant of 'liftA2' that lazily accumulates errors from both subparsers.
+-- | A variant of 'Control.Applicative.liftA2' that lazily accumulates errors
+-- from both subparsers.
 liftP2 :: (a -> b -> c) -> Parser a -> Parser b -> Parser c
 liftP2 f pa pb = Parser $ \path kf ks ->
   runParser pa path
     (\(e :| es) -> kf (e :| es ++ runParser pb path NonEmpty.toList (const [])))
     (\a -> runParser pb path kf (\b -> ks (f a b)))
 {-# INLINE liftP2 #-}
+
+infixl 4 <*>+
+
+-- | A variant of ('<*>') that lazily accumulates errors from both subparsers.
+(<*>+) :: Parser (a -> b) -> Parser a -> Parser b
+(<*>+) = liftP2 id
+{-# INLINE (<*>+) #-}
 
 -- | A JSON \"object\" (key\/value map).
 type Object = HashMap Text Value
