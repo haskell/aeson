@@ -119,8 +119,6 @@ decode UtfTail1 point word = case word of
     w | 0x80 <= w && w <= 0xbf -> (UtfGround, setByte1 point word)
     _                          -> throwDecodeError
 
-{-# INLINE decode #-}
-
 decodeHex :: Word8 -> Word16
 decodeHex 48  = 0  -- '0'
 decodeHex 49  = 1  -- '1'
@@ -145,12 +143,12 @@ decodeHex 101 = 14 -- 'e'
 decodeHex 70  = 15 -- 'F'
 decodeHex 102 = 15 -- 'f'
 decodeHex _ = throwDecodeError
-{-# INLINE decodeHex #-}
 
 unescapeText' :: ByteString -> Text
 unescapeText' bs = runText $ \done -> do
     dest <- A.new len
-    (pos, finalState) <- B.foldl' (f' dest) (return (0, StateNone)) bs
+
+    (pos, finalState) <- loop dest (0, StateNone) 0
 
     -- Check final state. Currently pos gets only increased over time, so this check should catch overflows.
     when ( finalState /= StateNone || pos > len)
@@ -172,11 +170,11 @@ unescapeText' bs = runText $ \done -> do
         (st', p) ->
             return (pos, StateUtf st' p)
 
-      {-# INLINE runUtf #-}
-
-      f' dest m c = m >>= \s -> f dest s c
-
-      {-# INLINE f' #-}
+      loop _ ps i | i >= len = return ps
+      loop dest ps i = do
+        let c = B.index bs i -- JP: We can use unsafe index once we prove bounds with Liquid Haskell.
+        ps' <- f dest ps c
+        loop dest ps' $ i+1
 
       -- No pending state.
       f dest (pos, StateNone) c = runUtf dest pos UtfGround 0 c
@@ -253,8 +251,6 @@ unescapeText' bs = runText $ \done -> do
         else
           writeAndReturn dest pos u StateNone
 
-      {-# INLINE f #-}
-
 write :: A.MArray s -> Int -> Word16 -> ST s ()
 write dest pos char =
     A.unsafeWrite dest pos char
@@ -270,8 +266,6 @@ throwDecodeError :: a
 throwDecodeError =
     let desc = "Data.Text.Internal.Encoding.decodeUtf8: Invalid UTF-8 stream" in
     throw (DecodeError desc Nothing)
-{-# INLINE throwDecodeError #-}
 
 unescapeText :: ByteString -> Either UnicodeException Text
 unescapeText = unsafeDupablePerformIO . try . evaluate . unescapeText'
-{-# INLINE unescapeText #-}
