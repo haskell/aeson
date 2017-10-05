@@ -122,14 +122,14 @@ import Prelude.Compat hiding (exp)
 import Control.Applicative ((<|>))
 import Data.Aeson (Object, (.=), (.:), FromJSON(..), FromJSON1(..), FromJSON2(..), ToJSON(..), ToJSON1(..), ToJSON2(..))
 import Data.Aeson.Types (Options(..), Parser, SumEncoding(..), Value(..), defaultOptions, defaultTaggedObject)
-import Data.Aeson.Types.Internal ((<?>), Pair, JSONPathElement(Key))
+import Data.Aeson.Types.Internal ((<?>), JSONPathElement(Key))
 import Data.Aeson.Types.FromJSON (parseOptionalFieldWith)
 import Control.Monad (liftM2, unless, when)
 import Data.Foldable (foldr')
 #if MIN_VERSION_template_haskell(2,8,0) && !MIN_VERSION_template_haskell(2,10,0)
 import Data.List (nub)
 #endif
-import Data.List (foldl', genericLength , intercalate , intersperse, partition, union)
+import Data.List (foldl', genericLength, intercalate, partition, union)
 import Data.List.NonEmpty ((<|), NonEmpty((:|)))
 import Data.Map (Map)
 import Data.Maybe (catMaybes, fromMaybe, mapMaybe)
@@ -156,7 +156,7 @@ import qualified Data.Map as M (fromList, keys, lookup , singleton, size)
 import qualified Data.Semigroup as Semigroup (Option(..))
 import qualified Data.Set as Set (empty, insert, member)
 import qualified Data.Text as T (Text, pack, unpack)
-import qualified Data.Vector as V (unsafeIndex, null, length, create, fromList)
+import qualified Data.Vector as V (unsafeIndex, null, length, create, empty)
 import qualified Data.Vector.Mutable as VM (unsafeNew, unsafeWrite)
 
 {-# ANN module "Hlint: ignore Reduce duplication" #-}
@@ -254,8 +254,8 @@ deriveToJSONCommon :: JSONClass
                    -> Name
                    -- ^ Name of the type for which to generate an instance.
                    -> Q [Dec]
-deriveToJSONCommon = deriveJSONClass [ (ToJSON,     \jc _ -> consToValue    jc)
-                                     , (ToEncoding, \jc _ -> consToEncoding jc)
+deriveToJSONCommon = deriveJSONClass [ (ToJSON,     \jc _ -> consToValue Value jc)
+                                     , (ToEncoding, \jc _ -> consToValue Encoding jc)
                                      ]
 
 -- | Generates a lambda expression which encodes the given data type or
@@ -285,7 +285,7 @@ mkToJSONCommon :: JSONClass -- ^ Which class's method is being derived.
                -> Options -- ^ Encoding options.
                -> Name -- ^ Name of the encoded type.
                -> Q Exp
-mkToJSONCommon = mkFunCommon (\jc _ -> consToValue jc)
+mkToJSONCommon = mkFunCommon (\jc _ -> consToValue Value jc)
 
 -- | Generates a lambda expression which encodes the given data type or
 -- data family instance constructor as a JSON string.
@@ -314,12 +314,14 @@ mkToEncodingCommon :: JSONClass -- ^ Which class's method is being derived.
                    -> Options -- ^ Encoding options.
                    -> Name -- ^ Name of the encoded type.
                    -> Q Exp
-mkToEncodingCommon = mkFunCommon (\jc _ -> consToEncoding jc)
+mkToEncodingCommon = mkFunCommon (\jc _ -> consToValue Encoding jc)
 
 -- | Helper function used by both 'deriveToJSON' and 'mkToJSON'. Generates
--- code to generate a 'Value' of a number of constructors. All constructors
--- must be from the same type.
-consToValue :: JSONClass
+-- code to generate a 'Value' or 'Encoding' of a number of constructors. All
+-- constructors must be from the same type.
+consToValue :: ToJSONFun
+            -- ^ The method ('toJSON' or 'toEncoding') being derived.
+            -> JSONClass
             -- ^ The ToJSON variant being derived.
             -> Options
             -- ^ Encoding options.
@@ -329,10 +331,10 @@ consToValue :: JSONClass
             -- ^ Constructors for which to generate JSON generating code.
             -> Q Exp
 
-consToValue _ _ _ [] = error $ "Data.Aeson.TH.consToValue: "
+consToValue _ _ _ _ [] = error $ "Data.Aeson.TH.consToValue: "
                              ++ "Not a single constructor given!"
 
-consToValue jc opts vars cons = do
+consToValue target jc opts vars cons = do
     value <- newName "value"
     tjs   <- newNameList "_tj"  $ arityInt jc
     tjls  <- newNameList "_tjl" $ arityInt jc
@@ -346,66 +348,26 @@ consToValue jc opts vars cons = do
     matches tvMap = case cons of
       -- A single constructor is directly encoded. The constructor itself may be
       -- forgotten.
-      [con] | not (tagSingleConstructors opts) -> [argsToValue jc tvMap opts False con]
+      [con] | not (tagSingleConstructors opts) -> [argsToValue target jc tvMap opts False con]
       _ | allNullaryToStringTag opts && all isNullary cons ->
-              [ match (conP conName []) (normalB $ conStr opts conName) []
+              [ match (conP conName []) (normalB $ conStr target opts conName) []
               | con <- cons
               , let conName = constructorName con
               ]
-        | otherwise -> [argsToValue jc tvMap opts True con | con <- cons]
+        | otherwise -> [argsToValue target jc tvMap opts True con | con <- cons]
 
-conStr :: Options -> Name -> Q Exp
-conStr opts = appE [|String|] . conTxt opts
+-- | Name of the constructor as a quoted 'Value' or 'Encoding'.
+conStr :: ToJSONFun -> Options -> Name -> Q Exp
+conStr Value opts = appE [|String|] . conTxt opts
+conStr Encoding opts = appE [|E.text|] . conTxt opts
 
+-- | Name of the constructor as a quoted 'Text'.
 conTxt :: Options -> Name -> Q Exp
-conTxt opts = appE [|T.pack|] . conStringE opts
+conTxt opts = appE [|T.pack|] . stringE . conString opts
 
-conStringE :: Options -> Name -> Q Exp
-conStringE opts = stringE . constructorTagModifier opts . nameBase
-
--- | Helper function used by both 'deriveToJSON' and 'mkToEncoding'. Generates
--- code to write out a value for a number of constructors. All constructors
--- must be from the same type.
-consToEncoding :: JSONClass
-               -- ^ The ToJSON variant being derived.
-               -> Options
-               -- ^ Encoding options.
-               -> [Type]
-               -- ^ The types from the data type/data family instance declaration
-               -> [ConstructorInfo]
-               -- ^ Constructors for which to generate JSON generating code.
-               -> Q Exp
-
-consToEncoding _ _ _ [] = error $ "Data.Aeson.TH.consToEncoding: "
-                          ++ "Not a single constructor given!"
-
-consToEncoding jc opts vars cons = do
-    value <- newName "value"
-    tes   <- newNameList "_te"  $ arityInt jc
-    tels  <- newNameList "_tel" $ arityInt jc
-    let zippedTEs      = zip tes tels
-        interleavedTEs = interleave tes tels
-        lastTyVars     = map varTToName $ drop (length vars - arityInt jc) vars
-        tvMap          = M.fromList $ zip lastTyVars zippedTEs
-    lamE (map varP $ interleavedTEs ++ [value]) $
-        caseE (varE value) (matches tvMap)
-  where
-    matches tvMap = case cons of
-      -- A single constructor is directly encoded. The constructor itself may be
-      -- forgotten.
-      [con] | not (tagSingleConstructors opts) -> [argsToEncoding jc tvMap opts False con]
-      -- Encode just the name of the constructor of a sum type iff all the
-      -- constructors are nullary.
-      _ | allNullaryToStringTag opts && all isNullary cons ->
-              [ match (conP conName [])
-                (normalB $ encStr opts conName) []
-              | con <- cons
-              , let conName = constructorName con
-              ]
-        | otherwise -> [argsToEncoding jc tvMap opts True con | con <- cons]
-
-encStr :: Options -> Name -> Q Exp
-encStr opts = appE [|E.text|] . conTxt opts
+-- | Name of the constructor.
+conString :: Options -> Name -> String
+conString opts = constructorTagModifier opts . nameBase
 
 -- | If constructor is nullary.
 isNullary :: ConstructorInfo -> Bool
@@ -413,129 +375,133 @@ isNullary ConstructorInfo { constructorVariant = NormalConstructor
                           , constructorFields  = tys } = null tys
 isNullary _ = False
 
-sumToValue :: Options -> Bool -> Bool -> Name -> Q Exp -> Q Exp
-sumToValue opts multiCons nullary conName exp
+-- | Wrap fields of a non-record constructor. See 'sumToValue'.
+opaqueSumToValue :: ToJSONFun -> Options -> Bool -> Bool -> Name -> ExpQ -> ExpQ
+opaqueSumToValue target opts multiCons nullary conName value =
+  sumToValue target opts multiCons nullary conName
+    value
+    pairs
+  where
+    pairs contentsFieldName = listE [toPair target contentsFieldName value]
+
+-- | Wrap fields of a record constructor. See 'sumToValue'.
+recordSumToValue :: ToJSONFun -> Options -> Bool -> Bool -> Name -> ExpQ -> ExpQ
+recordSumToValue target opts multiCons nullary conName pairs =
+  sumToValue target opts multiCons nullary conName
+    (objectExp target pairs)
+    (const pairs)
+
+-- | Wrap fields of a constructor.
+sumToValue
+  :: ToJSONFun
+  -- ^ The method being derived.
+  -> Options
+  -- ^ Deriving options.
+  -> Bool
+  -- ^ Does this type have multiple constructors.
+  -> Bool
+  -- ^ Is this constructor nullary.
+  -> Name
+  -- ^ Constructor name.
+  -> ExpQ
+  -- ^ Fields of the constructor as a 'Value' or 'Encoding'.
+  -> (String -> ExpQ)
+  -- ^ Representation of an 'Object' fragment used for the 'TaggedObject'
+  -- variant; of type @[(Text,Value)]@ or @[Encoding]@, depending on the method
+  -- being derived.
+  --
+  -- - For non-records, produces a pair @"contentsFieldName":value@,
+  --   given a @contentsFieldName@ as an argument. See 'opaqueSumToValue'.
+  -- - For records, produces the list of pairs corresponding to fields of the
+  --   encoded value (ignores the argument). See 'recordSumToValue'.
+  -> ExpQ
+sumToValue target opts multiCons nullary conName value pairs
     | multiCons =
         case sumEncoding opts of
           TwoElemArray ->
-              [|Array|] `appE` ([|V.fromList|] `appE` listE [conStr opts conName, exp])
+            array target [conStr target opts conName, value]
           TaggedObject{tagFieldName, contentsFieldName} ->
-              let tag      = infixApp [|T.pack tagFieldName|]      [|(.=)|] (conStr opts conName)
-                  contents = infixApp [|T.pack contentsFieldName|] [|(.=)|] exp
-              in
-                  [|A.object|] `appE` listE (if nullary then [tag] else [tag, contents])
+            -- TODO: Maybe throw an error in case
+            -- tagFieldName overwrites a field in pairs.
+            let tag = toPair target tagFieldName (conStr target opts conName)
+                content = pairs contentsFieldName
+            in objectExp target $
+              if nullary then listE [tag] else infixApp tag [|(:)|] content
           ObjectWithSingleField ->
-              [|A.object|] `appE` listE
-                [ infixApp (conTxt opts conName) [|(.=)|] exp
-                ]
-          UntaggedValue | nullary -> conStr opts conName
-          UntaggedValue -> exp
-    | otherwise = exp
+            object target [(conString opts conName, value)]
+          UntaggedValue | nullary -> conStr target opts conName
+          UntaggedValue -> value
+    | otherwise = value
 
 -- | Generates code to generate the JSON encoding of a single constructor.
-argsToValue :: JSONClass -> TyVarMap -> Options -> Bool -> ConstructorInfo -> Q Match
+argsToValue :: ToJSONFun -> JSONClass -> TyVarMap -> Options -> Bool -> ConstructorInfo -> Q Match
 
 -- Polyadic constructors with special case for unary constructors.
-argsToValue jc tvMap opts multiCons
+argsToValue target jc tvMap opts multiCons
   ConstructorInfo { constructorName    = conName
                   , constructorVariant = NormalConstructor
                   , constructorFields  = argTys } = do
     argTys' <- mapM resolveTypeSynonyms argTys
     let len = length argTys'
     args <- newNameList "arg" len
-    js <- case [ dispatchToJSON jc conName tvMap argTy
-                   `appE` varE arg
-               | (arg, argTy) <- zip args argTys'
-               ] of
-            -- Single argument is directly converted.
-            [e] -> return e
-            -- Multiple arguments are converted to a JSON array.
-            es  -> do
-              mv <- newName "mv"
-              let newMV = bindS (varP mv)
-                                ([|VM.unsafeNew|] `appE`
-                                  litE (integerL $ fromIntegral len))
-                  stmts = [ noBindS $
-                              [|VM.unsafeWrite|] `appE`
-                                varE mv `appE`
-                                  litE (integerL ix) `appE`
-                                    e
-                          | (ix, e) <- zip [(0::Integer)..] es
-                          ]
-                  ret = noBindS $ [|return|] `appE` varE mv
-              return $ [|Array|] `appE`
-                         (varE 'V.create `appE`
-                           doE (newMV:stmts++[ret]))
+    let js = case [ dispatchToJSON target jc conName tvMap argTy
+                      `appE` varE arg
+                  | (arg, argTy) <- zip args argTys'
+                  ] of
+               -- Single argument is directly converted.
+               [e] -> e
+               -- Zero and multiple arguments are converted to a JSON array.
+               es -> array target es
+
     match (conP conName $ map varP args)
-          (normalB $ sumToValue opts multiCons (null argTys') conName js)
+          (normalB $ opaqueSumToValue target opts multiCons (null argTys') conName js)
           []
 
 -- Records.
-argsToValue jc tvMap opts multiCons
+argsToValue target jc tvMap opts multiCons
   info@ConstructorInfo { constructorName    = conName
                        , constructorVariant = RecordConstructor fields
                        , constructorFields  = argTys } =
     case (unwrapUnaryRecords opts, not multiCons, argTys) of
-      (True,True,[_]) -> argsToValue jc tvMap opts multiCons
+      (True,True,[_]) -> argsToValue target jc tvMap opts multiCons
                                      (info{constructorVariant = NormalConstructor})
       _ -> do
         argTys' <- mapM resolveTypeSynonyms argTys
         args <- newNameList "arg" $ length argTys'
-        let exp = [|A.object|] `appE` pairs
-
-            pairs | omitNothingFields opts = infixApp maybeFields
+        let pairs | omitNothingFields opts = infixApp maybeFields
                                                       [|(++)|]
                                                       restFields
-                  | otherwise = listE $ map toPair argCons
+                  | otherwise = listE $ map pureToPair argCons
 
             argCons = zip3 (map varE args) argTys' fields
 
             maybeFields = [|catMaybes|] `appE` listE (map maybeToPair maybes)
 
-            restFields = listE $ map toPair rest
+            restFields = listE $ map pureToPair rest
 
             (maybes0, rest0) = partition isMaybe argCons
             (options, rest) = partition isOption rest0
             maybes = maybes0 ++ map optionToMaybe options
 
-            maybeToPair (arg, argTy, field) =
-                infixApp ([|keyValuePairWith|]
-                            `appE` dispatchToJSON jc conName tvMap argTy
-                            `appE` toFieldName field)
-                         [|(<$>)|]
-                         arg
+            maybeToPair = toPairLifted True
+            pureToPair = toPairLifted False
 
-            toPair (arg, argTy, field) =
-                [|keyValuePairWith|]
-                  `appE` dispatchToJSON jc conName tvMap argTy
-                  `appE` toFieldName field
-                  `appE` arg
-
-            toFieldName field = [|T.pack|] `appE` fieldLabelExp opts field
+            toPairLifted lifted (arg, argTy, field) =
+              let toValue = dispatchToJSON target jc conName tvMap argTy
+                  fieldName = fieldLabel opts field
+                  e arg' = toPair target fieldName (toValue `appE` arg')
+              in if lifted
+                then do
+                  x <- newName "x"
+                  infixApp (lam1E (varP x) (e (varE x))) [|(<$>)|] arg
+                else e arg
 
         match (conP conName $ map varP args)
-              ( normalB
-              $ if multiCons
-                then case sumEncoding opts of
-                       TwoElemArray -> [|toJSON|] `appE` tupE [conStr opts conName, exp]
-                       TaggedObject{tagFieldName} ->
-                           [|A.object|] `appE`
-                             -- TODO: Maybe throw an error in case
-                             -- tagFieldName overwrites a field in pairs.
-                             infixApp (infixApp [|T.pack tagFieldName|]
-                                                [|(.=)|]
-                                                (conStr opts conName))
-                                      [|(:)|]
-                                      pairs
-                       ObjectWithSingleField ->
-                           [|A.object|] `appE` listE
-                             [ infixApp (conTxt opts conName) [|(.=)|] exp ]
-                       UntaggedValue -> exp
-                else exp
-              ) []
+              (normalB $ recordSumToValue target opts multiCons (null argTys) conName pairs)
+              []
 
 -- Infix constructors.
-argsToValue jc tvMap opts multiCons
+argsToValue target jc tvMap opts multiCons
   ConstructorInfo { constructorName    = conName
                   , constructorVariant = InfixConstructor
                   , constructorFields  = argTys } = do
@@ -544,11 +510,12 @@ argsToValue jc tvMap opts multiCons
     ar <- newName "argR"
     match (infixP (varP al) conName (varP ar))
           ( normalB
-          $ sumToValue opts multiCons False conName
-          $ [|toJSON|] `appE` listE [ dispatchToJSON jc conName tvMap aTy
-                                        `appE` varE a
-                                    | (a, aTy) <- [(al,alTy), (ar,arTy)]
-                                    ]
+          $ opaqueSumToValue target opts multiCons False conName
+          $ array target
+              [ dispatchToJSON target jc conName tvMap aTy
+                  `appE` varE a
+              | (a, aTy) <- [(al,alTy), (ar,arTy)]
+              ]
           )
           []
 
@@ -575,141 +542,85 @@ infixr 5 <:>
 (<%>) a b = a <^> [|E.comma|] <^> b
 infixr 4 <%>
 
-array :: ExpQ -> ExpQ
-array exp = [|E.wrapArray|] `appE` exp
+-- | Wrap a list of quoted 'Value's in a quoted 'Array' (of type 'Value').
+array :: ToJSONFun -> [ExpQ] -> ExpQ
+array Encoding [] = [|E.emptyArray_|]
+array Value [] = [|Array V.empty|]
+array Encoding es = [|E.wrapArray|] `appE` foldr1 (<%>) es
+array Value es = do
+  mv <- newName "mv"
+  let newMV = bindS (varP mv)
+                    ([|VM.unsafeNew|] `appE`
+                      litE (integerL $ fromIntegral (length es)))
+      stmts = [ noBindS $
+                  [|VM.unsafeWrite|] `appE`
+                    varE mv `appE`
+                      litE (integerL ix) `appE`
+                        e
+              | (ix, e) <- zip [(0::Integer)..] es
+              ]
+      ret = noBindS $ [|return|] `appE` varE mv
+  [|Array|] `appE`
+             (varE 'V.create `appE`
+               doE (newMV:stmts++[ret]))
 
-object :: ExpQ -> ExpQ
-object exp = [|E.wrapObject|] `appE` exp
+-- | Wrap an associative list of keys and quoted values in a quoted 'Object'.
+object :: ToJSONFun -> [(String, ExpQ)] -> ExpQ
+object target = wrapObject target . catPairs target . fmap (uncurry (toPair target))
 
-sumToEncoding :: Options -> Bool -> Bool -> Name -> Q Exp -> Q Exp
-sumToEncoding opts multiCons nullary conName exp
-    | multiCons =
-        let fexp = exp in
-        case sumEncoding opts of
-          TwoElemArray ->
-            array (encStr opts conName <%> fexp)
-          TaggedObject{tagFieldName, contentsFieldName} ->
-            let tag      = [|E.text (T.pack tagFieldName)|]      <:> encStr opts conName
-                contents = [|E.text (T.pack contentsFieldName)|] <:> fexp
-            in
-              object $
-                if nullary then tag else tag <%> contents
-          ObjectWithSingleField ->
-            object (encStr opts conName <:> fexp)
-          UntaggedValue | nullary -> encStr opts conName
-          UntaggedValue -> exp
-    | otherwise = exp
+-- |
+-- - When deriving 'ToJSON', map a list of quoted key-value pairs to an
+--   expression of the list of pairs.
+-- - When deriving 'ToEncoding', map a list of quoted 'Encoding's representing
+--   key-value pairs to a comma-separated 'Encoding' of them.
+--
+-- > catPairs Value [ [|(k0,v0)|], [|(k1,v1)|] ] = [| [(k0,v0), (k1,v1)] |]
+-- > catPairs Encoding [ [|"\"k0\":v0"|], [|"\"k1\":v1"|] ] = [| "\"k0\":v0,\"k1\":v1" |]
+catPairs :: ToJSONFun -> [ExpQ] -> ExpQ
+catPairs Value = listE
+catPairs Encoding = foldr1 (<%>)
 
--- | Generates code to generate the JSON encoding of a single constructor.
-argsToEncoding :: JSONClass -> TyVarMap -> Options -> Bool -> ConstructorInfo -> Q Match
+-- |
+-- - When deriving 'ToJSON', wrap a quoted list of key-value pairs in an 'Object'.
+-- - When deriving 'ToEncoding', wrap a quoted list of encoded key-value pairs
+--   in an encoded 'Object'.
+--
+-- > objectExp Value [| [(k0,v0), (k1,v1)] |] = [| Object (fromList [(k0,v0), (k1,v1)]) |]
+-- > objectExp Encoding [| ["\"k0\":v0", "\"k1\":v1"] |] = [| "{\"k0\":v0,\"k1\":v1}" |]
+objectExp :: ToJSONFun -> ExpQ -> ExpQ
+objectExp target = wrapObject target . catPairsExp target
 
--- Polyadic constructors with special case for unary constructors.
-argsToEncoding jc tvMap opts multiCons
-  ConstructorInfo { constructorName    = conName
-                  , constructorVariant = NormalConstructor
-                  , constructorFields  = argTys } = do
-    argTys' <- mapM resolveTypeSynonyms argTys
-    args <- newNameList "arg" $ length argTys'
-    js <- case zip args argTys' of
-            -- Nullary constructors are converted to an empty array.
-            [] -> return [| E.emptyArray_ |]
+-- | Counterpart of 'catPairsExp' when the list of pairs is already quoted.
+--
+-- > objectExp Value [| [(k0,v0), (k1,v1)] |] = [| [(k0,v0), (k1,v1)] |]
+-- > objectExp Encoding [| ["\"k0\":v0", "\"k1\":v1"] |] = [| "\"k0\":v0,\"k1\":v1" |]
+catPairsExp :: ToJSONFun -> ExpQ -> ExpQ
+catPairsExp Value e = e
+catPairsExp Encoding e = [|commaSep|] `appE` e
 
-            -- Single argument is directly converted.
-            [(e,eTy)] -> return (dispatchToEncoding jc conName tvMap eTy
-                                   `appE` varE e)
-            -- Multiple arguments are converted to a JSON array.
-            es  ->
-              return (array (foldr1 (<%>) [ dispatchToEncoding jc conName tvMap xTy
-                                              `appE` varE x
-                                          | (x,xTy) <- es
-                                          ]))
-    match (conP conName $ map varP args)
-          (normalB $ sumToEncoding opts multiCons (null argTys') conName js)
-          []
+-- | Create (an encoding of) a key-value pair.
+--
+-- > toPair Value "k" [|v|] = [|("k",v)|]  -- The quoted string is actually Text.
+-- > toPair Encoding "k" [|"v"|] = [|"\"k\":v"|]
+toPair :: ToJSONFun -> String -> ExpQ -> ExpQ
+toPair Value k v = infixApp [|T.pack k|] [|(.=)|] v
+toPair Encoding k v = [|E.string k|] <:> v
 
--- Records.
-argsToEncoding jc tvMap opts multiCons
-  info@ConstructorInfo { constructorName    = conName
-                       , constructorVariant = RecordConstructor fields
-                       , constructorFields  = argTys } =
-    case (unwrapUnaryRecords opts, not multiCons, argTys) of
-      (True,True,[_]) -> argsToEncoding jc tvMap opts multiCons
-                                        (info{constructorVariant = NormalConstructor})
-      _ -> do
-        argTys' <- mapM resolveTypeSynonyms argTys
-        args <- newNameList "arg" $ length argTys'
-        let exp = object objBody
+-- | Map an associative list in an 'Object'.
+--
+-- > wrapObject Value [| [(k0,v0), (k1,v1)] |] = [| Object (fromList [(k0,v0), (k1,v1)]) |]
+-- > wrapObject Encoding [| "\"k0\":v0,\"k1\":v1" |] = [| "{\"k0\":v0,\"k1\":v1}" |]
+wrapObject :: ToJSONFun -> ExpQ -> ExpQ
+wrapObject Value e = [|A.object|] `appE` e
+wrapObject Encoding e = [|E.wrapObject|] `appE` e
 
-            objBody = [|E.econcat|] `appE`
-                      ([|intersperse E.comma|] `appE` pairs)
-            pairs | omitNothingFields opts = infixApp maybeFields
-                                                      [|(++)|]
-                                                      restFields
-                  | otherwise = listE (map toPair argCons)
-
-            argCons = zip3 (map varE args) argTys' fields
-
-            maybeFields = [|catMaybes|] `appE` listE (map maybeToPair maybes)
-
-            restFields = listE (map toPair rest)
-
-            (maybes0, rest0) = partition isMaybe argCons
-            (options, rest) = partition isOption rest0
-            maybes = maybes0 ++ map optionToMaybe options
-
-            maybeToPair (arg, argTy, field) =
-                infixApp
-                  (infixApp
-                    (infixE
-                      (Just $ toFieldName field <^> [|E.colon|])
-                      [|(E.><)|]
-                      Nothing)
-                    [|(.)|]
-                    (dispatchToEncoding jc conName tvMap argTy))
-                  [|(<$>)|]
-                  arg
-
-            toPair (arg, argTy, field) =
-              toFieldName field
-                <:> dispatchToEncoding jc conName tvMap argTy
-                      `appE` arg
-
-            toFieldName field = [|E.text|] `appE`
-                                ([|T.pack|] `appE` fieldLabelExp opts field)
-
-        match (conP conName $ map varP args)
-              ( normalB
-              $ if multiCons
-                then case sumEncoding opts of
-                       TwoElemArray -> array $
-                         encStr opts conName <%>  exp
-                       TaggedObject{tagFieldName} -> object $
-                         ([|E.text (T.pack tagFieldName)|] <:>
-                          encStr opts conName) <%>
-                         objBody
-                       ObjectWithSingleField -> object $
-                         encStr opts conName <:> exp
-                       UntaggedValue -> exp
-                else exp
-              ) []
-
--- Infix constructors.
-argsToEncoding jc tvMap opts multiCons
-  ConstructorInfo { constructorName    = conName
-                  , constructorVariant = InfixConstructor
-                  , constructorFields  = argTys } = do
-    al <- newName "argL"
-    ar <- newName "argR"
-    [alTy,arTy] <- mapM resolveTypeSynonyms argTys
-    match (infixP (varP al) conName (varP ar))
-          ( normalB
-          $ sumToEncoding opts multiCons False conName
-          $ array (foldr1 (<%>) [ dispatchToEncoding jc conName tvMap aTy
-                                    `appE` varE a
-                                | (a,aTy) <- [(al,alTy), (ar,arTy)]
-                                ])
-          )
-          []
+-- | Separate 'Encoding's by commas.
+--
+-- > commaSep ["a","b","c"] = "a,b,c"
+commaSep :: [E.Encoding] -> E.Encoding
+commaSep [] = E.empty
+commaSep [x] = x
+commaSep (x : xs) = x E.>< E.comma E.>< commaSep xs
 
 --------------------------------------------------------------------------------
 -- FromJSON
@@ -836,8 +747,7 @@ consFromJSON jc tName opts vars cons = do
                   [ liftM2 (,) (normalG $
                                   infixApp (varE txt)
                                            [|(==)|]
-                                           ([|T.pack|] `appE`
-                                              conStringE opts conName)
+                                           (conTxt opts conName)
                                )
                                ([|pure|] `appE` conE conName)
                   | con <- cons
@@ -929,7 +839,7 @@ consFromJSON jc tName opts vars cons = do
       caseE (varE conVal)
         [ match (conP 'String [varP str])
                 (guardedB
-                  [ liftM2 (,) (normalG $ infixApp (varE str) [|(==)|] ([|T.pack|] `appE` conStringE opts conName)
+                  [ liftM2 (,) (normalG $ infixApp (varE str) [|(==)|] (conTxt opts conName)
                                )
                                ([|pure|] `appE` conE conName)
                   ]
@@ -1073,7 +983,7 @@ parseRecord jc tvMap argTys opts tName conName fields obj =
                `appE` litE (stringL $ show tName)
                `appE` litE (stringL $ constructorTagModifier opts $ nameBase conName)
                `appE` varE obj
-               `appE` ( [|T.pack|] `appE` fieldLabelExp opts field
+               `appE` ( [|T.pack|] `appE` stringE (fieldLabel opts field)
                       )
              | (field, argTy) <- zip fields argTys
              ]
@@ -1258,9 +1168,6 @@ lookupFieldWith pj tName rec obj key =
       Nothing -> unknownFieldFail tName rec (T.unpack key)
       Just v  -> pj v <?> Key key
 
-keyValuePairWith :: (v -> Value) -> T.Text -> v -> Pair
-keyValuePairWith tj name value = (name, tj value)
-
 unknownFieldFail :: String -> String -> String -> Parser fail
 unknownFieldFail tName rec key =
     fail $ printf "When parsing the record %s of type %s the key %s was not present."
@@ -1430,10 +1337,13 @@ dispatchFunByType jc jf conName tvMap list ty = do
                                    (interleave rhsArgs rhsArgs)
             else varE $ jsonFunValOrListName list jf Arity0
 
-dispatchToJSON, dispatchToEncoding, dispatchParseJSON
+dispatchToJSON
+  :: ToJSONFun -> JSONClass -> Name -> TyVarMap -> Type -> Q Exp
+dispatchToJSON target jc n tvMap =
+    dispatchFunByType jc (targetToJSONFun target) n tvMap False
+
+dispatchParseJSON
   :: JSONClass -> Name -> TyVarMap -> Type -> Q Exp
-dispatchToJSON     jc n tvMap = dispatchFunByType jc ToJSON     n tvMap False
-dispatchToEncoding jc n tvMap = dispatchFunByType jc ToEncoding n tvMap False
 dispatchParseJSON  jc n tvMap = dispatchFunByType jc ParseJSON  n tvMap False
 
 --------------------------------------------------------------------------------
@@ -1901,11 +1811,11 @@ conNameExp opts = litE
                 . nameBase
                 . constructorName
 
--- | Creates a string literal expression from a record field label.
-fieldLabelExp :: Options -- ^ Encoding options
-              -> Name
-              -> Q Exp
-fieldLabelExp opts = litE . stringL . fieldLabelModifier opts . nameBase
+-- | Extracts a record field label.
+fieldLabel :: Options -- ^ Encoding options
+           -> Name
+           -> String
+fieldLabel opts = fieldLabelModifier opts . nameBase
 
 -- | The name of the outermost 'Value' constructor.
 valueConName :: Value -> String
@@ -2037,6 +1947,13 @@ data Direction = To | From
 
 -- | A representation of which typeclass method is being spliced in.
 data JSONFun = ToJSON | ToEncoding | ParseJSON
+
+-- | A refinement of JSONFun to [ToJSON, ToEncoding].
+data ToJSONFun = Value | Encoding
+
+targetToJSONFun :: ToJSONFun -> JSONFun
+targetToJSONFun Value = ToJSON
+targetToJSONFun Encoding = ToEncoding
 
 -- | A representation of which typeclass is being derived.
 data JSONClass = JSONClass { direction :: Direction, arity :: Arity }
