@@ -170,6 +170,7 @@ unescapeText' bs = runText $ \done -> do
         (st', p) ->
             return (pos, StateUtf st' p)
 
+      loop :: A.MArray s -> (Int, State) -> Int -> ST s (Int, State)
       loop _ ps i | i >= len = return ps
       loop dest ps i = do
         let c = B.index bs i -- JP: We can use unsafe index once we prove bounds with Liquid Haskell.
