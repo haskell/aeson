@@ -120,10 +120,11 @@ import Prelude ()
 import Prelude.Compat hiding (exp)
 
 import Control.Applicative ((<|>))
-import Data.Aeson (Object, (.=), (.:), FromJSON(..), FromJSON1(..), FromJSON2(..), ToJSON(..), ToJSON1(..), ToJSON2(..))
+import Data.Aeson (Object, (.:), FromJSON(..), FromJSON1(..), FromJSON2(..), ToJSON(..), ToJSON1(..), ToJSON2(..))
 import Data.Aeson.Types (Options(..), Parser, SumEncoding(..), Value(..), defaultOptions, defaultTaggedObject)
 import Data.Aeson.Types.Internal ((<?>), JSONPathElement(Key))
 import Data.Aeson.Types.FromJSON (parseOptionalFieldWith)
+import Data.Aeson.Types.ToJSON (fromPairs, pair)
 import Control.Monad (liftM2, unless, when)
 import Data.Foldable (foldr')
 #if MIN_VERSION_template_haskell(2,8,0) && !MIN_VERSION_template_haskell(2,10,0)
@@ -133,6 +134,7 @@ import Data.List (foldl', genericLength, intercalate, partition, union)
 import Data.List.NonEmpty ((<|), NonEmpty((:|)))
 import Data.Map (Map)
 import Data.Maybe (catMaybes, fromMaybe, mapMaybe)
+import qualified Data.Monoid as Monoid
 import Data.Set (Set)
 #if MIN_VERSION_template_haskell(2,8,0)
 import Language.Haskell.TH hiding (Arity)
@@ -147,7 +149,6 @@ import Language.Haskell.TH.Lib (starK)
 import Language.Haskell.TH.Syntax (mkNameG_tc)
 #endif
 import Text.Printf (printf)
-import qualified Data.Aeson as A
 import qualified Data.Aeson.Encoding.Internal as E
 import qualified Data.Foldable as F (all)
 import qualified Data.HashMap.Strict as H (lookup, toList)
@@ -382,13 +383,13 @@ opaqueSumToValue target opts multiCons nullary conName value =
     value
     pairs
   where
-    pairs contentsFieldName = listE [toPair target contentsFieldName value]
+    pairs contentsFieldName = pairE contentsFieldName value
 
 -- | Wrap fields of a record constructor. See 'sumToValue'.
 recordSumToValue :: ToJSONFun -> Options -> Bool -> Bool -> Name -> ExpQ -> ExpQ
 recordSumToValue target opts multiCons nullary conName pairs =
   sumToValue target opts multiCons nullary conName
-    (objectExp target pairs)
+    (fromPairsE pairs)
     (const pairs)
 
 -- | Wrap fields of a constructor.
@@ -423,12 +424,12 @@ sumToValue target opts multiCons nullary conName value pairs
           TaggedObject{tagFieldName, contentsFieldName} ->
             -- TODO: Maybe throw an error in case
             -- tagFieldName overwrites a field in pairs.
-            let tag = toPair target tagFieldName (conStr target opts conName)
+            let tag = pairE tagFieldName (conStr target opts conName)
                 content = pairs contentsFieldName
-            in objectExp target $
-              if nullary then listE [tag] else infixApp tag [|(:)|] content
+            in fromPairsE $
+              if nullary then tag else infixApp tag [|(Monoid.<>)|] content
           ObjectWithSingleField ->
-            object target [(conString opts conName, value)]
+            objectE [(conString opts conName, value)]
           UntaggedValue | nullary -> conStr target opts conName
           UntaggedValue -> value
     | otherwise = value
@@ -469,15 +470,15 @@ argsToValue target jc tvMap opts multiCons
         argTys' <- mapM resolveTypeSynonyms argTys
         args <- newNameList "arg" $ length argTys'
         let pairs | omitNothingFields opts = infixApp maybeFields
-                                                      [|(++)|]
+                                                      [|(Monoid.<>)|]
                                                       restFields
-                  | otherwise = listE $ map pureToPair argCons
+                  | otherwise = mconcatE (map pureToPair argCons)
 
             argCons = zip3 (map varE args) argTys' fields
 
-            maybeFields = [|catMaybes|] `appE` listE (map maybeToPair maybes)
+            maybeFields = mconcatE (map maybeToPair maybes)
 
-            restFields = listE $ map pureToPair rest
+            restFields = mconcatE (map pureToPair rest)
 
             (maybes0, rest0) = partition isMaybe argCons
             (options, rest) = partition isOption rest0
@@ -489,11 +490,11 @@ argsToValue target jc tvMap opts multiCons
             toPairLifted lifted (arg, argTy, field) =
               let toValue = dispatchToJSON target jc conName tvMap argTy
                   fieldName = fieldLabel opts field
-                  e arg' = toPair target fieldName (toValue `appE` arg')
+                  e arg' = pairE fieldName (toValue `appE` arg')
               in if lifted
                 then do
                   x <- newName "x"
-                  infixApp (lam1E (varP x) (e (varE x))) [|(<$>)|] arg
+                  [|maybe mempty|] `appE` lam1E (varP x) (e (varE x)) `appE` arg
                 else e arg
 
         match (conP conName $ map varP args)
@@ -534,10 +535,6 @@ optionToMaybe (a, b, c) = ([|Semigroup.getOption|] `appE` a, b, c)
 (<^>) a b = infixApp a [|(E.><)|] b
 infixr 6 <^>
 
-(<:>) :: ExpQ -> ExpQ -> ExpQ
-(<:>) a b = a <^> [|E.colon|] <^> b
-infixr 5 <:>
-
 (<%>) :: ExpQ -> ExpQ -> ExpQ
 (<%>) a b = a <^> [|E.comma|] <^> b
 infixr 4 <%>
@@ -565,62 +562,25 @@ array Value es = do
                doE (newMV:stmts++[ret]))
 
 -- | Wrap an associative list of keys and quoted values in a quoted 'Object'.
-object :: ToJSONFun -> [(String, ExpQ)] -> ExpQ
-object target = wrapObject target . catPairs target . fmap (uncurry (toPair target))
+objectE :: [(String, ExpQ)] -> ExpQ
+objectE = fromPairsE . mconcatE . fmap (uncurry pairE)
 
--- |
--- - When deriving 'ToJSON', map a list of quoted key-value pairs to an
---   expression of the list of pairs.
--- - When deriving 'ToEncoding', map a list of quoted 'Encoding's representing
---   key-value pairs to a comma-separated 'Encoding' of them.
+-- | 'mconcat' a list of fixed length.
 --
--- > catPairs Value [ [|(k0,v0)|], [|(k1,v1)|] ] = [| [(k0,v0), (k1,v1)] |]
--- > catPairs Encoding [ [|"\"k0\":v0"|], [|"\"k1\":v1"|] ] = [| "\"k0\":v0,\"k1\":v1" |]
-catPairs :: ToJSONFun -> [ExpQ] -> ExpQ
-catPairs Value = listE
-catPairs Encoding = foldr1 (<%>)
+-- > mconcatE [ [|x|], [|y|], [|z|] ] = [| x <> (y <> z) |]
+mconcatE :: [ExpQ] -> ExpQ
+mconcatE [] = [|Monoid.mempty|]
+mconcatE [x] = x
+mconcatE (x : xs) = infixApp x [|(Monoid.<>)|] (mconcatE xs)
 
--- |
--- - When deriving 'ToJSON', wrap a quoted list of key-value pairs in an 'Object'.
--- - When deriving 'ToEncoding', wrap a quoted list of encoded key-value pairs
---   in an encoded 'Object'.
---
--- > objectExp Value [| [(k0,v0), (k1,v1)] |] = [| Object (fromList [(k0,v0), (k1,v1)]) |]
--- > objectExp Encoding [| ["\"k0\":v0", "\"k1\":v1"] |] = [| "{\"k0\":v0,\"k1\":v1}" |]
-objectExp :: ToJSONFun -> ExpQ -> ExpQ
-objectExp target = wrapObject target . catPairsExp target
-
--- | Counterpart of 'catPairsExp' when the list of pairs is already quoted.
---
--- > objectExp Value [| [(k0,v0), (k1,v1)] |] = [| [(k0,v0), (k1,v1)] |]
--- > objectExp Encoding [| ["\"k0\":v0", "\"k1\":v1"] |] = [| "\"k0\":v0,\"k1\":v1" |]
-catPairsExp :: ToJSONFun -> ExpQ -> ExpQ
-catPairsExp Value e = e
-catPairsExp Encoding e = [|commaSep|] `appE` e
+fromPairsE :: ExpQ -> ExpQ
+fromPairsE = ([|fromPairs|] `appE`)
 
 -- | Create (an encoding of) a key-value pair.
 --
--- > toPair Value "k" [|v|] = [|("k",v)|]  -- The quoted string is actually Text.
--- > toPair Encoding "k" [|"v"|] = [|"\"k\":v"|]
-toPair :: ToJSONFun -> String -> ExpQ -> ExpQ
-toPair Value k v = infixApp [|T.pack k|] [|(.=)|] v
-toPair Encoding k v = [|E.string k|] <:> v
-
--- | Map an associative list in an 'Object'.
---
--- > wrapObject Value [| [(k0,v0), (k1,v1)] |] = [| Object (fromList [(k0,v0), (k1,v1)]) |]
--- > wrapObject Encoding [| "\"k0\":v0,\"k1\":v1" |] = [| "{\"k0\":v0,\"k1\":v1}" |]
-wrapObject :: ToJSONFun -> ExpQ -> ExpQ
-wrapObject Value e = [|A.object|] `appE` e
-wrapObject Encoding e = [|E.wrapObject|] `appE` e
-
--- | Separate 'Encoding's by commas.
---
--- > commaSep ["a","b","c"] = "a,b,c"
-commaSep :: [E.Encoding] -> E.Encoding
-commaSep [] = E.empty
-commaSep [x] = x
-commaSep (x : xs) = x E.>< E.comma E.>< commaSep xs
+-- > pairE "k" [|v|] = [|pair "k" v|]
+pairE :: String -> ExpQ -> ExpQ
+pairE k v = [|pair k|] `appE` v
 
 --------------------------------------------------------------------------------
 -- FromJSON
