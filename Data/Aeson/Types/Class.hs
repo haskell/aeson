@@ -73,6 +73,7 @@ module Data.Aeson.Types.Class
     , withNumber
     , withScientific
     , withBool
+    , withEmbeddedJSON
 
     -- * Functions
     , fromJSON
