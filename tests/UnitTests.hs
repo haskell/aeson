@@ -16,13 +16,14 @@ module UnitTests
     (
       ioTests
     , tests
+    , withEmbeddedJSONTest
     ) where
 
 import Prelude ()
 import Prelude.Compat
 
 import Control.Monad (forM, forM_)
-import Data.Aeson ((.=), (.:), (.:?), (.:!), FromJSON(..), FromJSONKeyFunction(..), FromJSONKey(..), ToJSON1(..), decode, eitherDecode, encode, fromJSON, genericParseJSON, genericToEncoding, genericToJSON, object, withObject)
+import Data.Aeson ((.=), (.:), (.:?), (.:!), FromJSON(..), FromJSONKeyFunction(..), FromJSONKey(..), ToJSON1(..), decode, eitherDecode, encode, fromJSON, genericParseJSON, genericToEncoding, genericToJSON, object, withObject, withEmbeddedJSON)
 import Data.Aeson.Internal (JSONPathElement(..), formatError)
 import Data.Aeson.TH (deriveJSON, deriveToJSON, deriveToJSON1)
 import Data.Aeson.Text (encodeToTextBuilder)
@@ -97,6 +98,7 @@ tests = testGroup "unit" [
   , testCase "Unescape string (PR #477)" unescapeString
   , testCase "Show Options" showOptions
   , testGroup "SingleMaybeField" singleMaybeField
+  , testCase "withEmbeddedJSON" withEmbeddedJSONTest
   ]
 
 roundTripCamel :: String -> Assertion
@@ -518,6 +520,19 @@ singleMaybeField = do
   where
     v = SingleMaybeField Nothing
     opts = defaultOptions{omitNothingFields=True,unwrapUnaryRecords=True}
+
+
+newtype EmbeddedJSONTest = EmbeddedJSONTest Int
+  deriving (Eq, Show)
+
+instance FromJSON EmbeddedJSONTest where
+  parseJSON =
+    withObject "Object" $ \o ->
+      EmbeddedJSONTest <$> (o .: "prop" >>= withEmbeddedJSON "Quoted Int" parseJSON)
+
+withEmbeddedJSONTest :: Assertion
+withEmbeddedJSONTest =
+  assertEqual "Unquote embedded JSON" (Right $ EmbeddedJSONTest 1) (eitherDecode "{\"prop\":\"1\"}")
 
 deriveJSON defaultOptions{omitNothingFields=True} ''MyRecord
 

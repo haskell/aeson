@@ -111,6 +111,7 @@ module Data.Aeson
     , withNumber
     , withScientific
     , withBool
+    , withEmbeddedJSON
     -- * Constructors and accessors
     , Series
     , pairs

@@ -55,6 +55,7 @@ module Data.Aeson.Types.FromJSON
     , withNumber
     , withScientific
     , withBool
+    , withEmbeddedJSON
 
     -- * Functions
     , fromJSON
@@ -82,6 +83,7 @@ import Prelude.Compat
 import Control.Applicative ((<|>), Const(..))
 import Control.Monad ((<=<), zipWithM)
 import Data.Aeson.Internal.Functions (mapKey)
+import Data.Aeson.Parser.Internal (eitherDecodeWith, jsonEOF)
 import Data.Aeson.Types.Generic
 import Data.Aeson.Types.Internal
 import Data.Attoparsec.Number (Number(..))
@@ -114,6 +116,7 @@ import GHC.Generics
 import Numeric.Natural (Natural)
 import Text.ParserCombinators.ReadP (readP_to_S)
 import Unsafe.Coerce (unsafeCoerce)
+import qualified Data.Aeson.Compat as Compat
 import qualified Data.Aeson.Parser.Time as Time
 import qualified Data.Attoparsec.ByteString.Char8 as A (endOfInput, parseOnly, scientific)
 import qualified Data.DList as DList
@@ -664,6 +667,16 @@ withBool :: String -> (Bool -> Parser a) -> Value -> Parser a
 withBool _        f (Bool arr) = f arr
 withBool expected _ v          = typeMismatch expected v
 {-# INLINE withBool #-}
+
+-- | Decode a nested JSON-encoded string.
+withEmbeddedJSON :: (FromJSON a) => String -> (Value -> Parser a) -> Value -> Parser a
+withEmbeddedJSON _ innerParser (String txt) =
+    either fail innerParser $ eitherDecode (Compat.fromStrict $ T.encodeUtf8 txt)
+    where
+        eitherDecode = eitherFormatError . eitherDecodeWith jsonEOF ifromJSON
+        eitherFormatError = either (Left . uncurry formatError) Right
+withEmbeddedJSON name _ v = typeMismatch name v
+{-# INLINE withEmbeddedJSON #-}
 
 -- | Convert a value from JSON, failing if the types do not match.
 fromJSON :: (FromJSON a) => Value -> Result a

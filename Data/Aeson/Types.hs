@@ -84,6 +84,7 @@ module Data.Aeson.Types
     , withNumber
     , withScientific
     , withBool
+    , withEmbeddedJSON
 
     , pairs
     , foldable
