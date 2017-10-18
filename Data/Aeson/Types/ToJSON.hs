@@ -50,6 +50,8 @@ module Data.Aeson.Types.ToJSON
     , contramapToJSONKeyFunction
     -- * Object key-value pairs
     , KeyValue(..)
+    , KeyValuePair(..)
+    , FromPairs(..)
     -- * Functions needed for documentation
     -- * Encoding functions
     , listEncoding
@@ -853,14 +855,14 @@ instance ( IsRecord                      a isRecord
          , TaggedObject' enc pairs arity a isRecord
          , FromPairs enc pairs
          , FromString enc
-         , GKeyValue enc pairs
+         , KeyValuePair enc pairs
          , Constructor c
          ) => TaggedObject enc arity (C1 c a)
   where
     taggedObject opts targs tagFieldName contentsFieldName =
       fromPairs . (tag <>) . contents
       where
-        tag = tagFieldName `gPair`
+        tag = tagFieldName `pair`
           (fromString (constructorTagModifier opts (conName (undefined :: t c a p)))
             :: enc)
         contents =
@@ -872,11 +874,11 @@ class TaggedObject' enc pairs arity f isRecord where
                   -> String -> f a -> Tagged isRecord pairs
 
 instance ( GToJSON enc arity f
-         , GKeyValue enc pairs
+         , KeyValuePair enc pairs
          ) => TaggedObject' enc pairs arity f False
   where
     taggedObject' opts targs contentsFieldName =
-        Tagged . (contentsFieldName `gPair`) . gToJSON opts targs
+        Tagged . (contentsFieldName `pair`) . gToJSON opts targs
 
 instance OVERLAPPING_ Monoid pairs => TaggedObject' enc pairs arity U1 False where
     taggedObject' _ _ _ _ = Tagged mempty
@@ -1005,7 +1007,7 @@ instance ( Monoid pairs
 
 instance ( Selector s
          , GToJSON enc arity a
-         , GKeyValue enc pairs
+         , KeyValuePair enc pairs
          ) => RecordToPairs enc pairs arity (S1 s a)
   where
     recordToPairs = fieldToPair
@@ -1014,7 +1016,7 @@ instance ( Selector s
 instance INCOHERENT_
     ( Selector s
     , GToJSON enc arity (K1 i (Maybe a))
-    , GKeyValue enc pairs
+    , KeyValuePair enc pairs
     , Monoid pairs
     ) => RecordToPairs enc pairs arity (S1 s (K1 i (Maybe a)))
   where
@@ -1026,7 +1028,7 @@ instance INCOHERENT_
 instance INCOHERENT_
     ( Selector s
     , GToJSON enc arity (K1 i (Maybe a))
-    , GKeyValue enc pairs
+    , KeyValuePair enc pairs
     , Monoid pairs
     ) => RecordToPairs enc pairs arity (S1 s (K1 i (Semigroup.Option a)))
   where
@@ -1038,13 +1040,13 @@ instance INCOHERENT_
 
 fieldToPair :: (Selector s
                , GToJSON enc arity a
-               , GKeyValue enc pairs)
+               , KeyValuePair enc pairs)
             => Options -> ToArgs enc arity p
             -> S1 s a p -> pairs
 fieldToPair opts targs m1 =
   let key   = fieldLabelModifier opts (selName m1)
       value = gToJSON opts targs (unM1 m1)
-  in key `gPair` value
+  in key `pair` value
 {-# INLINE fieldToPair #-}
 
 --------------------------------------------------------------------------------
@@ -1098,12 +1100,12 @@ instance OVERLAPPABLE_ (GToJSON Encoding arity a) => EncodeProduct arity a where
 instance ( GToJSON    enc arity a
          , ConsToJSON enc arity a
          , FromPairs  enc pairs
-         , GKeyValue  enc pairs
+         , KeyValuePair  enc pairs
          , Constructor c
          ) => SumToJSON' ObjectWithSingleField enc arity (C1 c a)
   where
     sumToJSON' opts targs =
-      Tagged . fromPairs . (typ `gPair`) . gToJSON opts targs
+      Tagged . fromPairs . (typ `pair`) . gToJSON opts targs
         where
           typ = constructorTagModifier opts $
                          conName (undefined :: t c a p)
@@ -2716,20 +2718,24 @@ packChunks lbs =
 
 --------------------------------------------------------------------------------
 
+-- | Wrap a list of pairs as an object.
 class Monoid pairs => FromPairs enc pairs | enc -> pairs where
   fromPairs :: pairs -> enc
 
-instance FromPairs Encoding Series where
+instance (a ~ Value) => FromPairs (Encoding' a) Series where
   fromPairs = E.pairs
 
 instance FromPairs Value (DList Pair) where
   fromPairs = object . toList
 
-class Monoid kv => GKeyValue v kv where
-    gPair :: String -> v -> kv
+-- | Like 'KeyValue' but the value is already converted to JSON
+-- ('Value' or 'Encoding'), and the result actually represents lists of pairs
+-- so it can be readily concatenated.
+class Monoid kv => KeyValuePair v kv where
+    pair :: String -> v -> kv
 
-instance ToJSON v => GKeyValue v (DList Pair) where
-    gPair k v = DList.singleton (pack k .= v)
+instance (v ~ Value) => KeyValuePair v (DList Pair) where
+    pair k v = DList.singleton (pack k .= v)
 
-instance GKeyValue Encoding Series where
-    gPair = E.pairStr
+instance (e ~ Encoding) => KeyValuePair e Series where
+    pair = E.pairStr
