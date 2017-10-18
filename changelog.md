@@ -1,5 +1,12 @@
 For the latest version of this document, please see [https://github.com/bos/aeson/blob/master/changelog.md](https://github.com/bos/aeson/blob/master/changelog.md).
 
+### 1.2.3.0
+
+* Added `withEmbeddedJSON` to help parse JSON embedded inside a JSON string, thanks to Jesse Kempf.
+* Memory usage improvements to the default (pure) parser, thanks to Jonathan Paugh. Also thanks to Neil Mitchell & Oleg Grenrus for contributing a benchmark.
+* `omitNothingFields` now works for the `Option` newtype, thanks to Xia Li-yao.
+* Some documentation fixes, thanks to Jonathan Paug & Philippe Crama.
+
 ### 1.2.2.0
 
 * Add `FromJSON` and `ToJSON` instances for
