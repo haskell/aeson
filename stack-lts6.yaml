@@ -1,4 +1,4 @@
-resolver: lts-6.30
+resolver: lts-6.35
 packages:
 - '.'
 - attoparsec-iso8601

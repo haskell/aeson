@@ -19,18 +19,18 @@ before_cache:
 
 matrix:
   include:
-    - env: BUILD=hlint CABALVER=1.24 GHCVER=8.0.2
+    - env: BUILD=hlint CABALVER=2.0 GHCVER=8.2.1
+      compiler: ": #GHC 8.2.1"
+      addons: {apt: {packages: [cabal-install-2.0,ghc-8.2.1], sources: [hvr-ghc]}}
+    - env: BUILD=stack CABALVER=2.0 GHCVER=8.2.1 STACK_YAML=stack-bench.yaml
+      compiler: ": #GHC 8.2.1"
+      addons: {apt: {packages: [cabal-install-2.0,ghc-8.2.1], sources: [hvr-ghc]}}
+    - env: BUILD=stack CABALVER=2.0 GHCVER=8.2.1 STACK_YAML=stack-ffi-unescape.yaml
+      compiler: ": #GHC 8.2.1"
+      addons: {apt: {packages: [cabal-install-2.0,ghc-8.0.2], sources: [hvr-ghc]}}
+    - env: BUILD=cabal CABALVER=2.0 GHCVER=8.0.2
       compiler: ": #GHC 8.0.2"
-      addons: {apt: {packages: [cabal-install-1.24,ghc-8.0.2], sources: [hvr-ghc]}}
-    - env: BUILD=stack CABALVER=1.24 GHCVER=8.0.2 STACK_YAML=stack-bench.yaml
-      compiler: ": #GHC 8.0.2"
-      addons: {apt: {packages: [cabal-install-1.24,ghc-8.0.2], sources: [hvr-ghc]}}
-    - env: BUILD=stack CABALVER=1.24 GHCVER=8.0.2 STACK_YAML=stack-ffi-unescape.yaml
-      compiler: ": #GHC 8.0.2"
-      addons: {apt: {packages: [cabal-install-1.24,ghc-8.0.2], sources: [hvr-ghc]}}
-    - env: BUILD=cabal CABALVER=1.24 GHCVER=8.0.2
-      compiler: ": #GHC 8.0.2"
-      addons: {apt: {packages: [cabal-install-1.24,ghc-8.0.2], sources: [hvr-ghc]}}
+      addons: {apt: {packages: [cabal-install-2.0,ghc-8.0.2], sources: [hvr-ghc]}}
     - env: BUILD=cabal CABALVER=1.18 GHCVER=7.4.2
       compiler: ": #GHC 7.4.2"
       addons: {apt: {packages: [cabal-install-1.18,ghc-7.4.2], sources: [hvr-ghc]}}

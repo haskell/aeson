@@ -1,8 +1,7 @@
 name:                aeson-benchmarks
 version:             0
 build-type:          Simple
-
-cabal-version:       >=1.8
+cabal-version:       >=1.10
 
 flag bytestring-builder
   description: Depend on the bytestring-builder package for backwards compatibility.
@@ -15,6 +14,7 @@ library
   c-sources:  ../cbits/unescape_string.c
   exposed-modules:
     Data.Aeson
+    Data.Aeson.Compat
     Data.Aeson.Encoding
     Data.Aeson.Encoding.Builder
     Data.Aeson.Encoding.Internal
@@ -81,6 +81,7 @@ library
   cpp-options: -DGENERICS
 
 executable aeson-benchmark-escape
+  default-language: Haskell2010
   main-is: Escape.hs
   hs-source-dirs: ../examples .
   ghc-options: -Wall -O2 -rtsopts
@@ -95,6 +96,7 @@ executable aeson-benchmark-escape
     text
 
 executable aeson-benchmark-compare
+  default-language: Haskell2010
   main-is: Compare.hs
   hs-source-dirs: ../examples .
   ghc-options: -Wall -O2 -rtsopts
@@ -118,6 +120,7 @@ executable aeson-benchmark-compare
     text
 
 executable aeson-benchmark-micro
+  default-language: Haskell2010
   main-is: Micro.hs
   hs-source-dirs: ../examples .
   ghc-options: -Wall -O2 -rtsopts
@@ -132,6 +135,7 @@ executable aeson-benchmark-micro
     text
 
 executable aeson-benchmark-typed
+  default-language: Haskell2010
   main-is: Typed.hs
   hs-source-dirs: ../examples .
   ghc-options: -Wall -O2 -rtsopts
@@ -166,6 +170,7 @@ executable aeson-benchmark-typed
     build-depends: bytestring >= 0.10.4
 
 executable aeson-benchmark-compare-with-json
+  default-language: Haskell2010
   main-is: CompareWithJSON.hs
   ghc-options: -Wall -O2 -rtsopts
   cpp-options: -DHAS_BOTH_AESON_AND_BENCHMARKS
@@ -182,6 +187,7 @@ executable aeson-benchmark-compare-with-json
     text
 
 executable aeson-benchmark-aeson-encode
+  default-language: Haskell2010
   main-is: AesonEncode.hs
   ghc-options: -Wall -O2 -rtsopts
   build-depends:
@@ -194,6 +200,7 @@ executable aeson-benchmark-aeson-encode
     time
 
 executable aeson-benchmark-aeson-parse
+  default-language: Haskell2010
   main-is: AesonParse.hs
   ghc-options: -Wall -O2 -rtsopts
   build-depends:
@@ -205,6 +212,7 @@ executable aeson-benchmark-aeson-parse
     time
 
 executable aeson-benchmark-json-parse
+  default-language: Haskell2010
   main-is: JsonParse.hs
   ghc-options: -Wall -O2 -rtsopts
   build-depends:
@@ -215,6 +223,7 @@ executable aeson-benchmark-json-parse
     time
 
 executable aeson-benchmark-dates
+  default-language: Haskell2010
   main-is: Dates.hs
   ghc-options: -Wall -O2 -rtsopts
   build-depends:
@@ -228,6 +237,7 @@ executable aeson-benchmark-dates
     time
 
 executable aeson-benchmark-map
+  default-language: Haskell2010
   main-is: AesonMap.hs
   ghc-options: -Wall -O2 -rtsopts
   build-depends:
@@ -245,6 +255,7 @@ executable aeson-benchmark-map
     unordered-containers
 
 executable aeson-benchmark-foldable
+  default-language: Haskell2010
   main-is: AesonFoldable.hs
   ghc-options: -Wall -O2 -rtsopts
   build-depends:

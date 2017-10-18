@@ -11,9 +11,7 @@ import Data.Aeson
 import Data.Aeson.Types
 #else
 import "aeson" Data.Aeson
-import "aeson" Data.Aeson.Types
 import qualified "aeson-benchmarks" Data.Aeson as B
-import qualified "aeson-benchmarks" Data.Aeson.Types as B
 #endif
 
 twitterOptions :: Options

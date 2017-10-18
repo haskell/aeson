@@ -1,4 +1,4 @@
-resolver: lts-7.19
+resolver: lts-7.24
 packages:
 - '.'
 - attoparsec-iso8601
