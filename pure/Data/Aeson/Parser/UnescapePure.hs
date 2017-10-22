@@ -120,29 +120,11 @@ decode UtfTail1 point word = case word of
     _                          -> throwDecodeError
 
 decodeHex :: Word8 -> Word16
-decodeHex 48  = 0  -- '0'
-decodeHex 49  = 1  -- '1'
-decodeHex 50  = 2  -- '2'
-decodeHex 51  = 3  -- '3'
-decodeHex 52  = 4  -- '4'
-decodeHex 53  = 5  -- '5'
-decodeHex 54  = 6  -- '6'
-decodeHex 55  = 7  -- '7'
-decodeHex 56  = 8  -- '8'
-decodeHex 57  = 9  -- '9'
-decodeHex 65  = 10 -- 'A'
-decodeHex 97  = 10 -- 'a'
-decodeHex 66  = 11 -- 'B'
-decodeHex 98  = 11 -- 'b'
-decodeHex 67  = 12 -- 'C'
-decodeHex 99  = 12 -- 'c'
-decodeHex 68  = 13 -- 'D'
-decodeHex 100 = 13 -- 'd'
-decodeHex 69  = 14 -- 'E'
-decodeHex 101 = 14 -- 'e'
-decodeHex 70  = 15 -- 'F'
-decodeHex 102 = 15 -- 'f'
-decodeHex _ = throwDecodeError
+decodeHex x
+  | 48 <= x && x <=  57 = fromIntegral x - 48  -- 0-9
+  | 65 <= x && x <=  70 = fromIntegral x - 55  -- A-F
+  | 97 <= x && x <= 102 = fromIntegral x - 87  -- a-f
+  | otherwise = throwDecodeError
 
 unescapeText' :: ByteString -> Text
 unescapeText' bs = runText $ \done -> do
