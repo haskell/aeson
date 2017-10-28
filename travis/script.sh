@@ -21,7 +21,6 @@ case $BUILD in
     ;;
   hlint)
     stack build --fast aeson --stack-yaml stack-nightly.yaml --system-ghc --no-terminal
-    stack install hlint --stack-yaml stack-nightly.yaml --system-ghc --no-terminal
     make lint
     ;;
 esac

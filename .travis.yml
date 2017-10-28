@@ -1,6 +1,6 @@
 # This file has been modified from generated version
 # see https://github.com/hvr/multi-ghc-travis
-language: c
+language: nix
 sudo: false
 
 # Bryan threatens to turn off Travis-CI if he gets any email :-)
