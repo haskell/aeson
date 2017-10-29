@@ -196,6 +196,7 @@ test-suite tests
     SerializationFormatSpec
     Types
     UnitTests
+    UnitTests.AccErrors
     UnitTests.NullaryConstructors
 
   build-depends:

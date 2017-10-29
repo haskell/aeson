@@ -25,8 +25,12 @@
 
 module Data.Aeson.Types.Internal
     (
+      accumulateSequenceList
+    , accumulateTraverseList
+    , accumulateTraverseVector
+
     -- * Core JSON types
-      Value(..)
+    , Value(..)
     , Array
     , emptyArray, isEmptyArray
     , Pair
@@ -348,6 +352,20 @@ liftP2 f pa pb = Parser $ \path kf ks ->
     (\(e :| es) -> kf (e :| es ++ runParser pb path NonEmpty.toList (const [])))
     (\a -> runParser pb path kf (\b -> ks (f a b)))
 {-# INLINE liftP2 #-}
+
+accumulateSequenceList :: [Parser a] -> Parser [a]
+accumulateSequenceList = accumulateTraverseList id
+
+accumulateTraverseList :: (a -> Parser b) -> [a] -> Parser [b]
+accumulateTraverseList f s = case s of
+  []    -> pure mempty
+  h : t -> (:) <$> (f h) <*>+ (accumulateTraverseList f t)
+
+accumulateTraverseVector :: (a -> Parser b) -> Vector a -> Parser (Vector b)
+accumulateTraverseVector f v =
+    if V.null v
+        then pure mempty
+        else V.cons <$> (f $ V.head v) <*>+ (accumulateTraverseVector f $ V.tail v)
 
 infixl 4 <*>+
 
