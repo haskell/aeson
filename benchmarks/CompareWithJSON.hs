@@ -14,7 +14,9 @@ import Data.Maybe (fromMaybe)
 import qualified "aeson-benchmarks" Data.Aeson as A
 import qualified "aeson-benchmarks" Data.Aeson.Text as A
 import qualified "aeson-benchmarks" Data.Aeson.Parser.Internal as I
+import qualified "aeson-benchmarks" Data.Aeson.Stream as S
 import qualified "aeson" Data.Aeson as B
+import qualified Data.JsonStream.Parser as JS
 import qualified Data.ByteString as BS
 import qualified Data.ByteString.Lazy as BL
 import qualified Data.Text.Lazy          as TL
@@ -58,6 +60,12 @@ decodeIP :: BL.ByteString -> A.Value
 decodeIP s = fromMaybe (error "fail to parse via Parser.decodeWith") $
     I.decodeWith I.jsonEOF A.fromJSON s
 
+decodeIS :: BL.ByteString -> A.Value
+decodeIS s = either error id $ S.decodeValue s
+
+decodeJS :: BL.ByteString -> B.Value
+decodeJS s = fromMaybe (error "fail to parse via json-stream") $ JS.decode s
+
 encodeJ :: J.JSValue -> BL.ByteString
 encodeJ = toLazyByteString . fromString . J.encode
 
@@ -86,6 +94,8 @@ main = do
         , bench "aeson/hackage"  $ nf decodeB enA
         , bench "aeson/hackage'" $ nf decodeBS enS
         , bench "aeson/parser"   $ nf decodeIP enA
+        , bench "aeson/stream"   $ nf decodeIS enA
+        , bench "json-stream"    $ nf decodeJS enA
         , bench "json"           $ nf decodeJ enJ
         ]
       , bgroup "jp" [
