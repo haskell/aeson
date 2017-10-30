@@ -47,6 +47,12 @@ decodeDirectA = decode
 decodeDirectB :: L.ByteString -> Maybe Result
 decodeDirectB = B.decode
 
+decodeObjectB :: L.ByteString -> Maybe Result
+-- decodeObjectB = fmap R . B.decode
+decodeObjectB b = case  B.eitherDecode b of
+    Right (R r) -> Just r
+    Left err    -> error err
+
 decodeBenchmarks :: Benchmark
 decodeBenchmarks =
   env ((,) <$> L.readFile "json-data/twitter100.json" <*> L.readFile "json-data/jp100.json") $ \ ~(twitter100, jp100) ->
@@ -56,5 +62,9 @@ decodeBenchmarks =
       , bench "jp100"               $ nf decodeDirectB jp100
       , bench "twitter100 baseline"  $ nf decodeDirectA twitter100
       , bench "jp100 baseline"      $ nf decodeDirectA jp100
+      ]
+    , bgroup "object-parser"
+      [ bench "twitter100"          $ nf decodeObjectB twitter100
+      , bench "jp100"               $ nf decodeObjectB jp100
       ]
     ]

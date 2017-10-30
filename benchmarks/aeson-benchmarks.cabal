@@ -34,6 +34,7 @@ library
     Data.Aeson.Types.FromJSON
     Data.Aeson.Types.Generic
     Data.Aeson.Types.Internal
+    Data.Aeson.Types.ObjectParser
     Data.Aeson.Types.ToJSON
     Data.Attoparsec.Time
     Data.Attoparsec.Time.Internal
@@ -161,7 +162,8 @@ executable aeson-benchmark-typed
     deepseq,
     ghc-prim,
     text,
-    time
+    time,
+    unordered-containers
 
   if flag(bytestring-builder)
     build-depends: bytestring >= 0.9 && < 0.10.4,
