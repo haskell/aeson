@@ -80,6 +80,28 @@ library
   ghc-options: -O2 -Wall
   cpp-options: -DGENERICS
 
+executable aeson-benchmark-auto-compare
+  default-language: Haskell2010
+  main-is: AutoCompare.hs
+  hs-source-dirs: .
+  ghc-options: -Wall -O2 -rtsopts
+  other-modules:
+    Auto.T.D
+    Auto.T.BigRecord
+    Auto.T.BigProduct
+    Auto.T.BigSum
+    Auto.G.D
+    Auto.G.BigRecord
+    Auto.G.BigProduct
+    Auto.G.BigSum
+    Options
+  build-depends:
+    aeson-benchmarks,
+    base,
+    criterion,
+    deepseq,
+    template-haskell
+
 executable aeson-benchmark-escape
   default-language: Haskell2010
   main-is: Escape.hs

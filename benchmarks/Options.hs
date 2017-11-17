@@ -1,8 +1,5 @@
 module Options (opts) where
 
-import Prelude ()
-import Prelude.Compat
-
 import Data.Aeson.Types
 
 opts :: Options
