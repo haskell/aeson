@@ -1,13 +1,12 @@
 {-# LANGUAGE BangPatterns #-}
 {-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE PackageImports #-}
 
 module Main (main) where
 
 import Prelude ()
 import Prelude.Compat
 
-import "aeson-benchmarks" Data.Aeson
+import Data.Aeson
 import Control.Monad
 import Data.Attoparsec.ByteString (IResult(..), parseWith)
 import Data.Time.Clock

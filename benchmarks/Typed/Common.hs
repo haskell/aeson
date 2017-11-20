@@ -1,8 +1,3 @@
-{-# LANGUAGE CPP #-}
-#ifdef HAS_BOTH_AESON_AND_BENCHMARKS
-{-# LANGUAGE PackageImports #-}
-#endif
-
 {-# OPTIONS_GHC -fno-warn-unused-imports #-}
 
 module Typed.Common (load) where
@@ -14,12 +9,7 @@ import Data.ByteString.Lazy as L
 import System.Exit
 import System.IO
 
-#ifndef HAS_BOTH_AESON_AND_BENCHMARKS
 import Data.Aeson hiding (Result)
-#else
-import "aeson" Data.Aeson hiding (Result)
-import qualified "aeson-benchmarks" Data.Aeson as B
-#endif
 
 load :: FromJSON a => FilePath -> IO a
 load fileName = do
