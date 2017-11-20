@@ -1,4 +1,4 @@
-resolver: nightly-2017-10-18
+resolver: nightly-2017-11-20
 # We use aeson in the snapshot to
 # - avoid recompilation of criterion
 # - compare against it

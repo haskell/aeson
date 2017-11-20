@@ -27,7 +27,6 @@ import Data.Data (Typeable, Data)
 import Data.Int (Int64)
 import Data.Text (Text)
 import GHC.Generics (Generic)
-import Prelude hiding (id)
 
 {-# ANN module "Hlint: ignore Use camelCase" #-}
 {-# ANN module "Hlint: ignore Use newtype instead of data" #-}

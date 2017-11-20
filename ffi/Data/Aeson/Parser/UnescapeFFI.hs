@@ -10,7 +10,7 @@ module Data.Aeson.Parser.UnescapeFFI
 import Control.Exception (evaluate, throw, try)
 import Control.Monad.ST.Unsafe (unsafeIOToST, unsafeSTToIO)
 import Data.ByteString as B
-import Data.ByteString.Internal as B hiding (c2w)
+import Data.ByteString.Internal as B
 import Data.Text.Encoding.Error (UnicodeException (..))
 import Data.Text.Internal (Text (..))
 import Data.Text.Internal.Private (runText)
