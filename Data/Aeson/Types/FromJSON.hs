@@ -669,7 +669,7 @@ withBool expected _ v          = typeMismatch expected v
 {-# INLINE withBool #-}
 
 -- | Decode a nested JSON-encoded string.
-withEmbeddedJSON :: (FromJSON a) => String -> (Value -> Parser a) -> Value -> Parser a
+withEmbeddedJSON :: String -> (Value -> Parser a) -> Value -> Parser a
 withEmbeddedJSON _ innerParser (String txt) =
     either fail innerParser $ eitherDecode (Compat.fromStrict $ T.encodeUtf8 txt)
     where
