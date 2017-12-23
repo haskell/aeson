@@ -25,12 +25,8 @@
 
 module Data.Aeson.Types.Internal
     (
-      accumulateSequenceList
-    , accumulateTraverseList
-    , accumulateTraverseVector
-
     -- * Core JSON types
-    , Value(..)
+      Value(..)
     , Array
     , emptyArray, isEmptyArray
     , Pair
@@ -38,7 +34,8 @@ module Data.Aeson.Types.Internal
     , emptyObject
 
     -- * Type conversion
-    , Parser
+    , Parser (Parser)
+    , runParser
     , Result(..)
     , IResult(..)
     , JSONPathElement(..)
@@ -47,8 +44,6 @@ module Data.Aeson.Types.Internal
     , parse
     , parseEither
     , parseMaybe
-    , liftP2
-    , (<*>+)
     , modifyFailure
     , parserThrowError
     , parserCatchError
@@ -343,36 +338,6 @@ apP d e = do
   a <- e
   return (b a)
 {-# INLINE apP #-}
-
--- | A variant of 'Control.Applicative.liftA2' that lazily accumulates errors
--- from both subparsers.
-liftP2 :: (a -> b -> c) -> Parser a -> Parser b -> Parser c
-liftP2 f pa pb = Parser $ \path kf ks ->
-  runParser pa path
-    (\(e :| es) -> kf (e :| es ++ runParser pb path NonEmpty.toList (const [])))
-    (\a -> runParser pb path kf (\b -> ks (f a b)))
-{-# INLINE liftP2 #-}
-
-accumulateSequenceList :: [Parser a] -> Parser [a]
-accumulateSequenceList = accumulateTraverseList id
-
-accumulateTraverseList :: (a -> Parser b) -> [a] -> Parser [b]
-accumulateTraverseList f s = case s of
-  []    -> pure mempty
-  h : t -> (:) <$> (f h) <*>+ (accumulateTraverseList f t)
-
-accumulateTraverseVector :: (a -> Parser b) -> Vector a -> Parser (Vector b)
-accumulateTraverseVector f v =
-    if V.null v
-        then pure mempty
-        else V.cons <$> (f $ V.head v) <*>+ (accumulateTraverseVector f $ V.tail v)
-
-infixl 4 <*>+
-
--- | A variant of ('<*>') that lazily accumulates errors from both subparsers.
-(<*>+) :: Parser (a -> b) -> Parser a -> Parser b
-(<*>+) = liftP2 id
-{-# INLINE (<*>+) #-}
 
 -- | A JSON \"object\" (key\/value map).
 type Object = HashMap Text Value
