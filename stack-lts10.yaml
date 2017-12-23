@@ -4,4 +4,6 @@ packages:
 flags:
   aeson:
     fast: true
-    cffi: true
+    cffi: false
+  attoparsec-iso8601:
+    fast: true

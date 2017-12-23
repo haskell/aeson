@@ -212,7 +212,7 @@ test-suite tests
     directory,
     dlist,
     filepath,
-    generic-deriving >= 1.10 && < 1.12,
+    generic-deriving >= 1.10 && < 1.13,
     ghc-prim >= 0.2,
     hashable >= 1.2.4.0,
     scientific,
