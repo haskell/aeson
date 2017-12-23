@@ -17,7 +17,6 @@ import Prelude.Compat
 
 import Control.Applicative
 import Data.Monoid ((<>))
-import Prelude hiding (id)
 import Twitter
 
 import Data.Aeson hiding (Result)

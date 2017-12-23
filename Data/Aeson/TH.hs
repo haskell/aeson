@@ -117,7 +117,7 @@ module Data.Aeson.TH
     ) where
 
 import Prelude ()
-import Prelude.Compat hiding (exp)
+import Prelude.Compat
 
 import Control.Applicative ((<|>))
 import Data.Aeson (Object, (.:), FromJSON(..), FromJSON1(..), FromJSON2(..), ToJSON(..), ToJSON1(..), ToJSON2(..))
