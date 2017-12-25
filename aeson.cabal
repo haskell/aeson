@@ -84,6 +84,7 @@ library
 
   exposed-modules:
     Data.Aeson
+    Data.Aeson.AccParser
     Data.Aeson.Encoding
     Data.Aeson.Parser
     Data.Aeson.Text
@@ -196,6 +197,7 @@ test-suite tests
     SerializationFormatSpec
     Types
     UnitTests
+    UnitTests.AccErrors
     UnitTests.NullaryConstructors
 
   build-depends:

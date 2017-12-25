@@ -86,6 +86,7 @@ import Data.Aeson.Internal.Functions (mapKey)
 import Data.Aeson.Parser.Internal (eitherDecodeWith, jsonEOF)
 import Data.Aeson.Types.Generic
 import Data.Aeson.Types.Internal
+import Data.Aeson.AccParser
 import Data.Attoparsec.Number (Number(..))
 import Data.Bits (unsafeShiftR)
 import Data.Fixed (Fixed, HasResolution)
@@ -164,8 +165,8 @@ parseIndexedJSONPair keyParser valParser idx value = p value <?> Index idx
     p = withArray "(k,v)" $ \ab ->
         let n = V.length ab
         in if n == 2
-             then (,) <$> parseJSONElemAtIndex keyParser 0 ab
-                      <*> parseJSONElemAtIndex valParser 1 ab
+             then (,) <$>  parseJSONElemAtIndex keyParser 0 ab
+                      <*>+ parseJSONElemAtIndex valParser 1 ab
              else fail $ "cannot unpack array of length " ++
                          show n ++ " into a pair"
 {-# INLINE parseIndexedJSONPair #-}
@@ -606,7 +607,7 @@ parseJSON2 = liftParseJSON2 parseJSON parseJSONList parseJSON parseJSONList
 
 -- | Helper function to use with 'liftParseJSON'. See 'Data.Aeson.ToJSON.listEncoding'.
 listParser :: (Value -> Parser a) -> Value -> Parser [a]
-listParser f (Array xs) = fmap V.toList (V.mapM f xs)
+listParser f (Array xs) = getParser $ V.toList <$> traverse (AccParser . f) xs
 listParser _ v          = typeMismatch "[a]" v
 {-# INLINE listParser #-}
 
@@ -1413,7 +1414,7 @@ parseVersionText = go . readP_to_S parseVersion . unpack
 
 instance FromJSON1 NonEmpty where
     liftParseJSON p _ = withArray "NonEmpty a" $
-        (>>= ne) . Tr.sequence . zipWith (parseIndexedJSON p) [0..] . V.toList
+        (>>= ne) . accSequence . zipWith (parseIndexedJSON p) [0..] . V.toList
       where
         ne []     = fail "Expected a NonEmpty but got an empty list"
         ne (x:xs) = pure (x :| xs)
@@ -1438,7 +1439,7 @@ instance FromJSON Scientific where
 instance FromJSON1 DList.DList where
     liftParseJSON p _ = withArray "DList a" $
       fmap DList.fromList .
-      Tr.sequence . zipWith (parseIndexedJSON p) [0..] . V.toList
+      accSequence . zipWith (parseIndexedJSON p) [0..] . V.toList
     {-# INLINE liftParseJSON #-}
 
 instance (FromJSON a) => FromJSON (DList.DList a) where
@@ -1529,7 +1530,7 @@ instance (FromJSON1 f, FromJSON1 g, FromJSON a) => FromJSON (Sum f g a) where
 instance FromJSON1 Seq.Seq where
     liftParseJSON p _ = withArray "Seq a" $
       fmap Seq.fromList .
-      Tr.sequence . zipWith (parseIndexedJSON p) [0..] . V.toList
+      accSequence . zipWith (parseIndexedJSON p) [0..] . V.toList
     {-# INLINE liftParseJSON #-}
 
 instance (FromJSON a) => FromJSON (Seq.Seq a) where
@@ -1607,7 +1608,7 @@ instance FromJSONKey UUID.UUID where
 
 instance FromJSON1 Vector where
     liftParseJSON p _ = withArray "Vector a" $
-        V.mapM (uncurry $ parseIndexedJSON p) . V.indexed
+        accTraverse (uncurry $ parseIndexedJSON p) . V.indexed
     {-# INLINE liftParseJSON #-}
 
 instance (FromJSON a) => FromJSON (Vector a) where
