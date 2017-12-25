@@ -1439,7 +1439,7 @@ instance FromJSON Scientific where
 instance FromJSON1 DList.DList where
     liftParseJSON p _ = withArray "DList a" $
       fmap DList.fromList .
-      Tr.sequence . zipWith (parseIndexedJSON p) [0..] . V.toList
+      accSequence . zipWith (parseIndexedJSON p) [0..] . V.toList
     {-# INLINE liftParseJSON #-}
 
 instance (FromJSON a) => FromJSON (DList.DList a) where

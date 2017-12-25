@@ -8,6 +8,9 @@ module Data.Aeson.AccParser
   , (<*>+)
   ) where
 
+import Prelude ()
+import Prelude.Compat
+
 import Data.Aeson.Types.Internal (Parser (..), runParser)
 import Data.List.NonEmpty (NonEmpty ((:|)))
 import qualified Data.List.NonEmpty as NonEmpty

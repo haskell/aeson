@@ -6,6 +6,7 @@ import Prelude ()
 import Prelude.Compat hiding (seq)
 
 import Data.Aeson
+import Data.DList (DList)
 import Data.Aeson.Parser.Internal
 import Data.Aeson.Types ()
 import Data.Aeson.Internal
@@ -24,6 +25,7 @@ tests = testGroup "Error accumulation" [
       testCase "Seq" seq
     , testCase "Vector" vector
     , testCase "NonEmpty" nonEmpty
+    , testCase "DList" dlist
     ]
 
 decoder :: FromJSON a
@@ -46,5 +48,11 @@ vector = do
 nonEmpty :: Assertion
 nonEmpty = do
     let res = decoder "[true, null]" :: Either (NonEmpty (JSONPath, String)) (NL.NonEmpty Int)
+    let message i s = ([Index i], "expected Int, encountered " <> s)
+    res @=? Left (NL.fromList [message 0 "Boolean", message 1 "Null"])
+
+dlist :: Assertion
+dlist = do
+    let res = decoder "[true, null]" :: Either (NonEmpty (JSONPath, String)) (DList Int)
     let message i s = ([Index i], "expected Int, encountered " <> s)
     res @=? Left (NL.fromList [message 0 "Boolean", message 1 "Null"])
