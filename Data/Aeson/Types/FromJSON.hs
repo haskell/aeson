@@ -1414,7 +1414,7 @@ parseVersionText = go . readP_to_S parseVersion . unpack
 
 instance FromJSON1 NonEmpty where
     liftParseJSON p _ = withArray "NonEmpty a" $
-        (>>= ne) . Tr.sequence . zipWith (parseIndexedJSON p) [0..] . V.toList
+        (>>= ne) . accSequence . zipWith (parseIndexedJSON p) [0..] . V.toList
       where
         ne []     = fail "Expected a NonEmpty but got an empty list"
         ne (x:xs) = pure (x :| xs)

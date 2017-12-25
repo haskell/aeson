@@ -21,8 +21,9 @@ import qualified Data.Sequence as Seq
 
 tests :: Test
 tests = testGroup "Error accumulation" [
-      testCase "seq" seq
-    , testCase "vector" vector
+      testCase "Seq" seq
+    , testCase "Vector" vector
+    , testCase "NonEmpty" nonEmpty
     ]
 
 decoder :: FromJSON a
@@ -39,5 +40,11 @@ seq = do
 vector :: Assertion
 vector = do
     let res = decoder "[true, null]" :: Either (NonEmpty (JSONPath, String)) (Vector Int)
+    let message i s = ([Index i], "expected Int, encountered " <> s)
+    res @=? Left (NL.fromList [message 0 "Boolean", message 1 "Null"])
+
+nonEmpty :: Assertion
+nonEmpty = do
+    let res = decoder "[true, null]" :: Either (NonEmpty (JSONPath, String)) (NL.NonEmpty Int)
     let message i s = ([Index i], "expected Int, encountered " <> s)
     res @=? Left (NL.fromList [message 0 "Boolean", message 1 "Null"])
