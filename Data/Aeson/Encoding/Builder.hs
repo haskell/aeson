@@ -1,5 +1,4 @@
 {-# LANGUAGE BangPatterns #-}
-{-# LANGUAGE CPP #-}
 
 -- |
 -- Module:      Data.Aeson.Encoding.Builder
@@ -47,6 +46,7 @@ import Data.ByteString.Builder.Scientific (scientificBuilder)
 import Data.Char (chr, ord)
 import Data.Monoid ((<>))
 import Data.Scientific (Scientific, base10Exponent, coefficient)
+import Data.Text.Encoding (encodeUtf8BuilderEscaped)
 import Data.Time (UTCTime(..))
 import Data.Time.Calendar (Day(..), toGregorian)
 import Data.Time.LocalTime
@@ -54,20 +54,6 @@ import Data.Word (Word8)
 import qualified Data.HashMap.Strict as HMS
 import qualified Data.Text as T
 import qualified Data.Vector as V
-
-#if MIN_VERSION_bytestring(0,10,4)
-import Data.Text.Encoding (encodeUtf8BuilderEscaped)
-#else
-import Data.Bits ((.&.))
-import Data.Text.Internal (Text(..))
-import Data.Text.Internal.Unsafe.Shift (shiftR)
-import Foreign.Ptr (minusPtr, plusPtr)
-import Foreign.Storable (poke)
-import qualified Data.ByteString.Builder.Internal as B
-import qualified Data.ByteString.Builder.Prim.Internal as BP
-import qualified Data.Text.Array as A
-import qualified Data.Text.Internal.Encoding.Utf16 as U16
-#endif
 
 -- | Encode a JSON value to a "Data.ByteString" 'B.Builder'.
 --
@@ -268,62 +254,3 @@ twoDigits a     = T (digit hi) (digit lo)
 
 digit :: Int -> Char
 digit x = chr (x + 48)
-
-#if !(MIN_VERSION_bytestring(0,10,4))
--- | Encode text using UTF-8 encoding and escape the ASCII characters using
--- a 'BP.BoundedPrim'.
---
--- Use this function is to implement efficient encoders for text-based formats
--- like JSON or HTML.
-{-# INLINE encodeUtf8BuilderEscaped #-}
--- TODO: Extend documentation with references to source code in @blaze-html@
--- or @aeson@ that uses this function.
-encodeUtf8BuilderEscaped :: BP.BoundedPrim Word8 -> Text -> B.Builder
-encodeUtf8BuilderEscaped be =
-    -- manual eta-expansion to ensure inlining works as expected
-    \txt -> B.builder (mkBuildstep txt)
-  where
-    bound = max 4 $ BP.sizeBound be
-
-    mkBuildstep (Text arr off len) !k =
-        outerLoop off
-      where
-        iend = off + len
-
-        outerLoop !i0 br@(B.BufferRange op0 ope)
-          | i0 >= iend       = k br
-          | outRemaining > 0 = goPartial (i0 + min outRemaining inpRemaining)
-          -- TODO: Use a loop with an integrated bound's check if outRemaining
-          -- is smaller than 8, as this will save on divisions.
-          | otherwise        = return $ B.bufferFull bound op0 (outerLoop i0)
-          where
-            outRemaining = (ope `minusPtr` op0) `div` bound
-            inpRemaining = iend - i0
-
-            goPartial !iendTmp = go i0 op0
-              where
-                go !i !op
-                  | i < iendTmp = case A.unsafeIndex arr i of
-                      w | w <= 0x7F ->
-                            BP.runB be (fromIntegral w) op >>= go (i + 1)
-                        | w <= 0x7FF -> do
-                            poke8 0 $ (w `shiftR` 6) + 0xC0
-                            poke8 1 $ (w .&. 0x3f) + 0x80
-                            go (i + 1) (op `plusPtr` 2)
-                        | 0xD800 <= w && w <= 0xDBFF -> do
-                            let c = ord $ U16.chr2 w (A.unsafeIndex arr (i+1))
-                            poke8 0 $ (c `shiftR` 18) + 0xF0
-                            poke8 1 $ ((c `shiftR` 12) .&. 0x3F) + 0x80
-                            poke8 2 $ ((c `shiftR` 6) .&. 0x3F) + 0x80
-                            poke8 3 $ (c .&. 0x3F) + 0x80
-                            go (i + 2) (op `plusPtr` 4)
-                        | otherwise -> do
-                            poke8 0 $ (w `shiftR` 12) + 0xE0
-                            poke8 1 $ ((w `shiftR` 6) .&. 0x3F) + 0x80
-                            poke8 2 $ (w .&. 0x3F) + 0x80
-                            go (i + 1) (op `plusPtr` 3)
-                  | otherwise =
-                      outerLoop i (B.BufferRange op ope)
-                  where
-                    poke8 j v = poke (op `plusPtr` j) (fromIntegral v :: Word8)
-#endif

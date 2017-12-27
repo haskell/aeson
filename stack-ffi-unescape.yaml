@@ -5,3 +5,5 @@ flags:
   aeson:
     fast: true
     cffi: true
+extra-deps:
+- text-1.2.3.0

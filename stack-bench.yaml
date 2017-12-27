@@ -11,3 +11,4 @@ packages:
 - benchmarks
 extra-deps:
 - aeson-1.2.3.0
+- text-1.2.3.0
