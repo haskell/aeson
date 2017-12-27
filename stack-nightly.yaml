@@ -7,3 +7,5 @@ flags:
     fast: true
   attoparsec-iso8601:
     fast: true
+extra-deps:
+- text-1.2.3.0
