@@ -42,9 +42,9 @@ import qualified Data.Time.LocalTime as Local
 day :: Parser Day
 day = do
   absOrNeg <- negate <$ char '-' <|> id <$ char '+' <|> pure id
-  y <- decimal <* char '-'
-  m <- twoDigits <* char '-'
-  d <- twoDigits
+  y <- (decimal <* char '-') <|> fail "date must be of form [+,-]YYYY-MM-DD"
+  m <- (twoDigits <* char '-') <|> fail "date must be of form [+,-]YYYY-MM-DD"
+  d <- twoDigits <|> fail "date must be of form [+,-]YYYY-MM-DD"
   maybe (fail "invalid date") return (fromGregorianValid (absOrNeg y) m d)
 
 -- | Parse a two-digit integer (e.g. day of month, hour).
