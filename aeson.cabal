@@ -125,7 +125,7 @@ library
     scientific >= 0.3.4.7 && < 0.4,
     tagged >=0.8.3 && <0.9,
     template-haskell >= 2.7,
-    text >= 1.1.1.0,
+    text >= 1.2.3,
     th-abstraction >= 0.2.2 && < 0.3,
     time >= 1.1.1.4,
     time-locale-compat >= 0.1.1 && < 0.2,
