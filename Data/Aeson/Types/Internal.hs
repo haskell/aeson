@@ -114,7 +114,7 @@ data JSONPathElement = Key Text
                      | Index {-# UNPACK #-} !Int
                        -- ^ JSON path element of an index into an
                        -- array, \"array[index]\".
-                       deriving (Eq, Show, Typeable)
+                       deriving (Eq, Show, Typeable, Ord)
 type JSONPath = [JSONPathElement]
 
 -- | The internal result of running a 'Parser'.
