@@ -1,5 +1,9 @@
 For the latest version of this document, please see [https://github.com/bos/aeson/blob/master/changelog.md](https://github.com/bos/aeson/blob/master/changelog.md).
 
+### 1.2.4.0
+
+* Add `Ord` instance for `JSONPathElement`, thanks to Simon Hengel.
+
 ### 1.2.3.0
 
 * Added `withEmbeddedJSON` to help parse JSON embedded inside a JSON string, thanks to Jesse Kempf.
