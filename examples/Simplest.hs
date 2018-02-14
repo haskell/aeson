@@ -8,6 +8,7 @@ import Prelude.Compat
 
 import Control.Applicative (empty)
 import Data.Aeson
+import Data.Aeson.Types
 import Data.Monoid
 import qualified Data.ByteString.Lazy.Char8 as BL
 
@@ -28,9 +29,9 @@ instance ToJSON Coord where
 -- should match the format used by the ToJSON instance.
 
 instance FromJSON Coord where
-  parseJSON (Object v) = Coord <$>
-                         v .: "x" <*>
-                         v .: "y"
+  parseJSON (Object v) = liftP2 Coord
+    (v .: "x")
+    (v .: "y")
   parseJSON _          = empty
 
 main :: IO ()
@@ -39,3 +40,6 @@ main = do
   print req
   let reply = Coord 123.4 20
   BL.putStrLn (encode reply)
+  let asCoord :: f Coord -> f Coord
+      asCoord = id
+  print (asCoord (verboseDecode "{}"))

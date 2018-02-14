@@ -35,9 +35,12 @@ module Data.Aeson.Types
     , parseMaybe
     , ToJSON(..)
     , KeyValue(..)
+    , liftP2
+    , (<*>+)
     , modifyFailure
     , parserThrowError
     , parserCatchError
+    , parserCatchErrors
 
     -- ** Keys for maps
     , ToJSONKey(..)

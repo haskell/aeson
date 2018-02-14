@@ -33,6 +33,8 @@ module Data.Aeson.Parser.Internal
     , decodeStrictWith
     , eitherDecodeWith
     , eitherDecodeStrictWith
+    , verboseDecodeWith
+    , verboseDecodeStrictWith
     ) where
 
 import Prelude ()
@@ -42,6 +44,7 @@ import Control.Applicative ((<|>))
 import Control.Monad (void, when)
 import Data.Aeson.Types.Internal (IResult(..), JSONPath, Result(..), Value(..))
 import Data.Attoparsec.ByteString.Char8 (Parser, char, decimal, endOfInput, isDigit_w8, signed, string)
+import Data.List.NonEmpty (NonEmpty((:|)))
 import Data.Scientific (Scientific)
 import Data.Text (Text)
 import Data.Vector as Vector (Vector, empty, fromListN, reverse)
@@ -274,18 +277,36 @@ eitherDecodeWith :: Parser Value -> (Value -> IResult a) -> L.ByteString
 eitherDecodeWith p to s =
     case L.parse p s of
       L.Done _ v     -> case to v of
-                          ISuccess a      -> Right a
-                          IError path msg -> Left (path, msg)
+                          ISuccess a -> Right a
+                          IError (e :| _) -> Left e
       L.Fail _ _ msg -> Left ([], msg)
 {-# INLINE eitherDecodeWith #-}
 
 eitherDecodeStrictWith :: Parser Value -> (Value -> IResult a) -> B.ByteString
                        -> Either (JSONPath, String) a
 eitherDecodeStrictWith p to s =
-    case either (IError []) to (A.parseOnly p s) of
-      ISuccess a      -> Right a
-      IError path msg -> Left (path, msg)
+    case either (\e -> IError (([], e) :| [])) to (A.parseOnly p s) of
+      ISuccess a -> Right a
+      IError (e :| _) -> Left e
 {-# INLINE eitherDecodeStrictWith #-}
+
+verboseDecodeWith :: Parser Value -> (Value -> IResult a) -> L.ByteString
+                  -> Either (NonEmpty (JSONPath, String)) a
+verboseDecodeWith p to s =
+    case L.parse p s of
+      L.Done _ v     -> case to v of
+                          ISuccess a -> Right a
+                          IError   e -> Left  e
+      L.Fail _ _ msg -> Left (([], msg) :| [])
+{-# INLINE verboseDecodeWith #-}
+
+verboseDecodeStrictWith :: Parser Value -> (Value -> IResult a) -> B.ByteString
+                        -> Either (NonEmpty (JSONPath, String)) a
+verboseDecodeStrictWith p to s =
+    case either (\e -> IError (([], e) :| [])) to (A.parseOnly p s) of
+      ISuccess a -> Right a
+      IError   e -> Left  e
+{-# INLINE verboseDecodeStrictWith #-}
 
 -- $lazy
 --
