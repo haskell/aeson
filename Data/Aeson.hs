@@ -38,11 +38,16 @@ module Data.Aeson
     , eitherDecode
     , eitherDecode'
     , encode
+    , encodeFile
     -- ** Variants for strict bytestrings
     , decodeStrict
+    , decodeFileStrict
     , decodeStrict'
+    , decodeFileStrict'
     , eitherDecodeStrict
+    , eitherDecodeFileStrict
     , eitherDecodeStrict'
+    , eitherDecodeFileStrict'
     -- * Core JSON types
     , Value(..)
     , Encoding
@@ -143,6 +148,10 @@ import qualified Data.ByteString.Lazy as L
 encode :: (ToJSON a) => a -> L.ByteString
 encode = encodingToLazyByteString . toEncoding
 
+-- | Efficiently serialize a JSON value as a lazy 'L.ByteString' and write it to a file.
+encodeFile :: (ToJSON a) => FilePath -> a -> IO ()
+encodeFile fp = L.writeFile fp . encode
+
 -- | Efficiently deserialize a JSON value from a lazy 'L.ByteString'.
 -- If this fails due to incomplete or invalid input, 'Nothing' is
 -- returned.
@@ -168,6 +177,18 @@ decode = decodeWith jsonEOF fromJSON
 decodeStrict :: (FromJSON a) => B.ByteString -> Maybe a
 decodeStrict = decodeStrictWith jsonEOF fromJSON
 {-# INLINE decodeStrict #-}
+
+-- | Efficiently deserialize a JSON value from a file.
+-- If this fails due to incomplete or invalid input, 'Nothing' is
+-- returned.
+--
+-- The input file's content must consist solely of a JSON document,
+-- with no trailing data except for whitespace.
+--
+-- This function parses immediately, but defers conversion.  See
+-- 'json' for details.
+decodeFileStrict :: (FromJSON a) => FilePath -> IO (Maybe a)
+decodeFileStrict = fmap decodeStrict . B.readFile
 
 -- | Efficiently deserialize a JSON value from a lazy 'L.ByteString'.
 -- If this fails due to incomplete or invalid input, 'Nothing' is
@@ -195,6 +216,18 @@ decodeStrict' :: (FromJSON a) => B.ByteString -> Maybe a
 decodeStrict' = decodeStrictWith jsonEOF' fromJSON
 {-# INLINE decodeStrict' #-}
 
+-- | Efficiently deserialize a JSON value from a file.
+-- If this fails due to incomplete or invalid input, 'Nothing' is
+-- returned.
+--
+-- The input file's content must consist solely of a JSON document,
+-- with no trailing data except for whitespace.
+--
+-- This function parses and performs conversion immediately.  See
+-- 'json'' for details.
+decodeFileStrict' :: (FromJSON a) => FilePath -> IO (Maybe a)
+decodeFileStrict' = fmap decodeStrict' . B.readFile
+
 eitherFormatError :: Either (JSONPath, String) a -> Either String a
 eitherFormatError = either (Left . uncurry formatError) Right
 {-# INLINE eitherFormatError #-}
@@ -210,6 +243,12 @@ eitherDecodeStrict =
   eitherFormatError . eitherDecodeStrictWith jsonEOF ifromJSON
 {-# INLINE eitherDecodeStrict #-}
 
+-- | Like 'decodeFileStrict' but returns an error message when decoding fails.
+eitherDecodeFileStrict :: (FromJSON a) => FilePath -> IO (Either String a)
+eitherDecodeFileStrict =
+  fmap (eitherFormatError . eitherDecodeStrictWith jsonEOF ifromJSON) . B.readFile
+{-# INLINE eitherDecodeFileStrict #-}
+
 -- | Like 'decode'' but returns an error message when decoding fails.
 eitherDecode' :: (FromJSON a) => L.ByteString -> Either String a
 eitherDecode' = eitherFormatError . eitherDecodeWith jsonEOF' ifromJSON
@@ -220,6 +259,12 @@ eitherDecodeStrict' :: (FromJSON a) => B.ByteString -> Either String a
 eitherDecodeStrict' =
   eitherFormatError . eitherDecodeStrictWith jsonEOF' ifromJSON
 {-# INLINE eitherDecodeStrict' #-}
+
+-- | Like 'decodeFileStrict'' but returns an error message when decoding fails.
+eitherDecodeFileStrict' :: (FromJSON a) => FilePath -> IO (Either String a)
+eitherDecodeFileStrict' =
+  fmap (eitherFormatError . eitherDecodeStrictWith jsonEOF' ifromJSON) . B.readFile
+{-# INLINE eitherDecodeFileStrict' #-}
 
 -- $use
 --
