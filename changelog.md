@@ -1,5 +1,24 @@
 For the latest version of this document, please see [https://github.com/bos/aeson/blob/master/changelog.md](https://github.com/bos/aeson/blob/master/changelog.md).
 
+### 1.3.0.0
+
+Breaking changes:
+* `GKeyValue` has been renamed to `KeyValuePair`, thanks to Xia Li-yao
+* Removed unused `FromJSON` constraint in `withEmbeddedJson`, thanks to Tristan Seligmann
+
+Other improvements:
+* Optimizations of TH toEncoding, thanks to Xia Li-yao
+* Optimizations of hex decoding when using the default/pure unescape implementation, thanks to Xia Li-yao
+* Improved error message on `Day` parse failures, thanks to Gershom Bazerman
+* Add `encodeFile` as well as `decodeFile*` variants, thanks to Markus Hauck
+* Documentation	fixes, thanks to Lennart Spitzner
+* CPP cleanup, thanks to Ryan Scott
+
+### 1.2.4.0
+
+* Add `Ord` instance for `JSONPathElement`, thanks to Simon Hengel.
+
+
 ### 1.2.3.0
 
 * Added `withEmbeddedJSON` to help parse JSON embedded inside a JSON string, thanks to Jesse Kempf.

@@ -1,4 +1,4 @@
-resolver: nightly-2017-12-23
+resolver: nightly-2018-03-07
 packages:
 - '.'
 - attoparsec-iso8601
@@ -7,5 +7,3 @@ flags:
     fast: true
   attoparsec-iso8601:
     fast: true
-extra-deps:
-- text-1.2.3.0
