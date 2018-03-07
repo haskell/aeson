@@ -1042,8 +1042,8 @@ instance OVERLAPPABLE_ (Selector s, GFromJSON arity a) =>
 
 instance INCOHERENT_ (Selector s, FromJSON a) =>
   FromRecord arity (S1 s (K1 i (Maybe a))) where
-    parseRecord _ _ (Just lab) obj = (M1 . K1) <$> obj .:? lab
-    parseRecord opts _ Nothing obj = (M1 . K1) <$> obj .:? pack label
+    parseRecord _ _ (Just lab) obj = M1 . K1 <$> obj .:? lab
+    parseRecord opts _ Nothing obj = M1 . K1 <$> obj .:? pack label
         where
           label = fieldLabelModifier opts $
                     selName (undefined :: t s (K1 i (Maybe a)) p)
