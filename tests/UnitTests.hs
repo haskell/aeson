@@ -99,6 +99,7 @@ tests = testGroup "unit" [
   , testCase "Show Options" showOptions
   , testGroup "SingleMaybeField" singleMaybeField
   , testCase "withEmbeddedJSON" withEmbeddedJSONTest
+  , testCase "SingleFieldCon" singleFieldCon
   ]
 
 roundTripCamel :: String -> Assertion
@@ -533,6 +534,17 @@ instance FromJSON EmbeddedJSONTest where
 withEmbeddedJSONTest :: Assertion
 withEmbeddedJSONTest =
   assertEqual "Unquote embedded JSON" (Right $ EmbeddedJSONTest 1) (eitherDecode "{\"prop\":\"1\"}")
+
+-- Regression test for https://github.com/bos/aeson/issues/627
+newtype SingleFieldCon = SingleFieldCon Int deriving (Eq, Show, Generic)
+
+instance FromJSON SingleFieldCon where
+  parseJSON = genericParseJSON defaultOptions{unwrapUnaryRecords=True}
+  -- This option should have no effect on this type
+
+singleFieldCon :: Assertion
+singleFieldCon =
+  assertEqual "fromJSON" (Right (SingleFieldCon 0)) (eitherDecode "0")
 
 deriveJSON defaultOptions{omitNothingFields=True} ''MyRecord
 
