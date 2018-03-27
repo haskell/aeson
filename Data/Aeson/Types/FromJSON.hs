@@ -976,7 +976,7 @@ instance ( IsRecord                   f isRecord
 
 instance (FromRecord arity f) => FromTaggedObject'' arity f True where
     parseFromTaggedObject'' opts fargs _ =
-      Tagged . parseRecord opts fargs Nothing
+      Tagged . parseRecord opts fargs
 
 instance (GFromJSON arity f) => FromTaggedObject'' arity f False where
     parseFromTaggedObject'' opts fargs contentsFieldName = Tagged .
@@ -993,57 +993,52 @@ class ConsFromJSON arity f where
 
 class ConsFromJSON' arity f isRecord where
     consParseJSON' :: Options -> FromArgs arity a
-                   -> Maybe Text -- ^ A dummy label
-                                 --   (Nothing to use proper label)
                    -> Value -> Tagged isRecord (Parser (f a))
 
 instance ( IsRecord            f isRecord
          , ConsFromJSON' arity f isRecord
          ) => ConsFromJSON arity f where
-    consParseJSON opts fargs v = let
-      (v2,lab) = case (unwrapUnaryRecords opts,isUnary (undefined :: f a)) of
-                       -- use a dummy object with a dummy label
-        (True,True) -> (object [(pack "dummy",v)], Just $ pack "dummy")
-        _ ->(v,Nothing)
-      in (unTagged :: Tagged isRecord (Parser (f a)) -> Parser (f a))
-                       $ consParseJSON' opts fargs lab v2
+    consParseJSON opts fargs =
+      (unTagged :: Tagged isRecord (Parser (f a)) -> Parser (f a))
+        . consParseJSON' opts fargs
 
+instance OVERLAPPING_
+         ( GFromJSON arity a, FromRecord arity (S1 s a)
+         ) => ConsFromJSON' arity (S1 s a) 'True where
+    consParseJSON' opts fargs
+      | unwrapUnaryRecords opts = Tagged . gParseJSON opts fargs
+      | otherwise = Tagged . withObject "unary record" (parseRecord opts fargs)
 
-instance (FromRecord arity f) => ConsFromJSON' arity f True where
-    consParseJSON' opts fargs mlab = Tagged . withObject "record (:*:)"
-                                        (parseRecord opts fargs mlab)
+instance FromRecord arity f => ConsFromJSON' arity f True where
+    consParseJSON' opts fargs =
+      Tagged . withObject "record (:*:)" (parseRecord opts fargs)
 
 instance (GFromJSON arity f) => ConsFromJSON' arity f False where
-    consParseJSON' opts fargs _ = Tagged . gParseJSON opts fargs
+    consParseJSON' opts fargs = Tagged . gParseJSON opts fargs
 
 --------------------------------------------------------------------------------
 
 class FromRecord arity f where
     parseRecord :: Options -> FromArgs arity a
-                -> Maybe Text -- ^ A dummy label
-                              --   (Nothing to use proper label)
                 -> Object -> Parser (f a)
 
 instance ( FromRecord arity a
          , FromRecord arity b
          ) => FromRecord arity (a :*: b) where
-    parseRecord opts fargs _ obj =
-      (:*:) <$> parseRecord opts fargs Nothing obj
-            <*> parseRecord opts fargs Nothing obj
+    parseRecord opts fargs obj =
+      (:*:) <$> parseRecord opts fargs obj
+            <*> parseRecord opts fargs obj
 
 instance OVERLAPPABLE_ (Selector s, GFromJSON arity a) =>
   FromRecord arity (S1 s a) where
-    parseRecord opts fargs lab =
+    parseRecord opts fargs =
       (<?> Key label) . gParseJSON opts fargs <=< (.: label)
         where
-          label = fromMaybe defLabel lab
-          defLabel = pack . fieldLabelModifier opts $
-                       selName (undefined :: t s a p)
+          label = pack . fieldLabelModifier opts $ selName (undefined :: t s a p)
 
 instance INCOHERENT_ (Selector s, FromJSON a) =>
   FromRecord arity (S1 s (K1 i (Maybe a))) where
-    parseRecord _ _ (Just lab) obj = M1 . K1 <$> obj .:? lab
-    parseRecord opts _ Nothing obj = M1 . K1 <$> obj .:? pack label
+    parseRecord opts _ obj = M1 . K1 <$> obj .:? pack label
         where
           label = fieldLabelModifier opts $
                     selName (undefined :: t s (K1 i (Maybe a)) p)
@@ -1051,7 +1046,7 @@ instance INCOHERENT_ (Selector s, FromJSON a) =>
 -- Parse an Option like a Maybe.
 instance INCOHERENT_ (Selector s, FromJSON a) =>
   FromRecord arity (S1 s (K1 i (Semigroup.Option a))) where
-    parseRecord opts fargs lab obj = wrap <$> parseRecord opts fargs lab obj
+    parseRecord opts fargs obj = wrap <$> parseRecord opts fargs obj
       where
         wrap :: S1 s (K1 i (Maybe a)) p -> S1 s (K1 i (Semigroup.Option a)) p
         wrap (M1 (K1 a)) = M1 (K1 (Semigroup.Option a))
