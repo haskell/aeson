@@ -44,12 +44,8 @@ import GHC.Generics
 --------------------------------------------------------------------------------
 
 class IsRecord (f :: * -> *) isRecord | f -> isRecord
-  where
-    isUnary :: f a -> Bool
-    isUnary = const True
 
 instance (IsRecord f isRecord) => IsRecord (f :*: g) isRecord
-  where isUnary = const False
 #if MIN_VERSION_base(4,9,0)
 instance OVERLAPPING_ IsRecord (M1 S ('MetaSel 'Nothing u ss ds) f) False
 #else
@@ -61,7 +57,6 @@ instance IsRecord Par1 True
 instance IsRecord (Rec1 f) True
 instance IsRecord (f :.: g) True
 instance IsRecord U1 False
-  where isUnary = const False
 
 --------------------------------------------------------------------------------
 

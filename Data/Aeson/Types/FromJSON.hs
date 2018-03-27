@@ -1004,7 +1004,7 @@ instance ( IsRecord            f isRecord
 
 instance OVERLAPPING_
          ( GFromJSON arity a, FromRecord arity (S1 s a)
-         ) => ConsFromJSON' arity (S1 s a) 'True where
+         ) => ConsFromJSON' arity (S1 s a) True where
     consParseJSON' opts fargs
       | unwrapUnaryRecords opts = Tagged . gParseJSON opts fargs
       | otherwise = Tagged . withObject "unary record" (parseRecord opts fargs)
@@ -1013,7 +1013,7 @@ instance FromRecord arity f => ConsFromJSON' arity f True where
     consParseJSON' opts fargs =
       Tagged . withObject "record (:*:)" (parseRecord opts fargs)
 
-instance (GFromJSON arity f) => ConsFromJSON' arity f False where
+instance GFromJSON arity f => ConsFromJSON' arity f False where
     consParseJSON' opts fargs = Tagged . gParseJSON opts fargs
 
 --------------------------------------------------------------------------------
