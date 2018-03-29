@@ -956,7 +956,6 @@ class ConsToJSON enc arity f where
 
 class ConsToJSON' enc arity f isRecord where
     consToJSON'     :: Options -> ToArgs enc arity a
-                    -> Bool -- ^ Are we a record with one field?
                     -> f a -> Tagged isRecord enc
 
 instance ( IsRecord                f isRecord
@@ -965,23 +964,28 @@ instance ( IsRecord                f isRecord
   where
     consToJSON opts targs =
         (unTagged :: Tagged isRecord enc -> enc)
-      . consToJSON' opts targs (isUnary (undefined :: f a))
+      . consToJSON' opts targs
     {-# INLINE consToJSON #-}
+
+instance OVERLAPPING_
+         ( RecordToPairs enc pairs arity (S1 s f)
+         , FromPairs enc pairs
+         , GToJSON enc arity f
+         ) => ConsToJSON' enc arity (S1 s f) True
+  where
+    consToJSON' opts targs
+      | unwrapUnaryRecords opts = Tagged . gToJSON opts targs
+      | otherwise = Tagged . fromPairs . recordToPairs opts targs
+    {-# INLINE consToJSON' #-}
 
 instance ( RecordToPairs enc pairs arity f
          , FromPairs enc pairs
-         , GToJSON enc arity f
          ) => ConsToJSON' enc arity f True
   where
-    consToJSON' opts targs isUn =
-      Tagged .
-        case (isUn, unwrapUnaryRecords opts) of
-          (True, True) -> gToJSON opts targs
-          _ -> fromPairs . recordToPairs opts targs
-    {-# INLINE consToJSON' #-}
+    consToJSON' opts targs = Tagged . fromPairs . recordToPairs opts targs
 
 instance GToJSON enc arity f => ConsToJSON' enc arity f False where
-    consToJSON' opts targs _ = Tagged . gToJSON opts targs
+    consToJSON' opts targs = Tagged . gToJSON opts targs
     {-# INLINE consToJSON' #-}
 
 --------------------------------------------------------------------------------
