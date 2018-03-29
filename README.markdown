@@ -24,5 +24,4 @@ See what's changed in recent (and upcoming) releases:
 
 # Authors
 
-This library is written and maintained by Bryan O'Sullivan,
-<bos@serpentine.com>.
+This library was originally written by Bryan O'Sullivan.
