@@ -21,20 +21,6 @@ description:
     To get started, see the documentation for the @Data.Aeson@ module
     below.
     .
-    Parsing performance on a late 2013 MacBook Pro (2.6GHz Core i7),
-    running 64-bit GHC 7.10.1, for mostly-English tweets from Twitter's
-    JSON search API:
-    .
-    * 6.4 KB payloads, English: 7570 msg\/sec (47.6 MB\/sec)
-    .
-    * 14.6 KB payloads, Japanese: 3261 msg\/sec (46.6 MB\/sec)
-    .
-    Encoding performance on the same machine and data:
-    .
-    * 6.4 KB payloads, English: 22738 msg\/sec (142.9 MB\/sec)
-    .
-    * 14.6 KB payloads, Japanese: 15911 msg\/sec (227.4 MB\/sec)
-    .
     (A note on naming: in Greek mythology, Aeson was the father of Jason.)
 
 extra-source-files:
