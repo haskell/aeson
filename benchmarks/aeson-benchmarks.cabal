@@ -30,7 +30,7 @@ library
     build-depends:
       attoparsec >= 0.13.0.1,
       base == 4.*,
-      base-compat >= 0.9.1 && <0.10,
+      base-compat >= 0.9.1 && <0.11,
       time-locale-compat >=0.1.1 && <0.2,
       containers,
       deepseq,
