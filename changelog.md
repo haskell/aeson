@@ -1,6 +1,11 @@
 For the latest version of this document, please see [https://github.com/bos/aeson/blob/master/changelog.md](https://github.com/bos/aeson/blob/master/changelog.md).
 
-### 1.3.0.0
+### 1.3.1.0
+
+* Fix bug in generically derived `FromJSON` instances that are using `unwrapUnaryRecords`, thanks to Xia Li-yao
+* Allow base-compat 0.10.*, thanks to Oleg Grenrus
+
+## 1.3.0.0
 
 Breaking changes:
 * `GKeyValue` has been renamed to `KeyValuePair`, thanks to Xia Li-yao
