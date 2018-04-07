@@ -80,7 +80,7 @@ import Data.Functor.Sum (Sum(..))
 import Data.Int (Int16, Int32, Int64, Int8)
 import Data.List (intersperse)
 import Data.List.NonEmpty (NonEmpty(..))
-import Data.Monoid ((<>))
+import Data.Semigroup ((<>))
 import Data.Proxy (Proxy(..))
 import Data.Ratio (Ratio, denominator, numerator)
 import Data.Scientific (Scientific)
@@ -860,7 +860,7 @@ instance ( IsRecord                      a isRecord
          ) => TaggedObject enc arity (C1 c a)
   where
     taggedObject opts targs tagFieldName contentsFieldName =
-      fromPairs . (tag <>) . contents
+      fromPairs . mappend tag . contents
       where
         tag = tagFieldName `pair`
           (fromString (constructorTagModifier opts (conName (undefined :: t c a p)))
@@ -1003,7 +1003,7 @@ instance ( Monoid pairs
          ) => RecordToPairs enc pairs arity (a :*: b)
   where
     recordToPairs opts (targs :: ToArgs enc arity p) (a :*: b) =
-        pairsOf a <> pairsOf b
+        pairsOf a `mappend` pairsOf b
       where
         pairsOf :: (RecordToPairs enc pairs arity f) => f p -> pairs
         pairsOf = recordToPairs opts targs
