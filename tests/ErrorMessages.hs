@@ -13,13 +13,13 @@ import Data.Aeson (FromJSON(..), eitherDecode)
 import Data.Proxy (Proxy(..))
 import Instances ()
 import Numeric.Natural (Natural)
-import Test.Framework (Test)
-import Test.Framework.Providers.HUnit (testCase)
+import Test.Tasty (TestTree)
+import Test.Tasty.HUnit (testCase)
 import Test.HUnit (Assertion, assertFailure, assertEqual)
 import qualified Data.ByteString.Lazy.Char8 as L
 import qualified Data.HashMap.Strict as HM
 
-tests :: [Test]
+tests :: [TestTree]
 tests =
     [
       testCase "Int" int
