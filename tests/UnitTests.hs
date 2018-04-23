@@ -43,8 +43,8 @@ import GHC.Generics (Generic)
 import Instances ()
 import System.Directory (getDirectoryContents)
 import System.FilePath ((</>), takeExtension, takeFileName)
-import Test.Framework (Test, testGroup)
-import Test.Framework.Providers.HUnit (testCase)
+import Test.Tasty (TestTree, testGroup)
+import Test.Tasty.HUnit (testCase)
 import Test.HUnit (Assertion, assertBool, assertFailure, assertEqual)
 import Text.Printf (printf)
 import UnitTests.NullaryConstructors (nullaryConstructors)
@@ -62,7 +62,7 @@ import qualified SerializationFormatSpec
 import Data.Aeson.Parser.UnescapeFFI ()
 import Data.Aeson.Parser.UnescapePure ()
 
-tests :: Test
+tests :: TestTree
 tests = testGroup "unit" [
     testGroup "SerializationFormatSpec" SerializationFormatSpec.tests
   , testGroup "ErrorMessages" ErrorMessages.tests
@@ -346,13 +346,13 @@ issue351 = [
 -- Comparison between bytestring and text encoders
 ------------------------------------------------------------------------------
 
-ioTests :: IO [Test]
+ioTests :: IO [TestTree]
 ioTests = do
   enc <- encoderComparisonTests
   js <- jsonTestSuite
   return [enc, js]
 
-encoderComparisonTests :: IO Test
+encoderComparisonTests :: IO TestTree
 encoderComparisonTests = do
   encoderTests <- forM testFiles $ \file0 -> do
       let file = "benchmarks/json-data/" ++ file0
@@ -412,7 +412,7 @@ unescapeString = do
 
 -- JSONTestSuite
 
-jsonTestSuiteTest :: FilePath -> Test
+jsonTestSuiteTest :: FilePath -> TestTree
 jsonTestSuiteTest path = testCase fileName $ do
     payload <- L.readFile path
     let result = eitherDecode payload :: Either String Value
@@ -427,7 +427,7 @@ jsonTestSuiteTest path = testCase fileName $ do
 -- Build a collection of tests based on the current contents of the
 -- JSONTestSuite test directories.
 
-jsonTestSuite :: IO Test
+jsonTestSuite :: IO TestTree
 jsonTestSuite = do
   let suitePath = "tests/JSONTestSuite"
   let suites = ["test_parsing", "test_transform"]
@@ -508,7 +508,7 @@ showOptions =
 newtype SingleMaybeField = SingleMaybeField { smf :: Maybe Int }
   deriving (Eq, Show, Generic)
 
-singleMaybeField :: [Test]
+singleMaybeField :: [TestTree]
 singleMaybeField = do
   (gName, gToJSON, gToEncoding, gFromJSON) <-
     [ ("generic", genericToJSON opts, genericToEncoding opts, parse (genericParseJSON opts))

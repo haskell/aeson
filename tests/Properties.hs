@@ -33,8 +33,8 @@ import Data.Version (Version)
 import Encoders
 import Instances ()
 import Numeric.Natural (Natural)
-import Test.Framework (Test, testGroup)
-import Test.Framework.Providers.QuickCheck2 (testProperty)
+import Test.Tasty (TestTree, testGroup)
+import Test.Tasty.QuickCheck (testProperty)
 import Test.QuickCheck (Arbitrary(..), Property, Testable, (===), (.&&.), counterexample)
 import Types
 import qualified Data.Attoparsec.Lazy as L
@@ -228,7 +228,7 @@ isEmptyArray' = (Array mempty ==)
 --------------------------------------------------------------------------------
 
 
-tests :: Test
+tests :: TestTree
 tests = testGroup "properties" [
   testGroup "encode" [
       testProperty "encodeDouble" encodeDouble

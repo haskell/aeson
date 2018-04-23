@@ -9,12 +9,12 @@ import DataFamilies.Encoders
 import DataFamilies.Instances ()
 import Properties hiding (tests)
 
-import Test.Framework (Test, testGroup)
-import Test.Framework.Providers.QuickCheck2 (testProperty)
+import Test.Tasty (TestTree, testGroup)
+import Test.Tasty.QuickCheck (testProperty)
 
 --------------------------------------------------------------------------------
 
-tests :: Test
+tests :: TestTree
 tests = testGroup "data families" [
     testGroup "template-haskell" [
       testGroup "toJSON" [

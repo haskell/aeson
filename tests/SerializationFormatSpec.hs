@@ -35,8 +35,8 @@ import Data.Time (fromGregorian)
 import Data.Word (Word8)
 import GHC.Generics (Generic)
 import Instances ()
-import Test.Framework (Test, testGroup)
-import Test.Framework.Providers.HUnit (testCase)
+import Test.Tasty (TestTree, testGroup)
+import Test.Tasty.HUnit (testCase)
 import Test.HUnit (assertFailure, assertEqual)
 import Types (Approx(..), Compose3, Compose3', I)
 import qualified Data.ByteString.Lazy.Char8 as L
@@ -54,7 +54,7 @@ import qualified Data.Tree as Tree
 import qualified Data.UUID.Types as UUID
 import qualified Data.Vector as Vector
 
-tests :: [Test]
+tests :: [TestTree]
 tests =
   [
     testGroup "To JSON representation" $ fmap assertJsonEncodingExample jsonEncodingExamples
@@ -246,7 +246,7 @@ instance (ToJSON a, ToJSON b) => ToJSON (MyEither a b) where
 instance (FromJSON a, FromJSON b) => FromJSON (MyEither a b) where
     parseJSON = genericParseJSON defaultOptions { sumEncoding = UntaggedValue }
 
-assertJsonExample :: Example -> Test
+assertJsonExample :: Example -> TestTree
 assertJsonExample (Example name bss val) = testCase name $ do
     assertSomeEqual "encode"           bss        (encode val)
     assertSomeEqual "encode/via value" bss        (encode $ toJSON val)
@@ -255,7 +255,7 @@ assertJsonExample (Example name bss val) = testCase name $ do
 assertJsonExample (MaybeExample name bs mval) = testCase name $
     assertEqual "decode" mval (decode bs)
 
-assertJsonEncodingExample :: Example -> Test
+assertJsonEncodingExample :: Example -> TestTree
 assertJsonEncodingExample (Example name bss val) = testCase name $ do
     assertSomeEqual "encode"           bss (encode val)
     assertSomeEqual "encode/via value" bss (encode $ toJSON val)
