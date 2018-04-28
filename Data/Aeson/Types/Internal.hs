@@ -270,7 +270,9 @@ type Failure f r   = JSONPath -> String -> f r
 -- | Success continuation.
 type Success a f r = a -> f r
 
--- | A JSON parser.
+-- | A JSON parser.  N.B. This might not fit your usual understanding of
+--  "parser".  Instead you might like to think of 'Parser' as a "parse result",
+-- i.e. a parser to which the input has already been applied.
 newtype Parser a = Parser {
       runParser :: forall f r.
                    JSONPath
