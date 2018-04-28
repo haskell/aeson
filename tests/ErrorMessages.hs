@@ -24,9 +24,13 @@ import Test.Tasty.Golden.Advanced (goldenTest)
 import qualified Data.ByteString.Lazy.Char8 as L
 import qualified Data.HashMap.Strict as HM
 
+import Encoders
+import Types
+
 tests :: [TestTree]
 tests =
   [ aesonGoldenTest "simple" "tests/golden/simple.expected" output
+  , aesonGoldenTest "generic" "tests/golden/generic.expected" (outputGeneric G)
   ]
 
 output :: Output
@@ -70,6 +74,85 @@ output = concat
       ]
   ]
 
+data Choice = TH | G
+
+outputGeneric :: Choice -> Output
+outputGeneric choice = concat
+  [ testWith "OneConstructor"
+      (select
+        thOneConstructorParseJSONDefault
+        gOneConstructorParseJSONDefault)
+      [ "\"X\""
+      , "[0]"
+      ]
+
+  , testWith "Nullary"
+      (select
+        thNullaryParseJSONString
+        gNullaryParseJSONString)
+      [ "\"X\""
+      , "[]"
+      ]
+
+  , testWithSomeType "SomeType (tagged)"
+      (select
+        thSomeTypeParseJSONTaggedObject
+        gSomeTypeParseJSONTaggedObject)
+      [ "{\"tag\": \"unary\", \"contents\": true}"
+      , "{\"tag\": \"unary\"}"
+      , "{\"tag\": \"record\"}"
+      , "{\"tag\": \"record\", \"testone\": true, \"testtwo\": null, \"testthree\": null}"
+      , "{\"tag\": \"X\"}"
+      , "{}"
+      , "[]"
+      ]
+
+  , testWithSomeType "SomeType (single-field)"
+      (select
+        thSomeTypeParseJSONObjectWithSingleField
+        gSomeTypeParseJSONObjectWithSingleField)
+      [ "{\"unary\": {}}"
+      , "{\"unary\": []}"
+      , "{\"X\": []}"
+      , "{\"record\": {}, \"W\":{}}"
+      , "{}"
+      , "[]"
+      ]
+
+  , testWithSomeType "SomeType (two-element array)"
+      (select
+        thSomeTypeParseJSON2ElemArray
+        gSomeTypeParseJSON2ElemArray)
+      [ "[\"unary\", true]"
+      , "[\"record\", null]"
+      , "[\"X\", 0]"
+      , "[null, 0]"
+      , "[]"
+      , "{}"
+      ]
+
+  , testWith "EitherTextInt"
+      (select
+        thEitherTextIntParseJSONUntaggedValue
+        gEitherTextIntParseJSONUntaggedValue)
+      [ "\"X\""
+      , "[]"
+      ]
+
+  , testWith "Product2 Int Bool"
+      (select
+        thProduct2ParseJSON
+        gProduct2ParseJSON)
+      [ "[1, null]"
+      , "[]"
+      , "{}"
+      ]
+  ]
+  where
+    select a b = case choice of
+      TH -> a
+      G -> b
+
 -- Test infrastructure
 
 type Output = [String]
@@ -105,3 +188,6 @@ testWith name parser ts =
 testFor :: forall a proxy. (FromJSON a, Show a)
         => String -> proxy a -> [L.ByteString] -> Output
 testFor name _ = testWith name (parseJSON :: Value -> Parser a)
+
+testWithSomeType :: String -> (Value -> Parser (SomeType Int)) -> [L.ByteString] -> Output
+testWithSomeType = testWith
