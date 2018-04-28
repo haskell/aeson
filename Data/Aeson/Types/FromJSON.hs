@@ -80,8 +80,8 @@ module Data.Aeson.Types.FromJSON
 
 import Prelude.Compat
 
-import Control.Applicative ((<|>), Const(..))
-import Control.Monad ((<=<), zipWithM)
+import Control.Applicative ((<|>), Const(..), liftA2)
+import Control.Monad (zipWithM)
 import Data.Aeson.Internal.Functions (mapKey)
 import Data.Aeson.Parser.Internal (eitherDecodeWith, jsonEOF)
 import Data.Aeson.Types.Generic
@@ -888,6 +888,27 @@ instance OVERLAPPABLE_ (GFromJSON arity a) => GFromJSON arity (M1 i c a) where
     -- parsed value:
     gParseJSON opts fargs = fmap M1 . gParseJSON opts fargs
 
+-- Information for error messages
+
+type TypeName = String
+type ConName = String
+
+-- | Add the name of the type being parsed to a parser's error messages.
+contextType :: TypeName -> Parser a -> Parser a
+contextType = prependContext
+
+-- | Add the name of the constructor being parsed to a parser's error messages.
+contextCons :: ConName -> TypeName -> Parser a -> Parser a
+contextCons cname tname = prependContext (showCons cname tname)
+
+-- | Render a constructor as @\"MyType(MyConstructor)\"@.
+showCons :: ConName -> TypeName -> String
+showCons cname tname = tname ++ "(" ++ cname ++ ")"
+
+--------------------------------------------------------------------------------
+
+-- Parsing single fields
+
 instance (FromJSON a) => GFromJSON arity (K1 i a) where
     -- Constant values are decoded using their FromJSON instance:
     gParseJSON _opts _ = fmap K1 . parseJSON
@@ -902,92 +923,106 @@ instance (FromJSON1 f) => GFromJSON One (Rec1 f) where
     -- FromJSON1 instance:
     gParseJSON _opts (From1Args pj pjl) = fmap Rec1 . liftParseJSON pj pjl
 
-instance GFromJSON arity U1 where
-    -- Empty constructors are expected to be encoded as an empty array:
-    gParseJSON _opts _ v
-        | isEmptyArray v = pure U1
-        | otherwise      = typeMismatch "unit constructor (U1)" v
-
-instance ( ConsFromJSON arity a
-         , AllNullary         (C1 c a) allNullary
-         , ParseSum     arity (C1 c a) allNullary
-         ) => GFromJSON arity (D1 d (C1 c a)) where
-    -- The option 'tagSingleConstructors' determines whether to wrap
-    -- a single-constructor type.
-    gParseJSON opts fargs
-        | tagSingleConstructors opts
-            = fmap M1
-            . (unTagged :: Tagged allNullary (Parser (C1 c a p)) -> Parser (C1 c a p))
-            . parseSum opts fargs
-        | otherwise = fmap M1 . fmap M1 . consParseJSON opts fargs
-
-instance (ConsFromJSON arity a) => GFromJSON arity (C1 c a) where
-    -- Constructors need to be decoded differently depending on whether they're
-    -- a record or not. This distinction is made by consParseJSON:
-    gParseJSON opts fargs = fmap M1 . consParseJSON opts fargs
-
-instance ( FromProduct arity a, FromProduct arity b
-         , ProductSize       a, ProductSize       b
-         ) => GFromJSON arity (a :*: b) where
-    -- Products are expected to be encoded to an array. Here we check whether we
-    -- got an array of the same size as the product, then parse each of the
-    -- product's elements using parseProduct:
-    gParseJSON opts fargs = withArray "product (:*:)" $ \arr ->
-      let lenArray = V.length arr
-          lenProduct = (unTagged2 :: Tagged2 (a :*: b) Int -> Int)
-                       productSize in
-      if lenArray == lenProduct
-      then parseProduct opts fargs arr 0 lenProduct
-      else fail $ "When expecting a product of " ++ show lenProduct ++
-                  " values, encountered an Array of " ++ show lenArray ++
-                  " elements instead"
-
-instance ( AllNullary         (a :+: b) allNullary
-         , ParseSum     arity (a :+: b) allNullary
-         ) => GFromJSON arity (a :+: b) where
-    -- If all constructors of a sum datatype are nullary and the
-    -- 'allNullaryToStringTag' option is set they are expected to be
-    -- encoded as strings.  This distinction is made by 'parseSum':
-    gParseJSON opts fargs =
-      (unTagged :: Tagged allNullary (Parser ((a :+: b) d)) ->
-                                     Parser ((a :+: b) d))
-                 . parseSum opts fargs
-
 instance (FromJSON1 f, GFromJSON One g) => GFromJSON One (f :.: g) where
     -- If an occurrence of the last type parameter is nested inside two
     -- composed types, it is decoded by using the outermost type's FromJSON1
     -- instance to generically decode the innermost type:
     gParseJSON opts fargs =
-      let gpj = gParseJSON opts fargs in
-      fmap Comp1 . liftParseJSON gpj (listParser gpj)
+        let gpj = gParseJSON opts fargs in
+        fmap Comp1 . liftParseJSON gpj (listParser gpj)
+
+--------------------------------------------------------------------------------
+
+instance (GFromJSON' arity a, Datatype d) => GFromJSON arity (D1 d a) where
+    -- Meta-information, which is not handled elsewhere, is just added to the
+    -- parsed value:
+    gParseJSON opts fargs = fmap M1 . gParseJSON' (tname :* opts :* fargs)
+      where
+        tname = moduleName proxy ++ "." ++ datatypeName proxy
+        proxy = undefined :: M1 _i d _f _p
+
+-- | 'GFromJSON', after unwrapping the 'D1' constructor, now carrying the data
+-- type's name.
+class GFromJSON' arity f where
+    gParseJSON' :: TypeName :* Options :* FromArgs arity a
+                -> Value
+                -> Parser (f a)
+
+-- | Single constructor.
+instance ( ConsFromJSON arity a
+         , AllNullary         (C1 c a) allNullary
+         , ParseSum     arity (C1 c a) allNullary
+         , Constructor c
+         ) => GFromJSON' arity (C1 c a) where
+    -- The option 'tagSingleConstructors' determines whether to wrap
+    -- a single-constructor type.
+    gParseJSON' p@(_ :* opts :* _)
+        | tagSingleConstructors opts
+            = (unTagged :: Tagged allNullary (Parser (C1 c a p)) -> Parser (C1 c a p))
+            . parseSum p
+        | otherwise = fmap M1 . consParseJSON (cname :* p)
+      where
+        cname = conName (undefined :: M1 _i c _f _p)
+
+-- | Multiple constructors.
+instance ( AllNullary          (a :+: b) allNullary
+         , ParseSum      arity (a :+: b) allNullary
+         ) => GFromJSON' arity (a :+: b) where
+    -- If all constructors of a sum datatype are nullary and the
+    -- 'allNullaryToStringTag' option is set they are expected to be
+    -- encoded as strings.  This distinction is made by 'parseSum':
+    gParseJSON' p =
+        (unTagged :: Tagged allNullary (Parser ((a :+: b) _d)) ->
+                                        Parser ((a :+: b) _d))
+                   . parseSum p
 
 --------------------------------------------------------------------------------
 
 class ParseSum arity f allNullary where
-    parseSum :: Options -> FromArgs arity a
-             -> Value -> Tagged allNullary (Parser (f a))
+    parseSum :: TypeName :* Options :* FromArgs arity a
+             -> Value
+             -> Tagged allNullary (Parser (f a))
 
-instance ( SumFromString           f
+instance ( ConstructorNames        f
+         , SumFromString           f
          , FromPair          arity f
          , FromTaggedObject  arity f
          , FromUntaggedValue arity f
          ) => ParseSum       arity f True where
-    parseSum opts fargs
-        | allNullaryToStringTag opts = Tagged . parseAllNullarySum    opts
-        | otherwise                  = Tagged . parseNonAllNullarySum opts fargs
+    parseSum p@(tname :* opts :* _)
+        | allNullaryToStringTag opts = Tagged . parseAllNullarySum tname opts
+        | otherwise                  = Tagged . parseNonAllNullarySum p
 
-instance ( FromPair          arity f
+instance ( ConstructorNames        f
+         , FromPair          arity f
          , FromTaggedObject  arity f
          , FromUntaggedValue arity f
          ) => ParseSum       arity f False where
-    parseSum opts fargs = Tagged . parseNonAllNullarySum opts fargs
+    parseSum p = Tagged . parseNonAllNullarySum p
 
 --------------------------------------------------------------------------------
 
-parseAllNullarySum :: SumFromString f => Options -> Value -> Parser (f a)
-parseAllNullarySum opts = withText "Text" $ \key ->
-                            maybe (notFound key) return $
-                              parseSumFromString opts key
+parseAllNullarySum :: (SumFromString f, ConstructorNames f)
+                   => TypeName -> Options -> Value -> Parser (f a)
+parseAllNullarySum tname opts =
+    withText tname $ \tag ->
+        maybe (badTag tag) return $
+            parseSumFromString opts tag
+  where
+    badTag tag = failWithCTags tname opts $ \cnames ->
+        "expected one of the tags " ++ show cnames ++
+        ", but found tag " ++ show tag
+
+-- | Fail with an informative error message about a mismatched tag.
+-- The error message is parameterized by the list of expected tags,
+-- to be inferred from the result type of the parser.
+failWithCTags
+  :: forall f a. ConstructorNames f
+  => TypeName -> Options -> ([String] -> String) -> Parser (f a)
+failWithCTags tname opts f =
+    contextType tname . fail $ f cnames
+  where
+    cnames = unTagged2 (constructorTags opts :: Tagged2 f [String])
 
 class SumFromString f where
     parseSumFromString :: Options -> Text -> Maybe (f a)
@@ -1001,243 +1036,339 @@ instance (Constructor c) => SumFromString (C1 c U1) where
                                 | otherwise   = Nothing
         where
           name = pack $ constructorTagModifier opts $
-                          conName (undefined :: t c U1 p)
+                          conName (undefined :: M1 _i c _f _p)
+
+-- | List of all constructor tags.
+constructorTags :: ConstructorNames a => Options -> Tagged2 a [String]
+constructorTags opts =
+    fmap DList.toList (constructorNames' (constructorTagModifier opts))
+
+-- | List of all constructor names of an ADT, after a given conversion
+-- function. (Better inlining.)
+class ConstructorNames a where
+    constructorNames' :: (String -> t) -> Tagged2 a (DList.DList t)
+
+instance (ConstructorNames a, ConstructorNames b) => ConstructorNames (a :+: b) where
+    constructorNames' = liftA2 append constructorNames' constructorNames'
+      where
+        append
+          :: Tagged2 a (DList.DList t)
+          -> Tagged2 b (DList.DList t)
+          -> Tagged2 (a :+: b) (DList.DList t)
+        append (Tagged2 xs) (Tagged2 ys) = Tagged2 (DList.append xs ys)
+
+instance Constructor c => ConstructorNames (C1 c a) where
+    constructorNames' f = Tagged2 (pure (f cname))
+      where
+        cname = conName (undefined :: M1 _i c _f _p)
 
 --------------------------------------------------------------------------------
 
 parseNonAllNullarySum :: ( FromPair          arity f
                          , FromTaggedObject  arity f
                          , FromUntaggedValue arity f
-                         ) => Options -> FromArgs arity c
+                         , ConstructorNames        f
+                         ) => TypeName :* Options :* FromArgs arity c
                            -> Value -> Parser (f c)
-parseNonAllNullarySum opts fargs =
+parseNonAllNullarySum p@(tname :* opts :* _) =
     case sumEncoding opts of
       TaggedObject{..} ->
-          withObject "Object" $ \obj -> do
-            tag <- obj .: pack tagFieldName
-            fromMaybe (notFound tag) $
-              parseFromTaggedObject opts fargs contentsFieldName obj tag
+          withObject tname $ \obj -> do
+              tag <- contextType tname $ obj .: tagKey
+              fromMaybe (badTag tag <?> Key tagKey) $
+                  parseFromTaggedObject (tag :* contentsFieldName :* p) obj
+        where
+          tagKey = pack tagFieldName
+          badTag tag = failWith_ $ \cnames ->
+              "expected tag field to be one of " ++ show cnames ++
+              ", but found tag " ++ show tag
 
       ObjectWithSingleField ->
-          withObject "Object" $ \obj ->
-            case H.toList obj of
-              [pair@(tag, _)] -> fromMaybe (notFound tag) $
-                                   parsePair opts fargs pair
-              _ -> fail "Object doesn't have a single field"
+          withObject tname $ \obj -> case H.toList obj of
+              [(tag, v)] -> maybe (badTag tag) (<?> Key tag) $
+                  parsePair (tag :* p) v
+              _ -> contextType tname . fail $
+                  "expected an Object with a single pair, but found " ++
+                  show (H.size obj) ++ " pairs"
+        where
+          badTag tag = failWith_ $ \cnames ->
+              "expected an Object with a single pair where the tag is one of " ++
+              show cnames ++ ", but found tag " ++ show tag
 
       TwoElemArray ->
-          withArray "Array" $ \arr ->
-            if V.length arr == 2
-            then case V.unsafeIndex arr 0 of
-                   String tag -> fromMaybe (notFound tag) $
-                                   parsePair opts fargs (tag, V.unsafeIndex arr 1)
-                   _ -> fail "First element is not a String"
-            else fail "Array doesn't have 2 elements"
+          withArray tname $ \arr -> case V.length arr of
+              2 | String tag <- V.unsafeIndex arr 0 ->
+                  maybe (badTag tag <?> Index 0) (<?> Index 1) $
+                      parsePair (tag :* p) (V.unsafeIndex arr 1)
+                | otherwise ->
+                  contextType tname $
+                      fail "tag element is not a String" <?> Index 0
+              len -> contextType tname . fail $
+                  "expected a 2-element Array, but encountered an Array of length " ++
+                  show len
+        where
+          badTag tag = failWith_ $ \cnames ->
+              "expected tag of the 2-element Array to be one of " ++
+              show cnames ++ ", but found tag " ++ show tag
 
-      UntaggedValue -> parseUntaggedValue opts fargs
+      UntaggedValue -> parseUntaggedValue p
+  where
+    failWith_ = failWithCTags tname opts
 
 --------------------------------------------------------------------------------
 
 class FromTaggedObject arity f where
-    parseFromTaggedObject :: Options -> FromArgs arity a
-                          -> String -> Object
-                          -> Text -> Maybe (Parser (f a))
+    -- The first two components of the parameter tuple are: the constructor tag
+    -- to match against, and the contents field name.
+    parseFromTaggedObject
+        :: Text :* String :* TypeName :* Options :* FromArgs arity a
+        -> Object
+        -> Maybe (Parser (f a))
 
 instance ( FromTaggedObject arity a, FromTaggedObject arity b) =>
     FromTaggedObject arity (a :+: b) where
-        parseFromTaggedObject opts fargs contentsFieldName obj tag =
-            (fmap L1 <$> parseFromTaggedObject opts fargs contentsFieldName obj tag) <|>
-            (fmap R1 <$> parseFromTaggedObject opts fargs contentsFieldName obj tag)
+        parseFromTaggedObject p obj =
+            (fmap L1 <$> parseFromTaggedObject p obj) <|>
+            (fmap R1 <$> parseFromTaggedObject p obj)
 
-instance ( FromTaggedObject' arity f
+instance ( IsRecord                f isRecord
+         , FromTaggedObject' arity f isRecord
          , Constructor c
          ) => FromTaggedObject arity (C1 c f) where
-    parseFromTaggedObject opts fargs contentsFieldName obj tag
-        | tag == name = Just $ M1 <$> parseFromTaggedObject'
-                                        opts fargs contentsFieldName obj
-        | otherwise = Nothing
-        where
-          name = pack $ constructorTagModifier opts $
-                          conName (undefined :: t c f p)
+    parseFromTaggedObject (tag :* contentsFieldName :* p@(_ :* opts :* _))
+        | tag == tag'
+        = Just . fmap M1 .
+            (unTagged :: Tagged isRecord (Parser (f a)) -> Parser (f a)) .
+            parseFromTaggedObject' (contentsFieldName :* cname :* p)
+        | otherwise = const Nothing
+      where
+        tag' = pack $ constructorTagModifier opts cname
+        cname = conName (undefined :: M1 _i c _f _p)
 
 --------------------------------------------------------------------------------
 
-class FromTaggedObject' arity f where
-    parseFromTaggedObject' :: Options -> FromArgs arity a -> String
-                           -> Object -> Parser (f a)
+class FromTaggedObject' arity f isRecord where
+    -- The first component of the parameter tuple is the contents field name.
+    parseFromTaggedObject'
+        :: String :* ConName :* TypeName :* Options :* FromArgs arity a
+        -> Object -> Tagged isRecord (Parser (f a))
 
-class FromTaggedObject'' arity f isRecord where
-    parseFromTaggedObject'' :: Options -> FromArgs arity a -> String
-                            -> Object -> Tagged isRecord (Parser (f a))
+instance (RecordFromJSON arity f) => FromTaggedObject' arity f True where
+    -- Records are unpacked in the tagged object
+    parseFromTaggedObject' (_ :* p) = Tagged . recordParseJSON p
 
-instance ( IsRecord                   f isRecord
-         , FromTaggedObject''   arity f isRecord
-         ) => FromTaggedObject' arity f where
-    parseFromTaggedObject' opts fargs contentsFieldName =
-        (unTagged :: Tagged isRecord (Parser (f a)) -> Parser (f a)) .
-        parseFromTaggedObject'' opts fargs contentsFieldName
+instance (ConsFromJSON arity f) => FromTaggedObject' arity f False where
+    -- Nonnullary nonrecords are encoded in the contents field
+    parseFromTaggedObject' p obj = Tagged $ do
+        contents <- contextCons cname tname (obj .: key)
+        consParseJSON p' contents <?> Key key
+      where
+        key = pack contentsFieldName
+        contentsFieldName :* p'@(cname :* tname :* _) = p
 
-instance (FromRecord arity f) => FromTaggedObject'' arity f True where
-    parseFromTaggedObject'' opts fargs _ =
-      Tagged . parseRecord opts fargs
-
-instance (GFromJSON arity f) => FromTaggedObject'' arity f False where
-    parseFromTaggedObject'' opts fargs contentsFieldName = Tagged .
-      (gParseJSON opts fargs <=< (.: pack contentsFieldName))
-
-instance OVERLAPPING_ FromTaggedObject'' arity U1 False where
-    parseFromTaggedObject'' _ _ _ _ = Tagged (pure U1)
+instance OVERLAPPING_ FromTaggedObject' arity U1 False where
+    -- Nullary constructors don't need a contents field
+    parseFromTaggedObject' _ _ = Tagged (pure U1)
 
 --------------------------------------------------------------------------------
 
+-- | Constructors need to be decoded differently depending on whether they're
+-- a record or not. This distinction is made by 'ConsParseJSON'.
 class ConsFromJSON arity f where
-    consParseJSON  :: Options -> FromArgs arity a
-                   -> Value -> Parser (f a)
+    consParseJSON
+        :: ConName :* TypeName :* Options :* FromArgs arity a
+        -> Value -> Parser (f a)
 
 class ConsFromJSON' arity f isRecord where
-    consParseJSON' :: Options -> FromArgs arity a
-                   -> Value -> Tagged isRecord (Parser (f a))
+    consParseJSON'
+        :: ConName :* TypeName :* Options :* FromArgs arity a
+        -> Value -> Tagged isRecord (Parser (f a))
 
 instance ( IsRecord            f isRecord
          , ConsFromJSON' arity f isRecord
          ) => ConsFromJSON arity f where
-    consParseJSON opts fargs =
+    consParseJSON p =
       (unTagged :: Tagged isRecord (Parser (f a)) -> Parser (f a))
-        . consParseJSON' opts fargs
+          . consParseJSON' p
 
 instance OVERLAPPING_
-         ( GFromJSON arity a, FromRecord arity (S1 s a)
+         ( GFromJSON arity a, RecordFromJSON arity (S1 s a)
          ) => ConsFromJSON' arity (S1 s a) True where
-    consParseJSON' opts fargs
-      | unwrapUnaryRecords opts = Tagged . gParseJSON opts fargs
-      | otherwise = Tagged . withObject "unary record" (parseRecord opts fargs)
+    consParseJSON' p@(cname :* tname :* opts :* fargs)
+        | unwrapUnaryRecords opts = Tagged . fmap M1 . gParseJSON opts fargs
+        | otherwise = Tagged . withObject (showCons cname tname) (recordParseJSON p)
 
-instance FromRecord arity f => ConsFromJSON' arity f True where
-    consParseJSON' opts fargs =
-      Tagged . withObject "record (:*:)" (parseRecord opts fargs)
+instance RecordFromJSON arity f => ConsFromJSON' arity f True where
+    consParseJSON' p@(cname :* tname :* _) =
+        Tagged . withObject (showCons cname tname) (recordParseJSON p)
 
-instance GFromJSON arity f => ConsFromJSON' arity f False where
-    consParseJSON' opts fargs = Tagged . gParseJSON opts fargs
+instance OVERLAPPING_
+         ConsFromJSON' arity U1 False where
+    -- Empty constructors are expected to be encoded as an empty array:
+    consParseJSON' (cname :* tname :* _) v =
+        Tagged . contextCons cname tname $ case v of
+            Array a | V.null a -> pure U1
+                    | otherwise -> fail_ a
+            _ -> typeMismatch "Array" v
+      where
+        fail_ a = fail $
+            "expected an empty Array, but encountered an Array of length " ++
+            show (V.length a)
+
+instance OVERLAPPING_
+         GFromJSON arity f => ConsFromJSON' arity (S1 s f) False where
+    consParseJSON' (_ :* _ :* opts :* fargs) =
+        Tagged . fmap M1 . gParseJSON opts fargs
+
+instance (ProductFromJSON arity f, ProductSize f
+         ) => ConsFromJSON' arity f False where
+    consParseJSON' p = Tagged . productParseJSON0 p
 
 --------------------------------------------------------------------------------
 
-class FromRecord arity f where
-    parseRecord :: Options -> FromArgs arity a
-                -> Object -> Parser (f a)
+class RecordFromJSON arity f where
+    recordParseJSON
+        :: ConName :* TypeName :* Options :* FromArgs arity a
+        -> Object -> Parser (f a)
 
-instance ( FromRecord arity a
-         , FromRecord arity b
-         ) => FromRecord arity (a :*: b) where
-    parseRecord opts fargs obj =
-      (:*:) <$> parseRecord opts fargs obj
-            <*> parseRecord opts fargs obj
+instance ( RecordFromJSON arity a
+         , RecordFromJSON arity b
+         ) => RecordFromJSON arity (a :*: b) where
+    recordParseJSON p obj =
+        (:*:) <$> recordParseJSON p obj
+              <*> recordParseJSON p obj
 
 instance OVERLAPPABLE_ (Selector s, GFromJSON arity a) =>
-  FromRecord arity (S1 s a) where
-    parseRecord opts fargs =
-      (<?> Key label) . gParseJSON opts fargs <=< (.: label)
-        where
-          label = pack . fieldLabelModifier opts $ selName (undefined :: t s a p)
+         RecordFromJSON arity (S1 s a) where
+    recordParseJSON (cname :* tname :* opts :* fargs) obj = do
+        fv <- contextCons cname tname (obj .: label)
+        M1 <$> gParseJSON opts fargs fv <?> Key label
+      where
+        label = pack $ fieldLabelModifier opts sname
+        sname = selName (undefined :: M1 _i s _f _p)
 
 instance INCOHERENT_ (Selector s, FromJSON a) =>
-  FromRecord arity (S1 s (K1 i (Maybe a))) where
-    parseRecord opts _ obj = M1 . K1 <$> obj .:? pack label
-        where
-          label = fieldLabelModifier opts $
-                    selName (undefined :: t s (K1 i (Maybe a)) p)
+         RecordFromJSON arity (S1 s (K1 i (Maybe a))) where
+    recordParseJSON (_ :* _ :* opts :* _) obj = M1 . K1 <$> obj .:? pack label
+      where
+        label = fieldLabelModifier opts sname
+        sname = selName (undefined :: M1 _i s _f _p)
 
 -- Parse an Option like a Maybe.
 instance INCOHERENT_ (Selector s, FromJSON a) =>
-  FromRecord arity (S1 s (K1 i (Semigroup.Option a))) where
-    parseRecord opts fargs obj = wrap <$> parseRecord opts fargs obj
+         RecordFromJSON arity (S1 s (K1 i (Semigroup.Option a))) where
+    recordParseJSON p obj = wrap <$> recordParseJSON p obj
       where
         wrap :: S1 s (K1 i (Maybe a)) p -> S1 s (K1 i (Semigroup.Option a)) p
         wrap (M1 (K1 a)) = M1 (K1 (Semigroup.Option a))
 
 --------------------------------------------------------------------------------
 
-class FromProduct arity f where
-    parseProduct :: Options -> FromArgs arity a
+productParseJSON0
+    :: forall f arity a. (ProductFromJSON arity f, ProductSize f)
+    => ConName :* TypeName :* Options :* FromArgs arity a
+    -> Value -> Parser (f a)
+    -- Products are expected to be encoded to an array. Here we check whether we
+    -- got an array of the same size as the product, then parse each of the
+    -- product's elements using productParseJSON:
+productParseJSON0 p@(cname :* tname :* _ :* _) =
+    withArray (showCons cname tname) $ \arr ->
+        let lenArray = V.length arr
+            lenProduct = (unTagged2 :: Tagged2 f Int -> Int)
+                         productSize in
+        if lenArray == lenProduct
+        then productParseJSON p arr 0 lenProduct
+        else contextCons cname tname $
+             fail $ "expected an Array of length " ++ show lenProduct ++
+                    ", but encountered an Array of length " ++ show lenArray
+
+--
+
+class ProductFromJSON arity f where
+    productParseJSON :: ConName :* TypeName :* Options :* FromArgs arity a
                  -> Array -> Int -> Int
                  -> Parser (f a)
 
-instance ( FromProduct    arity a
-         , FromProduct    arity b
-         ) => FromProduct arity (a :*: b) where
-    parseProduct opts fargs arr ix len =
-        (:*:) <$> parseProduct opts fargs arr ix  lenL
-              <*> parseProduct opts fargs arr ixR lenR
+instance ( ProductFromJSON    arity a
+         , ProductFromJSON    arity b
+         ) => ProductFromJSON arity (a :*: b) where
+    productParseJSON p arr ix len =
+        (:*:) <$> productParseJSON p arr ix  lenL
+              <*> productParseJSON p arr ixR lenR
         where
           lenL = len `unsafeShiftR` 1
           ixR  = ix + lenL
           lenR = len - lenL
 
-instance (GFromJSON arity a) => FromProduct arity (S1 s a) where
-    parseProduct opts fargs arr ix _ =
-      gParseJSON opts fargs $ V.unsafeIndex arr ix
+instance (GFromJSON arity a) => ProductFromJSON arity (S1 s a) where
+    productParseJSON (_ :* _ :* opts :* fargs) arr ix _ =
+        M1 <$> gParseJSON opts fargs (V.unsafeIndex arr ix) <?> Index ix
 
 --------------------------------------------------------------------------------
 
 class FromPair arity f where
-    parsePair :: Options -> FromArgs arity a
-              -> Pair -> Maybe (Parser (f a))
+    -- The first component of the parameter tuple is the tag to match.
+    parsePair :: Text :* TypeName :* Options :* FromArgs arity a
+              -> Value
+              -> Maybe (Parser (f a))
 
 instance ( FromPair arity a
          , FromPair arity b
          ) => FromPair arity (a :+: b) where
-    parsePair opts fargs pair = (fmap L1 <$> parsePair opts fargs pair) <|>
-                                (fmap R1 <$> parsePair opts fargs pair)
+    parsePair p pair =
+        (fmap L1 <$> parsePair p pair) <|>
+        (fmap R1 <$> parsePair p pair)
 
 instance ( Constructor c
-         , GFromJSON    arity a
          , ConsFromJSON arity a
          ) => FromPair arity (C1 c a) where
-    parsePair opts fargs (tag, value)
-        | tag == tag' = Just $ gParseJSON opts fargs value
+    parsePair (tag :* p@(_ :* opts :* _)) v
+        | tag == tag' = Just $ M1 <$> consParseJSON (cname :* p) v
         | otherwise   = Nothing
-        where
-          tag' = pack $ constructorTagModifier opts $
-                          conName (undefined :: t c a p)
+      where
+        tag' = pack $ constructorTagModifier opts cname
+        cname = conName (undefined :: M1 _i c _a _p)
 
 --------------------------------------------------------------------------------
 
 class FromUntaggedValue arity f where
-    parseUntaggedValue :: Options -> FromArgs arity a
-                       -> Value -> Parser (f a)
+    parseUntaggedValue :: TypeName :* Options :* FromArgs arity a
+                       -> Value
+                       -> Parser (f a)
 
 instance
     ( FromUntaggedValue    arity a
     , FromUntaggedValue    arity b
     ) => FromUntaggedValue arity (a :+: b)
   where
-    parseUntaggedValue opts fargs value =
-        L1 <$> parseUntaggedValue opts fargs value <|>
-        R1 <$> parseUntaggedValue opts fargs value
+    parseUntaggedValue p value =
+        L1 <$> parseUntaggedValue p value <|>
+        R1 <$> parseUntaggedValue p value
 
 instance OVERLAPPABLE_
-    ( GFromJSON            arity a
-    , ConsFromJSON         arity a
+    ( ConsFromJSON arity a
+    , Constructor c
     ) => FromUntaggedValue arity (C1 c a)
   where
-    parseUntaggedValue = gParseJSON
+    parseUntaggedValue p = fmap M1 . consParseJSON (cname :* p)
+      where
+        cname = conName (undefined :: M1 _i c _f _p)
 
 instance OVERLAPPING_
     ( Constructor c )
     => FromUntaggedValue arity (C1 c U1)
   where
-    parseUntaggedValue opts _ (String s)
-        | s == pack (constructorTagModifier opts (conName (undefined :: t c U1 p))) =
-            pure $ M1 U1
-        | otherwise =
-            fail $ "Invalid tag: " ++ unpack s
-    parseUntaggedValue _ _ v = typeMismatch (conName (undefined :: t c U1 p)) v
-
-
---------------------------------------------------------------------------------
-
-notFound :: Text -> Parser a
-notFound key = fail $ "The key \"" ++ unpack key ++ "\" was not found"
-{-# INLINE notFound #-}
+    parseUntaggedValue (tname :* opts :* _) v =
+        contextCons cname tname $ case v of
+            String tag
+                | tag == tag' -> pure $ M1 U1
+                | otherwise -> fail_ tag
+            _ -> typeMismatch "String" v
+      where
+        tag' = pack $ constructorTagModifier opts cname
+        cname = conName (undefined :: M1 _i c _f _p)
+        fail_ tag = fail $
+          "expected tag " ++ show tag' ++ ", but found tag " ++ show tag
 
 -------------------------------------------------------------------------------
 -- Instances
