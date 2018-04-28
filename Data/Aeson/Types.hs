@@ -26,6 +26,7 @@ module Data.Aeson.Types
     -- * Convenience types and functions
     , DotNetTime(..)
     , typeMismatch
+    , unexpected
     -- * Type conversion
     , Parser
     , Result(..)
@@ -37,6 +38,7 @@ module Data.Aeson.Types
     , ToJSON(..)
     , KeyValue(..)
     , modifyFailure
+    , prependFailure
     , parserThrowError
     , parserCatchError
 

@@ -596,25 +596,25 @@ bigScientificExponent =
 bigIntegerDecoding :: Assertion
 bigIntegerDecoding =
   assertEqual "Decoding an Integer with a large exponent should fail"
-    (Left "Error in $: expected a number with exponent <= 1024, encountered Number")
+    (Left "Error in $: parsing Integer failed, found a number with exponent 2000, but it must not be greater than 1024")
     ((eitherDecode :: L.ByteString -> Either String Integer) "1e2000")
 
 bigNaturalDecoding :: Assertion
 bigNaturalDecoding =
   assertEqual "Decoding a Natural with a large exponent should fail"
-    (Left "Error in $: expected a number with exponent <= 1024, encountered Number")
-    ((eitherDecode :: L.ByteString -> Either String Integer) "1e2000")
+    (Left "Error in $: parsing Natural failed, found a number with exponent 2000, but it must not be greater than 1024")
+    ((eitherDecode :: L.ByteString -> Either String Natural) "1e2000")
 
 bigIntegerKeyDecoding :: Assertion
 bigIntegerKeyDecoding =
   assertEqual "Decoding an Integer key with a large exponent should fail"
-    (Left "Error in $['1e2000']: expected a number with exponent <= 1024, encountered Number")
+    (Left "Error in $['1e2000']: parsing Integer failed, found a number with exponent 2000, but it must not be greater than 1024")
     ((eitherDecode :: L.ByteString -> Either String (HashMap Integer Value)) "{ \"1e2000\": null }")
 
 bigNaturalKeyDecoding :: Assertion
 bigNaturalKeyDecoding =
   assertEqual "Decoding an Integer key with a large exponent should fail"
-    (Left "Error in $['1e2000']: expected a number with exponent <= 1024, encountered Number")
+    (Left "Error in $['1e2000']: found a number with exponent 2000, but it must not be greater than 1024")
     ((eitherDecode :: L.ByteString -> Either String (HashMap Natural Value)) "{ \"1e2000\": null }")
 
 deriveJSON defaultOptions{omitNothingFields=True} ''MyRecord

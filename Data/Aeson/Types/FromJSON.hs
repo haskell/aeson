@@ -61,6 +61,7 @@ module Data.Aeson.Types.FromJSON
     , fromJSON
     , ifromJSON
     , typeMismatch
+    , unexpected
     , parseField
     , parseFieldMaybe
     , parseFieldMaybe'
@@ -170,7 +171,7 @@ parseIndexedJSON p idx value = p value <?> Index idx
 parseIndexedJSONPair :: (Value -> Parser a) -> (Value -> Parser b) -> Int -> Value -> Parser (a, b)
 parseIndexedJSONPair keyParser valParser idx value = p value <?> Index idx
   where
-    p = withArray "(k,v)" $ \ab ->
+    p = withArray "(k, v)" $ \ab ->
         let n = V.length ab
         in if n == 2
              then (,) <$> parseJSONElemAtIndex keyParser 0 ab
@@ -183,33 +184,33 @@ parseJSONElemAtIndex :: (Value -> Parser a) -> Int -> V.Vector Value -> Parser a
 parseJSONElemAtIndex p idx ary = p (V.unsafeIndex ary idx) <?> Index idx
 
 parseRealFloat :: RealFloat a => String -> Value -> Parser a
-parseRealFloat _        (Number s) = pure $ Scientific.toRealFloat s
-parseRealFloat _        Null       = pure (0/0)
-parseRealFloat expected v          = typeMismatch expected v
+parseRealFloat _    (Number s) = pure $ Scientific.toRealFloat s
+parseRealFloat _    Null       = pure (0/0)
+parseRealFloat name v          = prependContext name (unexpected v)
 {-# INLINE parseRealFloat #-}
 
-parseIntegralFromScientific :: forall a. Integral a => String -> Scientific -> Parser a
-parseIntegralFromScientific expected s =
+parseIntegralFromScientific :: forall a. Integral a => Scientific -> Parser a
+parseIntegralFromScientific s =
     case Scientific.floatingOrInteger s :: Either Double a of
         Right x -> pure x
-        Left _  -> fail $ "expected " ++ expected ++ ", encountered floating number " ++ show s
+        Left _  -> fail $ "unexpected floating number " ++ show s
 {-# INLINE parseIntegralFromScientific #-}
 
 parseIntegral :: Integral a => String -> Value -> Parser a
-parseIntegral expected =
-    withBoundedScientific expected $ parseIntegralFromScientific expected
+parseIntegral name =
+    prependContext name . withBoundedScientific' parseIntegralFromScientific
 {-# INLINE parseIntegral #-}
 
-parseBoundedIntegralFromScientific :: (Bounded a, Integral a) => String -> Scientific -> Parser a
-parseBoundedIntegralFromScientific expected s = maybe
-    (fail $ expected ++ " is either floating or will cause over or underflow: " ++ show s)
+parseBoundedIntegralFromScientific :: (Bounded a, Integral a) => Scientific -> Parser a
+parseBoundedIntegralFromScientific s = maybe
+    (fail $ "value is either floating or will cause over or underflow " ++ show s)
     pure
     (Scientific.toBoundedInteger s)
 {-# INLINE parseBoundedIntegralFromScientific #-}
 
 parseBoundedIntegral :: (Bounded a, Integral a) => String -> Value -> Parser a
-parseBoundedIntegral expected =
-    withScientific expected $ parseBoundedIntegralFromScientific expected
+parseBoundedIntegral name =
+    prependContext name . withScientific' parseBoundedIntegralFromScientific
 {-# INLINE parseBoundedIntegral #-}
 
 parseScientificText :: Text -> Parser Scientific
@@ -219,18 +220,20 @@ parseScientificText
     . T.encodeUtf8
 
 parseIntegralText :: Integral a => String -> Text -> Parser a
-parseIntegralText expected t
-    = parseScientificText t
-  >>= rejectLargeExponent
-  >>= parseIntegralFromScientific expected
+parseIntegralText name t =
+    prependContext name $
+            parseScientificText t
+        >>= rejectLargeExponent
+        >>= parseIntegralFromScientific
   where
     rejectLargeExponent :: Scientific -> Parser Scientific
-    rejectLargeExponent s = withBoundedScientific expected pure (Number s)
+    rejectLargeExponent s = withBoundedScientific' pure (Number s)
 {-# INLINE parseIntegralText #-}
 
 parseBoundedIntegralText :: (Bounded a, Integral a) => String -> Text -> Parser a
-parseBoundedIntegralText expected t =
-    parseScientificText t >>= parseBoundedIntegralFromScientific expected
+parseBoundedIntegralText name t =
+    prependContext name $
+        parseScientificText t >>= parseBoundedIntegralFromScientific
 
 parseOptionalFieldWith :: (Value -> Parser (Maybe a))
                        -> Object -> Text -> Parser (Maybe a)
@@ -317,7 +320,7 @@ genericLiftParseJSON opts pj pjl = fmap to1 . gParseJSON opts (From1Args pj pjl)
 -- @
 --
 -- For this common case of only being concerned with a single
--- type of JSON value, the functions 'withObject', 'withNumber', etc.
+-- type of JSON value, the functions 'withObject', 'withScientific', etc.
 -- are provided. Their use is to be preferred when possible, since
 -- they are more terse. Using 'withObject', we can rewrite the above instance
 -- (assuming the same language extension and data type) as:
@@ -374,12 +377,10 @@ class FromJSON a where
     parseJSON = genericParseJSON defaultOptions
 
     parseJSONList :: Value -> Parser [a]
-    parseJSONList (Array a)
-        = zipWithM (parseIndexedJSON parseJSON) [0..]
+    parseJSONList = withArray "[]" $ \a ->
+          zipWithM (parseIndexedJSON parseJSON) [0..]
         . V.toList
         $ a
-
-    parseJSONList v = typeMismatch "[a]" v
 
 -------------------------------------------------------------------------------
 --  Classes and types for map keys
@@ -496,26 +497,39 @@ mapFromJSONKeyFunction = fmap
 
 -- | Fail parsing due to a type mismatch, with a descriptive message.
 --
--- Example usage:
+-- The following wrappers should generally be prefered:
+-- 'withObject', 'withArray', 'withText', 'withBool'.
 --
--- @
--- instance FromJSON Coord where
---   parseJSON ('Object' v) = {- type matches, life is good -}
---   parseJSON wat        = 'typeMismatch' \"Coord\" wat
--- @
-typeMismatch :: String -- ^ The name of the type you are trying to parse.
+-- ==== Error message example
+--
+-- > typeMismatch "Object" (String "oops")
+-- > -- Error: "expected Object, but encountered String"
+typeMismatch :: String -- ^ The name of the JSON type being parsed
+                       -- (@\"Object\"@, @\"Array\"@, @\"String\"@, @\"Number\"@,
+                       -- @\"Boolean\"@, or @\"Null\"@).
              -> Value  -- ^ The actual value encountered.
              -> Parser a
 typeMismatch expected actual =
-    fail $ "expected " ++ expected ++ ", encountered " ++ name
-  where
-    name = case actual of
-             Object _ -> "Object"
-             Array _  -> "Array"
-             String _ -> "String"
-             Number _ -> "Number"
-             Bool _   -> "Boolean"
-             Null     -> "Null"
+    fail $ "expected " ++ expected ++ ", but encountered " ++ typeOf actual
+
+-- | Fail parsing due to a type mismatch, when the expected types are implicit.
+--
+-- ==== Error message example
+--
+-- > unexpected (String "oops")
+-- > -- Error: "unexpected String"
+unexpected :: Value -> Parser a
+unexpected actual = fail $ "unexpected " ++ typeOf actual
+
+-- | JSON type of a value, name of the head constructor.
+typeOf :: Value -> String
+typeOf v = case v of
+    Object _ -> "Object"
+    Array _  -> "Array"
+    String _ -> "String"
+    Number _ -> "Number"
+    Bool _   -> "Boolean"
+    Null     -> "Null"
 
 -------------------------------------------------------------------------------
 -- Lifings of FromJSON and ToJSON to unary and binary type constructors
@@ -596,9 +610,8 @@ class FromJSON2 f where
         -> (Value -> Parser b)
         -> (Value -> Parser [b])
         -> Value -> Parser [f a b]
-    liftParseJSONList2 fa ga fb gb v = case v of
-        Array vals -> fmap V.toList (V.mapM (liftParseJSON2 fa ga fb gb) vals)
-        _ -> typeMismatch "[a]" v
+    liftParseJSONList2 fa ga fb gb = withArray "[]" $ \vals ->
+        fmap V.toList (V.mapM (liftParseJSON2 fa ga fb gb) vals)
 
 -- | Lift the standard 'parseJSON' function through the type constructor.
 parseJSON2 :: (FromJSON2 f, FromJSON a, FromJSON b) => Value -> Parser (f a b)
@@ -612,7 +625,7 @@ parseJSON2 = liftParseJSON2 parseJSON parseJSONList parseJSON parseJSONList
 -- | Helper function to use with 'liftParseJSON'. See 'Data.Aeson.ToJSON.listEncoding'.
 listParser :: (Value -> Parser a) -> Value -> Parser [a]
 listParser f (Array xs) = fmap V.toList (V.mapM f xs)
-listParser _ v          = typeMismatch "[a]" v
+listParser _ v          = typeMismatch "Array" v
 {-# INLINE listParser #-}
 
 -------------------------------------------------------------------------------
@@ -630,59 +643,127 @@ instance (FromJSON a) => FromJSON [a] where
 -- Functions
 -------------------------------------------------------------------------------
 
--- | @'withObject' expected f value@ applies @f@ to the 'Object' when @value@
---   is an 'Object' and fails using @'typeMismatch' expected@ otherwise.
+-- | Add context to a failure message, indicating the name of the structure
+-- being parsed.
+--
+-- > prependContext "MyType" (fail "[error message]")
+-- > -- Error: "parsing MyType failed, [error message]"
+prependContext :: String -> Parser a -> Parser a
+prependContext name = prependFailure ("parsing " ++ name ++ " failed, ")
+
+-- | @'withObject' name f value@ applies @f@ to the 'Object' when @value@
+-- is an 'Data.Aeson.Object' and fails otherwise.
+--
+-- ==== Error message example
+--
+-- > withObject "MyType" f (String "oops")
+-- > -- Error: "parsing MyType failed, expected Object, but encountered String"
 withObject :: String -> (Object -> Parser a) -> Value -> Parser a
-withObject _        f (Object obj) = f obj
-withObject expected _ v            = typeMismatch expected v
+withObject _    f (Object obj) = f obj
+withObject name _ v            = prependContext name (typeMismatch "Object" v)
 {-# INLINE withObject #-}
 
--- | @'withText' expected f value@ applies @f@ to the 'Text' when @value@ is a
---   'String' and fails using @'typeMismatch' expected@ otherwise.
+-- | @'withText' name f value@ applies @f@ to the 'Text' when @value@ is a
+-- 'Data.Aeson.String' and fails otherwise.
+--
+-- ==== Error message example
+--
+-- > withText "MyType" f Null
+-- > -- Error: "parsing MyType failed, expected String, but encountered Null"
 withText :: String -> (Text -> Parser a) -> Value -> Parser a
-withText _        f (String txt) = f txt
-withText expected _ v            = typeMismatch expected v
+withText _    f (String txt) = f txt
+withText name _ v            = prependContext name (typeMismatch "String" v)
 {-# INLINE withText #-}
 
 -- | @'withArray' expected f value@ applies @f@ to the 'Array' when @value@ is
--- an 'Array' and fails using @'typeMismatch' expected@ otherwise.
+-- an 'Data.Aeson.Array' and fails otherwise.
+--
+-- ==== Error message example
+--
+-- > withArray "MyType" f (String "oops")
+-- > -- Error: "parsing MyType failed, expected Array, but encountered String"
 withArray :: String -> (Array -> Parser a) -> Value -> Parser a
-withArray _        f (Array arr) = f arr
-withArray expected _ v           = typeMismatch expected v
+withArray _    f (Array arr) = f arr
+withArray name _ v           = prependContext name (typeMismatch "Array" v)
 {-# INLINE withArray #-}
 
--- | @'withScientific' expected f value@ applies @f@ to the 'Scientific' number
--- when @value@ is a 'Number' and fails using @'typeMismatch' expected@
+-- | @'withScientific' name f value@ applies @f@ to the 'Scientific' number
+-- when @value@ is a 'Data.Aeson.Number' and fails using 'typeMismatch'
 -- otherwise.
--- .
+--
 -- /Warning/: If you are converting from a scientific to an unbounded
 -- type such as 'Integer' you may want to add a restriction on the
 -- size of the exponent (see 'withBoundedScientific') to prevent
 -- malicious input from filling up the memory of the target system.
+--
+-- ==== Error message example
+--
+-- > withScientific "MyType" f (String "oops")
+-- > -- Error: "parsing MyType failed, expected Number, but encountered String"
 withScientific :: String -> (Scientific -> Parser a) -> Value -> Parser a
-withScientific _        f (Number scientific) = f scientific
-withScientific expected _ v                   = typeMismatch expected v
+withScientific _ f (Number scientific) = f scientific
+withScientific name _ v = prependContext name (typeMismatch "Number" v)
 {-# INLINE withScientific #-}
 
--- | @'withBoundedScientific' expected f value@ applies @f@ to the 'Scientific' number
--- when @value@ is a 'Number' and fails using @'typeMismatch' expected@
--- otherwise.
+-- | A variant of 'withScientific' which doesn't use 'prependContext', so that
+-- such context can be added separately in a way that also applies when the
+-- continuation @f :: Scientific -> Parser a@ fails.
 --
--- The conversion will also fail with a @'typeMismatch' if the
--- 'Scientific' exponent is larger than 1024.
+-- /Warning/: If you are converting from a scientific to an unbounded
+-- type such as 'Integer' you may want to add a restriction on the
+-- size of the exponent (see 'withBoundedScientific') to prevent
+-- malicious input from filling up the memory of the target system.
+--
+-- ==== Error message examples
+--
+-- > withScientific' f (String "oops")
+-- > -- Error: "unexpected String"
+-- >
+-- > prependContext "MyType" (withScientific' f (String "oops"))
+-- > -- Error: "parsing MyType failed, unexpected String"
+withScientific' :: (Scientific -> Parser a) -> Value -> Parser a
+withScientific' f v = case v of
+    Number n -> f n
+    _ -> typeMismatch "Number" v
+{-# INLINE withScientific' #-}
+
+-- | @'withBoundedScientific' name f value@ applies @f@ to the 'Scientific' number
+-- when @value@ is a 'Number' with exponent less than or equal to 1024.
 withBoundedScientific :: String -> (Scientific -> Parser a) -> Value -> Parser a
-withBoundedScientific _ f v@(Number scientific) =
-    if base10Exponent scientific > 1024
-    then typeMismatch "a number with exponent <= 1024" v
-    else f scientific
-withBoundedScientific expected _ v                   = typeMismatch expected v
+withBoundedScientific name f v = withBoundedScientific_ (prependContext name) f v
 {-# INLINE withBoundedScientific #-}
 
+-- | A variant of 'withBoundedScientific' which doesn't use 'prependContext',
+-- so that such context can be added separately in a way that also applies
+-- when the continuation @f :: Scientific -> Parser a@ fails.
+withBoundedScientific' :: (Scientific -> Parser a) -> Value -> Parser a
+withBoundedScientific' f v = withBoundedScientific_ id f v
+{-# INLINE withBoundedScientific' #-}
+
+-- | A variant of 'withBoundedScientific_' parameterized by a function to apply
+-- to the 'Parser' in case of failure.
+withBoundedScientific_ :: (Parser a -> Parser a) -> (Scientific -> Parser a) -> Value -> Parser a
+withBoundedScientific_ whenFail f v@(Number scientific) =
+    if exponent > 1024
+    then whenFail (fail msg)
+    else f scientific
+  where
+    exponent = base10Exponent scientific
+    msg = "found a number with exponent " ++ show exponent ++ ", but it must not be greater than 1024"
+withBoundedScientific_ whenFail _ v =
+    whenFail (typeMismatch "Number" v)
+{-# INLINE withBoundedScientific_ #-}
+
 -- | @'withBool' expected f value@ applies @f@ to the 'Bool' when @value@ is a
--- 'Bool' and fails using @'typeMismatch' expected@ otherwise.
+-- 'Boolean' and fails otherwise.
+--
+-- ==== Error message example
+--
+-- > withBool "MyType" f (String "oops")
+-- > -- Error: "parsing MyType failed, expected Boolean, but encountered String"
 withBool :: String -> (Bool -> Parser a) -> Value -> Parser a
-withBool _        f (Bool arr) = f arr
-withBool expected _ v          = typeMismatch expected v
+withBool _    f (Bool arr) = f arr
+withBool name _ v          = prependContext name (typeMismatch "Boolean" v)
 {-# INLINE withBool #-}
 
 -- | Decode a nested JSON-encoded string.
@@ -692,7 +773,7 @@ withEmbeddedJSON _ innerParser (String txt) =
     where
         eitherDecode = eitherFormatError . eitherDecodeWith jsonEOF ifromJSON
         eitherFormatError = either (Left . uncurry formatError) Right
-withEmbeddedJSON name _ v = typeMismatch name v
+withEmbeddedJSON name _ v = prependContext name (typeMismatch "String" v)
 {-# INLINE withEmbeddedJSON #-}
 
 -- | Convert a value from JSON, failing if the types do not match.
@@ -1219,14 +1300,15 @@ instance FromJSON Void where
     {-# INLINE parseJSON #-}
 
 instance FromJSON Bool where
-    parseJSON = withBool "Bool" pure
+    parseJSON (Bool b) = pure b
+    parseJSON v = typeMismatch "Bool" v
     {-# INLINE parseJSON #-}
 
 instance FromJSONKey Bool where
     fromJSONKey = FromJSONKeyTextParser $ \t -> case t of
         "true"  -> pure True
         "false" -> pure False
-        _       -> fail $ "Cannot parse key into Bool: " ++ T.unpack t
+        _       -> fail $ "cannot parse key " ++ show t ++ " into Bool"
 
 instance FromJSON Ordering where
   parseJSON = withText "Ordering" $ \s ->
@@ -1234,24 +1316,29 @@ instance FromJSON Ordering where
       "LT" -> return LT
       "EQ" -> return EQ
       "GT" -> return GT
-      _ -> fail "Parsing Ordering value failed: expected \"LT\", \"EQ\", or \"GT\""
+      _ -> fail $ "parsing Ordering failed, unexpected " ++ show s ++
+                  " (expected \"LT\", \"EQ\", or \"GT\")"
 
 instance FromJSON () where
     parseJSON = withArray "()" $ \v ->
                   if V.null v
                     then pure ()
-                    else fail "Expected an empty array"
+                    else prependContext "()" $ fail "expected an empty array"
     {-# INLINE parseJSON #-}
 
 instance FromJSON Char where
-    parseJSON = withText "Char" $ \t ->
-                  if T.compareLength t 1 == EQ
-                    then pure $ T.head t
-                    else fail "Expected a string of length 1"
+    parseJSON = withText "Char" parseChar
     {-# INLINE parseJSON #-}
 
-    parseJSONList = withText "String" $ pure . T.unpack
+    parseJSONList (String s) = pure (T.unpack s)
+    parseJSONList v = typeMismatch "String" v
     {-# INLINE parseJSONList #-}
+
+parseChar :: Text -> Parser Char
+parseChar t =
+    if T.compareLength t 1 == EQ
+      then pure $ T.head t
+      else prependContext "Char" $ fail "expected a string of length 1"
 
 instance FromJSON Double where
     parseJSON = parseRealFloat "Double"
@@ -1289,7 +1376,7 @@ instance (FromJSON a, Integral a) => FromJSON (Ratio a) where
 -- newtype 'Scientific' and provide your own instance using
 -- 'withScientific' if you want to allow larger inputs.
 instance HasResolution a => FromJSON (Fixed a) where
-    parseJSON = withBoundedScientific "Fixed" $ pure . realToFrac
+    parseJSON = prependContext "Fixed" . withBoundedScientific' (pure . realToFrac)
     {-# INLINE parseJSON #-}
 
 instance FromJSON Int where
@@ -1312,19 +1399,20 @@ instance FromJSONKey Integer where
 
 instance FromJSON Natural where
     parseJSON value = do
-        integer :: Integer <- parseIntegral "Natural" value
-        if integer < 0 then
-            fail $ "expected Natural, encountered negative number " <> show integer
-        else
-            pure $ fromIntegral integer
+        integer <- parseIntegral "Natural" value
+        parseNatural integer
 
 instance FromJSONKey Natural where
     fromJSONKey = FromJSONKeyTextParser $ \text -> do
-        integer :: Integer <- parseIntegralText "Natural" text
-        if integer < 0 then
-            fail $ "expected Natural, encountered negative number " <> show integer
-        else
-            pure $ fromIntegral integer
+        integer <- parseIntegralText "Natural" text
+        parseNatural integer
+
+parseNatural :: Integer -> Parser Natural
+parseNatural integer =
+    if integer < 0 then
+        fail $ "parsing Natural failed, unexpected negative number " <> show integer
+    else
+        pure $ fromIntegral integer
 
 instance FromJSON Int8 where
     parseJSON = parseBoundedIntegral "Int8"
@@ -1421,17 +1509,17 @@ parseVersionText = go . readP_to_S parseVersion . unpack
   where
     go [(v,[])] = return v
     go (_ : xs) = go xs
-    go _        = fail "could not parse Version"
+    go _        = fail "parsing Version failed"
 
 -------------------------------------------------------------------------------
 -- semigroups NonEmpty
 -------------------------------------------------------------------------------
 
 instance FromJSON1 NonEmpty where
-    liftParseJSON p _ = withArray "NonEmpty a" $
+    liftParseJSON p _ = withArray "NonEmpty" $
         (>>= ne) . Tr.sequence . zipWith (parseIndexedJSON p) [0..] . V.toList
       where
-        ne []     = fail "Expected a NonEmpty but got an empty list"
+        ne []     = fail "parsing NonEmpty failed, unpexpected empty list"
         ne (x:xs) = pure (x :| xs)
     {-# INLINE liftParseJSON #-}
 
@@ -1452,7 +1540,7 @@ instance FromJSON Scientific where
 -------------------------------------------------------------------------------
 
 instance FromJSON1 DList.DList where
-    liftParseJSON p _ = withArray "DList a" $
+    liftParseJSON p _ = withArray "DList" $
       fmap DList.fromList .
       Tr.sequence . zipWith (parseIndexedJSON p) [0..] . V.toList
     {-# INLINE liftParseJSON #-}
@@ -1529,7 +1617,7 @@ instance (FromJSON1 f, FromJSON1 g) => FromJSON1 (Sum f g) where
         inr = "InR"
 
     liftParseJSON _ _ _ = fail $
-        "expected an object with a single property " ++
+        "parsing Sum failed, expected an object with a single property " ++
         "where the property key should be either " ++
         "\"InL\" or \"InR\""
     {-# INLINE liftParseJSON #-}
@@ -1543,7 +1631,7 @@ instance (FromJSON1 f, FromJSON1 g, FromJSON a) => FromJSON (Sum f g a) where
 -------------------------------------------------------------------------------
 
 instance FromJSON1 Seq.Seq where
-    liftParseJSON p _ = withArray "Seq a" $
+    liftParseJSON p _ = withArray "Seq" $
       fmap Seq.fromList .
       Tr.sequence . zipWith (parseIndexedJSON p) [0..] . V.toList
     {-# INLINE liftParseJSON #-}
@@ -1577,13 +1665,13 @@ instance FromJSON a => FromJSON (IntMap.IntMap a) where
 
 instance (FromJSONKey k, Ord k) => FromJSON1 (M.Map k) where
     liftParseJSON p _ = case fromJSONKey of
-        FromJSONKeyCoerce _-> withObject "Map k v" $
+        FromJSONKeyCoerce _ -> withObject "Map" $
             fmap (H.foldrWithKey (M.insert . unsafeCoerce) M.empty) . H.traverseWithKey (\k v -> p v <?> Key k)
-        FromJSONKeyText f -> withObject "Map k v" $
+        FromJSONKeyText f -> withObject "Map" $
             fmap (H.foldrWithKey (M.insert . f) M.empty) . H.traverseWithKey (\k v -> p v <?> Key k)
-        FromJSONKeyTextParser f -> withObject "Map k v" $
+        FromJSONKeyTextParser f -> withObject "Map" $
             H.foldrWithKey (\k v m -> M.insert <$> f k <?> Key k <*> p v <?> Key k <*> m) (pure M.empty)
-        FromJSONKeyValue f -> withArray "Map k v" $ \arr ->
+        FromJSONKeyValue f -> withArray "Map" $ \arr ->
             fmap M.fromList . Tr.sequence .
                 zipWith (parseIndexedJSONPair f p) [0..] . V.toList $ arr
     {-# INLINE liftParseJSON #-}
@@ -1611,18 +1699,18 @@ instance (FromJSON v) => FromJSON (Tree.Tree v) where
 
 instance FromJSON UUID.UUID where
     parseJSON = withText "UUID" $
-        maybe (fail "Invalid UUID") pure . UUID.fromText
+        maybe (fail "invalid UUID") pure . UUID.fromText
 
 instance FromJSONKey UUID.UUID where
     fromJSONKey = FromJSONKeyTextParser $
-        maybe (fail "Invalid UUID") pure . UUID.fromText
+        maybe (fail "invalid UUID") pure . UUID.fromText
 
 -------------------------------------------------------------------------------
 -- vector
 -------------------------------------------------------------------------------
 
 instance FromJSON1 Vector where
-    liftParseJSON p _ = withArray "Vector a" $
+    liftParseJSON p _ = withArray "Vector" $
         V.mapM (uncurry $ parseIndexedJSON p) . V.indexed
     {-# INLINE liftParseJSON #-}
 
@@ -1636,14 +1724,14 @@ vectorParseJSON s = withArray s $ fmap V.convert . V.mapM (uncurry $ parseIndexe
 {-# INLINE vectorParseJSON #-}
 
 instance (Storable a, FromJSON a) => FromJSON (VS.Vector a) where
-    parseJSON = vectorParseJSON "Data.Vector.Storable.Vector a"
+    parseJSON = vectorParseJSON "Data.Vector.Storable.Vector"
 
 instance (VP.Prim a, FromJSON a) => FromJSON (VP.Vector a) where
-    parseJSON = vectorParseJSON "Data.Vector.Primitive.Vector a"
+    parseJSON = vectorParseJSON "Data.Vector.Primitive.Vector"
     {-# INLINE parseJSON #-}
 
 instance (VG.Vector VU.Vector a, FromJSON a) => FromJSON (VU.Vector a) where
-    parseJSON = vectorParseJSON "Data.Vector.Unboxed.Vector a"
+    parseJSON = vectorParseJSON "Data.Vector.Unboxed.Vector"
     {-# INLINE parseJSON #-}
 
 -------------------------------------------------------------------------------
@@ -1657,13 +1745,13 @@ instance (Eq a, Hashable a, FromJSON a) => FromJSON (HashSet.HashSet a) where
 
 instance (FromJSONKey k, Eq k, Hashable k) => FromJSON1 (H.HashMap k) where
     liftParseJSON p _ = case fromJSONKey of
-        FromJSONKeyCoerce _ -> withObject "HashMap ~Text v" $
+        FromJSONKeyCoerce _ -> withObject "HashMap ~Text" $
             uc . H.traverseWithKey (\k v -> p v <?> Key k)
-        FromJSONKeyText f -> withObject "HashMap k v" $
+        FromJSONKeyText f -> withObject "HashMap" $
             fmap (mapKey f) . H.traverseWithKey (\k v -> p v <?> Key k)
-        FromJSONKeyTextParser f -> withObject "HashMap k v" $
+        FromJSONKeyTextParser f -> withObject "HashMap" $
             H.foldrWithKey (\k v m -> H.insert <$> f k <?> Key k <*> p v <?> Key k <*> m) (pure H.empty)
-        FromJSONKeyValue f -> withArray "Map k v" $ \arr ->
+        FromJSONKeyValue f -> withArray "Map" $ \arr ->
             fmap H.fromList . Tr.sequence .
                 zipWith (parseIndexedJSONPair f p) [0..] . V.toList $ arr
       where
@@ -1900,14 +1988,15 @@ instance FromJSON a => FromJSON (Semigroup.Option a) where
 
 instance FromJSON1 Proxy where
     {-# INLINE liftParseJSON #-}
-    liftParseJSON _ _ Null = pure Proxy
-    liftParseJSON _ _ v    = typeMismatch "Proxy" v
+    liftParseJSON _ _ = fromNull "Proxy" Proxy
 
 instance FromJSON (Proxy a) where
     {-# INLINE parseJSON #-}
-    parseJSON Null = pure Proxy
-    parseJSON v    = typeMismatch "Proxy" v
+    parseJSON = fromNull "Proxy" Proxy
 
+fromNull :: String -> a -> Value -> Parser a
+fromNull _ a Null = pure a
+fromNull c _ v    = prependContext c (typeMismatch "Null" v)
 
 instance FromJSON2 Tagged where
     liftParseJSON2 _ _ p _ = fmap Tagged . p
@@ -1934,10 +2023,7 @@ instance (FromJSON a, FromJSON b, FromJSON c) => FromJSONKey (a,b,c)
 instance (FromJSON a, FromJSON b, FromJSON c, FromJSON d) => FromJSONKey (a,b,c,d)
 
 instance FromJSONKey Char where
-    fromJSONKey = FromJSONKeyTextParser $ \t ->
-        if T.length t == 1
-            then return (T.index t 0)
-            else typeMismatch "Expected Char but String didn't contain exactly one character" (String t)
+    fromJSONKey = FromJSONKeyTextParser parseChar
     fromJSONKeyList = FromJSONKeyText T.unpack
 
 instance (FromJSONKey a, FromJSON a) => FromJSONKey [a] where
