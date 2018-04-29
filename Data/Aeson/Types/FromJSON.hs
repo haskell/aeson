@@ -293,14 +293,21 @@ genericLiftParseJSON opts pj pjl = fmap to1 . gParseJSON opts (From1Args pj pjl)
 --
 -- The basic ways to signal a failed conversion are as follows:
 --
--- * 'empty' and 'mzero' work, but are terse and uninformative;
+-- * 'fail' yields a custom error message: it is the recommended way of
+-- reporting a failure;
 --
--- * 'fail' yields a custom error message;
+-- * 'Control.Applicative.empty' (or 'Control.Monad.mzero') is uninformative:
+-- use it when the error is meant to be caught by some @('<|>')@;
 --
--- * 'typeMismatch' produces an informative message for cases when the
--- value encountered is not of the expected type.
+-- * 'typeMismatch' can be used to report a failure when the encountered value
+-- is not of the expected JSON type; 'unexpected' is an appropriate alternative
+-- when more than one type may be expected, or to keep the expected type
+-- implicit.
 --
--- An example type and instance using 'typeMismatch':
+-- 'prependFailure' (or 'modifyFailure') add more information to a parser's
+-- error messages.
+--
+-- An example type and instance using 'typeMismatch' and 'prependFailure':
 --
 -- @
 -- \-- Allow ourselves to write 'Text' literals.
@@ -314,9 +321,11 @@ genericLiftParseJSON opts pj pjl = fmap to1 . gParseJSON opts (From1Args pj pjl)
 --         '<*>' v '.:' \"y\"
 --
 --     \-- We do not expect a non-'Object' value here.
---     \-- We could use 'mzero' to fail, but 'typeMismatch'
+--     \-- We could use 'Control.Applicative.empty' to fail, but 'typeMismatch'
 --     \-- gives a much more informative error message.
---     'parseJSON' invalid    = 'typeMismatch' \"Coord\" invalid
+--     'parseJSON' invalid    =
+--         'prependFailure' "parsing Coord failed, "
+--             ('typeMismatch' \"Object\" invalid)
 -- @
 --
 -- For this common case of only being concerned with a single
@@ -359,7 +368,7 @@ genericLiftParseJSON opts pj pjl = fmap to1 . gParseJSON opts (From1Args pj pjl)
 -- @
 --
 -- The default implementation will be equivalent to
--- @parseJSON = 'genericParseJSON' 'defaultOptions'@; If you need different
+-- @parseJSON = 'genericParseJSON' 'defaultOptions'@; if you need different
 -- options, you can customize the generic decoding by defining:
 --
 -- @
