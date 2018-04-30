@@ -11,7 +11,6 @@ import Prelude.Compat
 
 import Data.BufferBuilder.Json
 import Data.Int (Int64)
-import Data.Monoid ((<>))
 import Twitter
 import qualified Data.BufferBuilder.Utf8 as UB
 

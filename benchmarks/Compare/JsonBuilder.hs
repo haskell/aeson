@@ -6,7 +6,7 @@
 module Compare.JsonBuilder () where
 
 import Prelude ()
-import Prelude.Compat
+import Prelude.Compat hiding ((<>))
 
 import Data.Json.Builder
 import Data.Monoid ((<>))
