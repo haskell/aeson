@@ -100,6 +100,7 @@ tests = testGroup "unit" [
   , testGroup "SingleMaybeField" singleMaybeField
   , testCase "withEmbeddedJSON" withEmbeddedJSONTest
   , testCase "SingleFieldCon" singleFieldCon
+  , testCase "Ratio with denominator 0" ratioDenominator0
   ]
 
 roundTripCamel :: String -> Assertion
@@ -545,6 +546,12 @@ instance FromJSON SingleFieldCon where
 singleFieldCon :: Assertion
 singleFieldCon =
   assertEqual "fromJSON" (Right (SingleFieldCon 0)) (eitherDecode "0")
+
+ratioDenominator0 :: Assertion
+ratioDenominator0 =
+  assertEqual "Ratio with denominator 0"
+    (Left "Error in $: Ratio denominator was 0")
+    (eitherDecode "{ \"numerator\": 1, \"denominator\": 0 }" :: Either String Rational)
 
 deriveJSON defaultOptions{omitNothingFields=True} ''MyRecord
 

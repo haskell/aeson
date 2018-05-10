@@ -1258,9 +1258,12 @@ instance FromJSONKey Float where
         _           -> Scientific.toRealFloat <$> parseScientificText t
 
 instance (FromJSON a, Integral a) => FromJSON (Ratio a) where
-    parseJSON = withObject "Rational" $ \obj ->
-                  (%) <$> obj .: "numerator"
-                      <*> obj .: "denominator"
+    parseJSON = withObject "Rational" $ \obj -> do
+        numerator <- obj .: "numerator"
+        denominator <- obj .: "denominator"
+        if denominator == 0
+        then fail "Ratio denominator was 0"
+        else pure $ numerator % denominator
     {-# INLINE parseJSON #-}
 
 -- | /WARNING:/ Only parse fixed-precision numbers from trusted input
