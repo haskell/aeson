@@ -14,8 +14,7 @@ import Data.Proxy (Proxy(..))
 import Instances ()
 import Numeric.Natural (Natural)
 import Test.Tasty (TestTree)
-import Test.Tasty.HUnit (testCase)
-import Test.HUnit (Assertion, assertFailure, assertEqual)
+import Test.Tasty.HUnit (Assertion, assertFailure, assertEqual, testCase)
 import qualified Data.ByteString.Lazy.Char8 as L
 import qualified Data.HashMap.Strict as HM
 
