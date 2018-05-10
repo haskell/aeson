@@ -1,5 +1,9 @@
 For the latest version of this document, please see [https://github.com/bos/aeson/blob/master/changelog.md](https://github.com/bos/aeson/blob/master/changelog.md).
 
+### 1.3.1.1
+
+* Catch 0 denominators when parsing Ratio
+
 ### 1.3.1.0
 
 * Fix bug in generically derived `FromJSON` instances that are using `unwrapUnaryRecords`, thanks to Xia Li-yao
