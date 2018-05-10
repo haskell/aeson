@@ -36,8 +36,7 @@ import Data.Word (Word8)
 import GHC.Generics (Generic)
 import Instances ()
 import Test.Tasty (TestTree, testGroup)
-import Test.Tasty.HUnit (testCase)
-import Test.HUnit (assertFailure, assertEqual)
+import Test.Tasty.HUnit (assertFailure, assertEqual, testCase)
 import Types (Approx(..), Compose3, Compose3', I)
 import qualified Data.ByteString.Lazy.Char8 as L
 import qualified Data.DList as DList

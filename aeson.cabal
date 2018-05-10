@@ -185,7 +185,6 @@ test-suite tests
     UnitTests.NullaryConstructors
 
   build-depends:
-    HUnit,
     QuickCheck >= 2.10.0.1 && < 2.11,
     aeson,
     integer-logarithms >= 1 && <1.1,
