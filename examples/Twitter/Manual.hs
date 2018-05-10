@@ -16,6 +16,7 @@ import Prelude ()
 import Prelude.Compat
 
 import Control.Applicative
+import Data.Semigroup ((<>))
 import Twitter
 
 import Data.Aeson hiding (Result)
