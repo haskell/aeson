@@ -27,6 +27,15 @@ matrix:
       addons: {apt: {packages: [cabal-install-2.0,ghc-8.2.2], sources: [hvr-ghc]}}
     - env: BUILD=stack CABALVER=2.0 GHCVER=8.2.2 STACK_YAML=stack-ffi-unescape.yaml
       compiler: ": #GHC 8.2.2"
+      addons: {apt: {packages: [cabal-install-2.0,ghc-8.2.2], sources: [hvr-ghc]}}
+    - env: BUILD=cabal CABALVER=2.2 GHCVER=8.4.2
+      compiler: ": #GHC 8.4.2"
+      addons: {apt: {packages: [cabal-install-2.2,ghc-8.4.2], sources: [hvr-ghc]}}
+    - env: BUILD=cabal CABALVER=2.0 GHCVER=8.2.2
+      compiler: ": #GHC 8.2.2"
+      addons: {apt: {packages: [cabal-install-2.0,ghc-8.2.2], sources: [hvr-ghc]}}
+    - env: BUILD=cabal CABALVER=2.0 GHCVER=8.0.2
+      compiler: ": #GHC 8.0.2"
       addons: {apt: {packages: [cabal-install-2.0,ghc-8.0.2], sources: [hvr-ghc]}}
     - env: BUILD=cabal CABALVER=2.0 GHCVER=8.0.2
       compiler: ": #GHC 8.0.2"
