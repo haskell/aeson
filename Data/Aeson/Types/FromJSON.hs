@@ -52,7 +52,6 @@ module Data.Aeson.Types.FromJSON
     , withObject
     , withText
     , withArray
-    , withNumber
     , withScientific
     , withBool
     , withEmbeddedJSON
@@ -645,13 +644,6 @@ withArray :: String -> (Array -> Parser a) -> Value -> Parser a
 withArray _        f (Array arr) = f arr
 withArray expected _ v           = typeMismatch expected v
 {-# INLINE withArray #-}
-
--- | @'withNumber' expected f value@ applies @f@ to the 'Number' when @value@
--- is a 'Number' and fails using @'typeMismatch' expected@ otherwise.
-withNumber :: String -> (Number -> Parser a) -> Value -> Parser a
-withNumber expected f = withScientific expected (f . scientificToNumber)
-{-# INLINE withNumber #-}
-{-# DEPRECATED withNumber "Use withScientific instead" #-}
 
 -- | @'withScientific' expected f value@ applies @f@ to the 'Scientific' number
 -- when @value@ is a 'Number' and fails using @'typeMismatch' expected@

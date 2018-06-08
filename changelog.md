@@ -1,5 +1,9 @@
 For the latest version of this document, please see [https://github.com/bos/aeson/blob/master/changelog.md](https://github.com/bos/aeson/blob/master/changelog.md).
 
+### 1.4.0.0 (upcoming)
+
+* Remove deprecated `withNumber`, use `withScientific` instead.
+
 ### 1.3.1.1
 
 * Catch 0 denominators when parsing Ratio

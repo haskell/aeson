@@ -70,7 +70,6 @@ module Data.Aeson.Types.Class
     , withObject
     , withText
     , withArray
-    , withNumber
     , withScientific
     , withBool
     , withEmbeddedJSON

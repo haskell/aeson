@@ -81,7 +81,6 @@ module Data.Aeson.Types
     , withObject
     , withText
     , withArray
-    , withNumber
     , withScientific
     , withBool
     , withEmbeddedJSON
