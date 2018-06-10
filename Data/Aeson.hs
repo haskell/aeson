@@ -113,7 +113,6 @@ module Data.Aeson
     , withObject
     , withText
     , withArray
-    , withNumber
     , withScientific
     , withBool
     , withEmbeddedJSON

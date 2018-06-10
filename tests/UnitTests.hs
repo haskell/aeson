@@ -31,9 +31,11 @@ import Data.Aeson.Types (Options(..), Result(Success), ToJSON(..), Value(Null), 
 import Data.Char (toUpper)
 import Data.Either.Compat (isLeft, isRight)
 import Data.Hashable (hash)
+import Data.HashMap.Strict (HashMap)
 import Data.List (sort)
 import Data.Maybe (fromMaybe)
 import Data.Sequence (Seq)
+import Data.Scientific (Scientific, scientific)
 import Data.Tagged (Tagged(..))
 import Data.Text (Text)
 import Data.Time (UTCTime)
@@ -41,6 +43,7 @@ import Data.Time.Format (parseTime)
 import Data.Time.Locale.Compat (defaultTimeLocale)
 import GHC.Generics (Generic)
 import Instances ()
+import Numeric.Natural (Natural)
 import System.Directory (getDirectoryContents)
 import System.FilePath ((</>), takeExtension, takeFileName)
 import Test.Tasty (TestTree, testGroup)
@@ -100,6 +103,10 @@ tests = testGroup "unit" [
   , testCase "withEmbeddedJSON" withEmbeddedJSONTest
   , testCase "SingleFieldCon" singleFieldCon
   , testCase "Ratio with denominator 0" ratioDenominator0
+  , testCase "Big scientific exponent" bigScientificExponent
+  , testCase "Big integer decoding" bigIntegerDecoding
+  , testCase "Big natural decading" bigNaturalDecoding
+  , testCase "Big integer key decoding" bigIntegerKeyDecoding
   ]
 
 roundTripCamel :: String -> Assertion
@@ -551,6 +558,36 @@ ratioDenominator0 =
   assertEqual "Ratio with denominator 0"
     (Left "Error in $: Ratio denominator was 0")
     (eitherDecode "{ \"numerator\": 1, \"denominator\": 0 }" :: Either String Rational)
+
+bigScientificExponent :: Assertion
+bigScientificExponent =
+  assertEqual "Encoding an integral scientific with a large exponent should normalize it"
+    "1.0e2000"
+    (encode (scientific 1 2000 :: Scientific))
+
+bigIntegerDecoding :: Assertion
+bigIntegerDecoding =
+  assertEqual "Decoding an Integer with a large exponent should fail"
+    (Left "Error in $: expected a number with exponent <= 1024, encountered Number")
+    ((eitherDecode :: L.ByteString -> Either String Integer) "1e2000")
+
+bigNaturalDecoding :: Assertion
+bigNaturalDecoding =
+  assertEqual "Decoding a Natural with a large exponent should fail"
+    (Left "Error in $: expected a number with exponent <= 1024, encountered Number")
+    ((eitherDecode :: L.ByteString -> Either String Integer) "1e2000")
+
+bigIntegerKeyDecoding :: Assertion
+bigIntegerKeyDecoding =
+  assertEqual "Decoding an Integer key with a large exponent should fail"
+    (Left "Error in $['1e2000']: expected a number with exponent <= 1024, encountered Number")
+    ((eitherDecode :: L.ByteString -> Either String (HashMap Integer Value)) "{ \"1e2000\": null }")
+
+bigNaturalKeyDecoding :: Assertion
+bigNaturalKeyDecoding =
+  assertEqual "Decoding an Integer key with a large exponent should fail"
+    (Left "Error in $['1e2000']: expected a number with exponent <= 1024, encountered Number")
+    ((eitherDecode :: L.ByteString -> Either String (HashMap Natural Value)) "{ \"1e2000\": null }")
 
 deriveJSON defaultOptions{omitNothingFields=True} ''MyRecord
 

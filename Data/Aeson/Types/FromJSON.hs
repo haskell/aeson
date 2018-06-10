@@ -52,7 +52,6 @@ module Data.Aeson.Types.FromJSON
     , withObject
     , withText
     , withArray
-    , withNumber
     , withScientific
     , withBool
     , withEmbeddedJSON
@@ -86,7 +85,6 @@ import Data.Aeson.Internal.Functions (mapKey)
 import Data.Aeson.Parser.Internal (eitherDecodeWith, jsonEOF)
 import Data.Aeson.Types.Generic
 import Data.Aeson.Types.Internal
-import Data.Attoparsec.Number (Number(..))
 import Data.Bits (unsafeShiftR)
 import Data.Fixed (Fixed, HasResolution)
 import Data.Functor.Compose (Compose(..))
@@ -100,7 +98,7 @@ import Data.Maybe (fromMaybe)
 import Data.Semigroup ((<>))
 import Data.Proxy (Proxy(..))
 import Data.Ratio ((%), Ratio)
-import Data.Scientific (Scientific)
+import Data.Scientific (Scientific, base10Exponent)
 import Data.Tagged (Tagged(..))
 import Data.Text (Text, pack, unpack)
 import Data.Time (Day, DiffTime, LocalTime, NominalDiffTime, TimeOfDay, UTCTime, ZonedTime)
@@ -173,15 +171,6 @@ parseIndexedJSONPair keyParser valParser idx value = p value <?> Index idx
 parseJSONElemAtIndex :: (Value -> Parser a) -> Int -> V.Vector Value -> Parser a
 parseJSONElemAtIndex p idx ary = p (V.unsafeIndex ary idx) <?> Index idx
 
-scientificToNumber :: Scientific -> Number
-scientificToNumber s
-    | e < 0     = D $ Scientific.toRealFloat s
-    | otherwise = I $ c * 10 ^ e
-  where
-    e = Scientific.base10Exponent s
-    c = Scientific.coefficient s
-{-# INLINE scientificToNumber #-}
-
 parseRealFloat :: RealFloat a => String -> Value -> Parser a
 parseRealFloat _        (Number s) = pure $ Scientific.toRealFloat s
 parseRealFloat _        Null       = pure (0/0)
@@ -197,7 +186,7 @@ parseIntegralFromScientific expected s =
 
 parseIntegral :: Integral a => String -> Value -> Parser a
 parseIntegral expected =
-    withScientific expected $ parseIntegralFromScientific expected
+    withBoundedScientific expected $ parseIntegralFromScientific expected
 {-# INLINE parseIntegral #-}
 
 parseBoundedIntegralFromScientific :: (Bounded a, Integral a) => String -> Scientific -> Parser a
@@ -219,8 +208,13 @@ parseScientificText
     . T.encodeUtf8
 
 parseIntegralText :: Integral a => String -> Text -> Parser a
-parseIntegralText expected t =
-    parseScientificText t >>= parseIntegralFromScientific expected
+parseIntegralText expected t
+    = parseScientificText t
+  >>= rejectLargeExponent
+  >>= parseIntegralFromScientific expected
+  where
+    rejectLargeExponent :: Scientific -> Parser Scientific
+    rejectLargeExponent s = withBoundedScientific expected pure (Number s)
 {-# INLINE parseIntegralText #-}
 
 parseBoundedIntegralText :: (Bounded a, Integral a) => String -> Text -> Parser a
@@ -646,20 +640,32 @@ withArray _        f (Array arr) = f arr
 withArray expected _ v           = typeMismatch expected v
 {-# INLINE withArray #-}
 
--- | @'withNumber' expected f value@ applies @f@ to the 'Number' when @value@
--- is a 'Number' and fails using @'typeMismatch' expected@ otherwise.
-withNumber :: String -> (Number -> Parser a) -> Value -> Parser a
-withNumber expected f = withScientific expected (f . scientificToNumber)
-{-# INLINE withNumber #-}
-{-# DEPRECATED withNumber "Use withScientific instead" #-}
-
 -- | @'withScientific' expected f value@ applies @f@ to the 'Scientific' number
 -- when @value@ is a 'Number' and fails using @'typeMismatch' expected@
 -- otherwise.
+-- .
+-- /Warning/: If you are converting from a scientific to an unbounded
+-- type such as 'Integer' you may want to add a restriction on the
+-- size of the exponent (see 'withBoundedScientific') to prevent
+-- malicious input from filling up the memory of the target system.
 withScientific :: String -> (Scientific -> Parser a) -> Value -> Parser a
 withScientific _        f (Number scientific) = f scientific
 withScientific expected _ v                   = typeMismatch expected v
 {-# INLINE withScientific #-}
+
+-- | @'withBoundedScientific' expected f value@ applies @f@ to the 'Scientific' number
+-- when @value@ is a 'Number' and fails using @'typeMismatch' expected@
+-- otherwise.
+--
+-- The conversion will also fail wyth a @'typeMismatch' if the
+-- 'Scientific' exponent is larger than 1024.
+withBoundedScientific :: String -> (Scientific -> Parser a) -> Value -> Parser a
+withBoundedScientific _ f v@(Number scientific) =
+    if base10Exponent scientific > 1024
+    then typeMismatch "a number with exponent <= 1024" v
+    else f scientific
+withBoundedScientific expected _ v                   = typeMismatch expected v
+{-# INLINE withBoundedScientific #-}
 
 -- | @'withBool' expected f value@ applies @f@ to the 'Bool' when @value@ is a
 -- 'Bool' and fails using @'typeMismatch' expected@ otherwise.
@@ -1240,12 +1246,6 @@ instance FromJSONKey Double where
         "-Infinity" -> pure (negate 1/0)
         _           -> Scientific.toRealFloat <$> parseScientificText t
 
-instance FromJSON Number where
-    parseJSON (Number s) = pure $ scientificToNumber s
-    parseJSON Null       = pure (D (0/0))
-    parseJSON v          = typeMismatch "Number" v
-    {-# INLINE parseJSON #-}
-
 instance FromJSON Float where
     parseJSON = parseRealFloat "Float"
     {-# INLINE parseJSON #-}
@@ -1266,12 +1266,12 @@ instance (FromJSON a, Integral a) => FromJSON (Ratio a) where
         else pure $ numerator % denominator
     {-# INLINE parseJSON #-}
 
--- | /WARNING:/ Only parse fixed-precision numbers from trusted input
--- since an attacker could easily fill up the memory of the target
--- system by specifying a scientific number with a big exponent like
--- @1e1000000000@.
+-- | This instance includes a bounds check to prevent maliciously
+-- large inputs to fill up the memory of the target system. You can
+-- newtype 'Scientific' and provide your own instance using
+-- 'withScientific' if you want to allow larger inputs.
 instance HasResolution a => FromJSON (Fixed a) where
-    parseJSON = withScientific "Fixed" $ pure . realToFrac
+    parseJSON = withBoundedScientific "Fixed" $ pure . realToFrac
     {-# INLINE parseJSON #-}
 
 instance FromJSON Int where
@@ -1281,10 +1281,10 @@ instance FromJSON Int where
 instance FromJSONKey Int where
     fromJSONKey = FromJSONKeyTextParser $ parseBoundedIntegralText "Int"
 
--- | /WARNING:/ Only parse Integers from trusted input since an
--- attacker could easily fill up the memory of the target system by
--- specifying a scientific number with a big exponent like
--- @1e1000000000@.
+-- | This instance includes a bounds check to prevent maliciously
+-- large inputs to fill up the memory of the target system. You can
+-- newtype 'Scientific' and provide your own instance using
+-- 'withScientific' if you want to allow larger inputs.
 instance FromJSON Integer where
     parseJSON = parseIntegral "Integer"
     {-# INLINE parseJSON #-}
@@ -1723,21 +1723,21 @@ instance FromJSONKey UTCTime where
     fromJSONKey = FromJSONKeyTextParser (Time.run Time.utcTime)
 
 
--- | /WARNING:/ Only parse lengths of time from trusted input
--- since an attacker could easily fill up the memory of the target
--- system by specifying a scientific number with a big exponent like
--- @1e1000000000@.
+-- | This instance includes a bounds check to prevent maliciously
+-- large inputs to fill up the memory of the target system. You can
+-- newtype 'Scientific' and provide your own instance using
+-- 'withScientific' if you want to allow larger inputs.
 instance FromJSON NominalDiffTime where
-    parseJSON = withScientific "NominalDiffTime" $ pure . realToFrac
+    parseJSON = withBoundedScientific "NominalDiffTime" $ pure . realToFrac
     {-# INLINE parseJSON #-}
 
 
--- | /WARNING:/ Only parse lengths of time from trusted input
--- since an attacker could easily fill up the memory of the target
--- system by specifying a scientific number with a big exponent like
--- @1e1000000000@.
+-- | This instance includes a bounds check to prevent maliciously
+-- large inputs to fill up the memory of the target system. You can
+-- newtype 'Scientific' and provide your own instance using
+-- 'withScientific' if you want to allow larger inputs.
 instance FromJSON DiffTime where
-    parseJSON = withScientific "DiffTime" $ pure . realToFrac
+    parseJSON = withBoundedScientific "DiffTime" $ pure . realToFrac
     {-# INLINE parseJSON #-}
 
 -------------------------------------------------------------------------------

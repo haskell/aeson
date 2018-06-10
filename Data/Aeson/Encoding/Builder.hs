@@ -133,7 +133,7 @@ c2w c = fromIntegral (ord c)
 -- | Encode a JSON number.
 scientific :: Scientific -> Builder
 scientific s
-    | e < 0     = scientificBuilder s
+    | e < 0 || e > 1024 = scientificBuilder s
     | otherwise = B.integerDec (coefficient s * 10 ^ e)
   where
     e = base10Exponent s

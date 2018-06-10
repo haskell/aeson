@@ -1,5 +1,24 @@
 For the latest version of this document, please see [https://github.com/bos/aeson/blob/master/changelog.md](https://github.com/bos/aeson/blob/master/changelog.md).
 
+### 1.4.0.0
+
+This release introduces bounds on the size of `Scientific` numbers when they are converted to other arbitrary precision types that do not represent them efficiently in memory.
+
+This means that trying to decode a number such as `1e1000000000` into an `Integer` will now fail instead of using a lot of memory. If you need to represent large numbers you can add a newtype (preferably over `Scientific`) and providing a parser using `withScientific`.
+
+The following instances are affected by this:
+* `FromJSON Natural`
+* `FromJSONKey Natural`
+* `FromJSON Integer`
+* `FromJSONKey Integer`
+* `FromJSON NominalDiffTime`
+
+For the same reasons the following instances & functions have been removed:
+* Remove `FromJSON Data.Attoparsec.Number` instance. Note that `Data.Attoparsec.Number` is deprecated.
+* Remove deprecated `withNumber`, use `withScientific` instead.
+
+Finally, encoding integral values with large exponents now uses scientific notation, this saves space for large numbers.
+
 ### 1.3.1.1
 
 * Catch 0 denominators when parsing Ratio
