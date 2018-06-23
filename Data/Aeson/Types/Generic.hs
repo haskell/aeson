@@ -25,7 +25,7 @@
 
 module Data.Aeson.Types.Generic
     (
-      IsRecord(..)
+      IsRecord
     , AllNullary
     , Tagged2(..)
     , True

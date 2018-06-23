@@ -66,7 +66,7 @@ import Control.Monad.ST (ST)
 import Data.Aeson.Encoding (Encoding, Encoding', Series, dict, emptyArray_)
 import Data.Aeson.Encoding.Internal ((>*<))
 import Data.Aeson.Internal.Functions (mapHashKeyVal, mapKeyVal)
-import Data.Aeson.Types.Generic (AllNullary, False, IsRecord(..), One, ProductSize, Tagged2(..), True, Zero, productSize)
+import Data.Aeson.Types.Generic (AllNullary, False, IsRecord, One, ProductSize, Tagged2(..), True, Zero, productSize)
 import Data.Aeson.Types.Internal
 import Data.Attoparsec.Number (Number(..))
 import Data.Bits (unsafeShiftR)
