@@ -53,7 +53,7 @@ twoDigits = do
   a <- digit
   b <- digit
   let c2d c = ord c .&. 15
-  return $! c2d a * 10 + c2d b
+  return $! (c2d a * 10 + c2d b)
 
 -- | Parse a time of the form @HH:MM[:SS[.SSS]]@.
 timeOfDay :: Parser Local.TimeOfDay
