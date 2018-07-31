@@ -264,7 +264,7 @@ genericLiftToEncoding opts te tel = gToJSON opts (To1Args te tel) . from1
 -- @
 --
 -- Previous versions of this library only had the 'toJSON' method. Adding
--- 'toEncoding' had to reasons:
+-- 'toEncoding' had two reasons:
 --
 -- 1. toEncoding is more efficient for the common case that the output of
 -- 'toJSON' is directly serialized to a @ByteString@.
