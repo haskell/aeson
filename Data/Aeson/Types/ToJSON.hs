@@ -657,11 +657,13 @@ instance (ToJSON a) => ToJSON [a] where
 instance OVERLAPPABLE_ (GToJSON enc arity a) => GToJSON enc arity (M1 i c a) where
     -- Meta-information, which is not handled elsewhere, is ignored:
     gToJSON opts targs = gToJSON opts targs . unM1
+    {-# INLINE gToJSON #-}
 
 instance GToJSON enc One Par1 where
     -- Direct occurrences of the last type parameter are encoded with the
     -- function passed in as an argument:
     gToJSON _opts (To1Args tj _) = tj . unPar1
+    {-# INLINE gToJSON #-}
 
 instance ( ConsToJSON enc arity a
          , AllNullary          (C1 c a) allNullary
@@ -674,11 +676,13 @@ instance ( ConsToJSON enc arity a
                                      . sumToJSON opts targs
                                      . unM1
         | otherwise = consToJSON opts targs . unM1 . unM1
+    {-# INLINE gToJSON #-}
 
 instance (ConsToJSON enc arity a) => GToJSON enc arity (C1 c a) where
     -- Constructors need to be encoded differently depending on whether they're
     -- a record or not. This distinction is made by 'consToJSON':
     gToJSON opts targs = consToJSON opts targs . unM1
+    {-# INLINE gToJSON #-}
 
 instance ( AllNullary       (a :+: b) allNullary
          , SumToJSON  enc arity (a :+: b) allNullary
@@ -689,6 +693,7 @@ instance ( AllNullary       (a :+: b) allNullary
     -- strings.  This distinction is made by 'sumToJSON':
     gToJSON opts targs = (unTagged :: Tagged allNullary enc -> enc)
                        . sumToJSON opts targs
+    {-# INLINE gToJSON #-}
 
 --------------------------------------------------------------------------------
 -- Generic toJSON
@@ -700,15 +705,18 @@ instance ( AllNullary       (a :+: b) allNullary
 instance ToJSON a => GToJSON Value arity (K1 i a) where
     -- Constant values are encoded using their ToJSON instance:
     gToJSON _opts _ = toJSON . unK1
+    {-# INLINE gToJSON #-}
 
 instance ToJSON1 f => GToJSON Value One (Rec1 f) where
     -- Recursive occurrences of the last type parameter are encoded using their
     -- ToJSON1 instance:
     gToJSON _opts (To1Args tj tjl) = liftToJSON tj tjl . unRec1
+    {-# INLINE gToJSON #-}
 
 instance GToJSON Value arity U1 where
     -- Empty constructors are encoded to an empty array:
     gToJSON _opts _ _ = emptyArray
+    {-# INLINE gToJSON #-}
 
 instance ( WriteProduct arity a, WriteProduct arity b
          , ProductSize        a, ProductSize        b
@@ -725,6 +733,7 @@ instance ( WriteProduct arity a, WriteProduct arity b
         where
           lenProduct = (unTagged2 :: Tagged2 (a :*: b) Int -> Int)
                        productSize
+    {-# INLINE gToJSON #-}
 
 instance ( ToJSON1 f
          , GToJSON Value One g
@@ -736,6 +745,7 @@ instance ( ToJSON1 f
     gToJSON opts targs =
       let gtj = gToJSON opts targs in
       liftToJSON gtj (listValue gtj) . unComp1
+    {-# INLINE gToJSON #-}
 
 --------------------------------------------------------------------------------
 -- Generic toEncoding
@@ -743,15 +753,18 @@ instance ( ToJSON1 f
 instance ToJSON a => GToJSON Encoding arity (K1 i a) where
     -- Constant values are encoded using their ToJSON instance:
     gToJSON _opts _ = toEncoding . unK1
+    {-# INLINE gToJSON #-}
 
 instance ToJSON1 f => GToJSON Encoding One (Rec1 f) where
     -- Recursive occurrences of the last type parameter are encoded using their
     -- ToEncoding1 instance:
     gToJSON _opts (To1Args te tel) = liftToEncoding te tel . unRec1
+    {-# INLINE gToJSON #-}
 
 instance GToJSON Encoding arity U1 where
     -- Empty constructors are encoded to an empty array:
     gToJSON _opts _ _ = E.emptyArray_
+    {-# INLINE gToJSON #-}
 
 instance ( EncodeProduct  arity a
          , EncodeProduct  arity b
@@ -761,6 +774,7 @@ instance ( EncodeProduct  arity a
     -- the same size as the product and write the product's elements to it using
     -- 'encodeProduct':
     gToJSON opts targs p = E.list E.retagEncoding [encodeProduct opts targs p]
+    {-# INLINE gToJSON #-}
 
 instance ( ToJSON1 f
          , GToJSON Encoding One g
@@ -772,6 +786,7 @@ instance ( ToJSON1 f
     gToJSON opts targs =
       let gte = gToJSON opts targs in
       liftToEncoding gte (listEncoding gte) . unComp1
+    {-# INLINE gToJSON #-}
 
 --------------------------------------------------------------------------------
 
@@ -983,6 +998,7 @@ instance ( RecordToPairs enc pairs arity f
          ) => ConsToJSON' enc arity f True
   where
     consToJSON' opts targs = Tagged . fromPairs . recordToPairs opts targs
+    {-# INLINE consToJSON' #-}
 
 instance GToJSON enc arity f => ConsToJSON' enc arity f False where
     consToJSON' opts targs = Tagged . gToJSON opts targs
@@ -1074,10 +1090,12 @@ instance ( WriteProduct arity a
           lenL = len `unsafeShiftR` 1
           lenR = len - lenL
           ixR  = ix  + lenL
+    {-# INLINE writeProduct #-}
 
 instance OVERLAPPABLE_ (GToJSON Value arity a) => WriteProduct arity a where
     writeProduct opts targs mv ix _ =
       VM.unsafeWrite mv ix . gToJSON opts targs
+    {-# INLINE writeProduct #-}
 
 --------------------------------------------------------------------------------
 
@@ -1095,9 +1113,11 @@ instance ( EncodeProduct    arity a
     encodeProduct opts targs (a :*: b) =
       encodeProduct opts targs a >*<
       encodeProduct opts targs b
+    {-# INLINE encodeProduct #-}
 
 instance OVERLAPPABLE_ (GToJSON Encoding arity a) => EncodeProduct arity a where
     encodeProduct opts targs a = E.retagEncoding $ gToJSON opts targs a
+    {-# INLINE encodeProduct #-}
 
 --------------------------------------------------------------------------------
 
