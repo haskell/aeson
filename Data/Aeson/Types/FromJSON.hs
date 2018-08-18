@@ -107,6 +107,7 @@ import Data.Time.Locale.Compat (defaultTimeLocale)
 import Data.Traversable as Tr (sequence)
 import Data.Vector (Vector)
 import Data.Version (Version, parseVersion)
+import Data.Void (Void)
 import Data.Word (Word16, Word32, Word64, Word8)
 import Foreign.Storable (Storable)
 import Foreign.C.Types (CTime (..))
@@ -786,6 +787,11 @@ pmval .!= val = fromMaybe val <$> pmval
 -- Generic parseJSON
 -------------------------------------------------------------------------------
 
+instance GFromJSON arity V1 where
+    -- Whereof we cannot format, thereof we cannot parse:
+    gParseJSON _ _ _ = fail "Attempted to parse empty type"
+
+
 instance OVERLAPPABLE_ (GFromJSON arity a) => GFromJSON arity (M1 i c a) where
     -- Meta-information, which is not handled elsewhere, is just added to the
     -- parsed value:
@@ -1198,7 +1204,9 @@ instance (FromJSON a, FromJSON b) => FromJSON (Either a b) where
     parseJSON = parseJSON2
     {-# INLINE parseJSON #-}
 
-
+instance FromJSON Void where
+    parseJSON _ = fail "Cannot parse Void"
+    {-# INLINE parseJSON #-}
 
 instance FromJSON Bool where
     parseJSON = withBool "Bool" pure

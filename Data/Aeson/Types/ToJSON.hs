@@ -14,6 +14,7 @@
 {-# LANGUAGE TypeOperators #-}
 {-# LANGUAGE TypeSynonymInstances #-}
 {-# LANGUAGE UndecidableInstances #-}
+{-# LANGUAGE EmptyCase #-}
 
 #if __GLASGOW_HASKELL__ >= 706
 {-# LANGUAGE PolyKinds #-}
@@ -91,6 +92,7 @@ import Data.Time.Format (FormatTime, formatTime)
 import Data.Time.Locale.Compat (defaultTimeLocale)
 import Data.Vector (Vector)
 import Data.Version (Version, showVersion)
+import Data.Void (Void)
 import Data.Word (Word16, Word32, Word64, Word8)
 import Foreign.Storable (Storable)
 import Foreign.C.Types (CTime (..))
@@ -702,6 +704,12 @@ instance ( AllNullary       (a :+: b) allNullary
 -- possible but makes error messages a bit harder to understand for missing
 -- instances.
 
+instance GToJSON Value arity V1 where
+    -- Empty values do not exist, which makes the job of formatting them
+    -- rather easy:
+    gToJSON _ _ x = case x of {}
+    {-# INLINE gToJSON #-}
+
 instance ToJSON a => GToJSON Value arity (K1 i a) where
     -- Constant values are encoded using their ToJSON instance:
     gToJSON _opts _ = toJSON . unK1
@@ -1219,6 +1227,13 @@ instance (ToJSON a, ToJSON b) => ToJSON (Either a b) where
     {-# INLINE toJSON #-}
 
     toEncoding = toEncoding2
+    {-# INLINE toEncoding #-}
+
+instance ToJSON Void where
+    toJSON x = case x of {}
+    {-# INLINE toJSON #-}
+
+    toEncoding x = case x of {}
     {-# INLINE toEncoding #-}
 
 
