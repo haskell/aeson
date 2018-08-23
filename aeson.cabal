@@ -135,7 +135,8 @@ library
 
   if !impl(ghc >= 7.10)
     -- `Numeric.Natural` is available in base only since GHC 7.10 / base 4.8
-    build-depends: nats >= 1 && < 1.2
+    build-depends: nats >= 1 && < 1.2,
+                   void >= 0.7.2 && < 0.8
 
   ghc-options: -Wall
 
@@ -227,7 +228,8 @@ test-suite tests
       transformers-compat >= 0.3
 
   if !impl(ghc >= 7.10)
-    build-depends: nats >=1 && <1.2
+    build-depends: nats >=1 && <1.2,
+                   void >=0.7.2 && <0.8
 
   if impl(ghc >= 7.8)
     build-depends: hashable-time >= 0.2 && <0.3
