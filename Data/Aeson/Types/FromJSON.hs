@@ -139,6 +139,16 @@ import qualified Data.Vector.Primitive as VP
 import qualified Data.Vector.Storable as VS
 import qualified Data.Vector.Unboxed as VU
 
+import qualified GHC.Exts as Exts
+import qualified Data.Primitive.Array as PM
+import qualified Data.Primitive.SmallArray as PM
+import qualified Data.Primitive.Types as PM
+
+#if (MIN_VERSION_primitive(0,6,4))
+import qualified Data.Primitive.UnliftedArray as PM
+import qualified Data.Primitive.PrimArray as PM
+#endif
+
 #ifndef HAS_COERCIBLE
 #define HAS_COERCIBLE (__GLASGOW_HASKELL__ >= 707)
 #endif
@@ -1672,6 +1682,26 @@ instance FromJSON DotNetTime where
              Just d -> pure (DotNetTime d)
              _      -> fail "could not parse .NET time"
     {-# INLINE parseJSON #-}
+
+-------------------------------------------------------------------------------
+-- primitive
+-------------------------------------------------------------------------------
+
+instance FromJSON a => FromJSON (PM.Array a) where
+  -- note: we could do better than this if vector exposed the data
+  -- constructor in Data.Vector.
+  parseJSON = fmap Exts.fromList . parseJSON
+
+instance FromJSON a => FromJSON (PM.SmallArray a) where
+  parseJSON = fmap Exts.fromList . parseJSON
+
+#if (MIN_VERSION_primitive(0,6,4))
+instance (PM.Prim a,FromJSON a) => FromJSON (PM.PrimArray a) where
+  parseJSON = fmap Exts.fromList . parseJSON
+
+instance (PM.PrimUnlifted a,FromJSON a) => FromJSON (PM.UnliftedArray a) where
+  parseJSON = fmap Exts.fromList . parseJSON
+#endif
 
 -------------------------------------------------------------------------------
 -- time

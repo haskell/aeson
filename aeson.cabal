@@ -108,6 +108,7 @@ library
     dlist >= 0.6,
     ghc-prim >= 0.2,
     hashable >= 1.1.2.0,
+    primitive >= 0.6.1,
     scientific >= 0.3.4.7 && < 0.4,
     tagged >=0.8.3 && <0.9,
     template-haskell >= 2.7,
