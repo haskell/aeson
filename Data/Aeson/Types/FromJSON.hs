@@ -76,7 +76,6 @@ module Data.Aeson.Types.FromJSON
     , parseOptionalFieldWith
     ) where
 
-import Prelude ()
 import Prelude.Compat
 
 import Control.Applicative ((<|>), Const(..))

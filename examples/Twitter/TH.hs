@@ -11,7 +11,6 @@ module Twitter.TH
     , Result(..)
     ) where
 
-import Prelude ()
 
 import Twitter
 import Twitter.Options

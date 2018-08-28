@@ -19,7 +19,6 @@ module UnitTests
     , withEmbeddedJSONTest
     ) where
 
-import Prelude ()
 import Prelude.Compat
 
 import Control.Monad (forM, forM_)

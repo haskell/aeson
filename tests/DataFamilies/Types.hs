@@ -10,7 +10,6 @@
 
 module DataFamilies.Types (module DataFamilies.Types) where
 
-import Prelude ()
 import Prelude.Compat
 
 import Generics.Deriving.TH (deriveAll0)

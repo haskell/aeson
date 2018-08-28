@@ -10,7 +10,6 @@ module Twitter.Generic
     , Result(..)
     ) where
 
-import Prelude ()
 import Prelude.Compat ()
 
 import Twitter

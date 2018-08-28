@@ -130,7 +130,6 @@ module Data.Aeson
     , json'
     ) where
 
-import Prelude ()
 import Prelude.Compat
 
 import Data.Aeson.Types.FromJSON (ifromJSON)

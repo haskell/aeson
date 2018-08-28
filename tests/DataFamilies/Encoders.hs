@@ -4,7 +4,6 @@
 
 module DataFamilies.Encoders (module DataFamilies.Encoders) where
 
-import Prelude ()
 import Prelude.Compat
 
 import Data.Aeson.TH

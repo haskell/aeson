@@ -19,7 +19,6 @@ module Twitter
     , Result(..)
     ) where
 
-import Prelude ()
 import Prelude.Compat
 
 import Control.DeepSeq

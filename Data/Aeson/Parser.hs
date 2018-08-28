@@ -45,7 +45,6 @@ module Data.Aeson.Parser
     , eitherDecodeStrictWith
     ) where
 
-import Prelude ()
 
 import Data.Aeson.Parser.Internal (decodeStrictWith, decodeWith, eitherDecodeStrictWith, eitherDecodeWith, json, json', jstring, scientific, value, value')
 

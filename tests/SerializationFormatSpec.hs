@@ -15,7 +15,6 @@ module SerializationFormatSpec
     tests
   ) where
 
-import Prelude ()
 import Prelude.Compat
 
 import Control.Applicative (Const(..))

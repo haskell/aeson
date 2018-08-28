@@ -9,7 +9,6 @@
 
 module Types (module Types) where
 
-import Prelude ()
 import Prelude.Compat
 
 import Math.NumberTheory.Logarithms (intLog2)

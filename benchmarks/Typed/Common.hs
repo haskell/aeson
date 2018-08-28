@@ -2,7 +2,6 @@
 
 module Typed.Common (load) where
 
-import Prelude ()
 import Prelude.Compat
 
 import Data.ByteString.Lazy as L

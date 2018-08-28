@@ -14,7 +14,6 @@ module Data.Aeson.Internal.Functions
     , mapKey
     ) where
 
-import Prelude ()
 import Prelude.Compat
 
 import Data.Hashable (Hashable)

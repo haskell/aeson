@@ -116,7 +116,6 @@ module Data.Aeson.TH
     , mkLiftParseJSON2
     ) where
 
-import Prelude ()
 import Prelude.Compat
 
 import Control.Applicative ((<|>))

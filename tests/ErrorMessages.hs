@@ -6,7 +6,6 @@ module ErrorMessages
     tests
   ) where
 
-import Prelude ()
 import Prelude.Compat
 
 import Data.Aeson (FromJSON(..), eitherDecode)

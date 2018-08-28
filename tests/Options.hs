@@ -1,6 +1,5 @@
 module Options (module Options) where
 
-import Prelude ()
 import Prelude.Compat
 
 import Data.Aeson.Types

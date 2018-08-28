@@ -21,7 +21,6 @@ module Data.Attoparsec.Time
     , zonedTime
     ) where
 
-import Prelude ()
 import Prelude.Compat
 
 import Control.Applicative ((<|>))

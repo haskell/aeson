@@ -35,7 +35,6 @@ module Data.Aeson.Parser.Internal
     , eitherDecodeStrictWith
     ) where
 
-import Prelude ()
 import Prelude.Compat
 
 import Control.Applicative ((<|>))

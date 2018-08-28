@@ -1,6 +1,5 @@
 module Typed.Generic (benchmarks, decodeBenchmarks) where
 
-import Prelude ()
 import Prelude.Compat
 
 import Data.Aeson hiding (Result)

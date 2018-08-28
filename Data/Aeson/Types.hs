@@ -124,7 +124,6 @@ module Data.Aeson.Types
     , defaultTaggedObject
     ) where
 
-import Prelude ()
 import Prelude.Compat
 
 import Data.Aeson.Encoding (Encoding, unsafeToEncoding, fromEncoding, Series, pairs)

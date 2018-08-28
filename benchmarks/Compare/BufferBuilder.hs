@@ -6,7 +6,6 @@
 
 module Compare.BufferBuilder () where
 
-import Prelude ()
 import Prelude.Compat hiding ((<>))
 
 import Data.BufferBuilder.Json

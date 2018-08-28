@@ -49,6 +49,5 @@ module Data.Aeson.Encoding
     , value
     ) where
 
-import Prelude ()
 
 import Data.Aeson.Encoding.Internal

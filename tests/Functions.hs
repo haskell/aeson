@@ -4,7 +4,6 @@ module Functions
     , approxEqWith
     ) where
 
-import Prelude ()
 import Prelude.Compat
 
 approxEq :: (Fractional a, Ord a) => a -> a -> Bool

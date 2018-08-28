@@ -4,7 +4,6 @@
 
 module Encoders (module Encoders) where
 
-import Prelude ()
 import Prelude.Compat
 
 import Data.Aeson.TH

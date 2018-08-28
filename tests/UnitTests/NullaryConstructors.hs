@@ -7,7 +7,6 @@ module UnitTests.NullaryConstructors
       nullaryConstructors
     ) where
 
-import Prelude ()
 import Prelude.Compat
 
 import Data.Aeson (decode, eitherDecode, fromEncoding, Value)

@@ -36,7 +36,6 @@ module Data.Aeson.Types.Generic
     , ProductSize(..)
     ) where
 
-import Prelude ()
 import Prelude.Compat
 
 import GHC.Generics

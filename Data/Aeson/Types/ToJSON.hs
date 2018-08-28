@@ -58,7 +58,6 @@ module Data.Aeson.Types.ToJSON
     , listValue
     ) where
 
-import Prelude ()
 import Prelude.Compat
 
 import Control.Applicative (Const(..))

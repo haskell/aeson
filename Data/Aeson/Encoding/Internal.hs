@@ -55,7 +55,6 @@ module Data.Aeson.Encoding.Internal
     , comma, colon, openBracket, closeBracket, openCurly, closeCurly
     ) where
 
-import Prelude ()
 import Prelude.Compat
 
 import Data.Aeson.Types.Internal (Value)

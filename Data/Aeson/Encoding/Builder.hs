@@ -35,7 +35,6 @@ module Data.Aeson.Encoding.Builder
     , ascii5
     ) where
 
-import Prelude ()
 import Prelude.Compat
 
 import Data.Aeson.Internal.Time

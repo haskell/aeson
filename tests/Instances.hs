@@ -7,7 +7,6 @@
 
 module Instances () where
 
-import Prelude ()
 import Prelude.Compat
 
 import Control.Applicative (empty)

@@ -91,7 +91,6 @@ module Data.Aeson.Types.Class
     , (.!=)
     ) where
 
-import Prelude ()
 
 import Data.Aeson.Types.FromJSON
 import Data.Aeson.Types.Generic (One, Zero)

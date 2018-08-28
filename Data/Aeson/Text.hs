@@ -20,7 +20,6 @@ module Data.Aeson.Text
     , encodeToTextBuilder
     ) where
 
-import Prelude ()
 import Prelude.Compat
 
 import Data.Aeson.Types (Value(..), ToJSON(..))

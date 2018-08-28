@@ -12,7 +12,6 @@ module Twitter.Manual
     , Result(..)
     ) where
 
-import Prelude ()
 import Prelude.Compat
 
 import Control.Applicative

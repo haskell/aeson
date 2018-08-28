@@ -74,7 +74,6 @@ module Data.Aeson.Types.Internal
     , DotNetTime(..)
     ) where
 
-import Prelude ()
 import Prelude.Compat
 
 import Control.Applicative (Alternative(..))

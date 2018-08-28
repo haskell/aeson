@@ -6,7 +6,6 @@
 
 module DataFamilies.Instances () where
 
-import Prelude ()
 import Prelude.Compat
 
 import Data.Aeson.TH
