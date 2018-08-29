@@ -1,3 +1,5 @@
+{-# LANGUAGE NoImplicitPrelude #-}
+
 module Options (module Options) where
 
 import Prelude.Compat

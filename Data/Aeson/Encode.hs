@@ -1,3 +1,4 @@
+{-# LANGUAGE NoImplicitPrelude #-}
 -- |
 -- Module:      Data.Aeson.Encode
 -- Copyright:   (c) 2012-2016 Bryan O'Sullivan
@@ -8,6 +9,7 @@
 -- Portability: portable
 --
 -- This module is left to supply limited backwards-compatibility.
+
 module Data.Aeson.Encode {-# DEPRECATED "Use Data.Aeson or Data.Aeson.Text instead" #-}
     (
       encode

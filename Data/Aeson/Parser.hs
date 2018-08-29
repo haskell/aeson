@@ -1,3 +1,4 @@
+{-# LANGUAGE NoImplicitPrelude #-}
 -- |
 -- Module:      Data.Aeson.Parser
 -- Copyright:   (c) 2012-2016 Bryan O'Sullivan

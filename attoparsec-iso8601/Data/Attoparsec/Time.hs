@@ -1,6 +1,6 @@
 {-# LANGUAGE BangPatterns #-}
+{-# LANGUAGE NoImplicitPrelude #-}
 {-# LANGUAGE ScopedTypeVariables #-}
-
 -- |
 -- Module:      Data.Aeson.Parser.Time
 -- Copyright:   (c) 2015-2016 Bryan O'Sullivan

@@ -1,3 +1,4 @@
+{-# LANGUAGE NoImplicitPrelude #-}
 -- |
 -- Module:      Data.Aeson.Internal
 -- Copyright:   (c) 2015-2016 Bryan O'Sullivan

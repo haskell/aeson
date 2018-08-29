@@ -1,6 +1,8 @@
 -- Use Template Haskell to generate good instances.
 
+{-# LANGUAGE NoImplicitPrelude #-}
 {-# LANGUAGE TemplateHaskell #-}
+
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 
 module Twitter.TH

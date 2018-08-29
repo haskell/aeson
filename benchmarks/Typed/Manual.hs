@@ -1,3 +1,5 @@
+{-# LANGUAGE NoImplicitPrelude #-}
+
 module Typed.Manual (benchmarks, decodeBenchmarks) where
 
 import Prelude.Compat

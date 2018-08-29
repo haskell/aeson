@@ -1,3 +1,4 @@
+{-# LANGUAGE NoImplicitPrelude #-}
 {-# LANGUAGE RecordWildCards #-}
 
 {-# OPTIONS_GHC -fno-warn-name-shadowing #-}

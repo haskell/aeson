@@ -1,5 +1,6 @@
 {-# LANGUAGE BangPatterns #-}
-
+{-# LANGUAGE NoImplicitPrelude #-}
+{-# LANGUAGE TupleSections #-}
 -- |
 -- Module:      Data.Aeson.Encoding.Builder
 -- Copyright:   (c) 2011 MailRank, Inc.
@@ -200,7 +201,7 @@ timeOfDay64 (TOD h m s)
     !(T mh ml)  = twoDigits m
     !(T sh sl)  = twoDigits (fromIntegral real)
     (real,frac) = s `quotRem` pico
-    showFrac = (\x -> ('.', x)) >$< (BP.liftFixedToBounded BP.char7 >*< trunc12)
+    showFrac = ('.',) >$< (BP.liftFixedToBounded BP.char7 >*< trunc12)
     trunc12 = (`quotRem` micro) >$<
               BP.condB (\(_,y) -> y == 0) (fst >$< trunc6) (digits6 >*< trunc6)
     digits6 = ((`quotRem` milli) . fromIntegral) >$< (digits3 >*< digits3)

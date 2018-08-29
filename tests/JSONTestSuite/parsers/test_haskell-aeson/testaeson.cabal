@@ -1,6 +1,8 @@
--- This file has been generated from package.yaml by hpack version 0.14.0.
+-- This file has been generated from package.yaml by hpack version 0.28.2.
 --
 -- see: https://github.com/sol/hpack
+--
+-- hash: 716ef4c3e64849526f097b85ed05015e0072c2e2afcc1f91e58d8bea68b123b2
 
 name:           testaeson
 version:        0.0.0
@@ -12,8 +14,8 @@ executable testaeson
   hs-source-dirs:
       src
   build-depends:
-      base >= 4.7 && < 5
-    , aeson
+      aeson
+    , base >=4.7 && <5
     , base-prelude
     , bytestring
   default-language: Haskell2010

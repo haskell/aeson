@@ -1,3 +1,4 @@
+{-# LANGUAGE NoImplicitPrelude #-}
 -- |
 -- Module:      Data.Aeson.Functions
 -- Copyright:   (c) 2011-2016 Bryan O'Sullivan

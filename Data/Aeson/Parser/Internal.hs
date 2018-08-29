@@ -1,10 +1,10 @@
 {-# LANGUAGE BangPatterns #-}
 {-# LANGUAGE CPP #-}
+{-# LANGUAGE NoImplicitPrelude #-}
 {-# LANGUAGE OverloadedStrings #-}
 #if MIN_VERSION_ghc_prim(0,3,1)
 {-# LANGUAGE MagicHash #-}
 #endif
-
 -- |
 -- Module:      Data.Aeson.Parser.Internal
 -- Copyright:   (c) 2011-2016 Bryan O'Sullivan

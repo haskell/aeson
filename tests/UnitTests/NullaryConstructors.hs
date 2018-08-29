@@ -1,4 +1,5 @@
-{-# LANGUAGE  OverloadedStrings #-}
+{-# LANGUAGE NoImplicitPrelude #-}
+{-# LANGUAGE OverloadedStrings #-}
 
 {-# OPTIONS_GHC -fno-warn-deprecations #-}
 

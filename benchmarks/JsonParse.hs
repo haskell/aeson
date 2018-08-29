@@ -1,5 +1,7 @@
 {-# LANGUAGE BangPatterns #-}
+{-# LANGUAGE NoImplicitPrelude #-}
 {-# LANGUAGE ScopedTypeVariables #-}
+
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 
 module Main (main) where
