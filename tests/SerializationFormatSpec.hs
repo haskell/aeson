@@ -1,6 +1,7 @@
 {-# LANGUAGE CPP #-}
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE GADTs #-}
+{-# LANGUAGE NoImplicitPrelude #-}
 {-# LANGUAGE OverloadedStrings #-}
 #if __GLASGOW_HASKELL__ >= 708
 {-# LANGUAGE DataKinds #-}
@@ -15,7 +16,6 @@ module SerializationFormatSpec
     tests
   ) where
 
-import Prelude ()
 import Prelude.Compat
 
 import Control.Applicative (Const(..))

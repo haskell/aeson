@@ -1,11 +1,11 @@
 {-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE NoImplicitPrelude #-}
 {-# LANGUAGE RankNTypes #-}
 
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 
 module Main (main) where
 
-import Prelude ()
 import Prelude.Compat
 
 import Control.DeepSeq

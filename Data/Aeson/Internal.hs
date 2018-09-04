@@ -1,3 +1,4 @@
+{-# LANGUAGE NoImplicitPrelude #-}
 -- |
 -- Module:      Data.Aeson.Internal
 -- Copyright:   (c) 2015-2016 Bryan O'Sullivan
@@ -22,7 +23,6 @@ module Data.Aeson.Internal
     , iparse
     ) where
 
-import Prelude ()
 
 import Data.Aeson.Types.Internal
 import Data.Aeson.Types.FromJSON (ifromJSON)

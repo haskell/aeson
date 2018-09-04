@@ -4,6 +4,7 @@
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE GADTs #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE NoImplicitPrelude #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TypeSynonymInstances #-}
 
@@ -91,7 +92,6 @@ module Data.Aeson.Types.Class
     , (.!=)
     ) where
 
-import Prelude ()
 
 import Data.Aeson.Types.FromJSON
 import Data.Aeson.Types.Generic (One, Zero)

@@ -7,6 +7,7 @@
 {-# LANGUAGE GADTs #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE NamedFieldPuns #-}
+{-# LANGUAGE NoImplicitPrelude #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE PatternGuards #-}
 {-# LANGUAGE RecordWildCards #-}
@@ -58,7 +59,6 @@ module Data.Aeson.Types.ToJSON
     , listValue
     ) where
 
-import Prelude ()
 import Prelude.Compat
 
 import Control.Applicative (Const(..))

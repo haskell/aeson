@@ -1,16 +1,16 @@
--- Adapted from a buffer-builder benchmark:
---
--- https://github.com/chadaustin/buffer-builder/blob/master/test.json
-
 {-# LANGUAGE BangPatterns #-}
 {-# LANGUAGE MagicHash #-}
+{-# LANGUAGE NoImplicitPrelude #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 
+-- Adapted from a buffer-builder benchmark:
+--
+-- https://github.com/chadaustin/buffer-builder/blob/master/test.json
+
 module Compare.JsonBench (benchmarks) where
 
-import Prelude ()
 import Prelude.Compat hiding ((<>))
 
 import Control.DeepSeq (NFData(..))

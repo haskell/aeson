@@ -1,9 +1,10 @@
+{-# LANGUAGE NoImplicitPrelude #-}
 {-# LANGUAGE ScopedTypeVariables #-}
+
 {-# OPTIONS_GHC -fno-warn-name-shadowing #-}
 
 module Main (main) where
 
-import Prelude ()
 import Prelude.Compat
 
 import Criterion.Main

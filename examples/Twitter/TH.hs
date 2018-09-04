@@ -1,6 +1,8 @@
 -- Use Template Haskell to generate good instances.
 
+{-# LANGUAGE NoImplicitPrelude #-}
 {-# LANGUAGE TemplateHaskell #-}
+
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 
 module Twitter.TH
@@ -11,7 +13,6 @@ module Twitter.TH
     , Result(..)
     ) where
 
-import Prelude ()
 
 import Twitter
 import Twitter.Options

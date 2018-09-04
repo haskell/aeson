@@ -1,8 +1,9 @@
+{-# LANGUAGE NoImplicitPrelude #-}
+
 {-# OPTIONS_GHC -fno-warn-unused-imports #-}
 
 module Typed.Common (load) where
 
-import Prelude ()
 import Prelude.Compat
 
 import Data.ByteString.Lazy as L

@@ -4,15 +4,16 @@
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE GADTs #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
-{-# LANGUAGE StandaloneDeriving #-}
+{-# LANGUAGE NoImplicitPrelude #-}
 {-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE StandaloneDeriving #-}
 
 module Types (module Types) where
 
-import Prelude ()
 import Prelude.Compat
 
 import Math.NumberTheory.Logarithms (intLog2)
+import Control.Applicative ((<$>))
 import Data.Data
 import Data.Functor.Compose (Compose (..))
 import Data.Functor.Identity (Identity (..))
@@ -152,7 +153,7 @@ instance Hashable a => Hashable (LogScaled a) where
     hashWithSalt salt (LogScaled a) = hashWithSalt salt a
 
 instance Arbitrary a => Arbitrary (LogScaled a) where
-    arbitrary = fmap LogScaled $ scale (\x -> intLog2 $ x + 1) arbitrary
+    arbitrary = LogScaled <$> scale (\x -> intLog2 $ x + 1) arbitrary
     shrink = fmap LogScaled . shrink . getLogScaled
 
 instance ToJSON a => ToJSON (LogScaled a) where

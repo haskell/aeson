@@ -1,12 +1,12 @@
 -- We can use Template Haskell (TH) to generate instances of the
 -- FromJSON and ToJSON classes automatically.  This is the fastest way
 -- to add JSON support for a type.
+{-# LANGUAGE NoImplicitPrelude #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE TemplateHaskell #-}
 
 module Main (main) where
 
-import Prelude ()
 import Prelude.Compat
 
 import Data.Aeson (decode, encode)

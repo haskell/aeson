@@ -1,3 +1,5 @@
+{-# LANGUAGE NoImplicitPrelude #-}
+
 module Data.Aeson.Parser.Time
     (
       run
@@ -9,7 +11,6 @@ module Data.Aeson.Parser.Time
     , zonedTime
     ) where
 
-import Prelude ()
 import Prelude.Compat
 
 import Data.Attoparsec.Text (Parser)

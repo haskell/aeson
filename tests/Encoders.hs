@@ -1,10 +1,10 @@
 {-# LANGUAGE CPP #-}
 {-# LANGUAGE GADTs #-}
+{-# LANGUAGE NoImplicitPrelude #-}
 {-# LANGUAGE TemplateHaskell #-}
 
 module Encoders (module Encoders) where
 
-import Prelude ()
 import Prelude.Compat
 
 import Data.Aeson.TH

@@ -1,5 +1,5 @@
 {-# LANGUAGE CPP #-}
-
+{-# LANGUAGE NoImplicitPrelude #-}
 -- |
 -- Module:      Data.Aeson.Internal.Time
 -- Copyright:   (c) 2015-2016 Bryan O'Sullivan
@@ -17,7 +17,6 @@ module Data.Attoparsec.Time.Internal
     , toTimeOfDay64
     ) where
 
-import Prelude ()
 import Prelude.Compat
 
 import Data.Int (Int64)

@@ -1,3 +1,4 @@
+{-# LANGUAGE NoImplicitPrelude #-}
 -- |
 -- Module:      Data.Aeson.Functions
 -- Copyright:   (c) 2011-2016 Bryan O'Sullivan
@@ -14,7 +15,6 @@ module Data.Aeson.Internal.Functions
     , mapKey
     ) where
 
-import Prelude ()
 import Prelude.Compat
 
 import Data.Hashable (Hashable)

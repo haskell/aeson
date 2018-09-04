@@ -6,11 +6,11 @@
 -- automatically derive the Generic class for us.
 
 {-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE NoImplicitPrelude #-}
 {-# LANGUAGE OverloadedStrings #-}
 
 module Main (main) where
 
-import Prelude ()
 import Prelude.Compat
 
 import Data.Aeson (FromJSON, ToJSON, decode, encode)

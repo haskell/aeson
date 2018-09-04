@@ -1,10 +1,11 @@
+{-# LANGUAGE NoImplicitPrelude #-}
+
 module Functions
     (
       approxEq
     , approxEqWith
     ) where
 
-import Prelude ()
 import Prelude.Compat
 
 approxEq :: (Fractional a, Ord a) => a -> a -> Bool

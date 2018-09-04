@@ -1,8 +1,8 @@
 {-# LANGUAGE CPP #-}
+{-# LANGUAGE NoImplicitPrelude #-}
 
 module DataFamilies.Properties (tests) where
 
-import Prelude ()
 import Prelude.Compat
 
 import DataFamilies.Encoders

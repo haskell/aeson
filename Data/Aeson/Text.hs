@@ -1,4 +1,5 @@
 {-# LANGUAGE BangPatterns #-}
+{-# LANGUAGE NoImplicitPrelude #-}
 {-# LANGUAGE OverloadedStrings #-}
 -- |
 -- Module:      Data.Aeson.Text
@@ -14,13 +15,13 @@
 --
 -- You can use the conversions to 'Builder's when embedding JSON messages as
 -- parts of a protocol.
+
 module Data.Aeson.Text
     (
       encodeToLazyText
     , encodeToTextBuilder
     ) where
 
-import Prelude ()
 import Prelude.Compat
 
 import Data.Aeson.Types (Value(..), ToJSON(..))

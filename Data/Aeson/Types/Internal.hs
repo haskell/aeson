@@ -2,6 +2,7 @@
 {-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE NoImplicitPrelude #-}
 {-# LANGUAGE Rank2Types #-}
 #if __GLASGOW_HASKELL__ >= 800
 -- a) THQ works on cross-compilers and unregisterised GHCs
@@ -74,7 +75,6 @@ module Data.Aeson.Types.Internal
     , DotNetTime(..)
     ) where
 
-import Prelude ()
 import Prelude.Compat
 
 import Control.Applicative (Alternative(..))
@@ -331,8 +331,7 @@ instance Monoid (Parser a) where
 apP :: Parser (a -> b) -> Parser a -> Parser b
 apP d e = do
   b <- d
-  a <- e
-  return (b a)
+  b <$> e
 {-# INLINE apP #-}
 
 -- | A JSON \"object\" (key\/value map).

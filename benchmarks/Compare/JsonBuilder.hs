@@ -1,3 +1,4 @@
+{-# LANGUAGE NoImplicitPrelude #-}
 {-# LANGUAGE RecordWildCards #-}
 
 {-# OPTIONS_GHC -fno-warn-name-shadowing #-}
@@ -5,7 +6,6 @@
 
 module Compare.JsonBuilder () where
 
-import Prelude ()
 import Prelude.Compat hiding ((<>))
 
 import Data.Json.Builder

@@ -1,10 +1,10 @@
+{-# LANGUAGE NoImplicitPrelude #-}
 {-# LANGUAGE OverloadedStrings #-}
 
 module Main (main) where
 
 import Criterion.Main
 
-import Prelude ()
 import Prelude.Compat
 
 import Data.Foldable (toList)

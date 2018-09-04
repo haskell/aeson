@@ -1,7 +1,9 @@
 {-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE EmptyDataDecls #-}
+{-# LANGUAGE NoImplicitPrelude #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RankNTypes #-}
+
 module Data.Aeson.Encoding.Internal
     (
     -- * Encoding
@@ -55,7 +57,6 @@ module Data.Aeson.Encoding.Internal
     , comma, colon, openBracket, closeBracket, openCurly, closeCurly
     ) where
 
-import Prelude ()
 import Prelude.Compat
 
 import Data.Aeson.Types.Internal (Value)

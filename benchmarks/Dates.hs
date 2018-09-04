@@ -1,6 +1,7 @@
+{-# LANGUAGE NoImplicitPrelude #-}
+
 module Main (main) where
 
-import Prelude ()
 import Prelude.Compat
 
 import Criterion.Main

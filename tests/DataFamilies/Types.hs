@@ -4,13 +4,13 @@
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE GADTs #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE NoImplicitPrelude #-}
 {-# LANGUAGE StandaloneDeriving #-}
 {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE TypeFamilies #-}
 
 module DataFamilies.Types (module DataFamilies.Types) where
 
-import Prelude ()
 import Prelude.Compat
 
 import Generics.Deriving.TH (deriveAll0)
