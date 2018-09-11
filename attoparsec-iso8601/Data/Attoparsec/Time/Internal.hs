@@ -50,11 +50,16 @@ data TimeOfDay64 = TOD {-# UNPACK #-} !Int
                        {-# UNPACK #-} !Int
                        {-# UNPACK #-} !Int64
 
+posixDayLength :: DiffTime
+posixDayLength = fromInteger 86400
+
 diffTimeOfDay64 :: DiffTime -> TimeOfDay64
-diffTimeOfDay64 t = TOD (fromIntegral h) (fromIntegral m) s
-  where (h,mp) = fromIntegral pico `quotRem` 3600000000000000
-        (m,s)  = mp `quotRem` 60000000000000
-        pico   = unsafeCoerce t :: Integer
+diffTimeOfDay64 t
+  | t >= posixDayLength = TOD 23 59 (60000000000000 + (unsafeCoerce (t - posixDayLength)))
+  | otherwise = TOD (fromIntegral h) (fromIntegral m) s
+    where (h,mp) = fromIntegral pico `quotRem` 3600000000000000
+          (m,s)  = mp `quotRem` 60000000000000
+          pico   = unsafeCoerce t :: Integer
 
 toTimeOfDay64 :: TimeOfDay -> TimeOfDay64
 toTimeOfDay64 (TimeOfDay h m s) = TOD h m (fromIntegral (fromPico s))
