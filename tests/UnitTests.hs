@@ -198,6 +198,14 @@ utcTimeGood = do
   assertEqual "utctime" (parseWithRead "%FT%H:%MZ" ts10) t10
   assertEqual "utctime" (parseWithRead "%F %H:%MZ" ts11) t11
   assertEqual "utctime" (parseWithRead "%FT%T%QZ" "2015-01-01T14:30:00Z") t12
+  
+  -- leap seconds are included correctly
+  let ts13 = "2015-08-23T23:59:60.128+00" :: LT.Text
+  let (Just (t13 ::  UTCTime)) = parseWithAeson ts13
+  assertEqual "utctime" (parseWithRead "%FT%T%QZ" "2015-08-23T23:59:60.128Z") t13
+  let ts14 = "2015-08-23T23:59:60.999999999999+00" :: LT.Text
+  let (Just (t14 ::  UTCTime)) = parseWithAeson ts14
+  assertEqual "utctime" (parseWithRead "%FT%T%QZ" "2015-08-23T23:59:60.999999999999Z") t14
 
   where
     parseWithRead :: String -> LT.Text -> UTCTime
