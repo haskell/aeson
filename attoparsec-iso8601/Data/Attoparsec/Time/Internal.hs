@@ -52,7 +52,7 @@ data TimeOfDay64 = TOD {-# UNPACK #-} !Int
                        {-# UNPACK #-} !Int64
 
 posixDayLength :: DiffTime
-posixDayLength = fromInteger 86400
+posixDayLength = 86400
 
 diffTimeOfDay64 :: DiffTime -> TimeOfDay64
 diffTimeOfDay64 t
