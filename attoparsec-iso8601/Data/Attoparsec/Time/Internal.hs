@@ -21,12 +21,28 @@ import Prelude.Compat
 
 import Data.Int (Int64)
 import Data.Time
-import Data.Time.Clock (diffTimeToPicoseconds)
 import Unsafe.Coerce (unsafeCoerce)
+
+#if MIN_VERSION_time(1,6,0)
+
+import Data.Time.Clock (diffTimeToPicoseconds)
+
+#endif
 
 #if MIN_VERSION_base(4,7,0)
 
 import Data.Fixed (Pico, Fixed(MkFixed))
+
+#endif
+
+#if !MIN_VERSION_time(1,6,0)
+
+diffTimeToPicoseconds :: DiffTime -> Integer
+diffTimeToPicoseconds = unsafeCoerce
+
+#endif
+
+#if MIN_VERSION_base(4,7,0)
 
 toPico :: Integer -> Pico
 toPico = MkFixed
