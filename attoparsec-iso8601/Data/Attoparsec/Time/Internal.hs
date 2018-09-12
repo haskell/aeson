@@ -33,6 +33,10 @@ import Data.Time.Clock (diffTimeToPicoseconds)
 
 import Data.Fixed (Pico, Fixed(MkFixed))
 
+#else
+
+import Data.Fixed (Pico)
+
 #endif
 
 #if !MIN_VERSION_time(1,6,0)
@@ -51,8 +55,6 @@ fromPico :: Pico -> Integer
 fromPico (MkFixed i) = i
 
 #else
-
-import Data.Fixed (Pico)
 
 toPico :: Integer -> Pico
 toPico = unsafeCoerce
