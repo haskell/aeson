@@ -9,6 +9,7 @@ extra-deps:
 - integer-logarithms-1
 - quickcheck-instances-0.3.16
 - th-abstraction-0.2.2.0
+- text-1.2.3.0
 flags:
   aeson:
     fast: true

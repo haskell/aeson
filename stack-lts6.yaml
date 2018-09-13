@@ -3,7 +3,6 @@ packages:
 - '.'
 - attoparsec-iso8601
 extra-deps:
-- integer-logarithms-1
 - semigroups-0.18.2
 - tagged-0.8.5
 - transformers-compat-0.5.1.4
@@ -13,6 +12,7 @@ extra-deps:
 - integer-logarithms-1
 - quickcheck-instances-0.3.16
 - th-abstraction-0.2.2.0
+- text-1.2.3.0
 flags:
 flags:
   aeson:

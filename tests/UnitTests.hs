@@ -199,6 +199,14 @@ utcTimeGood = do
   assertEqual "utctime" (parseWithRead "%F %H:%MZ" ts11) t11
   assertEqual "utctime" (parseWithRead "%FT%T%QZ" "2015-01-01T14:30:00Z") t12
 
+  -- leap seconds are included correctly
+  let ts13 = "2015-08-23T23:59:60.128+00" :: LT.Text
+  let (Just (t13 ::  UTCTime)) = parseWithAeson ts13
+  assertEqual "utctime" (parseWithRead "%FT%T%QZ" "2015-08-23T23:59:60.128Z") t13
+  let ts14 = "2015-08-23T23:59:60.999999999999+00" :: LT.Text
+  let (Just (t14 ::  UTCTime)) = parseWithAeson ts14
+  assertEqual "utctime" (parseWithRead "%FT%T%QZ" "2015-08-23T23:59:60.999999999999Z") t14
+
   where
     parseWithRead :: String -> LT.Text -> UTCTime
     parseWithRead f s =
@@ -218,6 +226,7 @@ utcTimeBad = do
   verifyFailParse "2015-01-01T12:30:00.00+00:00Z" -- no Zulu if offset given
   verifyFailParse "2015-01-03 12:13:00.Z" -- decimal at the end but no digits
   verifyFailParse "2015-01-03 12:13.000Z" -- decimal at the end, but no seconds
+  verifyFailParse "2015-01-03 23:59:61Z"  -- exceeds allowed seconds per day
   where
     verifyFailParse (s :: LT.Text) =
       let (dec :: Maybe UTCTime) = decode . LT.encodeUtf8 $ LT.concat ["\"", s, "\""] in
