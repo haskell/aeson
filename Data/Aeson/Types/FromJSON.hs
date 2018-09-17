@@ -1687,6 +1687,7 @@ instance FromJSON DotNetTime where
 -- primitive
 -------------------------------------------------------------------------------
 
+#if (MIN_VERSION_base(0,4,7))
 instance FromJSON a => FromJSON (PM.Array a) where
   -- note: we could do better than this if vector exposed the data
   -- constructor in Data.Vector.
@@ -1701,6 +1702,7 @@ instance (PM.Prim a,FromJSON a) => FromJSON (PM.PrimArray a) where
 
 instance (PM.PrimUnlifted a,FromJSON a) => FromJSON (PM.UnliftedArray a) where
   parseJSON = fmap Exts.fromList . parseJSON
+#endif
 #endif
 
 -------------------------------------------------------------------------------

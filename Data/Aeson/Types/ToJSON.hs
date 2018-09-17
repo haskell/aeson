@@ -1918,6 +1918,7 @@ formatMillis = take 3 . formatTime defaultTimeLocale "%q"
 -- primitive
 -------------------------------------------------------------------------------
 
+#if (MIN_VERSION_base(0,4,7))
 instance ToJSON a => ToJSON (PM.Array a) where
   -- note: we could do better than this if vector exposed the data
   -- constructor in Data.Vector.
@@ -1936,6 +1937,7 @@ instance (PM.Prim a,ToJSON a) => ToJSON (PM.PrimArray a) where
 instance (PM.PrimUnlifted a,ToJSON a) => ToJSON (PM.UnliftedArray a) where
   toJSON = toJSON . Exts.toList 
   toEncoding = toEncoding . Exts.toList 
+#endif
 #endif
 
 -------------------------------------------------------------------------------
