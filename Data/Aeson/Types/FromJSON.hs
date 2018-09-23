@@ -144,7 +144,7 @@ import qualified Data.Primitive.Array as PM
 import qualified Data.Primitive.SmallArray as PM
 import qualified Data.Primitive.Types as PM
 
-#if (MIN_VERSION_primitive(0,6,4))
+#if MIN_VERSION_primitive(0,6,4)
 import qualified Data.Primitive.UnliftedArray as PM
 import qualified Data.Primitive.PrimArray as PM
 #endif
@@ -1687,7 +1687,7 @@ instance FromJSON DotNetTime where
 -- primitive
 -------------------------------------------------------------------------------
 
-#if (MIN_VERSION_base(0,4,7))
+#if MIN_VERSION_base(4,7,0)
 instance FromJSON a => FromJSON (PM.Array a) where
   -- note: we could do better than this if vector exposed the data
   -- constructor in Data.Vector.
@@ -1696,7 +1696,7 @@ instance FromJSON a => FromJSON (PM.Array a) where
 instance FromJSON a => FromJSON (PM.SmallArray a) where
   parseJSON = fmap Exts.fromList . parseJSON
 
-#if (MIN_VERSION_primitive(0,6,4))
+#if MIN_VERSION_primitive(0,6,4)
 instance (PM.Prim a,FromJSON a) => FromJSON (PM.PrimArray a) where
   parseJSON = fmap Exts.fromList . parseJSON
 

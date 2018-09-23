@@ -132,7 +132,7 @@ import qualified Data.Primitive.Array as PM
 import qualified Data.Primitive.SmallArray as PM
 import qualified Data.Primitive.Types as PM
 
-#if (MIN_VERSION_primitive(0,6,4))
+#if MIN_VERSION_primitive(0,6,4)
 import qualified Data.Primitive.UnliftedArray as PM
 import qualified Data.Primitive.PrimArray as PM
 #endif
@@ -1918,25 +1918,25 @@ formatMillis = take 3 . formatTime defaultTimeLocale "%q"
 -- primitive
 -------------------------------------------------------------------------------
 
-#if (MIN_VERSION_base(0,4,7))
+#if MIN_VERSION_base(4,7,0)
 instance ToJSON a => ToJSON (PM.Array a) where
   -- note: we could do better than this if vector exposed the data
   -- constructor in Data.Vector.
-  toJSON = toJSON . Exts.toList 
-  toEncoding = toEncoding . Exts.toList 
+  toJSON = toJSON . Exts.toList
+  toEncoding = toEncoding . Exts.toList
 
 instance ToJSON a => ToJSON (PM.SmallArray a) where
-  toJSON = toJSON . Exts.toList 
-  toEncoding = toEncoding . Exts.toList 
+  toJSON = toJSON . Exts.toList
+  toEncoding = toEncoding . Exts.toList
 
 #if (MIN_VERSION_primitive(0,6,4))
 instance (PM.Prim a,ToJSON a) => ToJSON (PM.PrimArray a) where
-  toJSON = toJSON . Exts.toList 
-  toEncoding = toEncoding . Exts.toList 
+  toJSON = toJSON . Exts.toList
+  toEncoding = toEncoding . Exts.toList
 
 instance (PM.PrimUnlifted a,ToJSON a) => ToJSON (PM.UnliftedArray a) where
-  toJSON = toJSON . Exts.toList 
-  toEncoding = toEncoding . Exts.toList 
+  toJSON = toJSON . Exts.toList
+  toEncoding = toEncoding . Exts.toList
 #endif
 #endif
 
