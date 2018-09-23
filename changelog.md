@@ -1,5 +1,15 @@
 For the latest version of this document, please see [https://github.com/bos/aeson/blob/master/changelog.md](https://github.com/bos/aeson/blob/master/changelog.md).
 
+#### 1.4.1.0
+
+* Optimizations of generics, thanks to Rémy Oudompheng, here are some numbers for GHC 8.4:
+  * Compilation time: G/BigProduct.hs is 25% faster, G/BigRecord.hs is 2x faster.
+  * Runtime performance: BigRecord/toJSON/generic and BigProduct/encode/generic are more than 2x faster.
+* Added To/FromJSON instances for `Void` and Generics's `V1`, thanks to Will Yager
+* Added To/FromJSON instances for `primitive`'s `Array`, `SmallArray`, `PrimArray` and `UnliftedArray`, thanks to Andrew Thad.
+* Fixes handling of `UTCTime` wrt. leap seconds , thanks to Adam Schønemann
+* Warning and documentation fixes thanks to tom-bop, Gabor Greif, Ian Jeffries, and Mateusz Curyło.
+
 ### 1.4.0.0
 
 This release introduces bounds on the size of `Scientific` numbers when they are converted to other arbitrary precision types that do not represent them efficiently in memory.

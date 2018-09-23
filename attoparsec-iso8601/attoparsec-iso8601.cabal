@@ -1,5 +1,5 @@
 name:            attoparsec-iso8601
-version:         1.0.0.0
+version:         1.0.1.0
 synopsis:        Parsing of ISO 8601 dates, originally from aeson.
 description:     Parsing of ISO 8601 dates, originally from aeson.
 license:         BSD3
