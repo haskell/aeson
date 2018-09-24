@@ -658,7 +658,7 @@ withScientific expected _ v                   = typeMismatch expected v
 -- when @value@ is a 'Number' and fails using @'typeMismatch' expected@
 -- otherwise.
 --
--- The conversion will also fail wyth a @'typeMismatch' if the
+-- The conversion will also fail with a @'typeMismatch' if the
 -- 'Scientific' exponent is larger than 1024.
 withBoundedScientific :: String -> (Scientific -> Parser a) -> Value -> Parser a
 withBoundedScientific _ f v@(Number scientific) =
