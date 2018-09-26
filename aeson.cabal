@@ -119,6 +119,10 @@ library
   else
     build-depends: bytestring >= 0.10.4 && < 0.11
 
+  if !impl(ghc >= 8.6)
+    build-depends:
+      contravariant >=1.4.1    && <1.6
+
   if !impl(ghc >= 8.0)
     -- `Data.Semigroup` and `Control.Monad.Fail` and `Control.Monad.IO.Class` are available in base only since GHC 8.0 / base 4.9
     build-depends:
