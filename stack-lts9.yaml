@@ -1,10 +1,12 @@
-resolver: lts-9.9
+resolver: lts-12.10
 packages:
 - '.'
-- attoparsec-iso8601
+flags:
+  aeson:
+    fast: true
+    cffi: true
 extra-deps:
-- quickcheck-instances-0.3.16
-- QuickCheck-2.10.0.1
+- hashable-time-0.2.0.1
 flags:
   aeson:
     fast: true
