@@ -1,9 +1,0 @@
-resolver: lts-10.0
-packages:
-- '.'
-flags:
-  aeson:
-    fast: true
-    cffi: false
-  attoparsec-iso8601:
-    fast: true

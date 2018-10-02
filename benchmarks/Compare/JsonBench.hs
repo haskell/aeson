@@ -1,3 +1,4 @@
+{-# LANGUAGE CPP #-}
 {-# LANGUAGE BangPatterns #-}
 {-# LANGUAGE MagicHash #-}
 {-# LANGUAGE NoImplicitPrelude #-}
@@ -21,7 +22,10 @@ import Data.Text (Text)
 import Typed.Common (load)
 import qualified Data.Aeson as Aeson
 import qualified Data.BufferBuilder.Json as Json
+
+#ifdef MIN_VERSION_json_builder
 import qualified Data.Json.Builder as JB
+#endif
 
 data EyeColor = Green | Blue | Brown
     deriving (Eq, Show)
@@ -268,6 +272,7 @@ instance Json.ToJson User where
             <> "greeting"# Json..=# uGreeting
             <> "favoriteFruit"# Json..=# uFavouriteFruit
 
+#ifdef MIN_VERSION_json_builder
 ---- json-builder instances ----
 
 instance JB.Value EyeColor where
@@ -319,6 +324,7 @@ instance JB.Value User where
             <> t "friends" `JB.row` uFriends
             <> t "greeting" `JB.row` uGreeting
             <> t "favoriteFruit" `JB.row` uFavouriteFruit
+#endif
 
 benchmarks :: Benchmark
 benchmarks = env (load "json-data/buffer-builder.json") $
@@ -326,5 +332,7 @@ benchmarks = env (load "json-data/buffer-builder.json") $
     bgroup "json-bench" [
       bench "aeson" $ nf Aeson.encode parsedUserList
     , bench "buffer-builder" $ nf Json.encodeJson parsedUserList
+#ifdef MIN_VERSION_json_builder
     , bench "json-builder" $ nf JB.toJsonLBS parsedUserList
+#endif
     ]

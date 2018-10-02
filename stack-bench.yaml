@@ -1,4 +1,4 @@
-resolver: nightly-2018-03-12
+resolver: lts-12.10
 # We use aeson in the snapshot to
 # - avoid recompilation of criterion
 # - compare against it
@@ -9,5 +9,3 @@ resolver: nightly-2018-03-12
 work-dir: .stack-work-bench
 packages:
 - benchmarks
-extra-deps:
-- aeson-1.3.1.0

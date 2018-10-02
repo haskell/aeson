@@ -1,4 +1,4 @@
-resolver: nightly-2018-03-07
+resolver: nightly-2018-09-26
 packages:
 - '.'
 - attoparsec-iso8601

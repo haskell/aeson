@@ -1,6 +1,7 @@
 resolver: lts-12.10
 packages:
 - '.'
+- attoparsec-iso8601
 flags:
   aeson:
     fast: true
