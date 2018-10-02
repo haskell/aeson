@@ -74,6 +74,7 @@ import Data.DList (DList)
 import Data.Fixed (Fixed, HasResolution)
 import Data.Foldable (toList)
 import Data.Functor.Compose (Compose(..))
+import Data.Functor.Contravariant (Contravariant (..))
 import Data.Functor.Identity (Identity(..))
 import Data.Functor.Product (Product(..))
 import Data.Functor.Sum (Sum(..))
@@ -497,6 +498,9 @@ toJSONKeyTextEnc e = ToJSONKeyText tot e
         . lazyToStrictByteString
         . E.encodingToLazyByteString
         . e
+
+instance Contravariant ToJSONKeyFunction where
+    contramap = contramapToJSONKeyFunction
 
 -- | Contravariant map, as 'ToJSONKeyFunction' is a contravariant functor.
 contramapToJSONKeyFunction :: (b -> a) -> ToJSONKeyFunction a -> ToJSONKeyFunction b
