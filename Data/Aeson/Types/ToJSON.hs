@@ -347,6 +347,13 @@ instance KeyValue Pair where
     name .= value = (name, toJSON value)
     {-# INLINE (.=) #-}
 
+-- | Constructs a singleton 'H.HashMap'. For calling functions that
+--   demand an 'Object' for constructing objects. To be used in
+--   conjunction with 'mconcat'. Prefer to use 'object' where possible.
+instance KeyValue Object where
+    name .= value = H.singleton name (toJSON value)
+    {-# INLINE (.=) #-}
+
 -------------------------------------------------------------------------------
 --  Classes and types for map keys
 -------------------------------------------------------------------------------

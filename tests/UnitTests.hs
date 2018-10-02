@@ -27,7 +27,7 @@ import Data.Aeson ((.=), (.:), (.:?), (.:!), FromJSON(..), FromJSONKeyFunction(.
 import Data.Aeson.Internal (JSONPathElement(..), formatError)
 import Data.Aeson.TH (deriveJSON, deriveToJSON, deriveToJSON1)
 import Data.Aeson.Text (encodeToTextBuilder)
-import Data.Aeson.Types (Options(..), Result(Success), ToJSON(..), Value(Null), camelTo, camelTo2, defaultOptions, omitNothingFields, parse)
+import Data.Aeson.Types (Options(..), Result(Success), ToJSON(..), Value(Null, Object), camelTo, camelTo2, defaultOptions, omitNothingFields, parse)
 import Data.Char (toUpper)
 import Data.Either.Compat (isLeft, isRight)
 import Data.Hashable (hash)
@@ -93,6 +93,7 @@ tests = testGroup "unit" [
   , testGroup ".:, .:?, .:!" $ fmap (testCase "-") dotColonMark
   , testGroup "JSONPath" $ fmap (testCase "-") jsonPath
   , testGroup "Hashable laws" $ fmap (testCase "-") hashableLaws
+  , testGroup "Object construction" $ fmap (testCase "-") objectConstruction
   , testGroup "Issue #351" $ fmap (testCase "-") issue351
   , testGroup "Nullary constructors" $ fmap (testCase "-") nullaryConstructors
   , testGroup "FromJSONKey" $ fmap (testCase "-") fromJSONKeyAssertions
@@ -301,6 +302,18 @@ hashableLaws = [
   where
   a = object ["223" .= False, "807882556" .= True]
   b = object ["807882556" .= True, "223" .= False]
+
+------------------------------------------------------------------------------
+-- Check that an alternative way to construct objects works
+------------------------------------------------------------------------------
+
+objectConstruction :: [Assertion]
+objectConstruction = [
+    assertEqual "Equal objects constructed differently" recommended notRecommended
+  ]
+  where
+    recommended = object ["foo" .= True, "bar" .= (-1 :: Int)]
+    notRecommended = Object (mconcat ["foo" .= True, "bar" .= (-1 :: Int)])
 
 -------------------------------------------------------------------------------
 -- ToJSONKey
