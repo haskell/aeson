@@ -18,7 +18,10 @@ import Criterion.Main
 import Prelude.Compat
 import Data.Int (Int64)
 import Data.Scientific (Scientific)
+import Data.Aeson.Parser (scientific)
 
+import qualified Data.Attoparsec.ByteString.Lazy as AttoL
+import qualified Data.Attoparsec.ByteString.Char8 as Atto8
 import qualified Data.Aeson as A
 import qualified Data.ByteString.Lazy as LBS
 import qualified Data.ByteString.Lazy.Char8 as LBS8
@@ -28,6 +31,22 @@ decodeInt = A.decode
 
 decodeScientific :: LBS.ByteString -> Maybe Scientific
 decodeScientific = A.decode
+
+decodeAtto :: LBS.ByteString -> Maybe Scientific
+decodeAtto
+    = parseOnly (scientific <* AttoL.endOfInput)
+  where
+    parseOnly p lbs = case AttoL.parse p lbs of
+        AttoL.Done _ r   -> Just r
+        AttoL.Fail _ _ _ -> Nothing
+
+decodeAtto8 :: LBS.ByteString -> Maybe Scientific
+decodeAtto8
+    = parseOnly (Atto8.scientific <* AttoL.endOfInput)
+  where
+    parseOnly p lbs = case AttoL.parse p lbs of
+        AttoL.Done _ r   -> Just r
+        AttoL.Fail _ _ _ -> Nothing
 
 generate :: Int64 -> LBS.ByteString
 generate n = LBS8.replicate n '1'
@@ -77,4 +96,6 @@ main =  defaultMain
     benchPair name input = bgroup name
         [ bench "Int" $ whnf decodeInt input
         , bench "Scientific" $ whnf decodeScientific input
+        , bench "parserA" $ whnf decodeAtto  input
+        , bench "parserS" $ whnf decodeAtto8  input
         ]

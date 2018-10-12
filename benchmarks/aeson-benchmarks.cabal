@@ -333,6 +333,7 @@ executable aeson-issue-673
   ghc-options: -Wall -O1 -rtsopts
   build-depends:
     aeson-benchmarks,
+    attoparsec,
     base,
     bytestring,
     scientific,
