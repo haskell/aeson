@@ -335,5 +335,6 @@ executable aeson-issue-673
     aeson-benchmarks,
     base,
     bytestring,
+    scientific,
     base-compat,
     criterion >= 1.0

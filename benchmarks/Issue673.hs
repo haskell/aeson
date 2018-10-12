@@ -17,6 +17,7 @@ module Main (
 import Criterion.Main
 import Prelude.Compat
 import Data.Int (Int64)
+import Data.Scientific (Scientific)
 
 import qualified Data.Aeson as A
 import qualified Data.ByteString.Lazy as LBS
@@ -24,6 +25,9 @@ import qualified Data.ByteString.Lazy.Char8 as LBS8
 
 decodeInt :: LBS.ByteString -> Maybe Int
 decodeInt = A.decode
+
+decodeScientific :: LBS.ByteString -> Maybe Scientific
+decodeScientific = A.decode
 
 generate :: Int64 -> LBS.ByteString
 generate n = LBS8.replicate n '1'
@@ -55,16 +59,22 @@ input8192 = generate 8192
 input16384 :: LBS.ByteString
 input16384 = generate 16384
 
+
 main :: IO ()
 main =  defaultMain
     -- works on 64bit
-    [ bench "17" $ whnf decodeInt input17
-    -- , bench "32" $ whnf decodeInt input32
-    -- , bench "64" $ whnf decodeInt input64
-    -- , bench "128" $ whnf decodeInt input128
-    -- , bench "256" $ whnf decodeInt input256
-    , bench "2048" $ whnf decodeInt input2048
-    , bench "4096" $ whnf decodeInt input4096
-    , bench "8192" $ whnf decodeInt input8192
-    , bench "16384" $ whnf decodeInt input16384
+    [ benchPair "17" input17
+    -- , benchPair "32" input32
+    -- , benchPair "64" input64
+    -- , benchPair "128" input128
+    -- , benchPair "256" input256
+    , benchPair "2048" input2048
+    , benchPair "4096" input4096
+    , benchPair "8192" input8192
+    , benchPair "16384" input16384
     ]
+  where
+    benchPair name input = bgroup name
+        [ bench "Int" $ whnf decodeInt input
+        , bench "Scientific" $ whnf decodeScientific input
+        ]
