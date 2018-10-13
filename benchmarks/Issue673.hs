@@ -44,16 +44,16 @@ decodeAtto
     = parseOnly (scientific <* AttoL.endOfInput)
   where
     parseOnly p lbs = case AttoL.parse p lbs of
-        AttoL.Done _ r   -> Just r
-        AttoL.Fail _ _ _ -> Nothing
+        AttoL.Done _ r -> Just r
+        AttoL.Fail {}  -> Nothing
 
 decodeAtto8 :: LBS.ByteString -> Maybe Scientific
 decodeAtto8
     = parseOnly (Atto8.scientific <* AttoL.endOfInput)
   where
     parseOnly p lbs = case AttoL.parse p lbs of
-        AttoL.Done _ r   -> Just r
-        AttoL.Fail _ _ _ -> Nothing
+        AttoL.Done _ r -> Just r
+        AttoL.Fail {}  -> Nothing
 
 generate :: Int64 -> LBS.ByteString
 generate n = LBS8.replicate n '1'
