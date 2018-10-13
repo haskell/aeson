@@ -29,8 +29,15 @@ import qualified Data.ByteString.Lazy.Char8 as LBS8
 decodeInt :: LBS.ByteString -> Maybe Int
 decodeInt = A.decode
 
+decodeString :: LBS.ByteString -> Maybe String
+decodeString = A.decode
+
 decodeScientific :: LBS.ByteString -> Maybe Scientific
 decodeScientific = A.decode
+
+decodeRaw :: LBS.ByteString -> Integer
+decodeRaw = LBS.foldl' step 0 where
+  step a b = a * 10 + fromIntegral (b - 48) -- 48 = '0'
 
 decodeAtto :: LBS.ByteString -> Maybe Scientific
 decodeAtto
@@ -94,8 +101,10 @@ main =  defaultMain
     ]
   where
     benchPair name input = bgroup name
-        [ bench "Int" $ whnf decodeInt input
+        [ bench "Int"        $ whnf decodeInt input
+        , bench "RawFold"    $ whnf decodeRaw input
         , bench "Scientific" $ whnf decodeScientific input
-        , bench "parserA" $ whnf decodeAtto  input
-        , bench "parserS" $ whnf decodeAtto8  input
+        , bench "parserA"    $ whnf decodeAtto  input
+        , bench "parserS"    $ whnf decodeAtto8  input
+        , bench "String"     $ whnf decodeString $ "\"" <> input <> "\""
         ]
