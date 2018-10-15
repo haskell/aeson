@@ -5,6 +5,7 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TemplateHaskell #-}
+{-# LANGUAGE QuasiQuotes #-}
 
 -- For Data.Aeson.Types.camelTo
 {-# OPTIONS_GHC -fno-warn-deprecations #-}
@@ -25,6 +26,7 @@ import Prelude.Compat
 import Control.Monad (forM, forM_)
 import Data.Aeson ((.=), (.:), (.:?), (.:!), FromJSON(..), FromJSONKeyFunction(..), FromJSONKey(..), ToJSON1(..), decode, eitherDecode, encode, fromJSON, genericParseJSON, genericToEncoding, genericToJSON, object, withObject, withEmbeddedJSON)
 import Data.Aeson.Internal (JSONPathElement(..), formatError)
+import Data.Aeson.QQ.Simple (aesonQQ)
 import Data.Aeson.TH (deriveJSON, deriveToJSON, deriveToJSON1)
 import Data.Aeson.Text (encodeToTextBuilder)
 import Data.Aeson.Types (Options(..), Result(Success), ToJSON(..), Value(Null, Object), camelTo, camelTo2, defaultOptions, omitNothingFields, parse)
@@ -108,6 +110,10 @@ tests = testGroup "unit" [
   , testCase "Big integer decoding" bigIntegerDecoding
   , testCase "Big natural decading" bigNaturalDecoding
   , testCase "Big integer key decoding" bigIntegerKeyDecoding
+  , testGroup "QQ.Simple"
+    [ testCase "example" $
+      assertEqual "" (object ["foo" .= True]) [aesonQQ| {"foo": true } |]
+    ]
   ]
 
 roundTripCamel :: String -> Assertion
