@@ -326,3 +326,16 @@ executable aeson-benchmark-foldable
     text,
     unordered-containers,
     vector
+
+executable aeson-issue-673
+  default-language: Haskell2010
+  main-is: Issue673.hs
+  ghc-options: -Wall -O1 -rtsopts
+  build-depends:
+    aeson-benchmarks,
+    attoparsec,
+    base,
+    bytestring,
+    scientific,
+    base-compat,
+    criterion >= 1.0
