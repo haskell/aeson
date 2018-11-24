@@ -1,6 +1,13 @@
 For the latest version of this document, please see [https://github.com/bos/aeson/blob/master/changelog.md](https://github.com/bos/aeson/blob/master/changelog.md).
 
-#### 1.4.1.0
+### 1.4.2.0
+
+* Add `Data.Aeson.QQ.Simple` which is a simpler version of the `aeson-qq` package, it does not support interpolation, thanks to Oleg Grenrus.
+* Add `Contravariant ToJSONKeyFunction` instance, thanks to Oleg Grenrus.
+* Add `KeyValue Object` instance, thanks to Robert Hensing
+* Improved performance when parsing large numbers, thanks to Oleg Grenrus.
+
+### 1.4.1.0
 
 * Optimizations of generics, thanks to Rémy Oudompheng, here are some numbers for GHC 8.4:
   * Compilation time: G/BigProduct.hs is 25% faster, G/BigRecord.hs is 2x faster.
@@ -10,7 +17,7 @@ For the latest version of this document, please see [https://github.com/bos/aeso
 * Fixes handling of `UTCTime` wrt. leap seconds , thanks to Adam Schønemann
 * Warning and documentation fixes thanks to tom-bop, Gabor Greif, Ian Jeffries, and Mateusz Curyło.
 
-### 1.4.0.0
+## 1.4.0.0
 
 This release introduces bounds on the size of `Scientific` numbers when they are converted to other arbitrary precision types that do not represent them efficiently in memory.
 
@@ -29,7 +36,7 @@ For the same reasons the following instances & functions have been removed:
 
 Finally, encoding integral values with large exponents now uses scientific notation, this saves space for large numbers.
 
-### 1.3.1.1
+#### 1.3.1.1
 
 * Catch 0 denominators when parsing Ratio
 

@@ -1,5 +1,5 @@
 name:            aeson
-version:         1.4.1.0
+version:         1.4.2.0
 license:         BSD3
 license-file:    LICENSE
 category:        Text, Web, JSON
@@ -140,7 +140,7 @@ library
   -- cannot use latest version
   build-depends:
     unordered-containers >= 0.2.8.0  && < 0.3,
-     
+
     -- not in LTS-12.10
     tagged               >= 0.8.5    && < 0.9,
     primitive            >= 0.6.3.0  && < 0.7
