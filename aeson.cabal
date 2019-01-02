@@ -197,7 +197,13 @@ test-suite tests
     Functions
     Instances
     Options
+    PropUtils
     Properties
+    PropertyGeneric
+    PropertyKeys
+    PropertyRoundTrip
+    PropertyRTFunctors
+    PropertyTH
     SerializationFormatSpec
     Types
     UnitTests
