@@ -204,13 +204,13 @@ test-suite tests
     UnitTests.NullaryConstructors
 
   build-depends:
-    QuickCheck >= 2.10.0.1 && < 2.12,
+    QuickCheck >= 2.10.0.1 && < 2.13,
     aeson,
     integer-logarithms >= 1 && <1.1,
     attoparsec,
     base,
     base-compat,
-    base-orphans >= 0.5.3 && <0.8,
+    base-orphans >= 0.5.3 && <0.9,
     base16-bytestring,
     containers,
     directory,
