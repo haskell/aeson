@@ -13,6 +13,9 @@ cabal.sandbox.config
 .\#*
 \#*
 
+# Emacs backup files
+*~
+
 benchmarks/AesonEncode
 
 tests/qc

@@ -1,22 +1,21 @@
-{-# LANGUAGE CPP #-}
 {-# LANGUAGE NoImplicitPrelude #-}
 
-module DataFamilies.Properties (tests) where
+module PropertyTH ( templateHaskellTests ) where
 
 import Prelude.Compat
 
-import DataFamilies.Encoders
-import DataFamilies.Instances ()
+import Data.Semigroup (Option(..))
+import Encoders
+import Instances ()
+import Test.Tasty (TestTree, testGroup)
+import Test.Tasty.QuickCheck (testProperty)
+import Test.QuickCheck ( (===) )
+import Types
 import PropUtils
 
 
-import Test.Tasty (TestTree, testGroup)
-import Test.Tasty.QuickCheck (testProperty)
-
---------------------------------------------------------------------------------
-
-tests :: TestTree
-tests = testGroup "data families" [
+templateHaskellTests :: TestTree
+templateHaskellTests =
     testGroup "template-haskell" [
       testGroup "toJSON" [
         testGroup "Nullary" [
@@ -24,12 +23,17 @@ tests = testGroup "data families" [
           , testProperty "2ElemArray" (is2ElemArray . thNullaryToJSON2ElemArray)
           , testProperty "TaggedObject" (isNullaryTaggedObject . thNullaryToJSONTaggedObject)
           , testProperty "ObjectWithSingleField" (isObjectWithSingleField . thNullaryToJSONObjectWithSingleField)
+
           , testGroup "roundTrip" [
               testProperty "string" (toParseJSON thNullaryParseJSONString thNullaryToJSONString)
             , testProperty "2ElemArray" (toParseJSON thNullaryParseJSON2ElemArray thNullaryToJSON2ElemArray)
             , testProperty "TaggedObject" (toParseJSON thNullaryParseJSONTaggedObject thNullaryToJSONTaggedObject)
             , testProperty "ObjectWithSingleField" (toParseJSON thNullaryParseJSONObjectWithSingleField thNullaryToJSONObjectWithSingleField)
             ]
+        ]
+      , testGroup "EitherTextInt" [
+          testProperty "UntaggedValue" (isUntaggedValueETI . thEitherTextIntToJSONUntaggedValue)
+        , testProperty "roundtrip" (toParseJSON thEitherTextIntParseJSONUntaggedValue thEitherTextIntToJSONUntaggedValue)
         ]
       , testGroup "SomeType" [
           testProperty "2ElemArray" (is2ElemArray . thSomeTypeToJSON2ElemArray)
@@ -39,6 +43,11 @@ tests = testGroup "data families" [
             testProperty "2ElemArray" (toParseJSON thSomeTypeParseJSON2ElemArray thSomeTypeToJSON2ElemArray)
           , testProperty "TaggedObject" (toParseJSON thSomeTypeParseJSONTaggedObject thSomeTypeToJSONTaggedObject)
           , testProperty "ObjectWithSingleField" (toParseJSON thSomeTypeParseJSONObjectWithSingleField thSomeTypeToJSONObjectWithSingleField)
+
+          , testProperty "2ElemArray unary" (toParseJSON1 thSomeTypeLiftParseJSON2ElemArray thSomeTypeLiftToJSON2ElemArray)
+          , testProperty "TaggedObject unary" (toParseJSON1 thSomeTypeLiftParseJSONTaggedObject thSomeTypeLiftToJSONTaggedObject)
+          , testProperty "ObjectWithSingleField unary" (toParseJSON1 thSomeTypeLiftParseJSONObjectWithSingleField thSomeTypeLiftToJSONObjectWithSingleField)
+
           ]
         ]
       , testGroup "Approx" [
@@ -57,6 +66,19 @@ tests = testGroup "data families" [
           , testProperty "ObjectWithSingleField" (toParseJSON thGADTParseJSONDefault thGADTToJSONDefault)
           ]
         ]
+      , testGroup "OneConstructor" [
+          testProperty "default" (isEmptyArray . thOneConstructorToJSONDefault)
+        , testProperty "Tagged"  (isTaggedObject . thOneConstructorToJSONTagged)
+        , testGroup "roundTrip" [
+            testProperty "default" (toParseJSON thOneConstructorParseJSONDefault thOneConstructorToJSONDefault)
+          , testProperty "Tagged"  (toParseJSON thOneConstructorParseJSONTagged  thOneConstructorToJSONTagged)
+          ]
+        ]
+      , testGroup "OptionField" [
+          testProperty "like Maybe" $
+          \x -> thOptionFieldToJSON (OptionField (Option x)) === thMaybeFieldToJSON (MaybeField x)
+        , testProperty "roundTrip" (toParseJSON thOptionFieldParseJSON thOptionFieldToJSON)
+        ]
       ]
     , testGroup "toEncoding" [
         testProperty "NullaryString" $
@@ -72,70 +94,37 @@ tests = testGroup "data families" [
         thApproxToJSONUnwrap `sameAs` thApproxToEncodingUnwrap
       , testProperty "ApproxDefault" $
         thApproxToJSONDefault `sameAs` thApproxToEncodingDefault
+
+      , testProperty "EitherTextInt UntaggedValue" $
+        thEitherTextIntToJSONUntaggedValue `sameAs` thEitherTextIntToEncodingUntaggedValue
+
       , testProperty "SomeType2ElemArray" $
         thSomeTypeToJSON2ElemArray `sameAs` thSomeTypeToEncoding2ElemArray
+      , testProperty "SomeType2ElemArray unary" $
+        thSomeTypeLiftToJSON2ElemArray `sameAs1` thSomeTypeLiftToEncoding2ElemArray
+      , testProperty "SomeType2ElemArray unary agree" $
+        thSomeTypeToEncoding2ElemArray `sameAs1Agree` thSomeTypeLiftToEncoding2ElemArray
+
       , testProperty "SomeTypeTaggedObject" $
         thSomeTypeToJSONTaggedObject `sameAs` thSomeTypeToEncodingTaggedObject
-      , testProperty "SomeTypeObjectWithSingleField" $
-        thSomeTypeToJSONObjectWithSingleField `sameAs`
-        thSomeTypeToEncodingObjectWithSingleField
-      ]
-    ]
+      , testProperty "SomeTypeTaggedObject unary" $
+        thSomeTypeLiftToJSONTaggedObject `sameAs1` thSomeTypeLiftToEncodingTaggedObject
+      , testProperty "SomeTypeTaggedObject unary agree" $
+        thSomeTypeToEncodingTaggedObject `sameAs1Agree` thSomeTypeLiftToEncodingTaggedObject
 
-  , testGroup "generics" [
-      testGroup "toJSON" [
-        testGroup "Nullary" [
-            testProperty "string" (isString . gNullaryToJSONString)
-          , testProperty "2ElemArray" (is2ElemArray . gNullaryToJSON2ElemArray)
-          , testProperty "TaggedObject" (isNullaryTaggedObject . gNullaryToJSONTaggedObject)
-          , testProperty "ObjectWithSingleField" (isObjectWithSingleField . gNullaryToJSONObjectWithSingleField)
-          , testGroup "roundTrip" [
-              testProperty "string" (toParseJSON gNullaryParseJSONString gNullaryToJSONString)
-            , testProperty "2ElemArray" (toParseJSON gNullaryParseJSON2ElemArray gNullaryToJSON2ElemArray)
-            , testProperty "TaggedObject" (toParseJSON gNullaryParseJSONTaggedObject gNullaryToJSONTaggedObject)
-            , testProperty "ObjectWithSingleField" (toParseJSON gNullaryParseJSONObjectWithSingleField gNullaryToJSONObjectWithSingleField)
-            ]
-        ]
-      , testGroup "SomeType" [
-          testProperty "2ElemArray" (is2ElemArray . gSomeTypeToJSON2ElemArray)
-        , testProperty "TaggedObject" (isTaggedObject . gSomeTypeToJSONTaggedObject)
-        , testProperty "ObjectWithSingleField" (isObjectWithSingleField . gSomeTypeToJSONObjectWithSingleField)
-        , testGroup "roundTrip" [
-            testProperty "2ElemArray" (toParseJSON gSomeTypeParseJSON2ElemArray gSomeTypeToJSON2ElemArray)
-          , testProperty "TaggedObject" (toParseJSON gSomeTypeParseJSONTaggedObject gSomeTypeToJSONTaggedObject)
-          , testProperty "ObjectWithSingleField" (toParseJSON gSomeTypeParseJSONObjectWithSingleField gSomeTypeToJSONObjectWithSingleField)
-          ]
-        ]
-      , testGroup "Approx" [
-          testProperty "string"                (isString                . gApproxToJSONUnwrap)
-        , testProperty "ObjectWithSingleField" (isObjectWithSingleField . gApproxToJSONDefault)
-        , testGroup "roundTrip" [
-            testProperty "string"                (toParseJSON gApproxParseJSONUnwrap  gApproxToJSONUnwrap)
-          , testProperty "ObjectWithSingleField" (toParseJSON gApproxParseJSONDefault gApproxToJSONDefault)
-          ]
-        ]
-      ]
-    , testGroup "toEncoding" [
-        testProperty "NullaryString" $
-        gNullaryToJSONString `sameAs` gNullaryToEncodingString
-      , testProperty "Nullary2ElemArray" $
-        gNullaryToJSON2ElemArray `sameAs` gNullaryToEncoding2ElemArray
-      , testProperty "NullaryTaggedObject" $
-        gNullaryToJSONTaggedObject `sameAs` gNullaryToEncodingTaggedObject
-      , testProperty "NullaryObjectWithSingleField" $
-        gNullaryToJSONObjectWithSingleField `sameAs`
-        gNullaryToEncodingObjectWithSingleField
-      , testProperty "ApproxUnwrap" $
-        gApproxToJSONUnwrap `sameAs` gApproxToEncodingUnwrap
-      , testProperty "ApproxDefault" $
-        gApproxToJSONDefault `sameAs` gApproxToEncodingDefault
-      , testProperty "SomeType2ElemArray" $
-        gSomeTypeToJSON2ElemArray `sameAs` gSomeTypeToEncoding2ElemArray
-      , testProperty "SomeTypeTaggedObject" $
-        gSomeTypeToJSONTaggedObject `sameAs` gSomeTypeToEncodingTaggedObject
       , testProperty "SomeTypeObjectWithSingleField" $
-        gSomeTypeToJSONObjectWithSingleField `sameAs`
-        gSomeTypeToEncodingObjectWithSingleField
+        thSomeTypeToJSONObjectWithSingleField `sameAs` thSomeTypeToEncodingObjectWithSingleField
+      , testProperty "SomeTypeObjectWithSingleField unary" $
+        thSomeTypeLiftToJSONObjectWithSingleField `sameAs1` thSomeTypeLiftToEncodingObjectWithSingleField
+      , testProperty "SomeTypeObjectWithSingleField unary agree" $
+        thSomeTypeToEncodingObjectWithSingleField `sameAs1Agree` thSomeTypeLiftToEncodingObjectWithSingleField
+
+      , testProperty "OneConstructorDefault" $
+        thOneConstructorToJSONDefault `sameAs` thOneConstructorToEncodingDefault
+      , testProperty "OneConstructorTagged" $
+        thOneConstructorToJSONTagged `sameAs` thOneConstructorToEncodingTagged
+
+      , testProperty "OptionField" $
+        thOptionFieldToJSON `sameAs` thOptionFieldToEncoding
       ]
     ]
-  ]
