@@ -63,6 +63,8 @@ module Data.Aeson
     , fromJSON
     , ToJSON(..)
     , KeyValue(..)
+    , (<?>)
+    , JSONPath
     -- ** Keys for maps
     , ToJSONKey(..)
     , ToJSONKeyFunction(..)
@@ -129,15 +131,16 @@ module Data.Aeson
     -- * Parsing
     , json
     , json'
+    , parseIndexedJSON
     ) where
 
 import Prelude.Compat
 
-import Data.Aeson.Types.FromJSON (ifromJSON)
+import Data.Aeson.Types.FromJSON (ifromJSON, parseIndexedJSON)
 import Data.Aeson.Encoding (encodingToLazyByteString)
 import Data.Aeson.Parser.Internal (decodeWith, decodeStrictWith, eitherDecodeWith, eitherDecodeStrictWith, jsonEOF, json, jsonEOF', json')
 import Data.Aeson.Types
-import Data.Aeson.Types.Internal (JSONPath, formatError)
+import Data.Aeson.Types.Internal (JSONPath, formatError, (<?>))
 import qualified Data.ByteString as B
 import qualified Data.ByteString.Lazy as L
 

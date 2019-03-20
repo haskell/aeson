@@ -67,6 +67,7 @@ module Data.Aeson.Types.FromJSON
     , explicitParseField
     , explicitParseFieldMaybe
     , explicitParseFieldMaybe'
+    , parseIndexedJSON
     -- ** Operators
     , (.:)
     , (.:?)
