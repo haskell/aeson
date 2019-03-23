@@ -1002,7 +1002,9 @@ instance (FromRecord arity f) => FromTaggedObject'' arity f True where
 
 instance (GFromJSON arity f) => FromTaggedObject'' arity f False where
     parseFromTaggedObject'' opts fargs contentsFieldName = Tagged .
-      (gParseJSON opts fargs <=< (.: pack contentsFieldName))
+      ((<?> Key label) .  gParseJSON opts fargs <=< (.: label))
+      where
+       label = pack contentsFieldName
 
 instance OVERLAPPING_ FromTaggedObject'' arity U1 False where
     parseFromTaggedObject'' _ _ _ _ = Tagged (pure U1)

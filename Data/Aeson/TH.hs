@@ -950,12 +950,16 @@ parseRecord jc tvMap argTys opts tName conName fields obj =
 getValField :: Name -> String -> [MatchQ] -> Q Exp
 getValField obj valFieldName matches = do
   val <- newName "val"
-  doE [ bindS (varP val) $ infixApp (varE obj)
-                                    [|(.:)|]
-                                    ([|T.pack|] `appE`
-                                       litE (stringL valFieldName))
-      , noBindS $ caseE (varE val) matches
-      ]
+  let valFieldNameT = [|T.pack|] `appE` litE (stringL valFieldName)
+  doE
+    [ bindS (varP val) $ infixApp (varE obj) [|(.:)|] valFieldNameT
+    , noBindS $
+      infixApp
+        (caseE (varE val) matches)
+        [|(<?>)|]
+        ([|Key|] `appE` valFieldNameT)
+    ]
+
 
 matchCases :: Either (String, Name) Name -> [MatchQ] -> Q Exp
 matchCases (Left (valFieldName, obj)) = getValField obj valFieldName

@@ -27,7 +27,7 @@ import Control.Monad (forM, forM_)
 import Data.Aeson ((.=), (.:), (.:?), (.:!), FromJSON(..), FromJSONKeyFunction(..), FromJSONKey(..), ToJSON1(..), decode, eitherDecode, encode, fromJSON, genericParseJSON, genericToEncoding, genericToJSON, object, withObject, withEmbeddedJSON)
 import Data.Aeson.Internal (JSONPathElement(..), formatError)
 import Data.Aeson.QQ.Simple (aesonQQ)
-import Data.Aeson.TH (deriveJSON, deriveToJSON, deriveToJSON1)
+import Data.Aeson.TH (deriveFromJSON, deriveJSON, deriveToJSON, deriveToJSON1)
 import Data.Aeson.Text (encodeToTextBuilder)
 import Data.Aeson.Types (Options(..), Result(Success), ToJSON(..), Value(Null, Object), camelTo, camelTo2, defaultOptions, omitNothingFields, parse)
 import Data.Char (toUpper)
@@ -280,6 +280,31 @@ dotColonMark = [
 -- These tests check that JSONPath is tracked correctly
 -----------------------------------------------------------------------------
 
+data A
+  = A Int
+  | B String
+  deriving (Eq, Generic, Show)
+
+instance FromJSON A
+
+data X
+  = X [A]
+  | Y String
+  deriving (Eq, Generic, Show)
+
+instance FromJSON X
+
+data A1
+  = A1 Int
+  | B1 String
+  deriving (Eq, Show)
+
+data X1
+  = X1 [A]
+  | Y1 String
+  deriving (Eq, Show)
+
+
 jsonPath :: [Assertion]
 jsonPath = [
     -- issue #356
@@ -295,6 +320,18 @@ jsonPath = [
       (Left "Error in $.wibbleInt: expected Int, encountered Boolean")
       (eitherDecode "{\"wibbleString\":\"\",\"wibbleInt\":true}"
          :: Either String Wibble)
+  , assertEqual "Missing contents (generic)"
+      (Left "Error in $: key \"contents\" not present")
+      (eitherDecode "{\"tag\":\"X\"}" :: Either String X)
+  , assertEqual "Missing inner tag (generic)"
+      (Left "Error in $.contents[0]: key \"tag\" not present")
+      (eitherDecode "{\"tag\":\"X\",\"contents\":[{\"contents\":1}]}" :: Either String X)
+  , assertEqual "Missing contents (TH)"
+      (Left "Error in $: key \"contents\" not present")
+      (eitherDecode "{\"tag\":\"X1\"}" :: Either String X1)
+  , assertEqual "Missing inner tag (TH)"
+      (Left "Error in $.contents[0]: key \"tag\" not present")
+      (eitherDecode "{\"tag\":\"X1\",\"contents\":[{\"contents\":1}]}" :: Either String X1)
   ]
 
 ------------------------------------------------------------------------------
@@ -623,3 +660,6 @@ deriveToJSON  defaultOptions ''Foo
 deriveToJSON1 defaultOptions ''Foo
 
 deriveJSON defaultOptions{omitNothingFields=True,unwrapUnaryRecords=True} ''SingleMaybeField
+
+deriveFromJSON  defaultOptions ''A1
+deriveFromJSON  defaultOptions ''X1
