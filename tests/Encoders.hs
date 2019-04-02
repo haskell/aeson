@@ -414,3 +414,13 @@ gOneConstructorToEncodingTagged = genericToEncoding optsTagSingleConstructors
 
 gOneConstructorParseJSONTagged :: Value -> Parser OneConstructor
 gOneConstructorParseJSONTagged = genericParseJSON optsTagSingleConstructors
+
+--------------------------------------------------------------------------------
+-- Product2 encoders/decoders
+--------------------------------------------------------------------------------
+
+thProduct2ParseJSON :: Value -> Parser (Product2 Int Bool)
+thProduct2ParseJSON = $(mkParseJSON defaultOptions ''Product2)
+
+gProduct2ParseJSON :: Value -> Parser (Product2 Int Bool)
+gProduct2ParseJSON = genericParseJSON defaultOptions

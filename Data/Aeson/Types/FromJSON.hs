@@ -61,6 +61,7 @@ module Data.Aeson.Types.FromJSON
     , fromJSON
     , ifromJSON
     , typeMismatch
+    , unexpected
     , parseField
     , parseFieldMaybe
     , parseFieldMaybe'
@@ -79,8 +80,8 @@ module Data.Aeson.Types.FromJSON
 
 import Prelude.Compat
 
-import Control.Applicative ((<|>), Const(..))
-import Control.Monad ((<=<), zipWithM)
+import Control.Applicative ((<|>), Const(..), liftA2)
+import Control.Monad (zipWithM)
 import Data.Aeson.Internal.Functions (mapKey)
 import Data.Aeson.Parser.Internal (eitherDecodeWith, jsonEOF)
 import Data.Aeson.Types.Generic
@@ -170,7 +171,7 @@ parseIndexedJSON p idx value = p value <?> Index idx
 parseIndexedJSONPair :: (Value -> Parser a) -> (Value -> Parser b) -> Int -> Value -> Parser (a, b)
 parseIndexedJSONPair keyParser valParser idx value = p value <?> Index idx
   where
-    p = withArray "(k,v)" $ \ab ->
+    p = withArray "(k, v)" $ \ab ->
         let n = V.length ab
         in if n == 2
              then (,) <$> parseJSONElemAtIndex keyParser 0 ab
@@ -183,33 +184,33 @@ parseJSONElemAtIndex :: (Value -> Parser a) -> Int -> V.Vector Value -> Parser a
 parseJSONElemAtIndex p idx ary = p (V.unsafeIndex ary idx) <?> Index idx
 
 parseRealFloat :: RealFloat a => String -> Value -> Parser a
-parseRealFloat _        (Number s) = pure $ Scientific.toRealFloat s
-parseRealFloat _        Null       = pure (0/0)
-parseRealFloat expected v          = typeMismatch expected v
+parseRealFloat _    (Number s) = pure $ Scientific.toRealFloat s
+parseRealFloat _    Null       = pure (0/0)
+parseRealFloat name v          = prependContext name (unexpected v)
 {-# INLINE parseRealFloat #-}
 
-parseIntegralFromScientific :: forall a. Integral a => String -> Scientific -> Parser a
-parseIntegralFromScientific expected s =
+parseIntegralFromScientific :: forall a. Integral a => Scientific -> Parser a
+parseIntegralFromScientific s =
     case Scientific.floatingOrInteger s :: Either Double a of
         Right x -> pure x
-        Left _  -> fail $ "expected " ++ expected ++ ", encountered floating number " ++ show s
+        Left _  -> fail $ "unexpected floating number " ++ show s
 {-# INLINE parseIntegralFromScientific #-}
 
 parseIntegral :: Integral a => String -> Value -> Parser a
-parseIntegral expected =
-    withBoundedScientific expected $ parseIntegralFromScientific expected
+parseIntegral name =
+    prependContext name . withBoundedScientific' parseIntegralFromScientific
 {-# INLINE parseIntegral #-}
 
-parseBoundedIntegralFromScientific :: (Bounded a, Integral a) => String -> Scientific -> Parser a
-parseBoundedIntegralFromScientific expected s = maybe
-    (fail $ expected ++ " is either floating or will cause over or underflow: " ++ show s)
+parseBoundedIntegralFromScientific :: (Bounded a, Integral a) => Scientific -> Parser a
+parseBoundedIntegralFromScientific s = maybe
+    (fail $ "value is either floating or will cause over or underflow " ++ show s)
     pure
     (Scientific.toBoundedInteger s)
 {-# INLINE parseBoundedIntegralFromScientific #-}
 
 parseBoundedIntegral :: (Bounded a, Integral a) => String -> Value -> Parser a
-parseBoundedIntegral expected =
-    withScientific expected $ parseBoundedIntegralFromScientific expected
+parseBoundedIntegral name =
+    prependContext name . withScientific' parseBoundedIntegralFromScientific
 {-# INLINE parseBoundedIntegral #-}
 
 parseScientificText :: Text -> Parser Scientific
@@ -219,18 +220,20 @@ parseScientificText
     . T.encodeUtf8
 
 parseIntegralText :: Integral a => String -> Text -> Parser a
-parseIntegralText expected t
-    = parseScientificText t
-  >>= rejectLargeExponent
-  >>= parseIntegralFromScientific expected
+parseIntegralText name t =
+    prependContext name $
+            parseScientificText t
+        >>= rejectLargeExponent
+        >>= parseIntegralFromScientific
   where
     rejectLargeExponent :: Scientific -> Parser Scientific
-    rejectLargeExponent s = withBoundedScientific expected pure (Number s)
+    rejectLargeExponent s = withBoundedScientific' pure (Number s)
 {-# INLINE parseIntegralText #-}
 
 parseBoundedIntegralText :: (Bounded a, Integral a) => String -> Text -> Parser a
-parseBoundedIntegralText expected t =
-    parseScientificText t >>= parseBoundedIntegralFromScientific expected
+parseBoundedIntegralText name t =
+    prependContext name $
+        parseScientificText t >>= parseBoundedIntegralFromScientific
 
 parseOptionalFieldWith :: (Value -> Parser (Maybe a))
                        -> Object -> Text -> Parser (Maybe a)
@@ -290,14 +293,21 @@ genericLiftParseJSON opts pj pjl = fmap to1 . gParseJSON opts (From1Args pj pjl)
 --
 -- The basic ways to signal a failed conversion are as follows:
 --
--- * 'empty' and 'mzero' work, but are terse and uninformative;
+-- * 'fail' yields a custom error message: it is the recommended way of
+-- reporting a failure;
 --
--- * 'fail' yields a custom error message;
+-- * 'Control.Applicative.empty' (or 'Control.Monad.mzero') is uninformative:
+-- use it when the error is meant to be caught by some @('<|>')@;
 --
--- * 'typeMismatch' produces an informative message for cases when the
--- value encountered is not of the expected type.
+-- * 'typeMismatch' can be used to report a failure when the encountered value
+-- is not of the expected JSON type; 'unexpected' is an appropriate alternative
+-- when more than one type may be expected, or to keep the expected type
+-- implicit.
 --
--- An example type and instance using 'typeMismatch':
+-- 'prependFailure' (or 'modifyFailure') add more information to a parser's
+-- error messages.
+--
+-- An example type and instance using 'typeMismatch' and 'prependFailure':
 --
 -- @
 -- \-- Allow ourselves to write 'Text' literals.
@@ -311,13 +321,15 @@ genericLiftParseJSON opts pj pjl = fmap to1 . gParseJSON opts (From1Args pj pjl)
 --         '<*>' v '.:' \"y\"
 --
 --     \-- We do not expect a non-'Object' value here.
---     \-- We could use 'mzero' to fail, but 'typeMismatch'
+--     \-- We could use 'Control.Applicative.empty' to fail, but 'typeMismatch'
 --     \-- gives a much more informative error message.
---     'parseJSON' invalid    = 'typeMismatch' \"Coord\" invalid
+--     'parseJSON' invalid    =
+--         'prependFailure' "parsing Coord failed, "
+--             ('typeMismatch' \"Object\" invalid)
 -- @
 --
 -- For this common case of only being concerned with a single
--- type of JSON value, the functions 'withObject', 'withNumber', etc.
+-- type of JSON value, the functions 'withObject', 'withScientific', etc.
 -- are provided. Their use is to be preferred when possible, since
 -- they are more terse. Using 'withObject', we can rewrite the above instance
 -- (assuming the same language extension and data type) as:
@@ -356,7 +368,7 @@ genericLiftParseJSON opts pj pjl = fmap to1 . gParseJSON opts (From1Args pj pjl)
 -- @
 --
 -- The default implementation will be equivalent to
--- @parseJSON = 'genericParseJSON' 'defaultOptions'@; If you need different
+-- @parseJSON = 'genericParseJSON' 'defaultOptions'@; if you need different
 -- options, you can customize the generic decoding by defining:
 --
 -- @
@@ -374,12 +386,10 @@ class FromJSON a where
     parseJSON = genericParseJSON defaultOptions
 
     parseJSONList :: Value -> Parser [a]
-    parseJSONList (Array a)
-        = zipWithM (parseIndexedJSON parseJSON) [0..]
+    parseJSONList = withArray "[]" $ \a ->
+          zipWithM (parseIndexedJSON parseJSON) [0..]
         . V.toList
         $ a
-
-    parseJSONList v = typeMismatch "[a]" v
 
 -------------------------------------------------------------------------------
 --  Classes and types for map keys
@@ -496,26 +506,39 @@ mapFromJSONKeyFunction = fmap
 
 -- | Fail parsing due to a type mismatch, with a descriptive message.
 --
--- Example usage:
+-- The following wrappers should generally be prefered:
+-- 'withObject', 'withArray', 'withText', 'withBool'.
 --
--- @
--- instance FromJSON Coord where
---   parseJSON ('Object' v) = {- type matches, life is good -}
---   parseJSON wat        = 'typeMismatch' \"Coord\" wat
--- @
-typeMismatch :: String -- ^ The name of the type you are trying to parse.
+-- ==== Error message example
+--
+-- > typeMismatch "Object" (String "oops")
+-- > -- Error: "expected Object, but encountered String"
+typeMismatch :: String -- ^ The name of the JSON type being parsed
+                       -- (@\"Object\"@, @\"Array\"@, @\"String\"@, @\"Number\"@,
+                       -- @\"Boolean\"@, or @\"Null\"@).
              -> Value  -- ^ The actual value encountered.
              -> Parser a
 typeMismatch expected actual =
-    fail $ "expected " ++ expected ++ ", encountered " ++ name
-  where
-    name = case actual of
-             Object _ -> "Object"
-             Array _  -> "Array"
-             String _ -> "String"
-             Number _ -> "Number"
-             Bool _   -> "Boolean"
-             Null     -> "Null"
+    fail $ "expected " ++ expected ++ ", but encountered " ++ typeOf actual
+
+-- | Fail parsing due to a type mismatch, when the expected types are implicit.
+--
+-- ==== Error message example
+--
+-- > unexpected (String "oops")
+-- > -- Error: "unexpected String"
+unexpected :: Value -> Parser a
+unexpected actual = fail $ "unexpected " ++ typeOf actual
+
+-- | JSON type of a value, name of the head constructor.
+typeOf :: Value -> String
+typeOf v = case v of
+    Object _ -> "Object"
+    Array _  -> "Array"
+    String _ -> "String"
+    Number _ -> "Number"
+    Bool _   -> "Boolean"
+    Null     -> "Null"
 
 -------------------------------------------------------------------------------
 -- Lifings of FromJSON and ToJSON to unary and binary type constructors
@@ -596,9 +619,8 @@ class FromJSON2 f where
         -> (Value -> Parser b)
         -> (Value -> Parser [b])
         -> Value -> Parser [f a b]
-    liftParseJSONList2 fa ga fb gb v = case v of
-        Array vals -> fmap V.toList (V.mapM (liftParseJSON2 fa ga fb gb) vals)
-        _ -> typeMismatch "[a]" v
+    liftParseJSONList2 fa ga fb gb = withArray "[]" $ \vals ->
+        fmap V.toList (V.mapM (liftParseJSON2 fa ga fb gb) vals)
 
 -- | Lift the standard 'parseJSON' function through the type constructor.
 parseJSON2 :: (FromJSON2 f, FromJSON a, FromJSON b) => Value -> Parser (f a b)
@@ -612,7 +634,7 @@ parseJSON2 = liftParseJSON2 parseJSON parseJSONList parseJSON parseJSONList
 -- | Helper function to use with 'liftParseJSON'. See 'Data.Aeson.ToJSON.listEncoding'.
 listParser :: (Value -> Parser a) -> Value -> Parser [a]
 listParser f (Array xs) = fmap V.toList (V.mapM f xs)
-listParser _ v          = typeMismatch "[a]" v
+listParser _ v          = typeMismatch "Array" v
 {-# INLINE listParser #-}
 
 -------------------------------------------------------------------------------
@@ -630,59 +652,127 @@ instance (FromJSON a) => FromJSON [a] where
 -- Functions
 -------------------------------------------------------------------------------
 
--- | @'withObject' expected f value@ applies @f@ to the 'Object' when @value@
---   is an 'Object' and fails using @'typeMismatch' expected@ otherwise.
+-- | Add context to a failure message, indicating the name of the structure
+-- being parsed.
+--
+-- > prependContext "MyType" (fail "[error message]")
+-- > -- Error: "parsing MyType failed, [error message]"
+prependContext :: String -> Parser a -> Parser a
+prependContext name = prependFailure ("parsing " ++ name ++ " failed, ")
+
+-- | @'withObject' name f value@ applies @f@ to the 'Object' when @value@
+-- is an 'Data.Aeson.Object' and fails otherwise.
+--
+-- ==== Error message example
+--
+-- > withObject "MyType" f (String "oops")
+-- > -- Error: "parsing MyType failed, expected Object, but encountered String"
 withObject :: String -> (Object -> Parser a) -> Value -> Parser a
-withObject _        f (Object obj) = f obj
-withObject expected _ v            = typeMismatch expected v
+withObject _    f (Object obj) = f obj
+withObject name _ v            = prependContext name (typeMismatch "Object" v)
 {-# INLINE withObject #-}
 
--- | @'withText' expected f value@ applies @f@ to the 'Text' when @value@ is a
---   'String' and fails using @'typeMismatch' expected@ otherwise.
+-- | @'withText' name f value@ applies @f@ to the 'Text' when @value@ is a
+-- 'Data.Aeson.String' and fails otherwise.
+--
+-- ==== Error message example
+--
+-- > withText "MyType" f Null
+-- > -- Error: "parsing MyType failed, expected String, but encountered Null"
 withText :: String -> (Text -> Parser a) -> Value -> Parser a
-withText _        f (String txt) = f txt
-withText expected _ v            = typeMismatch expected v
+withText _    f (String txt) = f txt
+withText name _ v            = prependContext name (typeMismatch "String" v)
 {-# INLINE withText #-}
 
 -- | @'withArray' expected f value@ applies @f@ to the 'Array' when @value@ is
--- an 'Array' and fails using @'typeMismatch' expected@ otherwise.
+-- an 'Data.Aeson.Array' and fails otherwise.
+--
+-- ==== Error message example
+--
+-- > withArray "MyType" f (String "oops")
+-- > -- Error: "parsing MyType failed, expected Array, but encountered String"
 withArray :: String -> (Array -> Parser a) -> Value -> Parser a
-withArray _        f (Array arr) = f arr
-withArray expected _ v           = typeMismatch expected v
+withArray _    f (Array arr) = f arr
+withArray name _ v           = prependContext name (typeMismatch "Array" v)
 {-# INLINE withArray #-}
 
--- | @'withScientific' expected f value@ applies @f@ to the 'Scientific' number
--- when @value@ is a 'Number' and fails using @'typeMismatch' expected@
+-- | @'withScientific' name f value@ applies @f@ to the 'Scientific' number
+-- when @value@ is a 'Data.Aeson.Number' and fails using 'typeMismatch'
 -- otherwise.
--- .
+--
 -- /Warning/: If you are converting from a scientific to an unbounded
 -- type such as 'Integer' you may want to add a restriction on the
 -- size of the exponent (see 'withBoundedScientific') to prevent
 -- malicious input from filling up the memory of the target system.
+--
+-- ==== Error message example
+--
+-- > withScientific "MyType" f (String "oops")
+-- > -- Error: "parsing MyType failed, expected Number, but encountered String"
 withScientific :: String -> (Scientific -> Parser a) -> Value -> Parser a
-withScientific _        f (Number scientific) = f scientific
-withScientific expected _ v                   = typeMismatch expected v
+withScientific _ f (Number scientific) = f scientific
+withScientific name _ v = prependContext name (typeMismatch "Number" v)
 {-# INLINE withScientific #-}
 
--- | @'withBoundedScientific' expected f value@ applies @f@ to the 'Scientific' number
--- when @value@ is a 'Number' and fails using @'typeMismatch' expected@
--- otherwise.
+-- | A variant of 'withScientific' which doesn't use 'prependContext', so that
+-- such context can be added separately in a way that also applies when the
+-- continuation @f :: Scientific -> Parser a@ fails.
 --
--- The conversion will also fail with a @'typeMismatch' if the
--- 'Scientific' exponent is larger than 1024.
+-- /Warning/: If you are converting from a scientific to an unbounded
+-- type such as 'Integer' you may want to add a restriction on the
+-- size of the exponent (see 'withBoundedScientific') to prevent
+-- malicious input from filling up the memory of the target system.
+--
+-- ==== Error message examples
+--
+-- > withScientific' f (String "oops")
+-- > -- Error: "unexpected String"
+-- >
+-- > prependContext "MyType" (withScientific' f (String "oops"))
+-- > -- Error: "parsing MyType failed, unexpected String"
+withScientific' :: (Scientific -> Parser a) -> Value -> Parser a
+withScientific' f v = case v of
+    Number n -> f n
+    _ -> typeMismatch "Number" v
+{-# INLINE withScientific' #-}
+
+-- | @'withBoundedScientific' name f value@ applies @f@ to the 'Scientific' number
+-- when @value@ is a 'Number' with exponent less than or equal to 1024.
 withBoundedScientific :: String -> (Scientific -> Parser a) -> Value -> Parser a
-withBoundedScientific _ f v@(Number scientific) =
-    if base10Exponent scientific > 1024
-    then typeMismatch "a number with exponent <= 1024" v
-    else f scientific
-withBoundedScientific expected _ v                   = typeMismatch expected v
+withBoundedScientific name f v = withBoundedScientific_ (prependContext name) f v
 {-# INLINE withBoundedScientific #-}
 
+-- | A variant of 'withBoundedScientific' which doesn't use 'prependContext',
+-- so that such context can be added separately in a way that also applies
+-- when the continuation @f :: Scientific -> Parser a@ fails.
+withBoundedScientific' :: (Scientific -> Parser a) -> Value -> Parser a
+withBoundedScientific' f v = withBoundedScientific_ id f v
+{-# INLINE withBoundedScientific' #-}
+
+-- | A variant of 'withBoundedScientific_' parameterized by a function to apply
+-- to the 'Parser' in case of failure.
+withBoundedScientific_ :: (Parser a -> Parser a) -> (Scientific -> Parser a) -> Value -> Parser a
+withBoundedScientific_ whenFail f v@(Number scientific) =
+    if exponent > 1024
+    then whenFail (fail msg)
+    else f scientific
+  where
+    exponent = base10Exponent scientific
+    msg = "found a number with exponent " ++ show exponent ++ ", but it must not be greater than 1024"
+withBoundedScientific_ whenFail _ v =
+    whenFail (typeMismatch "Number" v)
+{-# INLINE withBoundedScientific_ #-}
+
 -- | @'withBool' expected f value@ applies @f@ to the 'Bool' when @value@ is a
--- 'Bool' and fails using @'typeMismatch' expected@ otherwise.
+-- 'Boolean' and fails otherwise.
+--
+-- ==== Error message example
+--
+-- > withBool "MyType" f (String "oops")
+-- > -- Error: "parsing MyType failed, expected Boolean, but encountered String"
 withBool :: String -> (Bool -> Parser a) -> Value -> Parser a
-withBool _        f (Bool arr) = f arr
-withBool expected _ v          = typeMismatch expected v
+withBool _    f (Bool arr) = f arr
+withBool name _ v          = prependContext name (typeMismatch "Boolean" v)
 {-# INLINE withBool #-}
 
 -- | Decode a nested JSON-encoded string.
@@ -692,7 +782,7 @@ withEmbeddedJSON _ innerParser (String txt) =
     where
         eitherDecode = eitherFormatError . eitherDecodeWith jsonEOF ifromJSON
         eitherFormatError = either (Left . uncurry formatError) Right
-withEmbeddedJSON name _ v = typeMismatch name v
+withEmbeddedJSON name _ v = prependContext name (typeMismatch "String" v)
 {-# INLINE withEmbeddedJSON #-}
 
 -- | Convert a value from JSON, failing if the types do not match.
@@ -807,6 +897,27 @@ instance OVERLAPPABLE_ (GFromJSON arity a) => GFromJSON arity (M1 i c a) where
     -- parsed value:
     gParseJSON opts fargs = fmap M1 . gParseJSON opts fargs
 
+-- Information for error messages
+
+type TypeName = String
+type ConName = String
+
+-- | Add the name of the type being parsed to a parser's error messages.
+contextType :: TypeName -> Parser a -> Parser a
+contextType = prependContext
+
+-- | Add the name of the constructor being parsed to a parser's error messages.
+contextCons :: ConName -> TypeName -> Parser a -> Parser a
+contextCons cname tname = prependContext (showCons cname tname)
+
+-- | Render a constructor as @\"MyType(MyConstructor)\"@.
+showCons :: ConName -> TypeName -> String
+showCons cname tname = tname ++ "(" ++ cname ++ ")"
+
+--------------------------------------------------------------------------------
+
+-- Parsing single fields
+
 instance (FromJSON a) => GFromJSON arity (K1 i a) where
     -- Constant values are decoded using their FromJSON instance:
     gParseJSON _opts _ = fmap K1 . parseJSON
@@ -821,92 +932,106 @@ instance (FromJSON1 f) => GFromJSON One (Rec1 f) where
     -- FromJSON1 instance:
     gParseJSON _opts (From1Args pj pjl) = fmap Rec1 . liftParseJSON pj pjl
 
-instance GFromJSON arity U1 where
-    -- Empty constructors are expected to be encoded as an empty array:
-    gParseJSON _opts _ v
-        | isEmptyArray v = pure U1
-        | otherwise      = typeMismatch "unit constructor (U1)" v
-
-instance ( ConsFromJSON arity a
-         , AllNullary         (C1 c a) allNullary
-         , ParseSum     arity (C1 c a) allNullary
-         ) => GFromJSON arity (D1 d (C1 c a)) where
-    -- The option 'tagSingleConstructors' determines whether to wrap
-    -- a single-constructor type.
-    gParseJSON opts fargs
-        | tagSingleConstructors opts
-            = fmap M1
-            . (unTagged :: Tagged allNullary (Parser (C1 c a p)) -> Parser (C1 c a p))
-            . parseSum opts fargs
-        | otherwise = fmap M1 . fmap M1 . consParseJSON opts fargs
-
-instance (ConsFromJSON arity a) => GFromJSON arity (C1 c a) where
-    -- Constructors need to be decoded differently depending on whether they're
-    -- a record or not. This distinction is made by consParseJSON:
-    gParseJSON opts fargs = fmap M1 . consParseJSON opts fargs
-
-instance ( FromProduct arity a, FromProduct arity b
-         , ProductSize       a, ProductSize       b
-         ) => GFromJSON arity (a :*: b) where
-    -- Products are expected to be encoded to an array. Here we check whether we
-    -- got an array of the same size as the product, then parse each of the
-    -- product's elements using parseProduct:
-    gParseJSON opts fargs = withArray "product (:*:)" $ \arr ->
-      let lenArray = V.length arr
-          lenProduct = (unTagged2 :: Tagged2 (a :*: b) Int -> Int)
-                       productSize in
-      if lenArray == lenProduct
-      then parseProduct opts fargs arr 0 lenProduct
-      else fail $ "When expecting a product of " ++ show lenProduct ++
-                  " values, encountered an Array of " ++ show lenArray ++
-                  " elements instead"
-
-instance ( AllNullary         (a :+: b) allNullary
-         , ParseSum     arity (a :+: b) allNullary
-         ) => GFromJSON arity (a :+: b) where
-    -- If all constructors of a sum datatype are nullary and the
-    -- 'allNullaryToStringTag' option is set they are expected to be
-    -- encoded as strings.  This distinction is made by 'parseSum':
-    gParseJSON opts fargs =
-      (unTagged :: Tagged allNullary (Parser ((a :+: b) d)) ->
-                                     Parser ((a :+: b) d))
-                 . parseSum opts fargs
-
 instance (FromJSON1 f, GFromJSON One g) => GFromJSON One (f :.: g) where
     -- If an occurrence of the last type parameter is nested inside two
     -- composed types, it is decoded by using the outermost type's FromJSON1
     -- instance to generically decode the innermost type:
     gParseJSON opts fargs =
-      let gpj = gParseJSON opts fargs in
-      fmap Comp1 . liftParseJSON gpj (listParser gpj)
+        let gpj = gParseJSON opts fargs in
+        fmap Comp1 . liftParseJSON gpj (listParser gpj)
+
+--------------------------------------------------------------------------------
+
+instance (GFromJSON' arity a, Datatype d) => GFromJSON arity (D1 d a) where
+    -- Meta-information, which is not handled elsewhere, is just added to the
+    -- parsed value:
+    gParseJSON opts fargs = fmap M1 . gParseJSON' (tname :* opts :* fargs)
+      where
+        tname = moduleName proxy ++ "." ++ datatypeName proxy
+        proxy = undefined :: M1 _i d _f _p
+
+-- | 'GFromJSON', after unwrapping the 'D1' constructor, now carrying the data
+-- type's name.
+class GFromJSON' arity f where
+    gParseJSON' :: TypeName :* Options :* FromArgs arity a
+                -> Value
+                -> Parser (f a)
+
+-- | Single constructor.
+instance ( ConsFromJSON arity a
+         , AllNullary         (C1 c a) allNullary
+         , ParseSum     arity (C1 c a) allNullary
+         , Constructor c
+         ) => GFromJSON' arity (C1 c a) where
+    -- The option 'tagSingleConstructors' determines whether to wrap
+    -- a single-constructor type.
+    gParseJSON' p@(_ :* opts :* _)
+        | tagSingleConstructors opts
+            = (unTagged :: Tagged allNullary (Parser (C1 c a p)) -> Parser (C1 c a p))
+            . parseSum p
+        | otherwise = fmap M1 . consParseJSON (cname :* p)
+      where
+        cname = conName (undefined :: M1 _i c _f _p)
+
+-- | Multiple constructors.
+instance ( AllNullary          (a :+: b) allNullary
+         , ParseSum      arity (a :+: b) allNullary
+         ) => GFromJSON' arity (a :+: b) where
+    -- If all constructors of a sum datatype are nullary and the
+    -- 'allNullaryToStringTag' option is set they are expected to be
+    -- encoded as strings.  This distinction is made by 'parseSum':
+    gParseJSON' p =
+        (unTagged :: Tagged allNullary (Parser ((a :+: b) _d)) ->
+                                        Parser ((a :+: b) _d))
+                   . parseSum p
 
 --------------------------------------------------------------------------------
 
 class ParseSum arity f allNullary where
-    parseSum :: Options -> FromArgs arity a
-             -> Value -> Tagged allNullary (Parser (f a))
+    parseSum :: TypeName :* Options :* FromArgs arity a
+             -> Value
+             -> Tagged allNullary (Parser (f a))
 
-instance ( SumFromString           f
+instance ( ConstructorNames        f
+         , SumFromString           f
          , FromPair          arity f
          , FromTaggedObject  arity f
          , FromUntaggedValue arity f
          ) => ParseSum       arity f True where
-    parseSum opts fargs
-        | allNullaryToStringTag opts = Tagged . parseAllNullarySum    opts
-        | otherwise                  = Tagged . parseNonAllNullarySum opts fargs
+    parseSum p@(tname :* opts :* _)
+        | allNullaryToStringTag opts = Tagged . parseAllNullarySum tname opts
+        | otherwise                  = Tagged . parseNonAllNullarySum p
 
-instance ( FromPair          arity f
+instance ( ConstructorNames        f
+         , FromPair          arity f
          , FromTaggedObject  arity f
          , FromUntaggedValue arity f
          ) => ParseSum       arity f False where
-    parseSum opts fargs = Tagged . parseNonAllNullarySum opts fargs
+    parseSum p = Tagged . parseNonAllNullarySum p
 
 --------------------------------------------------------------------------------
 
-parseAllNullarySum :: SumFromString f => Options -> Value -> Parser (f a)
-parseAllNullarySum opts = withText "Text" $ \key ->
-                            maybe (notFound key) return $
-                              parseSumFromString opts key
+parseAllNullarySum :: (SumFromString f, ConstructorNames f)
+                   => TypeName -> Options -> Value -> Parser (f a)
+parseAllNullarySum tname opts =
+    withText tname $ \tag ->
+        maybe (badTag tag) return $
+            parseSumFromString opts tag
+  where
+    badTag tag = failWithCTags tname opts $ \cnames ->
+        "expected one of the tags " ++ show cnames ++
+        ", but found tag " ++ show tag
+
+-- | Fail with an informative error message about a mismatched tag.
+-- The error message is parameterized by the list of expected tags,
+-- to be inferred from the result type of the parser.
+failWithCTags
+  :: forall f a. ConstructorNames f
+  => TypeName -> Options -> ([String] -> String) -> Parser (f a)
+failWithCTags tname opts f =
+    contextType tname . fail $ f cnames
+  where
+    cnames = unTagged2 (constructorTags opts :: Tagged2 f [String])
 
 class SumFromString f where
     parseSumFromString :: Options -> Text -> Maybe (f a)
@@ -920,243 +1045,339 @@ instance (Constructor c) => SumFromString (C1 c U1) where
                                 | otherwise   = Nothing
         where
           name = pack $ constructorTagModifier opts $
-                          conName (undefined :: t c U1 p)
+                          conName (undefined :: M1 _i c _f _p)
+
+-- | List of all constructor tags.
+constructorTags :: ConstructorNames a => Options -> Tagged2 a [String]
+constructorTags opts =
+    fmap DList.toList (constructorNames' (constructorTagModifier opts))
+
+-- | List of all constructor names of an ADT, after a given conversion
+-- function. (Better inlining.)
+class ConstructorNames a where
+    constructorNames' :: (String -> t) -> Tagged2 a (DList.DList t)
+
+instance (ConstructorNames a, ConstructorNames b) => ConstructorNames (a :+: b) where
+    constructorNames' = liftA2 append constructorNames' constructorNames'
+      where
+        append
+          :: Tagged2 a (DList.DList t)
+          -> Tagged2 b (DList.DList t)
+          -> Tagged2 (a :+: b) (DList.DList t)
+        append (Tagged2 xs) (Tagged2 ys) = Tagged2 (DList.append xs ys)
+
+instance Constructor c => ConstructorNames (C1 c a) where
+    constructorNames' f = Tagged2 (pure (f cname))
+      where
+        cname = conName (undefined :: M1 _i c _f _p)
 
 --------------------------------------------------------------------------------
 
 parseNonAllNullarySum :: ( FromPair          arity f
                          , FromTaggedObject  arity f
                          , FromUntaggedValue arity f
-                         ) => Options -> FromArgs arity c
+                         , ConstructorNames        f
+                         ) => TypeName :* Options :* FromArgs arity c
                            -> Value -> Parser (f c)
-parseNonAllNullarySum opts fargs =
+parseNonAllNullarySum p@(tname :* opts :* _) =
     case sumEncoding opts of
       TaggedObject{..} ->
-          withObject "Object" $ \obj -> do
-            tag <- obj .: pack tagFieldName
-            fromMaybe (notFound tag) $
-              parseFromTaggedObject opts fargs contentsFieldName obj tag
+          withObject tname $ \obj -> do
+              tag <- contextType tname $ obj .: tagKey
+              fromMaybe (badTag tag <?> Key tagKey) $
+                  parseFromTaggedObject (tag :* contentsFieldName :* p) obj
+        where
+          tagKey = pack tagFieldName
+          badTag tag = failWith_ $ \cnames ->
+              "expected tag field to be one of " ++ show cnames ++
+              ", but found tag " ++ show tag
 
       ObjectWithSingleField ->
-          withObject "Object" $ \obj ->
-            case H.toList obj of
-              [pair@(tag, _)] -> fromMaybe (notFound tag) $
-                                   parsePair opts fargs pair
-              _ -> fail "Object doesn't have a single field"
+          withObject tname $ \obj -> case H.toList obj of
+              [(tag, v)] -> maybe (badTag tag) (<?> Key tag) $
+                  parsePair (tag :* p) v
+              _ -> contextType tname . fail $
+                  "expected an Object with a single pair, but found " ++
+                  show (H.size obj) ++ " pairs"
+        where
+          badTag tag = failWith_ $ \cnames ->
+              "expected an Object with a single pair where the tag is one of " ++
+              show cnames ++ ", but found tag " ++ show tag
 
       TwoElemArray ->
-          withArray "Array" $ \arr ->
-            if V.length arr == 2
-            then case V.unsafeIndex arr 0 of
-                   String tag -> fromMaybe (notFound tag) $
-                                   parsePair opts fargs (tag, V.unsafeIndex arr 1)
-                   _ -> fail "First element is not a String"
-            else fail "Array doesn't have 2 elements"
+          withArray tname $ \arr -> case V.length arr of
+              2 | String tag <- V.unsafeIndex arr 0 ->
+                  maybe (badTag tag <?> Index 0) (<?> Index 1) $
+                      parsePair (tag :* p) (V.unsafeIndex arr 1)
+                | otherwise ->
+                  contextType tname $
+                      fail "tag element is not a String" <?> Index 0
+              len -> contextType tname . fail $
+                  "expected a 2-element Array, but encountered an Array of length " ++
+                  show len
+        where
+          badTag tag = failWith_ $ \cnames ->
+              "expected tag of the 2-element Array to be one of " ++
+              show cnames ++ ", but found tag " ++ show tag
 
-      UntaggedValue -> parseUntaggedValue opts fargs
+      UntaggedValue -> parseUntaggedValue p
+  where
+    failWith_ = failWithCTags tname opts
 
 --------------------------------------------------------------------------------
 
 class FromTaggedObject arity f where
-    parseFromTaggedObject :: Options -> FromArgs arity a
-                          -> String -> Object
-                          -> Text -> Maybe (Parser (f a))
+    -- The first two components of the parameter tuple are: the constructor tag
+    -- to match against, and the contents field name.
+    parseFromTaggedObject
+        :: Text :* String :* TypeName :* Options :* FromArgs arity a
+        -> Object
+        -> Maybe (Parser (f a))
 
 instance ( FromTaggedObject arity a, FromTaggedObject arity b) =>
     FromTaggedObject arity (a :+: b) where
-        parseFromTaggedObject opts fargs contentsFieldName obj tag =
-            (fmap L1 <$> parseFromTaggedObject opts fargs contentsFieldName obj tag) <|>
-            (fmap R1 <$> parseFromTaggedObject opts fargs contentsFieldName obj tag)
+        parseFromTaggedObject p obj =
+            (fmap L1 <$> parseFromTaggedObject p obj) <|>
+            (fmap R1 <$> parseFromTaggedObject p obj)
 
-instance ( FromTaggedObject' arity f
+instance ( IsRecord                f isRecord
+         , FromTaggedObject' arity f isRecord
          , Constructor c
          ) => FromTaggedObject arity (C1 c f) where
-    parseFromTaggedObject opts fargs contentsFieldName obj tag
-        | tag == name = Just $ M1 <$> parseFromTaggedObject'
-                                        opts fargs contentsFieldName obj
-        | otherwise = Nothing
-        where
-          name = pack $ constructorTagModifier opts $
-                          conName (undefined :: t c f p)
+    parseFromTaggedObject (tag :* contentsFieldName :* p@(_ :* opts :* _))
+        | tag == tag'
+        = Just . fmap M1 .
+            (unTagged :: Tagged isRecord (Parser (f a)) -> Parser (f a)) .
+            parseFromTaggedObject' (contentsFieldName :* cname :* p)
+        | otherwise = const Nothing
+      where
+        tag' = pack $ constructorTagModifier opts cname
+        cname = conName (undefined :: M1 _i c _f _p)
 
 --------------------------------------------------------------------------------
 
-class FromTaggedObject' arity f where
-    parseFromTaggedObject' :: Options -> FromArgs arity a -> String
-                           -> Object -> Parser (f a)
+class FromTaggedObject' arity f isRecord where
+    -- The first component of the parameter tuple is the contents field name.
+    parseFromTaggedObject'
+        :: String :* ConName :* TypeName :* Options :* FromArgs arity a
+        -> Object -> Tagged isRecord (Parser (f a))
 
-class FromTaggedObject'' arity f isRecord where
-    parseFromTaggedObject'' :: Options -> FromArgs arity a -> String
-                            -> Object -> Tagged isRecord (Parser (f a))
+instance (RecordFromJSON arity f) => FromTaggedObject' arity f True where
+    -- Records are unpacked in the tagged object
+    parseFromTaggedObject' (_ :* p) = Tagged . recordParseJSON p
 
-instance ( IsRecord                   f isRecord
-         , FromTaggedObject''   arity f isRecord
-         ) => FromTaggedObject' arity f where
-    parseFromTaggedObject' opts fargs contentsFieldName =
-        (unTagged :: Tagged isRecord (Parser (f a)) -> Parser (f a)) .
-        parseFromTaggedObject'' opts fargs contentsFieldName
+instance (ConsFromJSON arity f) => FromTaggedObject' arity f False where
+    -- Nonnullary nonrecords are encoded in the contents field
+    parseFromTaggedObject' p obj = Tagged $ do
+        contents <- contextCons cname tname (obj .: key)
+        consParseJSON p' contents <?> Key key
+      where
+        key = pack contentsFieldName
+        contentsFieldName :* p'@(cname :* tname :* _) = p
 
-instance (FromRecord arity f) => FromTaggedObject'' arity f True where
-    parseFromTaggedObject'' opts fargs _ =
-      Tagged . parseRecord opts fargs
-
-instance (GFromJSON arity f) => FromTaggedObject'' arity f False where
-    parseFromTaggedObject'' opts fargs contentsFieldName = Tagged .
-      (gParseJSON opts fargs <=< (.: pack contentsFieldName))
-
-instance OVERLAPPING_ FromTaggedObject'' arity U1 False where
-    parseFromTaggedObject'' _ _ _ _ = Tagged (pure U1)
+instance OVERLAPPING_ FromTaggedObject' arity U1 False where
+    -- Nullary constructors don't need a contents field
+    parseFromTaggedObject' _ _ = Tagged (pure U1)
 
 --------------------------------------------------------------------------------
 
+-- | Constructors need to be decoded differently depending on whether they're
+-- a record or not. This distinction is made by 'ConsParseJSON'.
 class ConsFromJSON arity f where
-    consParseJSON  :: Options -> FromArgs arity a
-                   -> Value -> Parser (f a)
+    consParseJSON
+        :: ConName :* TypeName :* Options :* FromArgs arity a
+        -> Value -> Parser (f a)
 
 class ConsFromJSON' arity f isRecord where
-    consParseJSON' :: Options -> FromArgs arity a
-                   -> Value -> Tagged isRecord (Parser (f a))
+    consParseJSON'
+        :: ConName :* TypeName :* Options :* FromArgs arity a
+        -> Value -> Tagged isRecord (Parser (f a))
 
 instance ( IsRecord            f isRecord
          , ConsFromJSON' arity f isRecord
          ) => ConsFromJSON arity f where
-    consParseJSON opts fargs =
+    consParseJSON p =
       (unTagged :: Tagged isRecord (Parser (f a)) -> Parser (f a))
-        . consParseJSON' opts fargs
+          . consParseJSON' p
 
 instance OVERLAPPING_
-         ( GFromJSON arity a, FromRecord arity (S1 s a)
+         ( GFromJSON arity a, RecordFromJSON arity (S1 s a)
          ) => ConsFromJSON' arity (S1 s a) True where
-    consParseJSON' opts fargs
-      | unwrapUnaryRecords opts = Tagged . gParseJSON opts fargs
-      | otherwise = Tagged . withObject "unary record" (parseRecord opts fargs)
+    consParseJSON' p@(cname :* tname :* opts :* fargs)
+        | unwrapUnaryRecords opts = Tagged . fmap M1 . gParseJSON opts fargs
+        | otherwise = Tagged . withObject (showCons cname tname) (recordParseJSON p)
 
-instance FromRecord arity f => ConsFromJSON' arity f True where
-    consParseJSON' opts fargs =
-      Tagged . withObject "record (:*:)" (parseRecord opts fargs)
+instance RecordFromJSON arity f => ConsFromJSON' arity f True where
+    consParseJSON' p@(cname :* tname :* _) =
+        Tagged . withObject (showCons cname tname) (recordParseJSON p)
 
-instance GFromJSON arity f => ConsFromJSON' arity f False where
-    consParseJSON' opts fargs = Tagged . gParseJSON opts fargs
+instance OVERLAPPING_
+         ConsFromJSON' arity U1 False where
+    -- Empty constructors are expected to be encoded as an empty array:
+    consParseJSON' (cname :* tname :* _) v =
+        Tagged . contextCons cname tname $ case v of
+            Array a | V.null a -> pure U1
+                    | otherwise -> fail_ a
+            _ -> typeMismatch "Array" v
+      where
+        fail_ a = fail $
+            "expected an empty Array, but encountered an Array of length " ++
+            show (V.length a)
+
+instance OVERLAPPING_
+         GFromJSON arity f => ConsFromJSON' arity (S1 s f) False where
+    consParseJSON' (_ :* _ :* opts :* fargs) =
+        Tagged . fmap M1 . gParseJSON opts fargs
+
+instance (ProductFromJSON arity f, ProductSize f
+         ) => ConsFromJSON' arity f False where
+    consParseJSON' p = Tagged . productParseJSON0 p
 
 --------------------------------------------------------------------------------
 
-class FromRecord arity f where
-    parseRecord :: Options -> FromArgs arity a
-                -> Object -> Parser (f a)
+class RecordFromJSON arity f where
+    recordParseJSON
+        :: ConName :* TypeName :* Options :* FromArgs arity a
+        -> Object -> Parser (f a)
 
-instance ( FromRecord arity a
-         , FromRecord arity b
-         ) => FromRecord arity (a :*: b) where
-    parseRecord opts fargs obj =
-      (:*:) <$> parseRecord opts fargs obj
-            <*> parseRecord opts fargs obj
+instance ( RecordFromJSON arity a
+         , RecordFromJSON arity b
+         ) => RecordFromJSON arity (a :*: b) where
+    recordParseJSON p obj =
+        (:*:) <$> recordParseJSON p obj
+              <*> recordParseJSON p obj
 
 instance OVERLAPPABLE_ (Selector s, GFromJSON arity a) =>
-  FromRecord arity (S1 s a) where
-    parseRecord opts fargs =
-      (<?> Key label) . gParseJSON opts fargs <=< (.: label)
-        where
-          label = pack . fieldLabelModifier opts $ selName (undefined :: t s a p)
+         RecordFromJSON arity (S1 s a) where
+    recordParseJSON (cname :* tname :* opts :* fargs) obj = do
+        fv <- contextCons cname tname (obj .: label)
+        M1 <$> gParseJSON opts fargs fv <?> Key label
+      where
+        label = pack $ fieldLabelModifier opts sname
+        sname = selName (undefined :: M1 _i s _f _p)
 
 instance INCOHERENT_ (Selector s, FromJSON a) =>
-  FromRecord arity (S1 s (K1 i (Maybe a))) where
-    parseRecord opts _ obj = M1 . K1 <$> obj .:? pack label
-        where
-          label = fieldLabelModifier opts $
-                    selName (undefined :: t s (K1 i (Maybe a)) p)
+         RecordFromJSON arity (S1 s (K1 i (Maybe a))) where
+    recordParseJSON (_ :* _ :* opts :* _) obj = M1 . K1 <$> obj .:? pack label
+      where
+        label = fieldLabelModifier opts sname
+        sname = selName (undefined :: M1 _i s _f _p)
 
 -- Parse an Option like a Maybe.
 instance INCOHERENT_ (Selector s, FromJSON a) =>
-  FromRecord arity (S1 s (K1 i (Semigroup.Option a))) where
-    parseRecord opts fargs obj = wrap <$> parseRecord opts fargs obj
+         RecordFromJSON arity (S1 s (K1 i (Semigroup.Option a))) where
+    recordParseJSON p obj = wrap <$> recordParseJSON p obj
       where
         wrap :: S1 s (K1 i (Maybe a)) p -> S1 s (K1 i (Semigroup.Option a)) p
         wrap (M1 (K1 a)) = M1 (K1 (Semigroup.Option a))
 
 --------------------------------------------------------------------------------
 
-class FromProduct arity f where
-    parseProduct :: Options -> FromArgs arity a
+productParseJSON0
+    :: forall f arity a. (ProductFromJSON arity f, ProductSize f)
+    => ConName :* TypeName :* Options :* FromArgs arity a
+    -> Value -> Parser (f a)
+    -- Products are expected to be encoded to an array. Here we check whether we
+    -- got an array of the same size as the product, then parse each of the
+    -- product's elements using productParseJSON:
+productParseJSON0 p@(cname :* tname :* _ :* _) =
+    withArray (showCons cname tname) $ \arr ->
+        let lenArray = V.length arr
+            lenProduct = (unTagged2 :: Tagged2 f Int -> Int)
+                         productSize in
+        if lenArray == lenProduct
+        then productParseJSON p arr 0 lenProduct
+        else contextCons cname tname $
+             fail $ "expected an Array of length " ++ show lenProduct ++
+                    ", but encountered an Array of length " ++ show lenArray
+
+--
+
+class ProductFromJSON arity f where
+    productParseJSON :: ConName :* TypeName :* Options :* FromArgs arity a
                  -> Array -> Int -> Int
                  -> Parser (f a)
 
-instance ( FromProduct    arity a
-         , FromProduct    arity b
-         ) => FromProduct arity (a :*: b) where
-    parseProduct opts fargs arr ix len =
-        (:*:) <$> parseProduct opts fargs arr ix  lenL
-              <*> parseProduct opts fargs arr ixR lenR
+instance ( ProductFromJSON    arity a
+         , ProductFromJSON    arity b
+         ) => ProductFromJSON arity (a :*: b) where
+    productParseJSON p arr ix len =
+        (:*:) <$> productParseJSON p arr ix  lenL
+              <*> productParseJSON p arr ixR lenR
         where
           lenL = len `unsafeShiftR` 1
           ixR  = ix + lenL
           lenR = len - lenL
 
-instance (GFromJSON arity a) => FromProduct arity (S1 s a) where
-    parseProduct opts fargs arr ix _ =
-      gParseJSON opts fargs $ V.unsafeIndex arr ix
+instance (GFromJSON arity a) => ProductFromJSON arity (S1 s a) where
+    productParseJSON (_ :* _ :* opts :* fargs) arr ix _ =
+        M1 <$> gParseJSON opts fargs (V.unsafeIndex arr ix) <?> Index ix
 
 --------------------------------------------------------------------------------
 
 class FromPair arity f where
-    parsePair :: Options -> FromArgs arity a
-              -> Pair -> Maybe (Parser (f a))
+    -- The first component of the parameter tuple is the tag to match.
+    parsePair :: Text :* TypeName :* Options :* FromArgs arity a
+              -> Value
+              -> Maybe (Parser (f a))
 
 instance ( FromPair arity a
          , FromPair arity b
          ) => FromPair arity (a :+: b) where
-    parsePair opts fargs pair = (fmap L1 <$> parsePair opts fargs pair) <|>
-                                (fmap R1 <$> parsePair opts fargs pair)
+    parsePair p pair =
+        (fmap L1 <$> parsePair p pair) <|>
+        (fmap R1 <$> parsePair p pair)
 
 instance ( Constructor c
-         , GFromJSON    arity a
          , ConsFromJSON arity a
          ) => FromPair arity (C1 c a) where
-    parsePair opts fargs (tag, value)
-        | tag == tag' = Just $ gParseJSON opts fargs value
+    parsePair (tag :* p@(_ :* opts :* _)) v
+        | tag == tag' = Just $ M1 <$> consParseJSON (cname :* p) v
         | otherwise   = Nothing
-        where
-          tag' = pack $ constructorTagModifier opts $
-                          conName (undefined :: t c a p)
+      where
+        tag' = pack $ constructorTagModifier opts cname
+        cname = conName (undefined :: M1 _i c _a _p)
 
 --------------------------------------------------------------------------------
 
 class FromUntaggedValue arity f where
-    parseUntaggedValue :: Options -> FromArgs arity a
-                       -> Value -> Parser (f a)
+    parseUntaggedValue :: TypeName :* Options :* FromArgs arity a
+                       -> Value
+                       -> Parser (f a)
 
 instance
     ( FromUntaggedValue    arity a
     , FromUntaggedValue    arity b
     ) => FromUntaggedValue arity (a :+: b)
   where
-    parseUntaggedValue opts fargs value =
-        L1 <$> parseUntaggedValue opts fargs value <|>
-        R1 <$> parseUntaggedValue opts fargs value
+    parseUntaggedValue p value =
+        L1 <$> parseUntaggedValue p value <|>
+        R1 <$> parseUntaggedValue p value
 
 instance OVERLAPPABLE_
-    ( GFromJSON            arity a
-    , ConsFromJSON         arity a
+    ( ConsFromJSON arity a
+    , Constructor c
     ) => FromUntaggedValue arity (C1 c a)
   where
-    parseUntaggedValue = gParseJSON
+    parseUntaggedValue p = fmap M1 . consParseJSON (cname :* p)
+      where
+        cname = conName (undefined :: M1 _i c _f _p)
 
 instance OVERLAPPING_
     ( Constructor c )
     => FromUntaggedValue arity (C1 c U1)
   where
-    parseUntaggedValue opts _ (String s)
-        | s == pack (constructorTagModifier opts (conName (undefined :: t c U1 p))) =
-            pure $ M1 U1
-        | otherwise =
-            fail $ "Invalid tag: " ++ unpack s
-    parseUntaggedValue _ _ v = typeMismatch (conName (undefined :: t c U1 p)) v
-
-
---------------------------------------------------------------------------------
-
-notFound :: Text -> Parser a
-notFound key = fail $ "The key \"" ++ unpack key ++ "\" was not found"
-{-# INLINE notFound #-}
+    parseUntaggedValue (tname :* opts :* _) v =
+        contextCons cname tname $ case v of
+            String tag
+                | tag == tag' -> pure $ M1 U1
+                | otherwise -> fail_ tag
+            _ -> typeMismatch "String" v
+      where
+        tag' = pack $ constructorTagModifier opts cname
+        cname = conName (undefined :: M1 _i c _f _p)
+        fail_ tag = fail $
+          "expected tag " ++ show tag' ++ ", but found tag " ++ show tag
 
 -------------------------------------------------------------------------------
 -- Instances
@@ -1219,14 +1440,15 @@ instance FromJSON Void where
     {-# INLINE parseJSON #-}
 
 instance FromJSON Bool where
-    parseJSON = withBool "Bool" pure
+    parseJSON (Bool b) = pure b
+    parseJSON v = typeMismatch "Bool" v
     {-# INLINE parseJSON #-}
 
 instance FromJSONKey Bool where
     fromJSONKey = FromJSONKeyTextParser $ \t -> case t of
         "true"  -> pure True
         "false" -> pure False
-        _       -> fail $ "Cannot parse key into Bool: " ++ T.unpack t
+        _       -> fail $ "cannot parse key " ++ show t ++ " into Bool"
 
 instance FromJSON Ordering where
   parseJSON = withText "Ordering" $ \s ->
@@ -1234,24 +1456,29 @@ instance FromJSON Ordering where
       "LT" -> return LT
       "EQ" -> return EQ
       "GT" -> return GT
-      _ -> fail "Parsing Ordering value failed: expected \"LT\", \"EQ\", or \"GT\""
+      _ -> fail $ "parsing Ordering failed, unexpected " ++ show s ++
+                  " (expected \"LT\", \"EQ\", or \"GT\")"
 
 instance FromJSON () where
     parseJSON = withArray "()" $ \v ->
                   if V.null v
                     then pure ()
-                    else fail "Expected an empty array"
+                    else prependContext "()" $ fail "expected an empty array"
     {-# INLINE parseJSON #-}
 
 instance FromJSON Char where
-    parseJSON = withText "Char" $ \t ->
-                  if T.compareLength t 1 == EQ
-                    then pure $ T.head t
-                    else fail "Expected a string of length 1"
+    parseJSON = withText "Char" parseChar
     {-# INLINE parseJSON #-}
 
-    parseJSONList = withText "String" $ pure . T.unpack
+    parseJSONList (String s) = pure (T.unpack s)
+    parseJSONList v = typeMismatch "String" v
     {-# INLINE parseJSONList #-}
+
+parseChar :: Text -> Parser Char
+parseChar t =
+    if T.compareLength t 1 == EQ
+      then pure $ T.head t
+      else prependContext "Char" $ fail "expected a string of length 1"
 
 instance FromJSON Double where
     parseJSON = parseRealFloat "Double"
@@ -1289,7 +1516,7 @@ instance (FromJSON a, Integral a) => FromJSON (Ratio a) where
 -- newtype 'Scientific' and provide your own instance using
 -- 'withScientific' if you want to allow larger inputs.
 instance HasResolution a => FromJSON (Fixed a) where
-    parseJSON = withBoundedScientific "Fixed" $ pure . realToFrac
+    parseJSON = prependContext "Fixed" . withBoundedScientific' (pure . realToFrac)
     {-# INLINE parseJSON #-}
 
 instance FromJSON Int where
@@ -1312,19 +1539,20 @@ instance FromJSONKey Integer where
 
 instance FromJSON Natural where
     parseJSON value = do
-        integer :: Integer <- parseIntegral "Natural" value
-        if integer < 0 then
-            fail $ "expected Natural, encountered negative number " <> show integer
-        else
-            pure $ fromIntegral integer
+        integer <- parseIntegral "Natural" value
+        parseNatural integer
 
 instance FromJSONKey Natural where
     fromJSONKey = FromJSONKeyTextParser $ \text -> do
-        integer :: Integer <- parseIntegralText "Natural" text
-        if integer < 0 then
-            fail $ "expected Natural, encountered negative number " <> show integer
-        else
-            pure $ fromIntegral integer
+        integer <- parseIntegralText "Natural" text
+        parseNatural integer
+
+parseNatural :: Integer -> Parser Natural
+parseNatural integer =
+    if integer < 0 then
+        fail $ "parsing Natural failed, unexpected negative number " <> show integer
+    else
+        pure $ fromIntegral integer
 
 instance FromJSON Int8 where
     parseJSON = parseBoundedIntegral "Int8"
@@ -1421,17 +1649,17 @@ parseVersionText = go . readP_to_S parseVersion . unpack
   where
     go [(v,[])] = return v
     go (_ : xs) = go xs
-    go _        = fail "could not parse Version"
+    go _        = fail "parsing Version failed"
 
 -------------------------------------------------------------------------------
 -- semigroups NonEmpty
 -------------------------------------------------------------------------------
 
 instance FromJSON1 NonEmpty where
-    liftParseJSON p _ = withArray "NonEmpty a" $
+    liftParseJSON p _ = withArray "NonEmpty" $
         (>>= ne) . Tr.sequence . zipWith (parseIndexedJSON p) [0..] . V.toList
       where
-        ne []     = fail "Expected a NonEmpty but got an empty list"
+        ne []     = fail "parsing NonEmpty failed, unpexpected empty list"
         ne (x:xs) = pure (x :| xs)
     {-# INLINE liftParseJSON #-}
 
@@ -1452,7 +1680,7 @@ instance FromJSON Scientific where
 -------------------------------------------------------------------------------
 
 instance FromJSON1 DList.DList where
-    liftParseJSON p _ = withArray "DList a" $
+    liftParseJSON p _ = withArray "DList" $
       fmap DList.fromList .
       Tr.sequence . zipWith (parseIndexedJSON p) [0..] . V.toList
     {-# INLINE liftParseJSON #-}
@@ -1529,7 +1757,7 @@ instance (FromJSON1 f, FromJSON1 g) => FromJSON1 (Sum f g) where
         inr = "InR"
 
     liftParseJSON _ _ _ = fail $
-        "expected an object with a single property " ++
+        "parsing Sum failed, expected an object with a single property " ++
         "where the property key should be either " ++
         "\"InL\" or \"InR\""
     {-# INLINE liftParseJSON #-}
@@ -1543,7 +1771,7 @@ instance (FromJSON1 f, FromJSON1 g, FromJSON a) => FromJSON (Sum f g a) where
 -------------------------------------------------------------------------------
 
 instance FromJSON1 Seq.Seq where
-    liftParseJSON p _ = withArray "Seq a" $
+    liftParseJSON p _ = withArray "Seq" $
       fmap Seq.fromList .
       Tr.sequence . zipWith (parseIndexedJSON p) [0..] . V.toList
     {-# INLINE liftParseJSON #-}
@@ -1577,13 +1805,13 @@ instance FromJSON a => FromJSON (IntMap.IntMap a) where
 
 instance (FromJSONKey k, Ord k) => FromJSON1 (M.Map k) where
     liftParseJSON p _ = case fromJSONKey of
-        FromJSONKeyCoerce _-> withObject "Map k v" $
+        FromJSONKeyCoerce _ -> withObject "Map" $
             fmap (H.foldrWithKey (M.insert . unsafeCoerce) M.empty) . H.traverseWithKey (\k v -> p v <?> Key k)
-        FromJSONKeyText f -> withObject "Map k v" $
+        FromJSONKeyText f -> withObject "Map" $
             fmap (H.foldrWithKey (M.insert . f) M.empty) . H.traverseWithKey (\k v -> p v <?> Key k)
-        FromJSONKeyTextParser f -> withObject "Map k v" $
+        FromJSONKeyTextParser f -> withObject "Map" $
             H.foldrWithKey (\k v m -> M.insert <$> f k <?> Key k <*> p v <?> Key k <*> m) (pure M.empty)
-        FromJSONKeyValue f -> withArray "Map k v" $ \arr ->
+        FromJSONKeyValue f -> withArray "Map" $ \arr ->
             fmap M.fromList . Tr.sequence .
                 zipWith (parseIndexedJSONPair f p) [0..] . V.toList $ arr
     {-# INLINE liftParseJSON #-}
@@ -1611,18 +1839,18 @@ instance (FromJSON v) => FromJSON (Tree.Tree v) where
 
 instance FromJSON UUID.UUID where
     parseJSON = withText "UUID" $
-        maybe (fail "Invalid UUID") pure . UUID.fromText
+        maybe (fail "invalid UUID") pure . UUID.fromText
 
 instance FromJSONKey UUID.UUID where
     fromJSONKey = FromJSONKeyTextParser $
-        maybe (fail "Invalid UUID") pure . UUID.fromText
+        maybe (fail "invalid UUID") pure . UUID.fromText
 
 -------------------------------------------------------------------------------
 -- vector
 -------------------------------------------------------------------------------
 
 instance FromJSON1 Vector where
-    liftParseJSON p _ = withArray "Vector a" $
+    liftParseJSON p _ = withArray "Vector" $
         V.mapM (uncurry $ parseIndexedJSON p) . V.indexed
     {-# INLINE liftParseJSON #-}
 
@@ -1636,14 +1864,14 @@ vectorParseJSON s = withArray s $ fmap V.convert . V.mapM (uncurry $ parseIndexe
 {-# INLINE vectorParseJSON #-}
 
 instance (Storable a, FromJSON a) => FromJSON (VS.Vector a) where
-    parseJSON = vectorParseJSON "Data.Vector.Storable.Vector a"
+    parseJSON = vectorParseJSON "Data.Vector.Storable.Vector"
 
 instance (VP.Prim a, FromJSON a) => FromJSON (VP.Vector a) where
-    parseJSON = vectorParseJSON "Data.Vector.Primitive.Vector a"
+    parseJSON = vectorParseJSON "Data.Vector.Primitive.Vector"
     {-# INLINE parseJSON #-}
 
 instance (VG.Vector VU.Vector a, FromJSON a) => FromJSON (VU.Vector a) where
-    parseJSON = vectorParseJSON "Data.Vector.Unboxed.Vector a"
+    parseJSON = vectorParseJSON "Data.Vector.Unboxed.Vector"
     {-# INLINE parseJSON #-}
 
 -------------------------------------------------------------------------------
@@ -1657,13 +1885,13 @@ instance (Eq a, Hashable a, FromJSON a) => FromJSON (HashSet.HashSet a) where
 
 instance (FromJSONKey k, Eq k, Hashable k) => FromJSON1 (H.HashMap k) where
     liftParseJSON p _ = case fromJSONKey of
-        FromJSONKeyCoerce _ -> withObject "HashMap ~Text v" $
+        FromJSONKeyCoerce _ -> withObject "HashMap ~Text" $
             uc . H.traverseWithKey (\k v -> p v <?> Key k)
-        FromJSONKeyText f -> withObject "HashMap k v" $
+        FromJSONKeyText f -> withObject "HashMap" $
             fmap (mapKey f) . H.traverseWithKey (\k v -> p v <?> Key k)
-        FromJSONKeyTextParser f -> withObject "HashMap k v" $
+        FromJSONKeyTextParser f -> withObject "HashMap" $
             H.foldrWithKey (\k v m -> H.insert <$> f k <?> Key k <*> p v <?> Key k <*> m) (pure H.empty)
-        FromJSONKeyValue f -> withArray "Map k v" $ \arr ->
+        FromJSONKeyValue f -> withArray "Map" $ \arr ->
             fmap H.fromList . Tr.sequence .
                 zipWith (parseIndexedJSONPair f p) [0..] . V.toList $ arr
       where
@@ -1900,14 +2128,15 @@ instance FromJSON a => FromJSON (Semigroup.Option a) where
 
 instance FromJSON1 Proxy where
     {-# INLINE liftParseJSON #-}
-    liftParseJSON _ _ Null = pure Proxy
-    liftParseJSON _ _ v    = typeMismatch "Proxy" v
+    liftParseJSON _ _ = fromNull "Proxy" Proxy
 
 instance FromJSON (Proxy a) where
     {-# INLINE parseJSON #-}
-    parseJSON Null = pure Proxy
-    parseJSON v    = typeMismatch "Proxy" v
+    parseJSON = fromNull "Proxy" Proxy
 
+fromNull :: String -> a -> Value -> Parser a
+fromNull _ a Null = pure a
+fromNull c _ v    = prependContext c (typeMismatch "Null" v)
 
 instance FromJSON2 Tagged where
     liftParseJSON2 _ _ p _ = fmap Tagged . p
@@ -1934,10 +2163,7 @@ instance (FromJSON a, FromJSON b, FromJSON c) => FromJSONKey (a,b,c)
 instance (FromJSON a, FromJSON b, FromJSON c, FromJSON d) => FromJSONKey (a,b,c,d)
 
 instance FromJSONKey Char where
-    fromJSONKey = FromJSONKeyTextParser $ \t ->
-        if T.length t == 1
-            then return (T.index t 0)
-            else typeMismatch "Expected Char but String didn't contain exactly one character" (String t)
+    fromJSONKey = FromJSONKeyTextParser parseChar
     fromJSONKeyList = FromJSONKeyText T.unpack
 
 instance (FromJSONKey a, FromJSON a) => FromJSONKey [a] where

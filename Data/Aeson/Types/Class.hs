@@ -79,6 +79,7 @@ module Data.Aeson.Types.Class
     , fromJSON
     , ifromJSON
     , typeMismatch
+    , unexpected
     , parseField
     , parseFieldMaybe
     , parseFieldMaybe'

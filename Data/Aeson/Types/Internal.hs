@@ -45,6 +45,7 @@ module Data.Aeson.Types.Internal
     , parseEither
     , parseMaybe
     , modifyFailure
+    , prependFailure
     , parserThrowError
     , parserCatchError
     , formatError
@@ -512,6 +513,15 @@ p <?> pathElem = Parser $ \path kf ks -> runParser p (pathElem:path) kf ks
 modifyFailure :: (String -> String) -> Parser a -> Parser a
 modifyFailure f (Parser p) = Parser $ \path kf ks ->
     p path (\p' m -> kf p' (f m)) ks
+
+-- | If the inner 'Parser' failed, prepend the given string to the failure
+-- message.
+--
+-- @
+-- 'prependFailure' s = 'modifyFailure' (s '++')
+-- @
+prependFailure :: String -> Parser a -> Parser a
+prependFailure = modifyFailure . (++)
 
 -- | Throw a parser error with an additional path.
 --

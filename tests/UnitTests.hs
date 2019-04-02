@@ -36,7 +36,6 @@ import Data.Hashable (hash)
 import Data.HashMap.Strict (HashMap)
 import Data.List (sort)
 import Data.Maybe (fromMaybe)
-import Data.Sequence (Seq)
 import Data.Scientific (Scientific, scientific)
 import Data.Tagged (Tagged(..))
 import Data.Text (Text)
@@ -93,7 +92,6 @@ tests = testGroup "unit" [
       testCase "example 1" formatErrorExample
     ]
   , testGroup ".:, .:?, .:!" $ fmap (testCase "-") dotColonMark
-  , testGroup "JSONPath" $ fmap (testCase "-") jsonPath
   , testGroup "Hashable laws" $ fmap (testCase "-") hashableLaws
   , testGroup "Object construction" $ fmap (testCase "-") objectConstruction
   , testGroup "Issue #351" $ fmap (testCase "-") issue351
@@ -275,27 +273,6 @@ dotColonMark = [
   where ex1 = "{}"
         ex2 = "{\"value\": 42 }"
         ex3 = "{\"value\": null }"
-
-------------------------------------------------------------------------------
--- These tests check that JSONPath is tracked correctly
------------------------------------------------------------------------------
-
-jsonPath :: [Assertion]
-jsonPath = [
-    -- issue #356
-    assertEqual "Either"
-      (Left "Error in $[1].Left[1]: expected Bool, encountered Number")
-      (eitherDecode "[1,{\"Left\":[2,3]}]"
-         :: Either String (Int, Either (Int, Bool) ()))
-    -- issue #358
-  , assertEqual "Seq a"
-      (Left "Error in $[2]: expected Int, encountered Boolean")
-      (eitherDecode "[0,1,true]" :: Either String (Seq Int))
-  , assertEqual "Wibble"
-      (Left "Error in $.wibbleInt: expected Int, encountered Boolean")
-      (eitherDecode "{\"wibbleString\":\"\",\"wibbleInt\":true}"
-         :: Either String Wibble)
-  ]
 
 ------------------------------------------------------------------------------
 -- Check that the hashes of two equal Value are the same
@@ -596,25 +573,25 @@ bigScientificExponent =
 bigIntegerDecoding :: Assertion
 bigIntegerDecoding =
   assertEqual "Decoding an Integer with a large exponent should fail"
-    (Left "Error in $: expected a number with exponent <= 1024, encountered Number")
+    (Left "Error in $: parsing Integer failed, found a number with exponent 2000, but it must not be greater than 1024")
     ((eitherDecode :: L.ByteString -> Either String Integer) "1e2000")
 
 bigNaturalDecoding :: Assertion
 bigNaturalDecoding =
   assertEqual "Decoding a Natural with a large exponent should fail"
-    (Left "Error in $: expected a number with exponent <= 1024, encountered Number")
-    ((eitherDecode :: L.ByteString -> Either String Integer) "1e2000")
+    (Left "Error in $: parsing Natural failed, found a number with exponent 2000, but it must not be greater than 1024")
+    ((eitherDecode :: L.ByteString -> Either String Natural) "1e2000")
 
 bigIntegerKeyDecoding :: Assertion
 bigIntegerKeyDecoding =
   assertEqual "Decoding an Integer key with a large exponent should fail"
-    (Left "Error in $['1e2000']: expected a number with exponent <= 1024, encountered Number")
+    (Left "Error in $['1e2000']: parsing Integer failed, found a number with exponent 2000, but it must not be greater than 1024")
     ((eitherDecode :: L.ByteString -> Either String (HashMap Integer Value)) "{ \"1e2000\": null }")
 
 bigNaturalKeyDecoding :: Assertion
 bigNaturalKeyDecoding =
   assertEqual "Decoding an Integer key with a large exponent should fail"
-    (Left "Error in $['1e2000']: expected a number with exponent <= 1024, encountered Number")
+    (Left "Error in $['1e2000']: found a number with exponent 2000, but it must not be greater than 1024")
     ((eitherDecode :: L.ByteString -> Either String (HashMap Natural Value)) "{ \"1e2000\": null }")
 
 deriveJSON defaultOptions{omitNothingFields=True} ''MyRecord

@@ -1,5 +1,6 @@
 {-# LANGUAGE CPP #-}
 {-# LANGUAGE DataKinds #-}
+{-# LANGUAGE DeriveFunctor #-}
 {-# LANGUAGE EmptyDataDecls #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE FunctionalDependencies #-}
@@ -35,6 +36,7 @@ module Data.Aeson.Types.Generic
     , Zero
     , One
     , ProductSize(..)
+    , (:*)(..)
     ) where
 
 import Prelude.Compat
@@ -75,6 +77,7 @@ instance AllNullary (Rec1 f) False
 instance AllNullary U1 True
 
 newtype Tagged2 (s :: * -> *) b = Tagged2 {unTagged2 :: b}
+  deriving Functor
 
 --------------------------------------------------------------------------------
 
@@ -107,3 +110,10 @@ instance (ProductSize a, ProductSize b) => ProductSize (a :*: b) where
 
 instance ProductSize (S1 s a) where
     productSize = Tagged2 1
+
+--------------------------------------------------------------------------------
+
+-- | Simple extensible tuple type to simplify passing around many parameters.
+data a :* b = a :* b
+
+infixr 1 :*

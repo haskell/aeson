@@ -42,6 +42,7 @@ extra-source-files:
     include/*.h
     tests/JSONTestSuite/test_parsing/*.json
     tests/JSONTestSuite/test_transform/*.json
+    tests/golden/*.expected
     pure/Data/Aeson/Parser/*.hs
 
 flag developer
@@ -221,6 +222,7 @@ test-suite tests
     containers,
     directory,
     dlist,
+    Diff,
     filepath,
     generic-deriving >= 1.10 && < 1.13,
     ghc-prim >= 0.2,
@@ -229,6 +231,7 @@ test-suite tests
     tagged,
     template-haskell,
     tasty,
+    tasty-golden,
     tasty-hunit,
     tasty-quickcheck,
     text,
