@@ -1,5 +1,8 @@
 For the latest version of this document, please see [https://github.com/bos/aeson/blob/master/changelog.md](https://github.com/bos/aeson/blob/master/changelog.md).
 
+## Upcoming
+* Exposes internal helper functions like `<?>`, `JSONPath`, and `parseIndexedJSON` from `Data.Aeson` module. Does not include any breaking changes.
+
 ### 1.4.2.0
 
 * Add `Data.Aeson.QQ.Simple` which is a simpler version of the `aeson-qq` package, it does not support interpolation, thanks to Oleg Grenrus.
