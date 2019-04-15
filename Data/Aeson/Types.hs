@@ -20,6 +20,7 @@ module Data.Aeson.Types
     , Series
     , Array
     , emptyArray
+    , isEmptyArray
     , Pair
     , Object
     , emptyObject

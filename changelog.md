@@ -2,6 +2,7 @@ For the latest version of this document, please see [https://github.com/bos/aeso
 
 ## Upcoming
 * Exposes internal helper functions like `<?>`, `JSONPath`, and `parseIndexedJSON` from `Data.Aeson` module. Does not include any breaking changes.
+* Exposes `isEmptyArray` from `Data.Aeson.Types` module.
 
 ### 1.4.2.0
 
