@@ -552,8 +552,10 @@ instance TH.Lift Value where
 emptyArray :: Value
 emptyArray = Array V.empty
 
--- | Determines if the 'Value' is an empty 'Array'.
--- Note that: @isEmptyArray 'emptyArray'@.
+-- | Determines whether the 'Value' is an empty 'Array'.
+--
+-- Do note that if this is `False`, the `Value` may be a non-empty
+-- array, or it may not even be an array.
 isEmptyArray :: Value -> Bool
 isEmptyArray (Array arr) = V.null arr
 isEmptyArray _ = False

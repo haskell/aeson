@@ -1,5 +1,9 @@
 For the latest version of this document, please see [https://github.com/haskell/aeson/blob/master/changelog.md](https://github.com/haskell/aeson/blob/master/changelog.md).
 
+### Upcoming
+
+* Expose `isEmptyArray` from `Data.Aeson.Types` module.
+
 ### 2.3.0.0 - 2026-05-21
 
 * Fix parsing of fractional numbers to reject exponents smaller than -1024.
