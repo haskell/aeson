@@ -279,7 +279,7 @@ eitherDecodeWith p to s =
   where
     buildMsg [] msg = msg
     buildMsg (expectation:_) msg =
-      msg <> ". Expecting " <> expectation
+      msg ++ ". Expecting " ++ expectation
 {-# INLINE eitherDecodeWith #-}
 
 eitherDecodeStrictWith :: Parser Value -> (Value -> IResult a) -> B.ByteString
