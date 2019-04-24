@@ -123,9 +123,9 @@ objectValues str val = do
   -- Why use acc pattern here, you may ask? because 'H.fromList' use 'unsafeInsert'
   -- and it's much faster because it's doing in place update to the 'HashMap'!
   loop acc = do
-    k <- (str A.<?> "expected object key") <* skipSpace <* (char ':' A.<?> "expecting ':'")
-    v <- (val A.<?> "expected object value") <* skipSpace
-    ch <- (A.satisfy $ \w -> w == COMMA || w == CLOSE_CURLY) A.<?> "expecting ',' or '}'"
+    k <- (str A.<?> "object key") <* skipSpace <* (char ':' A.<?> "':'")
+    v <- (val A.<?> "object value") <* skipSpace
+    ch <- A.satisfy (\w -> w == COMMA || w == CLOSE_CURLY) A.<?> "',' or '}'"
     let acc' = (k, v) : acc
     if ch == COMMA
       then skipSpace >> loop acc'
@@ -149,8 +149,8 @@ arrayValues val = do
     else loop [] 1
   where
     loop acc !len = do
-      v <- (val A.<?> "expected json list value") <* skipSpace
-      ch <- (A.satisfy $ \w -> w == COMMA || w == CLOSE_SQUARE) A.<?> "expecting ',' or ']'"
+      v <- (val A.<?> "json list value") <* skipSpace
+      ch <- A.satisfy (\w -> w == COMMA || w == CLOSE_SQUARE) A.<?> "',' or ']'"
       if ch == COMMA
         then skipSpace >> loop (v:acc) (len+1)
         else return (Vector.reverse (Vector.fromListN len (v:acc)))
@@ -275,7 +275,11 @@ eitherDecodeWith p to s =
       L.Done _ v     -> case to v of
                           ISuccess a      -> Right a
                           IError path msg -> Left (path, msg)
-      L.Fail _ _ msg -> Left ([], msg)
+      L.Fail _ ctx msg -> Left ([], buildMsg ctx msg)
+  where
+    buildMsg [] msg = msg
+    buildMsg (expectation:_) msg =
+      msg <> ". Expecting " <> expectation
 {-# INLINE eitherDecodeWith #-}
 
 eitherDecodeStrictWith :: Parser Value -> (Value -> IResult a) -> B.ByteString

@@ -117,6 +117,9 @@ outputGeneric choice = concat
       , "{\"record\": {}, \"W\":{}}"
       , "{}"
       , "[]"
+      , "{\"unary\""
+      , "{\"unary\":"
+      , "{\"unary\":1"
       ]
 
   , testWithSomeType "SomeType (two-element array)"
@@ -129,6 +132,8 @@ outputGeneric choice = concat
       , "[null, 0]"
       , "[]"
       , "{}"
+      , "[1"
+      , "[1,"
       ]
 
   , testWith "EitherTextInt"
