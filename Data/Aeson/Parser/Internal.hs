@@ -277,6 +277,7 @@ eitherDecodeWith p to s =
                           IError path msg -> Left (path, msg)
       L.Fail _ ctx msg -> Left ([], buildMsg ctx msg)
   where
+    buildMsg :: [String] -> String -> String
     buildMsg [] msg = msg
     buildMsg (expectation:_) msg =
       msg ++ ". Expecting " ++ expectation
