@@ -152,7 +152,7 @@ library
     dlist                >= 0.8.0.4  && < 0.9,
     hashable             >= 1.2.7.0  && < 1.3,
     scientific           >= 0.3.6.2  && < 0.4,
-    th-abstraction       >= 0.2.8.0  && < 0.3,
+    th-abstraction       >= 0.2.8.0  && < 0.4,
     time-locale-compat   >= 0.1.1.5  && < 0.2,
     uuid-types           >= 1.0.3    && < 1.1,
     vector               >= 0.12.0.1 && < 0.13
