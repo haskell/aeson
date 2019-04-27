@@ -334,13 +334,13 @@ consToValue :: ToJSONFun
 consToValue _ _ _ _ [] = error $ "Data.Aeson.TH.consToValue: "
                              ++ "Not a single constructor given!"
 
-consToValue target jc opts vars cons = do
+consToValue target jc opts instTys cons = do
     value <- newName "value"
     tjs   <- newNameList "_tj"  $ arityInt jc
     tjls  <- newNameList "_tjl" $ arityInt jc
     let zippedTJs      = zip tjs tjls
         interleavedTJs = interleave tjs tjls
-        lastTyVars     = map varTToName $ drop (length vars - arityInt jc) vars
+        lastTyVars     = map varTToName $ drop (length instTys - arityInt jc) instTys
         tvMap          = M.fromList $ zip lastTyVars zippedTJs
     lamE (map varP $ interleavedTJs ++ [value]) $
         caseE (varE value) (matches tvMap)
@@ -672,13 +672,13 @@ consFromJSON :: JSONClass
 consFromJSON _ _ _ _ [] = error $ "Data.Aeson.TH.consFromJSON: "
                                 ++ "Not a single constructor given!"
 
-consFromJSON jc tName opts vars cons = do
+consFromJSON jc tName opts instTys cons = do
   value <- newName "value"
   pjs   <- newNameList "_pj"  $ arityInt jc
   pjls  <- newNameList "_pjl" $ arityInt jc
   let zippedPJs      = zip pjs pjls
       interleavedPJs = interleave pjs pjls
-      lastTyVars     = map varTToName $ drop (length vars - arityInt jc) vars
+      lastTyVars     = map varTToName $ drop (length instTys - arityInt jc) instTys
       tvMap          = M.fromList $ zip lastTyVars zippedPJs
   lamE (map varP $ interleavedPJs ++ [value]) $ lamExpr value tvMap
 
@@ -1209,23 +1209,27 @@ deriveJSONClass :: [(JSONFun, JSONClass -> Name -> Options -> [Type]
 deriveJSONClass consFuns jc opts name = do
   info <- reifyDatatype name
   case info of
-    DatatypeInfo { datatypeContext = ctxt
-                 , datatypeName    = parentName
-                 , datatypeVars    = vars
-                 , datatypeVariant = variant
-                 , datatypeCons    = cons
+    DatatypeInfo { datatypeContext   = ctxt
+                 , datatypeName      = parentName
+#if MIN_VERSION_th_abstraction(0,3,0)
+                 , datatypeInstTypes = instTys
+#else
+                 , datatypeVars      = instTys
+#endif
+                 , datatypeVariant   = variant
+                 , datatypeCons      = cons
                  } -> do
       (instanceCxt, instanceType)
-        <- buildTypeInstance parentName jc ctxt vars variant
+        <- buildTypeInstance parentName jc ctxt instTys variant
       (:[]) <$> instanceD (return instanceCxt)
                           (return instanceType)
-                          (methodDecs parentName vars cons)
+                          (methodDecs parentName instTys cons)
   where
     methodDecs :: Name -> [Type] -> [ConstructorInfo] -> [Q Dec]
-    methodDecs parentName vars cons = flip map consFuns $ \(jf, jfMaker) ->
+    methodDecs parentName instTys cons = flip map consFuns $ \(jf, jfMaker) ->
       funD (jsonFunValName jf (arity jc))
            [ clause []
-                    (normalB $ jfMaker jc parentName opts vars cons)
+                    (normalB $ jfMaker jc parentName opts instTys cons)
                     []
            ]
 
@@ -1241,17 +1245,21 @@ mkFunCommon :: (JSONClass -> Name -> Options -> [Type] -> [ConstructorInfo] -> Q
 mkFunCommon consFun jc opts name = do
   info <- reifyDatatype name
   case info of
-    DatatypeInfo { datatypeContext = ctxt
-                 , datatypeName    = parentName
-                 , datatypeVars    = vars
-                 , datatypeVariant = variant
-                 , datatypeCons    = cons
+    DatatypeInfo { datatypeContext   = ctxt
+                 , datatypeName      = parentName
+#if MIN_VERSION_th_abstraction(0,3,0)
+                 , datatypeInstTypes = instTys
+#else
+                 , datatypeVars      = instTys
+#endif
+                 , datatypeVariant   = variant
+                 , datatypeCons      = cons
                  } -> do
       -- We force buildTypeInstance here since it performs some checks for whether
       -- or not the provided datatype's kind matches the derived method's
       -- typeclass, and produces errors if it can't.
-      !_ <- buildTypeInstance parentName jc ctxt vars variant
-      consFun jc parentName opts vars cons
+      !_ <- buildTypeInstance parentName jc ctxt instTys variant
+      consFun jc parentName opts instTys cons
 
 dispatchFunByType :: JSONClass
                   -> JSONFun
