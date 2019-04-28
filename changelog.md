@@ -1,8 +1,18 @@
 For the latest version of this document, please see [https://github.com/bos/aeson/blob/master/changelog.md](https://github.com/bos/aeson/blob/master/changelog.md).
 
-## Upcoming
-* Exposes internal helper functions like `<?>`, `JSONPath`, and `parseIndexedJSON` from `Data.Aeson` module. Does not include any breaking changes.
-* Support building with `th-abstraction-0.3.0.0` or later.
+### 1.4.3.0
+* Improve error messages for FromJSON in existing instances and GHC Generic implementation. Thanks to Xia Li-Yao & Igor Pashev.
+* Tweak error-reporting combinators and their documentation. Thanks to Xia Li-Yao.
+  * `typeMismatch` is now about comparing JSON types (i.e., the expected and actual names of the Value constructor).
+  * `withObject` and other `with*` combinators now also mention the JSON types they expect
+  * New `unexpected` and `prependFailure` combinators.
+* Add `Contravariant` `ToJSONKeyFunction` instance. Thanks to Oleg Grenrus.
+* Add `KeyValue` instance for `Object`. Thanks to Robert Hensing.
+* Improve performance when parsing certain large numbers, thanks to Oleg Grenrus.
+* Add `Data.Aeson.QQ.Simple` - A limited version of aeson-qq. Thanks to Oleg Grenrus.
+* Exposes internal helper functions like `<?>`, `JSONPath`, and `parseIndexedJSON` from `Data.Aeson` module. Thanks to Abid Uzair.
+* Better error messages when there are syntax errors parsing objects and arrays. Thanks to Fintan Halpenny.
+* Support building with `th-abstraction-0.3.0.0` or later. Thanks to Ryan Scott.
 
 ### 1.4.2.0
 
