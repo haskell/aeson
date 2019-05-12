@@ -113,7 +113,8 @@ library
 
   -- Compat
   build-depends:
-    base-compat     >= 0.9.1    && < 0.11
+    base-compat     >= 0.9.1    && < 0.11,
+    time-compat     >= 1.9.2.2  && < 1.10
 
   if flag(bytestring-builder)
     build-depends: bytestring >= 0.9.2 && < 0.10.4,
@@ -211,7 +212,7 @@ test-suite tests
     UnitTests.NullaryConstructors
 
   build-depends:
-    QuickCheck >= 2.10.0.1 && < 2.13,
+    QuickCheck >= 2.10.0.1 && < 2.14,
     aeson,
     integer-logarithms >= 1 && <1.1,
     attoparsec,
@@ -236,11 +237,11 @@ test-suite tests
     tasty-quickcheck,
     text,
     time,
-    time-locale-compat,
+    time-compat,
     unordered-containers,
     uuid-types,
     vector,
-    quickcheck-instances >= 0.3.16
+    quickcheck-instances >= 0.3.21 && <0.4
 
   if flag(bytestring-builder)
     build-depends: bytestring >= 0.9 && < 0.10.4,

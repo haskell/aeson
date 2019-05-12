@@ -158,8 +158,10 @@ instance Monad IResult where
     IError path err >>= _ = IError path err
     {-# INLINE (>>=) #-}
 
+#if !(MIN_VERSION_base(4,13,0))
     fail = Fail.fail
     {-# INLINE fail #-}
+#endif
 
 instance Fail.MonadFail IResult where
     fail err = IError [] err
@@ -173,8 +175,10 @@ instance Monad Result where
     Error err >>= _ = Error err
     {-# INLINE (>>=) #-}
 
+#if !(MIN_VERSION_base(4,13,0))
     fail = Fail.fail
     {-# INLINE fail #-}
+#endif
 
 instance Fail.MonadFail Result where
     fail err = Error err
@@ -288,8 +292,11 @@ instance Monad Parser where
     {-# INLINE (>>=) #-}
     return = pure
     {-# INLINE return #-}
+
+#if !(MIN_VERSION_base(4,13,0))
     fail = Fail.fail
     {-# INLINE fail #-}
+#endif
 
 instance Fail.MonadFail Parser where
     fail msg = Parser $ \path kf _ks -> kf (reverse path) msg

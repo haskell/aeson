@@ -87,7 +87,7 @@ import Data.Aeson.Parser.Internal (eitherDecodeWith, jsonEOF)
 import Data.Aeson.Types.Generic
 import Data.Aeson.Types.Internal
 import Data.Bits (unsafeShiftR)
-import Data.Fixed (Fixed, HasResolution)
+import Data.Fixed (Fixed, HasResolution (resolution), Nano)
 import Data.Functor.Compose (Compose(..))
 import Data.Functor.Identity (Identity(..))
 import Data.Functor.Product (Product(..))
@@ -103,8 +103,10 @@ import Data.Scientific (Scientific, base10Exponent)
 import Data.Tagged (Tagged(..))
 import Data.Text (Text, pack, unpack)
 import Data.Time (Day, DiffTime, LocalTime, NominalDiffTime, TimeOfDay, UTCTime, ZonedTime)
-import Data.Time.Format (parseTime)
-import Data.Time.Locale.Compat (defaultTimeLocale)
+import Data.Time.Calendar.Compat (CalendarDiffDays (..), DayOfWeek (..))
+import Data.Time.LocalTime.Compat (CalendarDiffTime (..))
+import Data.Time.Clock.System.Compat (SystemTime (..))
+import Data.Time.Format.Compat (parseTimeM, defaultTimeLocale)
 import Data.Traversable as Tr (sequence)
 import Data.Vector (Vector)
 import Data.Version (Version, parseVersion)
@@ -1914,7 +1916,7 @@ instance FromJSON DotNetTime where
     parseJSON = withText "DotNetTime" $ \t ->
         let (s,m) = T.splitAt (T.length t - 5) t
             t'    = T.concat [s,".",m]
-        in case parseTime defaultTimeLocale "/Date(%s%Q)/" (unpack t') of
+        in case parseTimeM True defaultTimeLocale "/Date(%s%Q)/" (unpack t') of
              Just d -> pure (DotNetTime d)
              _      -> fail "could not parse .NET time"
     {-# INLINE parseJSON #-}
@@ -2007,6 +2009,40 @@ instance FromJSON NominalDiffTime where
 instance FromJSON DiffTime where
     parseJSON = withBoundedScientific "DiffTime" $ pure . realToFrac
     {-# INLINE parseJSON #-}
+
+instance FromJSON SystemTime where
+    parseJSON v = prependContext "SystemTime" $ do
+        n <- parseJSON v
+        let n' = floor (n * fromInteger (resolution n) :: Nano)
+        let (secs, nano) = n' `divMod` resolution n
+        return (MkSystemTime (fromInteger secs) (fromInteger nano))
+
+instance FromJSON CalendarDiffTime where
+    parseJSON = withObject "CalendarDiffTime" $ \obj -> CalendarDiffTime
+        <$> obj .: "months"
+        <*> obj .: "time"
+
+instance FromJSON CalendarDiffDays where
+    parseJSON = withObject "CalendarDiffDays" $ \obj -> CalendarDiffDays
+        <$> obj .: "months"
+        <*> obj .: "days"
+
+instance FromJSON DayOfWeek where
+    parseJSON = withText "DaysOfWeek" parseDayOfWeek
+
+parseDayOfWeek :: T.Text -> Parser DayOfWeek
+parseDayOfWeek t = case T.toLower t of
+    "monday"    -> return Monday
+    "tuesday"   -> return Tuesday
+    "wednesday" -> return Wednesday
+    "thursday"  -> return Thursday
+    "friday"    -> return Friday
+    "saturday"  -> return Saturday
+    "sunday"    -> return Sunday
+    _           -> fail "Invalid week day"
+
+instance FromJSONKey DayOfWeek where
+    fromJSONKey = FromJSONKeyTextParser parseDayOfWeek
 
 -------------------------------------------------------------------------------
 -- base Monoid/Semigroup
