@@ -1,0 +1,6 @@
+# Ignore some builtin hints
+- ignore:
+    name: "Reduce duplication"
+    within:
+      - Data.Aeson.Types.ToJSON
+- ignore: {name: "Eta reduce" }

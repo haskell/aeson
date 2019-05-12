@@ -1,4 +1,4 @@
-resolver: nightly-2018-09-26
+resolver: nightly-2019-05-13
 packages:
 - '.'
 - attoparsec-iso8601
@@ -7,3 +7,5 @@ flags:
     fast: true
   attoparsec-iso8601:
     fast: true
+extra-deps:
+- hlint-2.1.18
