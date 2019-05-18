@@ -148,7 +148,7 @@ library
 
     -- not in LTS-12.10
     tagged               >= 0.8.5    && < 0.9,
-    primitive            >= 0.6.3.0  && < 0.7
+    primitive            >= 0.6.3.0  && < 0.8
 
   -- Other dependencies
   build-depends:
