@@ -9,3 +9,5 @@ flags:
     fast: true
 extra-deps:
 - hlint-2.1.18
+- time-compat-1.9.2.2
+- quickcheck-instances-0.3.21

@@ -40,8 +40,7 @@ import Data.Scientific (Scientific, scientific)
 import Data.Tagged (Tagged(..))
 import Data.Text (Text)
 import Data.Time (UTCTime)
-import Data.Time.Format (parseTime)
-import Data.Time.Locale.Compat (defaultTimeLocale)
+import Data.Time.Format.Compat (parseTimeM, defaultTimeLocale)
 import GHC.Generics (Generic)
 import Instances ()
 import Numeric.Natural (Natural)
@@ -215,7 +214,7 @@ utcTimeGood = do
   where
     parseWithRead :: String -> LT.Text -> UTCTime
     parseWithRead f s =
-      fromMaybe (error "parseTime input malformed") . parseTime defaultTimeLocale f . LT.unpack $ s
+      fromMaybe (error "parseTime input malformed") . parseTimeM True defaultTimeLocale f . LT.unpack $ s
     parseWithAeson :: LT.Text -> Maybe UTCTime
     parseWithAeson s = decode . LT.encodeUtf8 $ LT.concat ["\"", s, "\""]
 

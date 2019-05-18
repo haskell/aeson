@@ -69,7 +69,7 @@ import Data.Aeson.Types.Internal
 import Data.Attoparsec.Number (Number(..))
 import Data.Bits (unsafeShiftR)
 import Data.DList (DList)
-import Data.Fixed (Fixed, HasResolution)
+import Data.Fixed (Fixed, HasResolution, Nano)
 import Data.Foldable (toList)
 import Data.Functor.Compose (Compose(..))
 import Data.Functor.Contravariant (Contravariant (..))
@@ -86,8 +86,10 @@ import Data.Scientific (Scientific)
 import Data.Tagged (Tagged(..))
 import Data.Text (Text, pack)
 import Data.Time (Day, DiffTime, LocalTime, NominalDiffTime, TimeOfDay, UTCTime, ZonedTime)
-import Data.Time.Format (FormatTime, formatTime)
-import Data.Time.Locale.Compat (defaultTimeLocale)
+import Data.Time.Calendar.Compat (CalendarDiffDays (..), DayOfWeek (..))
+import Data.Time.LocalTime.Compat (CalendarDiffTime (..))
+import Data.Time.Clock.System.Compat (SystemTime (..))
+import Data.Time.Format.Compat (FormatTime, formatTime, defaultTimeLocale)
 import Data.Vector (Vector)
 import Data.Version (Version, showVersion)
 import Data.Void (Void, absurd)
@@ -2028,6 +2030,50 @@ instance ToJSON DiffTime where
 
     toEncoding = E.scientific . realToFrac
     {-# INLINE toEncoding #-}
+
+-- | Encoded as number
+instance ToJSON SystemTime where
+    toJSON (MkSystemTime secs nsecs) =
+        toJSON (fromIntegral secs + fromIntegral nsecs / 1000000000 :: Nano)
+    toEncoding (MkSystemTime secs nsecs) =
+        toEncoding (fromIntegral secs + fromIntegral nsecs / 1000000000 :: Nano)
+
+instance ToJSON CalendarDiffTime where
+    toJSON (CalendarDiffTime m nt) = object
+        [ "months" .= m
+        , "time" .= nt
+        ]
+    toEncoding (CalendarDiffTime m nt) = E.pairs
+        ("months" .= m <> "time" .= nt)
+
+instance ToJSON CalendarDiffDays where
+    toJSON (CalendarDiffDays m d) = object
+        [ "months" .= m
+        , "days" .= d
+        ]
+    toEncoding (CalendarDiffDays m d) = E.pairs
+        ("months" .= m <> "days" .= d)
+
+instance ToJSON DayOfWeek where
+    toJSON Monday    = "monday"
+    toJSON Tuesday   = "tuesday"
+    toJSON Wednesday = "wednesday"
+    toJSON Thursday  = "thursday"
+    toJSON Friday    = "friday"
+    toJSON Saturday  = "saturday"
+    toJSON Sunday    = "sunday"
+
+toEncodingDayOfWeek :: DayOfWeek -> E.Encoding' Text
+toEncodingDayOfWeek Monday    = E.unsafeToEncoding "\"monday\""
+toEncodingDayOfWeek Tuesday   = E.unsafeToEncoding "\"tuesday\""
+toEncodingDayOfWeek Wednesday = E.unsafeToEncoding "\"wednesday\""
+toEncodingDayOfWeek Thursday  = E.unsafeToEncoding "\"thursday\""
+toEncodingDayOfWeek Friday    = E.unsafeToEncoding "\"friday\""
+toEncodingDayOfWeek Saturday  = E.unsafeToEncoding "\"saturday\""
+toEncodingDayOfWeek Sunday    = E.unsafeToEncoding "\"sunday\""
+
+instance ToJSONKey DayOfWeek where
+    toJSONKey = toJSONKeyTextEnc toEncodingDayOfWeek
 
 -------------------------------------------------------------------------------
 -- base Monoid/Semigroup

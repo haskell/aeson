@@ -32,6 +32,9 @@ import Data.Proxy (Proxy(..))
 import Data.Scientific (Scientific)
 import Data.Tagged (Tagged(..))
 import Data.Time (fromGregorian)
+import Data.Time.Calendar.Compat (CalendarDiffDays (..), DayOfWeek (..))
+import Data.Time.LocalTime.Compat (CalendarDiffTime (..))
+import Data.Time.Clock.System.Compat (SystemTime (..))
 import Data.Word (Word8)
 import GHC.Generics (Generic)
 import Instances ()
@@ -68,6 +71,9 @@ jsonExamples =
     example "Either Left" "{\"Left\":1}"  (Left 1 :: Either Int Int)
   , example "Either Right" "{\"Right\":1}"  (Right 1 :: Either Int Int)
   , example "Nothing"  "null"  (Nothing :: Maybe Int)
+  -- Maybe serialising is lossy
+  -- https://github.com/bos/aeson/issues/376
+  , Example "Just Nothing" ["null"] (Just Nothing :: Maybe (Maybe Int)) Nothing
   , example "Just"  "1"  (Just 1 :: Maybe Int)
   , example "Proxy Int" "null"  (Proxy :: Proxy Int)
   , example "Tagged Char Int" "1"  (Tagged 1 :: Tagged Char Int)
@@ -82,22 +88,22 @@ jsonExamples =
   , example "DList" "[1,2,3]"  (DList.fromList [1, 2, 3] :: DList.DList Int)
   , example "()" "[]"  ()
 
-  , Example "HashMap Int Int"
+  , ndExample "HashMap Int Int"
         [ "{\"0\":1,\"2\":3}", "{\"2\":3,\"0\":1}"]
         (HM.fromList [(0,1),(2,3)] :: HM.HashMap Int Int)
-  , Example "Map Int Int"
+  , ndExample "Map Int Int"
         [ "{\"0\":1,\"2\":3}", "{\"2\":3,\"0\":1}"]
         (M.fromList [(0,1),(2,3)] :: M.Map Int Int)
-  , Example "Map (Tagged Int Int) Int"
+  , ndExample "Map (Tagged Int Int) Int"
         [ "{\"0\":1,\"2\":3}", "{\"2\":3,\"0\":1}"]
         (M.fromList [(Tagged 0,1),(Tagged 2,3)] :: M.Map (Tagged Int Int) Int)
   , example "Map [Int] Int"
         "[[[0],1],[[2],3]]"
         (M.fromList [([0],1),([2],3)] :: M.Map [Int] Int)
-  , Example "Map [Char] Int"
+  , ndExample "Map [Char] Int"
         [ "{\"ab\":1,\"cd\":3}", "{\"cd\":3,\"ab\":1}" ]
         (M.fromList [("ab",1),("cd",3)] :: M.Map String Int)
-  , Example "Map [I Char] Int"
+  , ndExample "Map [I Char] Int"
         [ "{\"ab\":1,\"cd\":3}", "{\"cd\":3,\"ab\":1}" ]
         (M.fromList [(map pure "ab",1),(map pure "cd",3)] :: M.Map [I Char] Int)
 
@@ -193,16 +199,27 @@ jsonExamples =
   , example "Semigroup.WrappedMonoid Int" "2" (Semigroup.WrapMonoid 2 :: Semigroup.WrappedMonoid Int)
   , example "Semigroup.Option Just" "2" (pure 2 :: Semigroup.Option Int)
   , example "Semigroup.Option Nothing" "null" (Semigroup.Option (Nothing :: Maybe Bool))
+
+  -- time 1.9
+  , example "SystemTime" "123.123456789" (MkSystemTime 123 123456789)
+  , Example "SystemTime" ["124.23456789"]
+    (MkSystemTime 123 1234567890)
+    (MkSystemTime 124 234567890)
+  , ndExample "CalendarDiffTime"
+    [ "{\"months\":12,\"time\":456.789}", "{\"time\":456.789,\"months\":12}" ]
+    (CalendarDiffTime 12 456.789)
+  , ndExample "CalendarDiffDays"
+    [ "{\"months\":12,\"days\":20}", "{\"days\":20,\"months\":12}" ]
+    (CalendarDiffDays 12 20)
+  , example "DayOfWeek" "\"monday\"" Monday
   ]
 
 jsonEncodingExamples :: [Example]
 jsonEncodingExamples =
   [
-  -- Maybe serialising is lossy
-  -- https://github.com/bos/aeson/issues/376
-    example "Just Nothing" "null" (Just Nothing :: Maybe (Maybe Int))
   -- infinities cannot be recovered, null is decoded as NaN
-  , example "inf :: Double" "null" (Approx $ 1/0 :: Approx Double)
+    example "inf :: Double" "null" (Approx $ 1/0 :: Approx Double)
+  , example "-inf :: Double" "null" (Approx $ -1/0 :: Approx Double)
   ]
 
 jsonDecodingExamples :: [Example]
@@ -224,16 +241,27 @@ jsonDecodingExamples = [
   ]
 
 data Example where
-    Example
-        :: (Eq a, Show a, ToJSON a, FromJSON a)
-        => String -> [L.ByteString] -> a -> Example -- empty bytestring will fail, any p [] == False
-    MaybeExample
-        :: (Eq a, Show a, FromJSON a)
-        => String -> L.ByteString -> Maybe a -> Example
+  Example
+    :: (Eq a, Show a, ToJSON a, FromJSON a)
+    => String          -- name
+    -> [L.ByteString]  -- encoded variants
+    -> a               -- input
+    -> a               -- decoded
+    -> Example         -- empty bytestring will fail, any p [] == False
+
+  MaybeExample
+    :: (Eq a, Show a, FromJSON a)
+    => String -> L.ByteString -> Maybe a -> Example
 
 example :: (Eq a, Show a, ToJSON a, FromJSON a)
         => String -> L.ByteString -> a -> Example
-example n bs x = Example n [bs] x
+example n bs x = Example n [bs] x x
+
+-- | Non-deterministic example, input encodes to some of bytestrings.
+ndExample :: (Eq a, Show a, ToJSON a, FromJSON a)
+          => String -> [L.ByteString] -> a -> Example
+ndExample n bss x = Example n bss x x
+
 
 data MyEither a b = MyLeft a | MyRight b
   deriving (Generic, Show, Eq)
@@ -246,16 +274,16 @@ instance (FromJSON a, FromJSON b) => FromJSON (MyEither a b) where
     parseJSON = genericParseJSON defaultOptions { sumEncoding = UntaggedValue }
 
 assertJsonExample :: Example -> TestTree
-assertJsonExample (Example name bss val) = testCase name $ do
+assertJsonExample (Example name bss val val') = testCase name $ do
     assertSomeEqual "encode"           bss        (encode val)
     assertSomeEqual "encode/via value" bss        (encode $ toJSON val)
     for_ bss $ \bs ->
-        assertEqual "decode"           (Just val) (decode bs)
+        assertEqual "decode"           (Just val') (decode bs)
 assertJsonExample (MaybeExample name bs mval) = testCase name $
     assertEqual "decode" mval (decode bs)
 
 assertJsonEncodingExample :: Example -> TestTree
-assertJsonEncodingExample (Example name bss val) = testCase name $ do
+assertJsonEncodingExample (Example name bss val _) = testCase name $ do
     assertSomeEqual "encode"           bss (encode val)
     assertSomeEqual "encode/via value" bss (encode $ toJSON val)
 assertJsonEncodingExample (MaybeExample name _ _) = testCase name $
