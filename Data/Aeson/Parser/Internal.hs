@@ -41,6 +41,7 @@ import Control.Applicative ((<|>))
 import Control.Monad (void, when)
 import Data.Aeson.Types.Internal (IResult(..), JSONPath, Result(..), Value(..))
 import Data.Attoparsec.ByteString.Char8 (Parser, char, decimal, endOfInput, isDigit_w8, signed, string)
+import Data.Functor.Compat (($>))
 import Data.Scientific (Scientific)
 import Data.Text (Text)
 import Data.Vector as Vector (Vector, empty, fromListN, reverse)
@@ -174,9 +175,9 @@ value = do
     DOUBLE_QUOTE  -> A.anyWord8 *> (String <$> jstring_)
     OPEN_CURLY    -> A.anyWord8 *> object_
     OPEN_SQUARE   -> A.anyWord8 *> array_
-    C_f           -> string "false" *> pure (Bool False)
-    C_t           -> string "true" *> pure (Bool True)
-    C_n           -> string "null" *> pure Null
+    C_f           -> string "false" $> Bool False
+    C_t           -> string "true" $> Bool True
+    C_n           -> string "null" $> Null
     _              | w >= 48 && w <= 57 || w == 45
                   -> Number <$> scientific
       | otherwise -> fail "not a valid json value"
@@ -192,9 +193,9 @@ value' = do
                      return (String s)
     OPEN_CURLY    -> A.anyWord8 *> object_'
     OPEN_SQUARE   -> A.anyWord8 *> array_'
-    C_f           -> string "false" *> pure (Bool False)
-    C_t           -> string "true" *> pure (Bool True)
-    C_n           -> string "null" *> pure Null
+    C_f           -> string "false" $> Bool False
+    C_t           -> string "true" $> Bool True
+    C_n           -> string "null" $> Null
     _              | w >= 48 && w <= 57 || w == 45
                   -> do
                      !n <- scientific

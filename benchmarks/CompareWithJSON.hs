@@ -27,7 +27,7 @@ instance (NFData v) => NFData (J.JSObject v) where
 instance NFData J.JSValue where
   rnf J.JSNull = ()
   rnf (J.JSBool b) = rnf b
-  rnf (J.JSRational a b) = rnf a `seq` rnf b `seq` ()
+  rnf (J.JSRational a b) = rnf a `seq` rnf b
   rnf (J.JSString s) = rnf (J.fromJSString s)
   rnf (J.JSArray lst) = rnf lst
   rnf (J.JSObject o) = rnf o

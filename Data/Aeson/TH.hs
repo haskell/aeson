@@ -159,8 +159,6 @@ import qualified Data.Text as T (Text, pack, unpack)
 import qualified Data.Vector as V (unsafeIndex, null, length, create, empty)
 import qualified Data.Vector.Mutable as VM (unsafeNew, unsafeWrite)
 
-{-# ANN module "Hlint: ignore Reduce duplication" #-}
-
 --------------------------------------------------------------------------------
 -- Convenience
 --------------------------------------------------------------------------------

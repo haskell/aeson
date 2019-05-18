@@ -6,7 +6,6 @@
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE NoImplicitPrelude #-}
 {-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE TypeSynonymInstances #-}
 
 -- |
 -- Module:      Data.Aeson.Types.Class

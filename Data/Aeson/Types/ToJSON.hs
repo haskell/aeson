@@ -5,7 +5,6 @@
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE FunctionalDependencies #-}
 {-# LANGUAGE GADTs #-}
-{-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE NoImplicitPrelude #-}
 {-# LANGUAGE OverloadedStrings #-}
@@ -13,7 +12,6 @@
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TypeOperators #-}
-{-# LANGUAGE TypeSynonymInstances #-}
 {-# LANGUAGE UndecidableInstances #-}
 
 #if __GLASGOW_HASKELL__ >= 706
@@ -146,8 +144,6 @@ import Foreign.Ptr (plusPtr)
 import qualified Data.ByteString.Internal as S
 import qualified Data.ByteString.Lazy.Internal as L
 #endif
-
-{-# ANN module ("HLint: ignore Reduce duplication"::String) #-}
 
 toJSONPair :: (a -> Value) -> (b -> Value) -> (a, b) -> Value
 toJSONPair a b = liftToJSON2 a (listValue a) b (listValue b)
