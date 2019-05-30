@@ -149,7 +149,9 @@ import qualified Data.Primitive.SmallArray as PM
 import qualified Data.Primitive.Types as PM
 
 #if MIN_VERSION_primitive(0,6,4)
+#if !MIN_VERSION_primitive(0,7,0)
 import qualified Data.Primitive.UnliftedArray as PM
+#endif
 import qualified Data.Primitive.PrimArray as PM
 #endif
 
@@ -1938,8 +1940,10 @@ instance FromJSON a => FromJSON (PM.SmallArray a) where
 instance (PM.Prim a,FromJSON a) => FromJSON (PM.PrimArray a) where
   parseJSON = fmap Exts.fromList . parseJSON
 
+#if !MIN_VERSION_primitive(0,7,0)
 instance (PM.PrimUnlifted a,FromJSON a) => FromJSON (PM.UnliftedArray a) where
   parseJSON = fmap Exts.fromList . parseJSON
+#endif
 #endif
 #endif
 
