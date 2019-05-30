@@ -28,45 +28,42 @@ library
     hs-source-dirs: .. ../ffi ../pure ../attoparsec-iso8601
     c-sources:  ../cbits/unescape_string.c
     build-depends:
-      attoparsec >= 0.13.0.1,
-      base == 4.*,
-      base-compat >= 0.9.1 && <0.11,
-      time-locale-compat >=0.1.1 && <0.2,
+      attoparsec,
+      base,
+      base-compat,
       containers,
       deepseq,
-      dlist >= 0.2,
-      fail == 4.9.*,
-      ghc-prim >= 0.2,
-      hashable >= 1.1.2.0,
+      dlist,
+      fail,
+      ghc-prim,
+      hashable,
       mtl,
-      primitive >= 0.6.1,
-      scientific >= 0.3.4.7 && < 0.4,
+      primitive,
+      scientific,
       syb,
-      tagged >=0.8.3 && <0.9,
-      template-haskell >= 2.4,
-      text >= 1.2.3,
-      th-abstraction >= 0.2.2 && < 0.4,
+      tagged,
+      template-haskell,
+      text,
+      th-abstraction,
       time-compat,
       time,
       transformers,
-      unordered-containers >= 0.2.3.0,
-      uuid-types >= 1.0.3 && <1.1,
-      vector >= 0.7.1
+      unordered-containers,
+      uuid-types,
+      vector
 
-    if !impl(ghc >= 7.10)
-      -- `Numeric.Natural` is available in base only since GHC 7.10 / base 4.8
-      build-depends: nats >= 1 && < 1.2
-
-    if impl(ghc >=7.8)
-      cpp-options: -DHAS_COERCIBLE
+    if !impl(ghc >= 8.6)
+      build-depends: contravariant
 
     if !impl(ghc >= 8.0)
       -- `Data.Semigroup` is available in base only since GHC 8.0 / base 4.9
-      build-depends: semigroups >= 0.18.2 && < 0.19
+      build-depends: semigroups,
+                     transformers-compat
 
-    if !impl(ghc >= 8.6)
-      build-depends:
-       contravariant >=1.4.1    && <1.6
+    if !impl(ghc >= 7.10)
+      -- `Numeric.Natural` is available in base only since GHC 7.10 / base 4.8
+      build-depends: nats,
+                     void
 
     include-dirs: ../include
 
