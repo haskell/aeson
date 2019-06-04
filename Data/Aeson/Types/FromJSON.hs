@@ -1663,7 +1663,7 @@ instance FromJSON1 NonEmpty where
     liftParseJSON p _ = withArray "NonEmpty" $
         (>>= ne) . Tr.sequence . zipWith (parseIndexedJSON p) [0..] . V.toList
       where
-        ne []     = fail "parsing NonEmpty failed, unpexpected empty list"
+        ne []     = fail "parsing NonEmpty failed, unexpected empty list"
         ne (x:xs) = pure (x :| xs)
     {-# INLINE liftParseJSON #-}
 
