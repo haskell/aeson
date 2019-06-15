@@ -65,8 +65,10 @@ module Data.Aeson.Types.Internal
         )
 
     , SumEncoding(..)
+    , JSONKeyOptions(keyModifier)
     , defaultOptions
     , defaultTaggedObject
+    , defaultJSONKeyOptions
 
     -- * Used for changing CamelCase names into something else.
     , camelTo
@@ -632,6 +634,33 @@ data SumEncoding =
     -- contents of the constructor.
     deriving (Eq, Show)
 
+-- | Options for encoding keys with 'Data.Aeson.Types.genericFromJSONKey' and
+-- 'Data.Aeson.Types.genericToJSONKey'.
+data JSONKeyOptions = JSONKeyOptions
+    { keyModifier :: String -> String
+      -- ^ Function applied to keys. Its result is what goes into the encoded
+      -- 'Value'.
+      --
+      -- === __Example__
+      --
+      -- The following instances encode the constructor @Bar@ to lower-case keys
+      -- @\"bar\"@.
+      --
+      -- @
+      -- data Foo = Bar
+      --   deriving 'Generic'
+      --
+      -- opts :: 'JSONKeyOptions'
+      -- opts = 'defaultJSONKeyOptions' { 'keyModifier' = 'toLower' }
+      --
+      -- instance 'ToJSONKey' Foo where
+      --   'toJSONKey' = 'genericToJSONKey' opts
+      --
+      -- instance 'FromJSONKey' Foo where
+      --   'fromJSONKey' = 'genericFromJSONKey' opts
+      -- @
+    }
+
 -- | Default encoding 'Options':
 --
 -- @
@@ -669,6 +698,16 @@ defaultTaggedObject = TaggedObject
                       { tagFieldName      = "tag"
                       , contentsFieldName = "contents"
                       }
+
+-- | Default 'JSONKeyOptions':
+--
+-- @
+-- defaultJSONKeyOptions = 'JSONKeyOptions'
+--                         { 'keyModifier' = 'id'
+--                         }
+-- @
+defaultJSONKeyOptions :: JSONKeyOptions
+defaultJSONKeyOptions = JSONKeyOptions id
 
 -- | Converts from CamelCase to another lower case, interspersing
 --   the character between all capital letters and their previous

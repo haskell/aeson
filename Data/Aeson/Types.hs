@@ -53,6 +53,12 @@ module Data.Aeson.Types
     , coerceFromJSONKeyFunction
     , mapFromJSONKeyFunction
 
+    -- *** Generic keys
+    , GToJSONKey()
+    , genericToJSONKey
+    , GFromJSONKey()
+    , genericFromJSONKey
+
     -- ** Liftings to unary and binary type constructors
     , FromJSON1(..)
     , parseJSON1
@@ -125,6 +131,11 @@ module Data.Aeson.Types
     , camelTo2
     , defaultOptions
     , defaultTaggedObject
+
+    -- ** Options for object keys
+    , JSONKeyOptions
+    , keyModifier
+    , defaultJSONKeyOptions
     ) where
 
 import Prelude.Compat
