@@ -568,6 +568,39 @@ data Options = Options
       -- ^ If 'True' record fields with a 'Nothing' value will be
       -- omitted from the resulting object. If 'False' the resulting
       -- object will include those fields mapping to @null@.
+      --
+      -- === Note
+      --
+      -- Setting 'omitNothingFields' to 'True' only affects fields which are of
+      -- type 'Maybe' /uniformly/ in the 'ToJSON' or 'FromJSON' instance. In
+      -- particular, if the type of a field is declared as a type variable, it
+      -- will not be omitted from the JSON object, unless the field is
+      -- specialized upfront in the instance.
+      --
+      -- ==== __Example__
+      --
+      -- The generic instance for the following type @Fruit@ depends on whether
+      -- the instance head is @Fruit a@ or @Fruit (Maybe a)@.
+      --
+      -- @
+      -- data Fruit a =
+      --   { apples :: a  -- A field whose type is a type variable.
+      --   , oranges :: 'Maybe' Int
+      --   }
+      --
+      -- options :: 'Options'
+      -- options = 'defaultOptions' { 'omitNothingFields' = 'True' }
+      --
+      -- -- apples required, oranges optional
+      -- -- Even if 'Data.Aeson.fromJSON' is then specialized to (Fruit ('Maybe' a)).
+      -- instance 'Data.Aeson.FromJSON' a => 'Data.Aeson.FromJSON' (Fruit a) where
+      --   'Data.Aeson.fromJSON' = 'Data.Aeson.genericFromJSON' options
+      --
+      -- -- apples optional, oranges optional
+      -- -- In this instance, the field apples is uniformly of type ('Maybe' a).
+      -- instance 'Data.Aeson.FromJSON' a => 'Data.Aeson.FromJSON' (Fruit ('Maybe' a)) where
+      --   'Data.Aeson.fromJSON' = 'Data.Aeson.genericFromJSON' options
+      -- @
     , sumEncoding :: SumEncoding
       -- ^ Specifies how to encode constructors of a sum datatype.
     , unwrapUnaryRecords :: Bool
