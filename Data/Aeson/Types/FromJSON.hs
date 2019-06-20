@@ -45,6 +45,9 @@ module Data.Aeson.Types.FromJSON
     , coerceFromJSONKeyFunction
     , mapFromJSONKeyFunction
 
+    , GFromJSONKey()
+    , genericFromJSONKey
+
     -- * List functions
     , listParser
 
@@ -406,6 +409,16 @@ class FromJSON a where
 --   > newtype SomeId = SomeId { getSomeId :: Text }
 --   >   deriving (Eq,Ord,Hashable,FromJSONKey)
 --
+--   If you have a sum of nullary constructors, you may use the generic
+--   implementation:
+--
+-- @
+-- data Color = Red | Green | Blue
+--   deriving Generic
+--
+-- instance 'FromJSONKey' Color where
+--   'fromJSONKey' = 'genericFromJSONKey' 'defaultJSONKeyOptions'
+-- @
 class FromJSONKey a where
     -- | Strategy for parsing the key of a map-like container.
     fromJSONKey :: FromJSONKeyFunction a
@@ -503,6 +516,35 @@ coerceFromJSONKeyFunction (FromJSONKeyValue f)           = FromJSONKeyValue (fma
 -- | Same as 'fmap'. Provided for the consistency with 'ToJSONKeyFunction'.
 mapFromJSONKeyFunction :: (a -> b) -> FromJSONKeyFunction a -> FromJSONKeyFunction b
 mapFromJSONKeyFunction = fmap
+
+-- | 'fromJSONKey' for 'Generic' types.
+-- These types must be sums of nullary constructors, whose names will be used
+-- as keys for JSON objects.
+--
+-- See also 'genericToJSONKey'.
+--
+-- === __Example__
+--
+-- @
+-- data Color = Red | Green | Blue
+--   deriving 'Generic'
+--
+-- instance 'FromJSONKey' Color where
+--   'fromJSONKey' = 'genericFromJSONKey' 'defaultJSONKeyOptions'
+-- @
+genericFromJSONKey :: forall a. (Generic a, GFromJSONKey (Rep a))
+             => JSONKeyOptions
+             -> FromJSONKeyFunction a
+genericFromJSONKey opts = FromJSONKeyTextParser $ \t ->
+    case parseSumFromString (keyModifier opts) t of
+        Nothing -> fail $
+            "invalid key " ++ show t ++ ", expected one of " ++ show cnames
+        Just k -> pure (to k)
+  where
+    cnames = unTagged2 (constructorTags (keyModifier opts) :: Tagged2 (Rep a) [String])
+
+class    (ConstructorNames f, SumFromString f) => GFromJSONKey f where
+instance (ConstructorNames f, SumFromString f) => GFromJSONKey f where
 
 -------------------------------------------------------------------------------
 -- Functions needed for documentation
@@ -1020,41 +1062,46 @@ parseAllNullarySum :: (SumFromString f, ConstructorNames f)
 parseAllNullarySum tname opts =
     withText tname $ \tag ->
         maybe (badTag tag) return $
-            parseSumFromString opts tag
+            parseSumFromString modifier tag
   where
-    badTag tag = failWithCTags tname opts $ \cnames ->
+    badTag tag = failWithCTags tname modifier $ \cnames ->
         "expected one of the tags " ++ show cnames ++
         ", but found tag " ++ show tag
+    modifier = constructorTagModifier opts
 
 -- | Fail with an informative error message about a mismatched tag.
 -- The error message is parameterized by the list of expected tags,
 -- to be inferred from the result type of the parser.
 failWithCTags
-  :: forall f a. ConstructorNames f
-  => TypeName -> Options -> ([String] -> String) -> Parser (f a)
-failWithCTags tname opts f =
+  :: forall f a t. ConstructorNames f
+  => TypeName -> (String -> t) -> ([t] -> String) -> Parser (f a)
+failWithCTags tname modifier f =
     contextType tname . fail $ f cnames
   where
-    cnames = unTagged2 (constructorTags opts :: Tagged2 f [String])
+    cnames = unTagged2 (constructorTags modifier :: Tagged2 f [t])
 
 class SumFromString f where
-    parseSumFromString :: Options -> Text -> Maybe (f a)
+    parseSumFromString :: (String -> String) -> Text -> Maybe (f a)
 
 instance (SumFromString a, SumFromString b) => SumFromString (a :+: b) where
     parseSumFromString opts key = (L1 <$> parseSumFromString opts key) <|>
                                   (R1 <$> parseSumFromString opts key)
 
 instance (Constructor c) => SumFromString (C1 c U1) where
-    parseSumFromString opts key | key == name = Just $ M1 U1
-                                | otherwise   = Nothing
-        where
-          name = pack $ constructorTagModifier opts $
-                          conName (undefined :: M1 _i c _f _p)
+    parseSumFromString modifier key
+        | key == name = Just $ M1 U1
+        | otherwise   = Nothing
+      where
+        name = pack $ modifier $ conName (undefined :: M1 _i c _f _p)
+
+-- For genericFromJSONKey
+instance SumFromString a => SumFromString (D1 d a) where
+    parseSumFromString modifier key = M1 <$> parseSumFromString modifier key
 
 -- | List of all constructor tags.
-constructorTags :: ConstructorNames a => Options -> Tagged2 a [String]
-constructorTags opts =
-    fmap DList.toList (constructorNames' (constructorTagModifier opts))
+constructorTags :: ConstructorNames a => (String -> t) -> Tagged2 a [t]
+constructorTags modifier =
+    fmap DList.toList (constructorNames' modifier)
 
 -- | List of all constructor names of an ADT, after a given conversion
 -- function. (Better inlining.)
@@ -1074,6 +1121,13 @@ instance Constructor c => ConstructorNames (C1 c a) where
     constructorNames' f = Tagged2 (pure (f cname))
       where
         cname = conName (undefined :: M1 _i c _f _p)
+
+-- For genericFromJSONKey
+instance ConstructorNames a => ConstructorNames (D1 d a) where
+    constructorNames' = retag . constructorNames'
+      where
+        retag :: Tagged2 a u -> Tagged2 (D1 d a) u
+        retag (Tagged2 x) = Tagged2 x
 
 --------------------------------------------------------------------------------
 
@@ -1126,7 +1180,7 @@ parseNonAllNullarySum p@(tname :* opts :* _) =
 
       UntaggedValue -> parseUntaggedValue p
   where
-    failWith_ = failWithCTags tname opts
+    failWith_ = failWithCTags tname (constructorTagModifier opts)
 
 --------------------------------------------------------------------------------
 
