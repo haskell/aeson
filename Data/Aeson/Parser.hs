@@ -35,10 +35,20 @@ module Data.Aeson.Parser
     , value
     , jstring
     , scientific
+    -- ** Handling objects with duplicate keys
+    , jsonWith
+    , jsonLast
+    , jsonAccum
+    , jsonNoDup
     -- * Strict parsers
     -- $strict
     , json'
     , value'
+    -- ** Handling objects with duplicate keys
+    , jsonWith'
+    , jsonLast'
+    , jsonAccum'
+    , jsonNoDup'
     -- * Decoding without FromJSON instances
     , decodeWith
     , decodeStrictWith
@@ -47,7 +57,7 @@ module Data.Aeson.Parser
     ) where
 
 
-import Data.Aeson.Parser.Internal (decodeStrictWith, decodeWith, eitherDecodeStrictWith, eitherDecodeWith, json, json', jstring, scientific, value, value')
+import Data.Aeson.Parser.Internal
 
 -- $lazy
 --
