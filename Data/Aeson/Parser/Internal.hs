@@ -5,6 +5,10 @@
 #if MIN_VERSION_ghc_prim(0,3,1)
 {-# LANGUAGE MagicHash #-}
 #endif
+#if __GLASGOW_HASKELL__ <= 710 && __GLASGOW_HASKELL__ >= 706
+-- Work around a compiler bug
+{-# OPTIONS_GHC -fsimpl-tick-factor=200 #-}
+#endif
 -- |
 -- Module:      Data.Aeson.Parser.Internal
 -- Copyright:   (c) 2011-2016 Bryan O'Sullivan
