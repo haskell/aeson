@@ -7,6 +7,11 @@ echo "$(ghc --version) [$(ghc --print-project-git-commit-id 2> /dev/null || echo
 stack --version
 
 case $BUILD in
+  hlint)
+    echo "Downloading hlint"
+    curl -sSL https://raw.github.com/ndmitchell/hlint/master/misc/run.sh > hlint.sh
+    chmod +x hlint.sh
+    ;;
   stack)
     stack --no-terminal --skip-ghc-check setup
     stack --no-terminal --skip-ghc-check test --only-snapshot
