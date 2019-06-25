@@ -130,15 +130,15 @@ json' = value'
 
 -- Open recursion: object_, object_', array_, array_' are parameterized by the
 -- toplevel Value parser to be called recursively, to keep the parameter
--- hFromList outside of the recursive loop for proper inlining.
+-- mkObject outside of the recursive loop for proper inlining.
 
-object_ :: HFromList -> Parser Value -> Parser Value
-object_ hFromList val = {-# SCC "object_" #-} Object <$> objectValues hFromList jstring val
+object_ :: ([(Text, Value)] -> Either String Object) -> Parser Value -> Parser Value
+object_ mkObject val = {-# SCC "object_" #-} Object <$> objectValues mkObject jstring val
 {-# INLINE object_ #-}
 
-object_' :: HFromList -> Parser Value -> Parser Value
-object_' hFromList val' = {-# SCC "object_'" #-} do
-  !vals <- objectValues hFromList jstring' val'
+object_' :: ([(Text, Value)] -> Either String Object) -> Parser Value -> Parser Value
+object_' mkObject val' = {-# SCC "object_'" #-} do
+  !vals <- objectValues mkObject jstring' val'
   return (Object vals)
  where
   jstring' = do
@@ -146,12 +146,9 @@ object_' hFromList val' = {-# SCC "object_'" #-} do
     return s
 {-# INLINE object_' #-}
 
--- The object parser 'objectValues' is parameterized by the object constructor.
--- See also 'jsonWith'.
-type HFromList = [(Text, Value)] -> Parser Object
-
-objectValues :: HFromList -> Parser Text -> Parser Value -> Parser (H.HashMap Text Value)
-objectValues hFromList str val = do
+objectValues :: ([(Text, Value)] -> Either String Object)
+             -> Parser Text -> Parser Value -> Parser (H.HashMap Text Value)
+objectValues mkObject str val = do
   skipSpace
   w <- A.peekWord8'
   if w == CLOSE_CURLY
@@ -167,7 +164,9 @@ objectValues hFromList str val = do
     let acc' = (k, v) : acc
     if ch == COMMA
       then skipSpace >> loop acc'
-      else hFromList acc'
+      else case mkObject acc' of
+        Left err -> fail err
+        Right obj -> pure obj
 {-# INLINE objectValues #-}
 
 array_ :: Parser Value -> Parser Value
@@ -211,21 +210,21 @@ value = jsonWith (pure . H.fromList)
 -- 'json' keeps only the first occurence of each key, using 'HashMap.Lazy.fromList'.
 --
 -- @
--- 'json' = 'jsonWith' ('pure' '.' 'H.fromList')
+-- 'json' = 'jsonWith' ('Right' '.' 'H.fromList')
 -- @
 --
 -- 'jsonLast' keeps the last occurence of each key, using
 -- @'HashMap.Lazy.fromListWith' ('const' 'id')@.
 --
 -- @
--- 'jsonLast' = 'jsonWith' ('pure' '.' 'HashMap.Lazy.fromListWith' ('const' 'id'))
+-- 'jsonLast' = 'jsonWith' ('Right' '.' 'HashMap.Lazy.fromListWith' ('const' 'id'))
 -- @
 --
 -- 'jsonAccum' keeps wraps all values in arrays to keep duplicates, using
 -- 'fromListAccum'.
 --
 -- @
--- 'jsonAccum' = 'jsonWith' ('pure' . 'fromListAccum')
+-- 'jsonAccum' = 'jsonWith' ('Right' . 'fromListAccum')
 -- @
 --
 -- 'jsonNoDup' fails if any object contains duplicate keys, using 'parseListNoDup'.
@@ -233,13 +232,13 @@ value = jsonWith (pure . H.fromList)
 -- @
 -- 'jsonNoDup' = 'jsonWith' 'parseListNoDup'
 -- @
-jsonWith :: ([(Text, Value)] -> Parser Object) -> Parser Value
-jsonWith hFromList = fix $ \value_ -> do
+jsonWith :: ([(Text, Value)] -> Either String Object) -> Parser Value
+jsonWith mkObject = fix $ \value_ -> do
   skipSpace
   w <- A.peekWord8'
   case w of
     DOUBLE_QUOTE  -> A.anyWord8 *> (String <$> jstring_)
-    OPEN_CURLY    -> A.anyWord8 *> object_ hFromList value_
+    OPEN_CURLY    -> A.anyWord8 *> object_ mkObject value_
     OPEN_SQUARE   -> A.anyWord8 *> array_ value_
     C_f           -> string "false" $> Bool False
     C_t           -> string "true" $> Bool True
@@ -251,12 +250,12 @@ jsonWith hFromList = fix $ \value_ -> do
 
 -- | Variant of 'json' which keeps only the last occurence of every key.
 jsonLast :: Parser Value
-jsonLast = jsonWith (pure . H.fromListWith (const id))
+jsonLast = jsonWith (Right . H.fromListWith (const id))
 
 -- | Variant of 'json' wrapping all object mappings in 'Array' to preserve
 -- key-value pairs with the same keys.
 jsonAccum :: Parser Value
-jsonAccum = jsonWith (pure . fromListAccum)
+jsonAccum = jsonWith (Right . fromListAccum)
 
 -- | Variant of 'json' which fails if any object contains duplicate keys.
 jsonNoDup :: Parser Value
@@ -272,27 +271,27 @@ fromListAccum =
   fmap (Array . Vector.fromList . ($ [])) . H.fromListWith (.) . (fmap . fmap) (:)
 
 -- | @'fromListNoDup' kvs@ fails if @kvs@ contains duplicate keys.
-parseListNoDup :: [(Text, Value)] -> Parser Object
+parseListNoDup :: [(Text, Value)] -> Either String Object
 parseListNoDup =
   H.traverseWithKey unwrap . H.fromListWith (\_ _ -> Nothing) . (fmap . fmap) Just
   where
-    unwrap k Nothing = fail $ "found duplicate key: " ++ show k
-    unwrap _ (Just v) = pure v
+    unwrap k Nothing = Left $ "found duplicate key: " ++ show k
+    unwrap _ (Just v) = Right v
 
 -- | Strict version of 'value'. Synonym of 'json''.
 value' :: Parser Value
 value' = jsonWith' (pure . H.fromList)
 
 -- | Strict version of 'jsonWith'.
-jsonWith' :: ([(Text, Value)] -> Parser Object) -> Parser Value
-jsonWith' hFromList = fix $ \value_ -> do
+jsonWith' :: ([(Text, Value)] -> Either String Object) -> Parser Value
+jsonWith' mkObject = fix $ \value_ -> do
   skipSpace
   w <- A.peekWord8'
   case w of
     DOUBLE_QUOTE  -> do
                      !s <- A.anyWord8 *> jstring_
                      return (String s)
-    OPEN_CURLY    -> A.anyWord8 *> object_' hFromList value_
+    OPEN_CURLY    -> A.anyWord8 *> object_' mkObject value_
     OPEN_SQUARE   -> A.anyWord8 *> array_' value_
     C_f           -> string "false" $> Bool False
     C_t           -> string "true" $> Bool True
