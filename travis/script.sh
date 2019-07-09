@@ -20,8 +20,6 @@ case $BUILD in
       (cd dist && cabal install --force-reinstalls "$SRC_TGZ")
     ;;
   hlint)
-    stack build --fast aeson --stack-yaml stack-nightly.yaml --system-ghc --no-terminal
-    stack install hlint --stack-yaml stack-nightly.yaml --system-ghc --no-terminal
     make lint
     ;;
 esac
