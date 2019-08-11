@@ -1,3 +1,4 @@
 with-compiler: ghc
 packages: .
-packages: attoparsec-iso8601, benchmarks
+packages: attoparsec-iso8601
+-- packages: benchmarks

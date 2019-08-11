@@ -49,4 +49,10 @@ case $BUILD in
       cp -a $HOME/.cabal/lib $HOME/.cabal/share $HOME/.cabal/bin installplan.txt $HOME/.cabsnap/;
     fi
     ;;
+  cabal2)
+	cabal v2-update -v
+    sed -i 's/^jobs:/-- jobs:/' ${HOME}/.cabal/config
+
+	cabal v2-build --only-dependencies --enable-tests --enable-benchmarks --dry
+	;;
 esac
