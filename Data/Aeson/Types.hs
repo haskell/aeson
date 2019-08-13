@@ -136,6 +136,11 @@ module Data.Aeson.Types
     , JSONKeyOptions
     , keyModifier
     , defaultJSONKeyOptions
+
+    -- * Parsing context
+    , (<?>)
+    , JSONPath
+    , JSONPathElement(..)
     ) where
 
 import Prelude.Compat
