@@ -19,6 +19,10 @@ case $BUILD in
     SRC_TGZ=$(cabal info . | awk '{print $2;exit}').tar.gz &&
       (cd dist && cabal install --force-reinstalls "$SRC_TGZ")
     ;;
+  cabal2) 
+    cabal v2-build --enable-tests --enable-benchmarks
+    cabal v2-test --enable-tests --enable-benchmarks
+    ;;
   hlint)
     make lint
     ;;
