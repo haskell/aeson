@@ -116,7 +116,7 @@ library
 
   -- Compat
   build-depends:
-    base-compat     >= 0.9.1    && < 0.11,
+    base-compat     >= 0.9.1    && < 0.12,
     time-compat     >= 1.9.2.2  && < 1.10
 
   if flag(bytestring-builder)

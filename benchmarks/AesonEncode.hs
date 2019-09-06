@@ -7,7 +7,7 @@ module Main (main) where
 import Prelude.Compat
 
 import Control.DeepSeq
-import Control.Monad
+import Control.Monad (forM_)
 import Data.Aeson
 import Data.Attoparsec.ByteString (IResult(..), parseWith)
 import Data.Char (isDigit)

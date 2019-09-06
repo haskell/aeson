@@ -99,6 +99,7 @@ import Data.Time.Format (FormatTime)
 import Data.Typeable (Typeable)
 import Data.Vector (Vector)
 import GHC.Generics (Generic)
+import qualified Control.Monad as Monad
 import qualified Control.Monad.Fail as Fail
 import qualified Data.HashMap.Strict as H
 import qualified Data.Scientific as S
@@ -152,7 +153,7 @@ instance Functor Result where
     fmap _ (Error err) = Error err
     {-# INLINE fmap #-}
 
-instance Monad IResult where
+instance Monad.Monad IResult where
     return = pure
     {-# INLINE return #-}
 
@@ -169,7 +170,7 @@ instance Fail.MonadFail IResult where
     fail err = IError [] err
     {-# INLINE fail #-}
 
-instance Monad Result where
+instance Monad.Monad Result where
     return = pure
     {-# INLINE return #-}
 
@@ -288,7 +289,7 @@ newtype Parser a = Parser {
                 -> f r
     }
 
-instance Monad Parser where
+instance Monad.Monad Parser where
     m >>= g = Parser $ \path kf ks -> let ks' a = runParser (g a) path kf ks
                                        in runParser m path kf ks'
     {-# INLINE (>>=) #-}
