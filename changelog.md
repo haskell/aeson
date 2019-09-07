@@ -1,5 +1,13 @@
 For the latest version of this document, please see [https://github.com/bos/aeson/blob/master/changelog.md](https://github.com/bos/aeson/blob/master/changelog.md).
 
+### 1.4.5.0
+
+* Expose `(<?>)`, `JSONPath` and `JSONPathElement(..)` from `Data.Aeson.Types`. Previously only available through internal modules. Thanks to Luke Clifton.
+
+* Support for base-compat 0.11, thanks to Ryan Scott.
+
+* Travis build for GHC 8.8, thanks to Oleg Grenrus.
+
 ### 1.4.4.0
 
 **New features**:
