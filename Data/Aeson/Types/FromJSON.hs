@@ -664,6 +664,7 @@ instance (FromJSON a) => FromJSON [a] where
 prependContext :: String -> Parser a -> Parser a
 prependContext name = prependFailure ("parsing " ++ name ++ " failed, ")
 
+
 -- | @'withObject' name f value@ applies @f@ to the 'Object' when @value@
 -- is an 'Data.Aeson.Object' and fails otherwise.
 --
@@ -910,6 +911,12 @@ type ConName = String
 contextType :: TypeName -> Parser a -> Parser a
 contextType = prependContext
 
+-- | Add the tagKey that will be looked up while building an ADT
+contextTag :: Text -> Parser a -> Parser a
+contextTag tagKey = prependFailure
+  ("Missing required tagKey \"" ++ unpack tagKey ++
+   "\". The parser returned error was: ")
+
 -- | Add the name of the constructor being parsed to a parser's error messages.
 contextCons :: ConName -> TypeName -> Parser a -> Parser a
 contextCons cname tname = prependContext (showCons cname tname)
@@ -1087,7 +1094,7 @@ parseNonAllNullarySum p@(tname :* opts :* _) =
     case sumEncoding opts of
       TaggedObject{..} ->
           withObject tname $ \obj -> do
-              tag <- contextType tname $ obj .: tagKey
+              tag <- (contextType tname) . (contextTag tagKey) $ obj .: tagKey
               fromMaybe (badTag tag <?> Key tagKey) $
                   parseFromTaggedObject (tag :* contentsFieldName :* p) obj
         where
