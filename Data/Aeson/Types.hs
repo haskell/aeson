@@ -141,6 +141,8 @@ module Data.Aeson.Types
     , (<?>)
     , JSONPath
     , JSONPathElement(..)
+    , formatPath
+    , formatRelativePath
     ) where
 
 import Prelude.Compat

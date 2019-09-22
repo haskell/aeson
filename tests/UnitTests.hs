@@ -34,7 +34,8 @@ import Data.Aeson.Parser
   , json', jsonLast', jsonAccum', jsonNoDup')
 import Data.Aeson.Types
   ( Options(..), Result(Success), ToJSON(..), Value(Array, Bool, Null, Object)
-  , camelTo, camelTo2, defaultOptions, omitNothingFields, parse)
+  , camelTo, camelTo2, defaultOptions, formatPath, formatRelativePath
+  , omitNothingFields, parse)
 import Data.Attoparsec.ByteString (Parser, parseOnly)
 import Data.Char (toUpper)
 import Data.Either.Compat (isLeft, isRight)
@@ -252,6 +253,18 @@ formatErrorExample =
   let rhs = formatError [Index 0, Key "foo", Key "bar", Key "a.b.c", Key "", Key "'\\", Key "end"] "error msg"
       lhs = "Error in $[0].foo.bar['a.b.c']['']['\\'\\\\'].end: error msg"
   in assertEqual "formatError example" lhs rhs
+
+formatPathExample :: Assertion
+formatPathExample =
+  let rhs = formatPath [Key "x", Index 0]
+      lhs = "$.x[0]"
+  in assertEqual "formatPath example" lhs rhs
+
+formatRelativePathExample :: Assertion
+formatRelativePathExample =
+  let rhs = formatPath [Key "x", Index 0]
+      lhs = ".x[0]"
+  in assertEqual "formatRelativePath example" lhs rhs
 
 ------------------------------------------------------------------------------
 -- Comparison (.:?) and (.:!)
