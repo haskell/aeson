@@ -225,7 +225,7 @@ test-suite tests
     containers,
     directory,
     dlist,
-    Diff,
+    Diff >= 0.4 && < 0.5,
     filepath,
     generic-deriving >= 1.10 && < 1.13,
     ghc-prim >= 0.2,
