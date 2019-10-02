@@ -7,6 +7,11 @@ echo "$(ghc --version) [$(ghc --print-project-git-commit-id 2> /dev/null || echo
 stack --version
 
 case $BUILD in
+  hlint)
+    echo "Downloading hlint"
+    curl -sSL https://raw.github.com/ndmitchell/hlint/master/misc/run.sh > hlint.sh
+    chmod +x hlint.sh
+    ;;
   stack)
     stack --no-terminal --skip-ghc-check setup
     stack --no-terminal --skip-ghc-check test --only-snapshot
@@ -44,4 +49,10 @@ case $BUILD in
       cp -a $HOME/.cabal/lib $HOME/.cabal/share $HOME/.cabal/bin installplan.txt $HOME/.cabsnap/;
     fi
     ;;
+  cabal2)
+	cabal v2-update -v
+    sed -i 's/^jobs:/-- jobs:/' ${HOME}/.cabal/config
+
+	cabal v2-build --only-dependencies --enable-tests --enable-benchmarks --dry
+	;;
 esac

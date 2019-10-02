@@ -58,6 +58,11 @@ module Data.Aeson.Types.Class
     , fromJSONKeyCoerce
     , coerceFromJSONKeyFunction
     , mapFromJSONKeyFunction
+    -- ** Generic keys
+    , GToJSONKey()
+    , genericToJSONKey
+    , GFromJSONKey()
+    , genericFromJSONKey
     -- * Object key-value pairs
     , KeyValue(..)
 

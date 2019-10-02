@@ -65,8 +65,10 @@ module Data.Aeson.Types.Internal
         )
 
     , SumEncoding(..)
+    , JSONKeyOptions(keyModifier)
     , defaultOptions
     , defaultTaggedObject
+    , defaultJSONKeyOptions
 
     -- * Used for changing CamelCase names into something else.
     , camelTo
@@ -97,6 +99,7 @@ import Data.Time.Format (FormatTime)
 import Data.Typeable (Typeable)
 import Data.Vector (Vector)
 import GHC.Generics (Generic)
+import qualified Control.Monad as Monad
 import qualified Control.Monad.Fail as Fail
 import qualified Data.HashMap.Strict as H
 import qualified Data.Scientific as S
@@ -150,7 +153,7 @@ instance Functor Result where
     fmap _ (Error err) = Error err
     {-# INLINE fmap #-}
 
-instance Monad IResult where
+instance Monad.Monad IResult where
     return = pure
     {-# INLINE return #-}
 
@@ -167,7 +170,7 @@ instance Fail.MonadFail IResult where
     fail err = IError [] err
     {-# INLINE fail #-}
 
-instance Monad Result where
+instance Monad.Monad Result where
     return = pure
     {-# INLINE return #-}
 
@@ -286,7 +289,7 @@ newtype Parser a = Parser {
                 -> f r
     }
 
-instance Monad Parser where
+instance Monad.Monad Parser where
     m >>= g = Parser $ \path kf ks -> let ks' a = runParser (g a) path kf ks
                                        in runParser m path kf ks'
     {-# INLINE (>>=) #-}
@@ -568,6 +571,39 @@ data Options = Options
       -- ^ If 'True' record fields with a 'Nothing' value will be
       -- omitted from the resulting object. If 'False' the resulting
       -- object will include those fields mapping to @null@.
+      --
+      -- === Note
+      --
+      -- Setting 'omitNothingFields' to 'True' only affects fields which are of
+      -- type 'Maybe' /uniformly/ in the 'ToJSON' or 'FromJSON' instance. In
+      -- particular, if the type of a field is declared as a type variable, it
+      -- will not be omitted from the JSON object, unless the field is
+      -- specialized upfront in the instance.
+      --
+      -- ==== __Example__
+      --
+      -- The generic instance for the following type @Fruit@ depends on whether
+      -- the instance head is @Fruit a@ or @Fruit (Maybe a)@.
+      --
+      -- @
+      -- data Fruit a =
+      --   { apples :: a  -- A field whose type is a type variable.
+      --   , oranges :: 'Maybe' Int
+      --   }
+      --
+      -- options :: 'Options'
+      -- options = 'defaultOptions' { 'omitNothingFields' = 'True' }
+      --
+      -- -- apples required, oranges optional
+      -- -- Even if 'Data.Aeson.fromJSON' is then specialized to (Fruit ('Maybe' a)).
+      -- instance 'Data.Aeson.FromJSON' a => 'Data.Aeson.FromJSON' (Fruit a) where
+      --   'Data.Aeson.fromJSON' = 'Data.Aeson.genericFromJSON' options
+      --
+      -- -- apples optional, oranges optional
+      -- -- In this instance, the field apples is uniformly of type ('Maybe' a).
+      -- instance 'Data.Aeson.FromJSON' a => 'Data.Aeson.FromJSON' (Fruit ('Maybe' a)) where
+      --   'Data.Aeson.fromJSON' = 'Data.Aeson.genericFromJSON' options
+      -- @
     , sumEncoding :: SumEncoding
       -- ^ Specifies how to encode constructors of a sum datatype.
     , unwrapUnaryRecords :: Bool
@@ -632,6 +668,33 @@ data SumEncoding =
     -- contents of the constructor.
     deriving (Eq, Show)
 
+-- | Options for encoding keys with 'Data.Aeson.Types.genericFromJSONKey' and
+-- 'Data.Aeson.Types.genericToJSONKey'.
+data JSONKeyOptions = JSONKeyOptions
+    { keyModifier :: String -> String
+      -- ^ Function applied to keys. Its result is what goes into the encoded
+      -- 'Value'.
+      --
+      -- === __Example__
+      --
+      -- The following instances encode the constructor @Bar@ to lower-case keys
+      -- @\"bar\"@.
+      --
+      -- @
+      -- data Foo = Bar
+      --   deriving 'Generic'
+      --
+      -- opts :: 'JSONKeyOptions'
+      -- opts = 'defaultJSONKeyOptions' { 'keyModifier' = 'toLower' }
+      --
+      -- instance 'ToJSONKey' Foo where
+      --   'toJSONKey' = 'genericToJSONKey' opts
+      --
+      -- instance 'FromJSONKey' Foo where
+      --   'fromJSONKey' = 'genericFromJSONKey' opts
+      -- @
+    }
+
 -- | Default encoding 'Options':
 --
 -- @
@@ -669,6 +732,16 @@ defaultTaggedObject = TaggedObject
                       { tagFieldName      = "tag"
                       , contentsFieldName = "contents"
                       }
+
+-- | Default 'JSONKeyOptions':
+--
+-- @
+-- defaultJSONKeyOptions = 'JSONKeyOptions'
+--                         { 'keyModifier' = 'id'
+--                         }
+-- @
+defaultJSONKeyOptions :: JSONKeyOptions
+defaultJSONKeyOptions = JSONKeyOptions id
 
 -- | Converts from CamelCase to another lower case, interspersing
 --   the character between all capital letters and their previous

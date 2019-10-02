@@ -5,7 +5,6 @@
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE FunctionalDependencies #-}
 {-# LANGUAGE GADTs #-}
-{-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE NoImplicitPrelude #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE PatternGuards #-}
@@ -47,6 +46,10 @@ module Data.Aeson.Types.ToJSON
     , ToJSONKeyFunction(..)
     , toJSONKeyText
     , contramapToJSONKeyFunction
+
+    , GToJSONKey()
+    , genericToJSONKey
+
     -- * Object key-value pairs
     , KeyValue(..)
     , KeyValuePair(..)
@@ -411,7 +414,7 @@ instance KeyValue Object where
 --   newtype wrapper around 'Text'. The recommended approach is to use
 --   generalized newtype deriving:
 --
---   > newtype RecordId = RecordId { getRecordId :: Text}
+--   > newtype RecordId = RecordId { getRecordId :: Text }
 --   >   deriving (Eq,Ord,ToJSONKey)
 --
 --   Then we may write:
@@ -426,8 +429,18 @@ instance KeyValue Object where
 --
 --   It is possible to get the 'ToJSONKey' instance for free as we did
 --   with 'Foo'. However, in this case, we have a natural way to go to
---   and from 'Text' that does not require any escape sequences. So, in
---   this example, 'ToJSONKeyText' will be used instead of 'ToJSONKeyValue'.
+--   and from 'Text' that does not require any escape sequences. So
+--   'ToJSONKeyText' can be used instead of 'ToJSONKeyValue' to encode maps
+--   as objects instead of arrays of pairs. This instance may be
+--   implemented using generics as follows:
+--
+-- @
+-- instance 'ToJSONKey' Color where
+--   'toJSONKey' = 'genericToJSONKey' 'defaultJSONKeyOptions'
+-- @
+--
+--   === __Low-level implementations__
+--
 --   The 'Show' instance can be used to help write 'ToJSONKey':
 --
 --   > instance ToJSONKey Color where
@@ -514,6 +527,29 @@ contramapToJSONKeyFunction :: (b -> a) -> ToJSONKeyFunction a -> ToJSONKeyFuncti
 contramapToJSONKeyFunction h x = case x of
     ToJSONKeyText  f g -> ToJSONKeyText (f . h) (g . h)
     ToJSONKeyValue f g -> ToJSONKeyValue (f . h) (g . h)
+
+-- 'toJSONKey' for 'Generic' types.
+-- Deriving is supported for enumeration types, i.e. the sums of nullary
+-- constructors. The names of constructors will be used as keys for JSON
+-- objects.
+--
+-- See also 'genericFromJSONKey'.
+--
+-- === __Example__
+--
+-- @
+-- data Color = Red | Green | Blue
+--   deriving 'Generic'
+--
+-- instance 'ToJSONKey' Color where
+--   'toJSONKey' = 'genericToJSONKey' 'defaultJSONKeyOptions'
+-- @
+genericToJSONKey :: (Generic a, GToJSONKey (Rep a))
+           => JSONKeyOptions -> ToJSONKeyFunction a
+genericToJSONKey opts = toJSONKeyText (pack . keyModifier opts . getConName . from)
+
+class    GetConName f => GToJSONKey f
+instance GetConName f => GToJSONKey f
 
 -------------------------------------------------------------------------------
 -- Lifings of FromJSON and ToJSON to unary and binary type constructors
@@ -944,6 +980,9 @@ instance (GetConName a, GetConName b) => GetConName (a :+: b) where
 instance (Constructor c) => GetConName (C1 c a) where
     getConName = conName
 
+-- For genericToJSONKey
+instance GetConName a => GetConName (D1 d a) where
+    getConName (M1 x) = getConName x
 
 --------------------------------------------------------------------------------
 

@@ -20,6 +20,7 @@ import Data.Aeson ((.:))
 import Data.Monoid ((<>))
 import Data.Text (Text)
 import Typed.Common (load)
+import qualified Control.Monad.Fail as Fail
 import qualified Data.Aeson as Aeson
 import qualified Data.BufferBuilder.Json as Json
 
@@ -82,7 +83,7 @@ genderTable = [("male", Male), ("female", Female)]
 fruitTable :: [(Text, Fruit)]
 fruitTable = [("apple", Apple), ("strawberry", Strawberry), ("banana", Banana)]
 
-enumFromJson :: Monad m => String -> [(Text, enum)] -> (json -> m Text) -> json -> m enum
+enumFromJson :: Fail.MonadFail m => String -> [(Text, enum)] -> (json -> m Text) -> json -> m enum
 enumFromJson enumName table extract v = do
     s <- extract v
     case lookup s table of

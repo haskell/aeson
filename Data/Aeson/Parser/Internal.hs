@@ -5,6 +5,10 @@
 #if MIN_VERSION_ghc_prim(0,3,1)
 {-# LANGUAGE MagicHash #-}
 #endif
+#if __GLASGOW_HASKELL__ <= 710 && __GLASGOW_HASKELL__ >= 706
+-- Work around a compiler bug
+{-# OPTIONS_GHC -fsimpl-tick-factor=200 #-}
+#endif
 -- |
 -- Module:      Data.Aeson.Parser.Internal
 -- Copyright:   (c) 2011-2016 Bryan O'Sullivan
@@ -21,30 +25,43 @@ module Data.Aeson.Parser.Internal
     (
     -- * Lazy parsers
       json, jsonEOF
+    , jsonWith
+    , jsonLast
+    , jsonAccum
+    , jsonNoDup
     , value
     , jstring
     , jstring_
     , scientific
     -- * Strict parsers
     , json', jsonEOF'
+    , jsonWith'
+    , jsonLast'
+    , jsonAccum'
+    , jsonNoDup'
     , value'
     -- * Helpers
     , decodeWith
     , decodeStrictWith
     , eitherDecodeWith
     , eitherDecodeStrictWith
+    -- ** Handling objects with duplicate keys
+    , fromListAccum
+    , parseListNoDup
     ) where
 
 import Prelude.Compat
 
 import Control.Applicative ((<|>))
 import Control.Monad (void, when)
-import Data.Aeson.Types.Internal (IResult(..), JSONPath, Result(..), Value(..))
+import Data.Aeson.Types.Internal (IResult(..), JSONPath, Object, Result(..), Value(..))
 import Data.Attoparsec.ByteString.Char8 (Parser, char, decimal, endOfInput, isDigit_w8, signed, string)
+import Data.Function (fix)
 import Data.Functor.Compat (($>))
 import Data.Scientific (Scientific)
 import Data.Text (Text)
-import Data.Vector as Vector (Vector, empty, fromListN, reverse)
+import Data.Vector (Vector)
+import qualified Data.Vector as Vector (empty, fromList, fromListN, reverse)
 import qualified Data.Attoparsec.ByteString as A
 import qualified Data.Attoparsec.Lazy as L
 import qualified Data.ByteString as B
@@ -76,7 +93,7 @@ import qualified Data.Text.Encoding as TE
 #define C_n 110
 #define C_t 116
 
--- | Parse a top-level JSON value.
+-- | Parse any JSON value.
 --
 -- The conversion of a parsed value to a Haskell value is deferred
 -- until the Haskell value is needed.  This may improve performance if
@@ -86,10 +103,15 @@ import qualified Data.Text.Encoding as TE
 -- This function is an alias for 'value'. In aeson 0.8 and earlier, it
 -- parsed only object or array types, in conformance with the
 -- now-obsolete RFC 4627.
+--
+-- ==== Warning
+--
+-- If an object contains duplicate keys, only the first one will be kept.
+-- For a more flexible alternative, see 'jsonWith'.
 json :: Parser Value
 json = value
 
--- | Parse a top-level JSON value.
+-- | Parse any JSON value.
 --
 -- This is a strict version of 'json' which avoids building up thunks
 -- during parsing; it performs all conversions immediately.  Prefer
@@ -98,23 +120,35 @@ json = value
 -- This function is an alias for 'value''. In aeson 0.8 and earlier, it
 -- parsed only object or array types, in conformance with the
 -- now-obsolete RFC 4627.
+--
+-- ==== Warning
+--
+-- If an object contains duplicate keys, only the first one will be kept.
+-- For a more flexible alternative, see 'jsonWith''.
 json' :: Parser Value
 json' = value'
 
-object_ :: Parser Value
-object_ = {-# SCC "object_" #-} Object <$> objectValues jstring value
+-- Open recursion: object_, object_', array_, array_' are parameterized by the
+-- toplevel Value parser to be called recursively, to keep the parameter
+-- mkObject outside of the recursive loop for proper inlining.
 
-object_' :: Parser Value
-object_' = {-# SCC "object_'" #-} do
-  !vals <- objectValues jstring' value'
+object_ :: ([(Text, Value)] -> Either String Object) -> Parser Value -> Parser Value
+object_ mkObject val = {-# SCC "object_" #-} Object <$> objectValues mkObject jstring val
+{-# INLINE object_ #-}
+
+object_' :: ([(Text, Value)] -> Either String Object) -> Parser Value -> Parser Value
+object_' mkObject val' = {-# SCC "object_'" #-} do
+  !vals <- objectValues mkObject jstring' val'
   return (Object vals)
  where
   jstring' = do
     !s <- jstring
     return s
+{-# INLINE object_' #-}
 
-objectValues :: Parser Text -> Parser Value -> Parser (H.HashMap Text Value)
-objectValues str val = do
+objectValues :: ([(Text, Value)] -> Either String Object)
+             -> Parser Text -> Parser Value -> Parser (H.HashMap Text Value)
+objectValues mkObject str val = do
   skipSpace
   w <- A.peekWord8'
   if w == CLOSE_CURLY
@@ -130,16 +164,20 @@ objectValues str val = do
     let acc' = (k, v) : acc
     if ch == COMMA
       then skipSpace >> loop acc'
-      else return (H.fromList acc')
+      else case mkObject acc' of
+        Left err -> fail err
+        Right obj -> pure obj
 {-# INLINE objectValues #-}
 
-array_ :: Parser Value
-array_ = {-# SCC "array_" #-} Array <$> arrayValues value
+array_ :: Parser Value -> Parser Value
+array_ val = {-# SCC "array_" #-} Array <$> arrayValues val
+{-# INLINE array_ #-}
 
-array_' :: Parser Value
-array_' = {-# SCC "array_'" #-} do
-  !vals <- arrayValues value'
+array_' :: Parser Value -> Parser Value
+array_' val = {-# SCC "array_'" #-} do
+  !vals <- arrayValues val
   return (Array vals)
+{-# INLINE array_' #-}
 
 arrayValues :: Parser Value -> Parser (Vector Value)
 arrayValues val = do
@@ -157,42 +195,104 @@ arrayValues val = do
         else return (Vector.reverse (Vector.fromListN len (v:acc)))
 {-# INLINE arrayValues #-}
 
--- | Parse any JSON value.  You should usually 'json' in preference to
--- this function, as this function relaxes the object-or-array
--- requirement of RFC 4627.
---
--- In particular, be careful in using this function if you think your
--- code might interoperate with Javascript.  A na&#xef;ve Javascript
--- library that parses JSON data using @eval@ is vulnerable to attack
--- unless the encoded data represents an object or an array.  JSON
--- implementations in other languages conform to that same restriction
--- to preserve interoperability and security.
+-- | Parse any JSON value. Synonym of 'json'.
 value :: Parser Value
-value = do
+value = jsonWith (pure . H.fromList)
+
+-- | Parse any JSON value.
+--
+-- This parser is parameterized by a function to construct an 'Object'
+-- from a raw list of key-value pairs, where duplicates are preserved.
+-- The pairs appear in __reverse order__ from the source.
+--
+-- ==== __Examples__
+--
+-- 'json' keeps only the first occurence of each key, using 'HashMap.Lazy.fromList'.
+--
+-- @
+-- 'json' = 'jsonWith' ('Right' '.' 'H.fromList')
+-- @
+--
+-- 'jsonLast' keeps the last occurence of each key, using
+-- @'HashMap.Lazy.fromListWith' ('const' 'id')@.
+--
+-- @
+-- 'jsonLast' = 'jsonWith' ('Right' '.' 'HashMap.Lazy.fromListWith' ('const' 'id'))
+-- @
+--
+-- 'jsonAccum' keeps wraps all values in arrays to keep duplicates, using
+-- 'fromListAccum'.
+--
+-- @
+-- 'jsonAccum' = 'jsonWith' ('Right' . 'fromListAccum')
+-- @
+--
+-- 'jsonNoDup' fails if any object contains duplicate keys, using 'parseListNoDup'.
+--
+-- @
+-- 'jsonNoDup' = 'jsonWith' 'parseListNoDup'
+-- @
+jsonWith :: ([(Text, Value)] -> Either String Object) -> Parser Value
+jsonWith mkObject = fix $ \value_ -> do
   skipSpace
   w <- A.peekWord8'
   case w of
     DOUBLE_QUOTE  -> A.anyWord8 *> (String <$> jstring_)
-    OPEN_CURLY    -> A.anyWord8 *> object_
-    OPEN_SQUARE   -> A.anyWord8 *> array_
+    OPEN_CURLY    -> A.anyWord8 *> object_ mkObject value_
+    OPEN_SQUARE   -> A.anyWord8 *> array_ value_
     C_f           -> string "false" $> Bool False
     C_t           -> string "true" $> Bool True
     C_n           -> string "null" $> Null
     _              | w >= 48 && w <= 57 || w == 45
                   -> Number <$> scientific
       | otherwise -> fail "not a valid json value"
+{-# INLINE jsonWith #-}
 
--- | Strict version of 'value'. See also 'json''.
+-- | Variant of 'json' which keeps only the last occurence of every key.
+jsonLast :: Parser Value
+jsonLast = jsonWith (Right . H.fromListWith (const id))
+
+-- | Variant of 'json' wrapping all object mappings in 'Array' to preserve
+-- key-value pairs with the same keys.
+jsonAccum :: Parser Value
+jsonAccum = jsonWith (Right . fromListAccum)
+
+-- | Variant of 'json' which fails if any object contains duplicate keys.
+jsonNoDup :: Parser Value
+jsonNoDup = jsonWith parseListNoDup
+
+-- | @'fromListAccum' kvs@ is an object mapping keys to arrays containing all
+-- associated values from the original list @kvs@.
+--
+-- >>> fromListAccum [("apple", Bool True), ("apple", Bool False), ("orange", Bool False)]
+-- fromList [("apple", [Bool False, Bool True]), ("orange", [Bool False])]
+fromListAccum :: [(Text, Value)] -> Object
+fromListAccum =
+  fmap (Array . Vector.fromList . ($ [])) . H.fromListWith (.) . (fmap . fmap) (:)
+
+-- | @'fromListNoDup' kvs@ fails if @kvs@ contains duplicate keys.
+parseListNoDup :: [(Text, Value)] -> Either String Object
+parseListNoDup =
+  H.traverseWithKey unwrap . H.fromListWith (\_ _ -> Nothing) . (fmap . fmap) Just
+  where
+    unwrap k Nothing = Left $ "found duplicate key: " ++ show k
+    unwrap _ (Just v) = Right v
+
+-- | Strict version of 'value'. Synonym of 'json''.
 value' :: Parser Value
-value' = do
+value' = jsonWith' (pure . H.fromList)
+
+-- | Strict version of 'jsonWith'.
+jsonWith' :: ([(Text, Value)] -> Either String Object) -> Parser Value
+jsonWith' mkObject = fix $ \value_ -> do
   skipSpace
   w <- A.peekWord8'
   case w of
     DOUBLE_QUOTE  -> do
                      !s <- A.anyWord8 *> jstring_
                      return (String s)
-    OPEN_CURLY    -> A.anyWord8 *> object_'
-    OPEN_SQUARE   -> A.anyWord8 *> array_'
+    OPEN_CURLY    -> A.anyWord8 *> object_' mkObject value_
+    OPEN_SQUARE   -> A.anyWord8 *> array_' value_
     C_f           -> string "false" $> Bool False
     C_t           -> string "true" $> Bool True
     C_n           -> string "null" $> Null
@@ -201,6 +301,20 @@ value' = do
                      !n <- scientific
                      return (Number n)
       | otherwise -> fail "not a valid json value"
+{-# INLINE jsonWith' #-}
+
+-- | Variant of 'json'' which keeps only the last occurence of every key.
+jsonLast' :: Parser Value
+jsonLast' = jsonWith' (pure . H.fromListWith (const id))
+
+-- | Variant of 'json'' wrapping all object mappings in 'Array' to preserve
+-- key-value pairs with the same keys.
+jsonAccum' :: Parser Value
+jsonAccum' = jsonWith' (pure . fromListAccum)
+
+-- | Variant of 'json'' which fails if any object contains duplicate keys.
+jsonNoDup' :: Parser Value
+jsonNoDup' = jsonWith' parseListNoDup
 
 -- | Parse a quoted JSON string.
 jstring :: Parser Text

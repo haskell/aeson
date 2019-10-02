@@ -29,7 +29,13 @@ import Data.Aeson.Internal (JSONPathElement(..), formatError)
 import Data.Aeson.QQ.Simple (aesonQQ)
 import Data.Aeson.TH (deriveJSON, deriveToJSON, deriveToJSON1)
 import Data.Aeson.Text (encodeToTextBuilder)
-import Data.Aeson.Types (Options(..), Result(Success), ToJSON(..), Value(Null, Object), camelTo, camelTo2, defaultOptions, omitNothingFields, parse)
+import Data.Aeson.Parser
+  ( json, jsonLast, jsonAccum, jsonNoDup
+  , json', jsonLast', jsonAccum', jsonNoDup')
+import Data.Aeson.Types
+  ( Options(..), Result(Success), ToJSON(..), Value(Array, Bool, Null, Object)
+  , camelTo, camelTo2, defaultOptions, omitNothingFields, parse)
+import Data.Attoparsec.ByteString (Parser, parseOnly)
 import Data.Char (toUpper)
 import Data.Either.Compat (isLeft, isRight)
 import Data.Hashable (hash)
@@ -47,16 +53,19 @@ import Numeric.Natural (Natural)
 import System.Directory (getDirectoryContents)
 import System.FilePath ((</>), takeExtension, takeFileName)
 import Test.Tasty (TestTree, testGroup)
-import Test.Tasty.HUnit (Assertion, assertBool, assertFailure, assertEqual, testCase)
+import Test.Tasty.HUnit (Assertion, assertBool, assertFailure, assertEqual, testCase, (@?=))
 import Text.Printf (printf)
 import UnitTests.NullaryConstructors (nullaryConstructors)
+import qualified Data.ByteString as S
 import qualified Data.ByteString.Base16.Lazy as LBase16
 import qualified Data.ByteString.Lazy.Char8 as L
 import qualified Data.HashSet as HashSet
+import qualified Data.HashMap.Lazy as HashMap
 import qualified Data.Text.Lazy as LT
 import qualified Data.Text.Lazy.Builder as TLB
 import qualified Data.Text.Lazy.Encoding as LT
 import qualified Data.Text.Lazy.Encoding as TLE
+import qualified Data.Vector as Vector
 import qualified ErrorMessages
 import qualified SerializationFormatSpec
 
@@ -102,6 +111,7 @@ tests = testGroup "unit" [
   , testGroup "SingleMaybeField" singleMaybeField
   , testCase "withEmbeddedJSON" withEmbeddedJSONTest
   , testCase "SingleFieldCon" singleFieldCon
+  , testGroup "Ordering of object keys" keyOrdering
   , testCase "Ratio with denominator 0" ratioDenominator0
   , testCase "Big scientific exponent" bigScientificExponent
   , testCase "Big integer decoding" bigIntegerDecoding
@@ -556,6 +566,40 @@ instance FromJSON SingleFieldCon where
 singleFieldCon :: Assertion
 singleFieldCon =
   assertEqual "fromJSON" (Right (SingleFieldCon 0)) (eitherDecode "0")
+
+testParser :: (Eq a, Show a)
+           => String -> Parser a -> S.ByteString -> Either String a -> TestTree
+testParser name json_ s expected =
+  testCase name (parseOnly json_ s @?= expected)
+
+keyOrdering :: [TestTree]
+keyOrdering =
+  [ testParser "json" json
+      "{\"k\":true,\"k\":false}" $
+      Right (Object (HashMap.fromList [("k", Bool True)]))
+  , testParser "jsonLast" jsonLast
+      "{\"k\":true,\"k\":false}" $
+      Right (Object (HashMap.fromList [("k", Bool False)]))
+  , testParser "jsonAccum" jsonAccum
+      "{\"k\":true,\"k\":false}" $
+      Right (Object (HashMap.fromList [("k", Array (Vector.fromList [Bool True, Bool False]))]))
+  , testParser "jsonNoDup" jsonNoDup
+      "{\"k\":true,\"k\":false}" $
+      Left "Failed reading: found duplicate key: \"k\""
+
+  , testParser "json'" json'
+      "{\"k\":true,\"k\":false}" $
+      Right (Object (HashMap.fromList [("k", Bool True)]))
+  , testParser "jsonLast'" jsonLast'
+      "{\"k\":true,\"k\":false}" $
+      Right (Object (HashMap.fromList [("k", Bool False)]))
+  , testParser "jsonAccum'" jsonAccum'
+      "{\"k\":true,\"k\":false}" $
+      Right (Object (HashMap.fromList [("k", Array (Vector.fromList [Bool True, Bool False]))]))
+  , testParser "jsonNoDup'" jsonNoDup'
+      "{\"k\":true,\"k\":false}" $
+      Left "Failed reading: found duplicate key: \"k\""
+  ]
 
 ratioDenominator0 :: Assertion
 ratioDenominator0 =

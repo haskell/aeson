@@ -18,6 +18,7 @@ import Criterion.Main
 import Prelude.Compat
 import Data.Int (Int64)
 import Data.Scientific (Scientific)
+import Data.Semigroup ((<>))
 import Data.Aeson.Parser (scientific)
 
 import qualified Data.Attoparsec.ByteString.Lazy as AttoL

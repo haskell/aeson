@@ -70,6 +70,11 @@ module Data.Aeson
     , ToJSONKeyFunction(..)
     , FromJSONKey(..)
     , FromJSONKeyFunction(..)
+    -- *** Generic keys
+    , GToJSONKey()
+    , genericToJSONKey
+    , GFromJSONKey()
+    , genericFromJSONKey
     -- ** Liftings to unary and binary type constructors
     , FromJSON1(..)
     , parseJSON1
@@ -111,6 +116,10 @@ module Data.Aeson
     , SumEncoding(..)
     , camelTo2
     , defaultTaggedObject
+    -- ** Options for object keys
+    , JSONKeyOptions
+    , keyModifier
+    , defaultJSONKeyOptions
 
     -- * Inspecting @'Value's@
     , withObject

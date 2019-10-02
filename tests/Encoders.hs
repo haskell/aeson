@@ -6,6 +6,7 @@
 module Encoders (module Encoders) where
 
 import Prelude.Compat
+import Data.Text (Text)
 
 import Data.Aeson.TH
 import Data.Aeson.Types
@@ -96,6 +97,18 @@ gNullaryToEncodingObjectWithSingleField = genericToEncoding optsObjectWithSingle
 gNullaryParseJSONObjectWithSingleField :: Value -> Parser Nullary
 gNullaryParseJSONObjectWithSingleField = genericParseJSON optsObjectWithSingleField
 
+keyOptions :: JSONKeyOptions
+keyOptions = defaultJSONKeyOptions { keyModifier = ('k' :) }
+
+gNullaryToJSONKey :: Nullary -> Either String Text
+gNullaryToJSONKey x = case genericToJSONKey keyOptions of
+  ToJSONKeyText p _ -> Right (p x)
+  _ -> Left "Should be a ToJSONKeyText"
+
+gNullaryFromJSONKey :: Text -> Parser Nullary
+gNullaryFromJSONKey t = case genericFromJSONKey keyOptions of
+  FromJSONKeyTextParser p -> p t
+  _ -> fail "Not a TextParser"
 
 --------------------------------------------------------------------------------
 -- SomeType encoders/decoders

@@ -3,4 +3,9 @@
     name: "Reduce duplication"
     within:
       - Data.Aeson.Types.ToJSON
-- ignore: {name: "Eta reduce" }
+- ignore:
+    name: "Eta reduce"
+- ignore:
+    name: "Use newtype instead of data"
+    within:
+      - Data.Aeson.Types.Internal

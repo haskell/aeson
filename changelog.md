@@ -1,5 +1,48 @@
 For the latest version of this document, please see [https://github.com/bos/aeson/blob/master/changelog.md](https://github.com/bos/aeson/blob/master/changelog.md).
 
+### 1.4.5.0
+
+* Expose `(<?>)`, `JSONPath` and `JSONPathElement(..)` from `Data.Aeson.Types`. Previously only available through internal modules. Thanks to Luke Clifton.
+
+* Support for base-compat 0.11, thanks to Ryan Scott.
+
+* Travis build for GHC 8.8, thanks to Oleg Grenrus.
+
+### 1.4.4.0
+
+**New features**:
+
+* Adds a parameterized parser `jsonWith` that can be used to choose how to handle duplicate keys in objects, thanks to Xia Li-Yao.
+
+* Add generic implementations of `FromJSONKey` and `ToJSONKey`, thanks to Xia Li-Yao. Example:
+
+```haskell
+data Foo = Bar
+  deriving Generic
+
+opts :: JSONKeyOptions
+opts = defaultJSONKeyOptions { keyModifier = toLower }
+
+instance ToJSONKey Foo where
+  toJSONKey = genericToJSONKey opts
+
+instance FromJSONKey Foo where
+  fromJSONKey = genericFromJSONKey opts
+```
+
+**Minor**:
+* aeson now uses `time-compat` instead of `time-locale-compat`, thanks to Oleg Grenrus.
+* Prepare for `MonadFail` breakages in GHC 8.8, thanks to Oleg Grenrus.
+* Require `bytestring >= 0.10.8.1` for newer GHCs to avoid build failures, thanks to Oleg Grenrus.
+* Support `primitive 0.7.*`, thanks to Adam Bergmark.
+* Allow `semigroups 0.19.*` and `hashable 1.3.*`, thanks to Oleg Grenrus.
+* Fix a typo in the error message when parsing `NonEmpty`, thanks to Colin Woodbury.
+* Document surprising behavior when using `omitNothingFields` with type variables, thanks to Xia Li-Yao.
+
+**Internal changes**:
+* Code cleanup by Oleg Grenrus
+* Fix dependencies of the benchmarks on older GHC's, thanks to Xia Li-Yao.
+
 ### 1.4.3.0
 * Improve error messages for FromJSON in existing instances and GHC Generic implementation. Thanks to Xia Li-Yao & Igor Pashev.
 * Tweak error-reporting combinators and their documentation. Thanks to Xia Li-Yao.
