@@ -911,11 +911,18 @@ type ConName = String
 contextType :: TypeName -> Parser a -> Parser a
 contextType = prependContext
 
+
+
 -- | Add the tagKey that will be looked up while building an ADT
-contextTag :: Text -> Parser a -> Parser a
-contextTag tagKey = prependFailure
-  ("Missing required tagKey \"" ++ unpack tagKey ++
-   "\". The parser returned error was: ")
+-- | Produce the error equivalent to
+-- | Left "Error in $: parsing T failed, expected an object with keys "tag" and
+-- | "contents", where "tag" i-- |s associated to one of ["Foo", "Bar"],
+-- | The parser returned error was: could not find key "tag"
+contextTag :: Text -> [String] -> Parser a -> Parser a
+contextTag tagKey cnames = prependFailure
+  ("expected an object with key \"" ++ unpack tagKey ++
+    "\" where \"tag\" is associated to one of " ++ show cnames ++
+    ". The parser returned error was: ")
 
 -- | Add the name of the constructor being parsed to a parser's error messages.
 contextCons :: ConName -> TypeName -> Parser a -> Parser a
@@ -1082,9 +1089,10 @@ instance Constructor c => ConstructorNames (C1 c a) where
       where
         cname = conName (undefined :: M1 _i c _f _p)
 
---------------------------------------------------------------------------------
 
-parseNonAllNullarySum :: ( FromPair          arity f
+--------------------------------------------------------------------------------
+parseNonAllNullarySum :: forall f c arity.
+                         ( FromPair          arity f
                          , FromTaggedObject  arity f
                          , FromUntaggedValue arity f
                          , ConstructorNames        f
@@ -1094,14 +1102,17 @@ parseNonAllNullarySum p@(tname :* opts :* _) =
     case sumEncoding opts of
       TaggedObject{..} ->
           withObject tname $ \obj -> do
-              tag <- (contextType tname) . (contextTag tagKey) $ obj .: tagKey
+              tag <- (contextType tname) . (contextTag tagKey cnames_) $ obj .: tagKey
               fromMaybe (badTag tag <?> Key tagKey) $
-                  parseFromTaggedObject (tag :* contentsFieldName :* p) obj
+                parseFromTaggedObject (tag :* contentsFieldName :* p) obj
         where
           tagKey = pack tagFieldName
           badTag tag = failWith_ $ \cnames ->
               "expected tag field to be one of " ++ show cnames ++
               ", but found tag " ++ show tag
+          cnames_ = unTagged2 (constructorTags opts :: Tagged2 f [String])
+          --cname_ = conName (undefined :: M1 _i c _f _p)
+          -- forall f a. ConstructorNames f
 
       ObjectWithSingleField ->
           withObject tname $ \obj -> case H.toList obj of
