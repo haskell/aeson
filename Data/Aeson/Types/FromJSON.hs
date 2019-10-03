@@ -1162,7 +1162,7 @@ parseNonAllNullarySum p@(tname :* opts :* _) =
           badTag tag = failWith_ $ \cnames ->
               "expected tag field to be one of " ++ show cnames ++
               ", but found tag " ++ show tag
-          cnames_ = unTagged2 (constructorTags opts :: Tagged2 f [String])
+          cnames_ = unTagged2 (constructorTags (constructorTagModifier opts) :: Tagged2 f [String])
           --cname_ = conName (undefined :: M1 _i c _f _p)
           -- forall f a. ConstructorNames f
 
