@@ -1154,7 +1154,7 @@ parseNonAllNullarySum p@(tname :* opts :* _) =
     case sumEncoding opts of
       TaggedObject{..} ->
           withObject tname $ \obj -> do
-              tag <- (contextType tname) . (contextTag tagKey cnames_) $ obj .: tagKey
+              tag <- contextType tname . (contextTag tagKey cnames_) $ obj .: tagKey
               fromMaybe (badTag tag <?> Key tagKey) $
                 parseFromTaggedObject (tag :* contentsFieldName :* p) obj
         where
