@@ -952,18 +952,15 @@ type ConName = String
 contextType :: TypeName -> Parser a -> Parser a
 contextType = prependContext
 
-
-
 -- | Add the tagKey that will be looked up while building an ADT
 -- | Produce the error equivalent to
 -- | Left "Error in $: parsing T failed, expected an object with keys "tag" and
 -- | "contents", where "tag" i-- |s associated to one of ["Foo", "Bar"],
 -- | The parser returned error was: could not find key "tag"
 contextTag :: Text -> [String] -> Parser a -> Parser a
-contextTag tagKey cnames = prependFailure
-  ("expected an object with key \"" ++ unpack tagKey ++
-    "\" where \"tag\" is associated to one of " ++ show cnames ++
-    ". The parser returned error was: ")
+contextTag tagKey cnames = modifyFailure (\_ ->
+  ("expected Object with key \"" ++ unpack tagKey ++ "\"" ++
+    " associated to one of " ++ show cnames ++ "."))
 
 -- | Add the name of the constructor being parsed to a parser's error messages.
 contextCons :: ConName -> TypeName -> Parser a -> Parser a
@@ -1163,8 +1160,6 @@ parseNonAllNullarySum p@(tname :* opts :* _) =
               "expected tag field to be one of " ++ show cnames ++
               ", but found tag " ++ show tag
           cnames_ = unTagged2 (constructorTags (constructorTagModifier opts) :: Tagged2 f [String])
-          --cname_ = conName (undefined :: M1 _i c _f _p)
-          -- forall f a. ConstructorNames f
 
       ObjectWithSingleField ->
           withObject tname $ \obj -> case H.toList obj of
