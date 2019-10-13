@@ -958,9 +958,9 @@ contextType = prependContext
 -- | "contents", where "tag" i-- |s associated to one of ["Foo", "Bar"],
 -- | The parser returned error was: could not find key "tag"
 contextTag :: Text -> [String] -> Parser a -> Parser a
-contextTag tagKey cnames = modifyFailure (\_ ->
+contextTag tagKey cnames = modifyFailure (const
   ("expected Object with key \"" ++ unpack tagKey ++ "\"" ++
-    " associated to one of " ++ show cnames ++ "."))
+  " associated to one of " ++ show cnames ++ "."))
 
 -- | Add the name of the constructor being parsed to a parser's error messages.
 contextCons :: ConName -> TypeName -> Parser a -> Parser a
