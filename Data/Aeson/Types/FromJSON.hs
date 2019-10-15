@@ -25,7 +25,6 @@
 
 module Data.Aeson.Types.FromJSON
     (
-
     -- * Core JSON classes
       FromJSON(..)
     -- * Liftings to unary and binary type constructors
@@ -705,7 +704,6 @@ instance (FromJSON a) => FromJSON [a] where
 -- > -- Error: "parsing MyType failed, [error message]"
 prependContext :: String -> Parser a -> Parser a
 prependContext name = prependFailure ("parsing " ++ name ++ " failed, ")
-
 
 -- | @'withObject' name f value@ applies @f@ to the 'Object' when @value@
 -- is an 'Data.Aeson.Object' and fails otherwise.
