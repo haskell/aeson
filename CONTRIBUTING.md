@@ -76,7 +76,7 @@ Therefore, a ghci development experience would be:
 2.  :r to reload                                                                                                                                                                                                    
 3.  `main` to run all tests, or `:main --pattern Foo` to run specific tests matched by pattern.                                                                                                                     
                                                                                                                                                                                                                     
-Some discussion on this topic can also be found here #733.     
+Some discussion on this topic can also be found here [here](https://github.com/bos/aeson/issues/733)    
 
 Of course before submitting a PR, the following steps are recommended:
 
