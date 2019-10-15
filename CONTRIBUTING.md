@@ -58,3 +58,27 @@ import Foo as F
 import Qux (Q(..), q)
 import qualified A
 ```
+                                                                                                                                              
+                                                                                                                                                                                                                    
+## Development Workflow                                                                                                                                                                                             
+                                                                                                                                                                                                                    
+Here we outline a general workflow new contributors could adopt for a nice incremental development experience.                                                                                                      
+                                                                                                                                                                                                                    
+The root folder consists of two stack-*.yaml config files.                                                                                                                                                          
+                                                                                                                                                                                                                    
+1. stack-night.yaml - Config file defines all the settings to build and test any changes.                                                                                                                           
+2. stack-bench.yaml - Used to run benchmark tests.                                                                                                                                                                  
+                                                                                                                                                                                                                    
+Therefore, a ghci development experience would be:                                                                                                                                                                 
+                                                                                                                                                                                                                    
+1. `stack ghci --stack-yaml stack-nightly.yaml --test`                                                                                                                                                              
+2.  :r to reload                                                                                                                                                                                                    
+3.  `main` to run all tests, or `:main --pattern Foo` to run specific tests matched by pattern.                                                                                                                     
+                                                                                                                                                                                                                    
+Some discussion on this topic can also be found here #733.     
+
+Of course before submitting a PR, the following steps are recommended:
+
+1. Run the entire suite of tests and benchmarks.
+2. Run hlint on the source folders. (Note: the 4 space indentation specified at the top of this document)
+                                                                 
