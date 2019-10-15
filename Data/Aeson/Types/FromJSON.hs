@@ -893,7 +893,7 @@ parseFieldMaybe' = (.:!)
 -- E.g. @'explicitParseField' 'parseJSON1' :: ('FromJSON1' f, 'FromJSON' a) -> 'Object' -> 'Text' -> 'Parser' (f a)@
 explicitParseField :: (Value -> Parser a) -> Object -> Text -> Parser a
 explicitParseField p obj key = case H.lookup key obj of
-    Nothing -> fail $ "key " ++ show key ++ " not present"
+    Nothing -> fail $ "key " ++ show key ++ " not found"
     Just v  -> p v <?> Key key
 {-# INLINE explicitParseField #-}
 
@@ -958,9 +958,9 @@ contextType = prependContext
 -- | "contents", where "tag" i-- |s associated to one of ["Foo", "Bar"],
 -- | The parser returned error was: could not find key "tag"
 contextTag :: Text -> [String] -> Parser a -> Parser a
-contextTag tagKey cnames = modifyFailure (const
+contextTag tagKey cnames = prependFailure
   ("expected Object with key \"" ++ unpack tagKey ++ "\"" ++
-  " associated to one of " ++ show cnames ++ "."))
+  " associated to one of " ++ show cnames ++ ", ")
 
 -- | Add the name of the constructor being parsed to a parser's error messages.
 contextCons :: ConName -> TypeName -> Parser a -> Parser a
