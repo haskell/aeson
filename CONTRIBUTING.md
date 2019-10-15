@@ -73,8 +73,8 @@ The root folder consists of two stack-*.yaml config files.
 Therefore, a ghci development experience would be:                                                                                                                                                                 
                                                                                                                                                                                                                     
 1. `stack ghci --stack-yaml stack-nightly.yaml --test`                                                                                                                                                              
-2.  :r to reload                                                                                                                                                                                                    
-3.  `main` to run all tests, or `:main --pattern Foo` to run specific tests matched by pattern.                                                                                                                     
+2. :r to reload                                                                                                                                                                                                    
+3. `main` to run all tests, or `:main --pattern Foo` to run specific tests matched by pattern.                                                                                                                     
                                                                                                                                                                                                                     
 Some discussion on this topic can also be found here [here](https://github.com/bos/aeson/issues/733)    
 
