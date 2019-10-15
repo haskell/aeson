@@ -25,6 +25,7 @@
 
 module Data.Aeson.Types.FromJSON
     (
+
     -- * Core JSON classes
       FromJSON(..)
     -- * Liftings to unary and binary type constructors
