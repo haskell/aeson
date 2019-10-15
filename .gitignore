@@ -5,6 +5,7 @@ dist-newstyle
 cabal.sandbox.config
 .stack-work/
 .stack-work-bench/
+*.yaml.lock
 
 *.o
 *.hi
