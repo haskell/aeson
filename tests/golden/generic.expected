@@ -10,7 +10,7 @@ Error in $: parsing Types.SomeType(Unary) failed, key "contents" not found
 Error in $: parsing Types.SomeType(Record) failed, key "testone" not found
 Error in $.testone: parsing Double failed, unexpected Boolean
 Error in $.tag: parsing Types.SomeType failed, expected tag field to be one of ["nullary","unary","product","record","list"], but found tag "X"
-Error in $: parsing Types.SomeType failed, expected Object with key "tag" associated to one of ["nullary","unary","product","record","list"], key "tag" not found
+Error in $: parsing Types.SomeType failed, expected Object with key "tag" containing to one of ["nullary","unary","product","record","list"], key "tag" not found
 Error in $: parsing Types.SomeType failed, expected Object, but encountered Array
 SomeType (single-field)
 Error in $.unary: parsing Int failed, expected Number, but encountered Object
