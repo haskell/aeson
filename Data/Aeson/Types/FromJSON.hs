@@ -892,7 +892,7 @@ parseFieldMaybe' = (.:!)
 -- E.g. @'explicitParseField' 'parseJSON1' :: ('FromJSON1' f, 'FromJSON' a) -> 'Object' -> 'Text' -> 'Parser' (f a)@
 explicitParseField :: (Value -> Parser a) -> Object -> Text -> Parser a
 explicitParseField p obj key = case H.lookup key obj of
-    Nothing -> fail $ "key " ++ show key ++ " not present"
+    Nothing -> fail $ "key " ++ show key ++ " not found"
     Just v  -> p v <?> Key key
 {-# INLINE explicitParseField #-}
 
@@ -950,6 +950,16 @@ type ConName = String
 -- | Add the name of the type being parsed to a parser's error messages.
 contextType :: TypeName -> Parser a -> Parser a
 contextType = prependContext
+
+-- | Add the tagKey that will be looked up while building an ADT
+-- | Produce the error equivalent to
+-- | Left "Error in $: parsing T failed, expected an object with keys "tag" and
+-- | "contents", where "tag" i-- |s associated to one of ["Foo", "Bar"],
+-- | The parser returned error was: could not find key "tag"
+contextTag :: Text -> [String] -> Parser a -> Parser a
+contextTag tagKey cnames = prependFailure
+  ("expected Object with key \"" ++ unpack tagKey ++ "\"" ++
+  " containing one of " ++ show cnames ++ ", ")
 
 -- | Add the name of the constructor being parsed to a parser's error messages.
 contextCons :: ConName -> TypeName -> Parser a -> Parser a
@@ -1129,8 +1139,8 @@ instance ConstructorNames a => ConstructorNames (D1 d a) where
         retag (Tagged2 x) = Tagged2 x
 
 --------------------------------------------------------------------------------
-
-parseNonAllNullarySum :: ( FromPair          arity f
+parseNonAllNullarySum :: forall f c arity.
+                         ( FromPair          arity f
                          , FromTaggedObject  arity f
                          , FromUntaggedValue arity f
                          , ConstructorNames        f
@@ -1140,7 +1150,7 @@ parseNonAllNullarySum p@(tname :* opts :* _) =
     case sumEncoding opts of
       TaggedObject{..} ->
           withObject tname $ \obj -> do
-              tag <- contextType tname $ obj .: tagKey
+              tag <- contextType tname . contextTag tagKey cnames_ $ obj .: tagKey
               fromMaybe (badTag tag <?> Key tagKey) $
                   parseFromTaggedObject (tag :* contentsFieldName :* p) obj
         where
@@ -1148,6 +1158,7 @@ parseNonAllNullarySum p@(tname :* opts :* _) =
           badTag tag = failWith_ $ \cnames ->
               "expected tag field to be one of " ++ show cnames ++
               ", but found tag " ++ show tag
+          cnames_ = unTagged2 (constructorTags (constructorTagModifier opts) :: Tagged2 f [String])
 
       ObjectWithSingleField ->
           withObject tname $ \obj -> case H.toList obj of
