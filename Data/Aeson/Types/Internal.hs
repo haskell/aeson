@@ -49,6 +49,8 @@ module Data.Aeson.Types.Internal
     , parserThrowError
     , parserCatchError
     , formatError
+    , formatPath
+    , formatRelativePath
     , (<?>)
     -- * Constructors and accessors
     , object
@@ -458,7 +460,17 @@ parseEither m v = runParser (m v) [] onError Right
 -- | Annotate an error message with a
 -- <http://goessner.net/articles/JsonPath/ JSONPath> error location.
 formatError :: JSONPath -> String -> String
-formatError path msg = "Error in " ++ format "$" path ++ ": " ++ msg
+formatError path msg = "Error in " ++ formatPath path ++ ": " ++ msg
+
+-- | Format a <http://goessner.net/articles/JsonPath/ JSONPath> as a 'String',
+-- representing the root object as @$@.
+formatPath :: JSONPath -> String
+formatPath path = "$" ++ formatRelativePath path
+
+-- | Format a <http://goessner.net/articles/JsonPath/ JSONPath> as a 'String'
+-- which represents the path relative to some root object.
+formatRelativePath :: JSONPath -> String
+formatRelativePath path = format "" path
   where
     format :: String -> JSONPath -> String
     format pfx []                = pfx
