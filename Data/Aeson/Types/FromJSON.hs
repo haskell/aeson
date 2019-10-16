@@ -959,7 +959,7 @@ contextType = prependContext
 contextTag :: Text -> [String] -> Parser a -> Parser a
 contextTag tagKey cnames = prependFailure
   ("expected Object with key \"" ++ unpack tagKey ++ "\"" ++
-  " containing to one of " ++ show cnames ++ ", ")
+  " containing one of " ++ show cnames ++ ", ")
 
 -- | Add the name of the constructor being parsed to a parser's error messages.
 contextCons :: ConName -> TypeName -> Parser a -> Parser a
