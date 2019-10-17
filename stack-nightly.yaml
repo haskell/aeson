@@ -1,4 +1,4 @@
-resolver: nightly-2019-10-14
+resolver: nightly-2019-05-13
 packages:
 - '.'
 - attoparsec-iso8601
@@ -8,4 +8,6 @@ flags:
   attoparsec-iso8601:
     fast: true
 extra-deps:
-- generic-deriving-1.12.4
+- hlint-2.1.18
+- time-compat-1.9.2.2
+- quickcheck-instances-0.3.21
