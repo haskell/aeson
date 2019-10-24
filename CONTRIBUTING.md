@@ -79,10 +79,9 @@ Some discussion on this topic can also be found here [here](https://github.com/b
 
 Of course before submitting a PR, the following steps are recommended:
 
-1. Run the entire suite of tests
-2. Run hlint on the source folders.
-3. Run the benchmark tests if you believe your changes could affect the benchmarks.
-
+1. 'stack test --stack-yaml stack-nightly.yaml` - Run the entire suite of tests
+2. `make hlint` - Run hlint on the source folders.
+3. 'stack test --stack-yaml stack-bench.yaml` - Run the benchmark tests if you believe your changes could affect the benchmarks.
 
 ## Development Workflow (If you plan on using Cabal)
 
