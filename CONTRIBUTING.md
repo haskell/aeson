@@ -59,24 +59,31 @@ import Qux (Q(..), q)
 import qualified A
 ```
 
-## Development Workflow
+## Development Workflow (If you plan on using Stack)
 
 Here we outline a general workflow new contributors could adopt for a nice incremental development experience.
 
 The root folder consists of two stack-*.yaml config files.
 
-1. stack-night.yaml - Config file defines all the settings to build and test any changes.
+1. stack-nightly.yaml - Config file defines all the settings to build and test any changes.
 2. stack-bench.yaml - Used to run benchmark tests.
+3. stack-ffi-unescape.yaml - This is for replacing certain parts with a C-implementation.
 
 Therefore, a ghci development experience would be:
 
 1. `stack ghci --stack-yaml stack-nightly.yaml --test`
-2. :r to reload
+2. :r to recompile
 3. `main` to run all tests, or `:main --pattern Foo` to run specific tests matched by pattern.
 
 Some discussion on this topic can also be found here [here](https://github.com/bos/aeson/issues/733)
 
 Of course before submitting a PR, the following steps are recommended:
 
-1. Run the entire suite of tests and benchmarks.
+1. Run the entire suite of tests
 2. Run hlint on the source folders.
+3. Run the benchmark tests if you believe your changes could affect the benchmarks.
+
+
+## Development Workflow (If you plan on using Cabal)
+
+TBD
