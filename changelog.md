@@ -1,5 +1,13 @@
 For the latest version of this document, please see [https://github.com/bos/aeson/blob/master/changelog.md](https://github.com/bos/aeson/blob/master/changelog.md).
 
+### 1.4.6.0
+
+* Provide a clearer error message when a required tagKey for a constructor is missing, thanks to Guru Devanla.
+  The error message now looks like this: `Error in $: parsing Types.SomeType failed, expected Object with key "tag" containing one of ["nullary","unary","product","record","list"], key "tag" not found`
+
+* Add `formatPath` and `formatRelativePath` functions to turn a `JSONPath` into a `String`, thanks to Robbie McMichael
+
+
 ### 1.4.5.0
 
 * Expose `(<?>)`, `JSONPath` and `JSONPathElement(..)` from `Data.Aeson.Types`. Previously only available through internal modules. Thanks to Luke Clifton.
