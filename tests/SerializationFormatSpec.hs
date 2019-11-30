@@ -3,9 +3,7 @@
 {-# LANGUAGE GADTs #-}
 {-# LANGUAGE NoImplicitPrelude #-}
 {-# LANGUAGE OverloadedStrings #-}
-#if __GLASGOW_HASKELL__ >= 708
 {-# LANGUAGE DataKinds #-}
-#endif
 
 ------------------------------------------------------------------------------
 -- These tests assert that the JSON serialization doesn't change by accident.
@@ -77,10 +75,8 @@ jsonExamples =
   , example "Just"  "1"  (Just 1 :: Maybe Int)
   , example "Proxy Int" "null"  (Proxy :: Proxy Int)
   , example "Tagged Char Int" "1"  (Tagged 1 :: Tagged Char Int)
-#if __GLASGOW_HASKELL__ >= 708
     -- Test Tagged instance is polykinded
   , example "Tagged 123 Int" "1"  (Tagged 1 :: Tagged 123 Int)
-#endif
   , example "Const Char Int" "\"c\""  (Const 'c' :: Const Char Int)
   , example "Tuple" "[1,2]"  ((1, 2) :: (Int, Int))
   , example "NonEmpty" "[1,2,3]"  (1 :| [2, 3] :: NonEmpty Int)

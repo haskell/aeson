@@ -1,4 +1,3 @@
-{-# LANGUAGE CPP #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE NoImplicitPrelude #-}
@@ -25,9 +24,7 @@ import qualified Data.HashMap.Strict as HM
 
 import Data.Orphans ()
 import Test.QuickCheck.Instances ()
-#if MIN_VERSION_base(4,7,0)
 import Data.Hashable.Time ()
-#endif
 
 -- "System" types.
 

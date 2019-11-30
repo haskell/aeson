@@ -7,15 +7,12 @@
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE NoImplicitPrelude #-}
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE PolyKinds #-}
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TypeOperators #-}
 {-# LANGUAGE UndecidableInstances #-}
 {-# LANGUAGE ViewPatterns #-}
-
-#if __GLASGOW_HASKELL__ >= 706
-{-# LANGUAGE PolyKinds #-}
-#endif
 
 #include "incoherent-compat.h"
 #include "overlapping-compat.h"
@@ -120,9 +117,9 @@ import GHC.Generics
 import Numeric.Natural (Natural)
 import Text.ParserCombinators.ReadP (readP_to_S)
 import Unsafe.Coerce (unsafeCoerce)
-import qualified Data.Aeson.Compat as Compat
 import qualified Data.Aeson.Parser.Time as Time
 import qualified Data.Attoparsec.ByteString.Char8 as A (endOfInput, parseOnly, scientific)
+import qualified Data.ByteString.Lazy as L
 import qualified Data.DList as DList
 import qualified Data.HashMap.Strict as H
 import qualified Data.HashSet as HashSet
@@ -157,18 +154,8 @@ import qualified Data.Primitive.UnliftedArray as PM
 import qualified Data.Primitive.PrimArray as PM
 #endif
 
-#ifndef HAS_COERCIBLE
-#define HAS_COERCIBLE (__GLASGOW_HASKELL__ >= 707)
-#endif
 
-#if HAS_COERCIBLE
 import Data.Coerce (Coercible, coerce)
-coerce' :: Coercible a b => a -> b
-coerce' = coerce
-#else
-coerce' :: a -> b
-coerce' = unsafeCoerce
-#endif
 
 parseIndexedJSON :: (Value -> Parser a) -> Int -> Value -> Parser a
 parseIndexedJSON p idx value = p value <?> Index idx
@@ -440,11 +427,7 @@ class FromJSONKey a where
 -- At the moment this type is intentionally not exported. 'FromJSONKeyFunction'
 -- can be inspected, but cannot be constructed.
 data CoerceText a where
-#if HAS_COERCIBLE
     CoerceText :: Coercible Text a => CoerceText a
-#else
-    CoerceText :: CoerceText a
-#endif
 
 -- | This type is related to 'ToJSONKeyFunction'. If 'FromJSONKeyValue' is used in the
 --   'FromJSONKey' instance, then 'ToJSONKeyValue' should be used in the 'ToJSONKey'
@@ -464,7 +447,7 @@ data FromJSONKeyFunction a
 
 -- | Only law abiding up to interpretation
 instance Functor FromJSONKeyFunction where
-    fmap h (FromJSONKeyCoerce CoerceText) = FromJSONKeyText (h . coerce')
+    fmap h (FromJSONKeyCoerce CoerceText) = FromJSONKeyText (h . coerce)
     fmap h (FromJSONKeyText f)            = FromJSONKeyText (h . f)
     fmap h (FromJSONKeyTextParser f)      = FromJSONKeyTextParser (fmap h . f)
     fmap h (FromJSONKeyValue f)           = FromJSONKeyValue (fmap h . f)
@@ -478,9 +461,7 @@ instance Functor FromJSONKeyFunction where
 --
 -- On pre GHC 7.8 this is unconstrainted function.
 fromJSONKeyCoerce ::
-#if HAS_COERCIBLE
     Coercible Text a =>
-#endif
     FromJSONKeyFunction a
 fromJSONKeyCoerce = FromJSONKeyCoerce CoerceText
 
@@ -488,29 +469,18 @@ fromJSONKeyCoerce = FromJSONKeyCoerce CoerceText
 --
 -- See note on 'fromJSONKeyCoerce'.
 coerceFromJSONKeyFunction ::
-#if HAS_COERCIBLE
     Coercible a b =>
-#endif
     FromJSONKeyFunction a -> FromJSONKeyFunction b
-#if HAS_COERCIBLE
 coerceFromJSONKeyFunction = coerce
-#else
-coerceFromJSONKeyFunction (FromJSONKeyCoerce CoerceText) = FromJSONKeyCoerce CoerceText
-coerceFromJSONKeyFunction (FromJSONKeyText f)            = FromJSONKeyText (coerce' . f)
-coerceFromJSONKeyFunction (FromJSONKeyTextParser f)      = FromJSONKeyTextParser (fmap coerce' . f)
-coerceFromJSONKeyFunction (FromJSONKeyValue f)           = FromJSONKeyValue (fmap coerce' . f)
-#endif
 
 {-# RULES
   "FromJSONKeyCoerce: fmap id"     forall (x :: FromJSONKeyFunction a).
                                    fmap id x = x
   #-}
-#if HAS_COERCIBLE
 {-# RULES
   "FromJSONKeyCoerce: fmap coerce" forall x .
                                    fmap coerce x = coerceFromJSONKeyFunction x
   #-}
-#endif
 
 -- | Same as 'fmap'. Provided for the consistency with 'ToJSONKeyFunction'.
 mapFromJSONKeyFunction :: (a -> b) -> FromJSONKeyFunction a -> FromJSONKeyFunction b
@@ -797,13 +767,13 @@ withBoundedScientific' f v = withBoundedScientific_ id f v
 -- | A variant of 'withBoundedScientific_' parameterized by a function to apply
 -- to the 'Parser' in case of failure.
 withBoundedScientific_ :: (Parser a -> Parser a) -> (Scientific -> Parser a) -> Value -> Parser a
-withBoundedScientific_ whenFail f v@(Number scientific) =
-    if exponent > 1024
+withBoundedScientific_ whenFail f (Number scientific) =
+    if exp10 > 1024
     then whenFail (fail msg)
     else f scientific
   where
-    exponent = base10Exponent scientific
-    msg = "found a number with exponent " ++ show exponent ++ ", but it must not be greater than 1024"
+    exp10 = base10Exponent scientific
+    msg = "found a number with exponent " ++ show exp10 ++ ", but it must not be greater than 1024"
 withBoundedScientific_ whenFail _ v =
     whenFail (typeMismatch "Number" v)
 {-# INLINE withBoundedScientific_ #-}
@@ -823,7 +793,7 @@ withBool name _ v          = prependContext name (typeMismatch "Boolean" v)
 -- | Decode a nested JSON-encoded string.
 withEmbeddedJSON :: String -> (Value -> Parser a) -> Value -> Parser a
 withEmbeddedJSON _ innerParser (String txt) =
-    either fail innerParser $ eitherDecode (Compat.fromStrict $ T.encodeUtf8 txt)
+    either fail innerParser $ eitherDecode (L.fromStrict $ T.encodeUtf8 txt)
     where
         eitherDecode = eitherFormatError . eitherDecodeWith jsonEOF ifromJSON
         eitherFormatError = either (Left . uncurry formatError) Right
@@ -1991,7 +1961,6 @@ instance FromJSON DotNetTime where
 -- primitive
 -------------------------------------------------------------------------------
 
-#if MIN_VERSION_base(4,7,0)
 instance FromJSON a => FromJSON (PM.Array a) where
   -- note: we could do better than this if vector exposed the data
   -- constructor in Data.Vector.
@@ -2007,7 +1976,6 @@ instance (PM.Prim a,FromJSON a) => FromJSON (PM.PrimArray a) where
 #if !MIN_VERSION_primitive(0,7,0)
 instance (PM.PrimUnlifted a,FromJSON a) => FromJSON (PM.UnliftedArray a) where
   parseJSON = fmap Exts.fromList . parseJSON
-#endif
 #endif
 #endif
 

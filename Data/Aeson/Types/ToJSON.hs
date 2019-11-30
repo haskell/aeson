@@ -8,14 +8,11 @@
 {-# LANGUAGE NoImplicitPrelude #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE PatternGuards #-}
+{-# LANGUAGE PolyKinds #-}
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TypeOperators #-}
 {-# LANGUAGE UndecidableInstances #-}
-
-#if __GLASGOW_HASKELL__ >= 706
-{-# LANGUAGE PolyKinds #-}
-#endif
 
 #include "overlapping-compat.h"
 #include "incoherent-compat.h"
@@ -142,14 +139,6 @@ import qualified Data.Primitive.Types as PM
 import qualified Data.Primitive.UnliftedArray as PM
 #endif
 import qualified Data.Primitive.PrimArray as PM
-#endif
-
-#if !(MIN_VERSION_bytestring(0,10,0))
-import Foreign.ForeignPtr (withForeignPtr)
-import Foreign.Marshal.Utils (copyBytes)
-import Foreign.Ptr (plusPtr)
-import qualified Data.ByteString.Internal as S
-import qualified Data.ByteString.Lazy.Internal as L
 #endif
 
 toJSONPair :: (a -> Value) -> (b -> Value) -> (a, b) -> Value
@@ -515,7 +504,7 @@ toJSONKeyTextEnc e = ToJSONKeyText tot e
     -- TODO: dropAround is also used in stringEncoding, which is unfortunate atm
     tot = T.dropAround (== '"')
         . T.decodeLatin1
-        . lazyToStrictByteString
+        . L.toStrict
         . E.encodingToLazyByteString
         . e
 
@@ -1982,7 +1971,6 @@ formatMillis = take 3 . formatTime defaultTimeLocale "%q"
 -- primitive
 -------------------------------------------------------------------------------
 
-#if MIN_VERSION_base(4,7,0)
 instance ToJSON a => ToJSON (PM.Array a) where
   -- note: we could do better than this if vector exposed the data
   -- constructor in Data.Vector.
@@ -2002,7 +1990,6 @@ instance (PM.Prim a,ToJSON a) => ToJSON (PM.PrimArray a) where
 instance (PM.PrimUnlifted a,ToJSON a) => ToJSON (PM.UnliftedArray a) where
   toJSON = toJSON . Exts.toList
   toEncoding = toEncoding . Exts.toList
-#endif
 #endif
 #endif
 
@@ -2054,7 +2041,7 @@ stringEncoding :: Encoding' Text -> Value
 stringEncoding = String
     . T.dropAround (== '"')
     . T.decodeLatin1
-    . lazyToStrictByteString
+    . L.toStrict
     . E.encodingToLazyByteString
 {-# INLINE stringEncoding #-}
 
@@ -2860,31 +2847,6 @@ instance (ToJSON a, ToJSON b, ToJSON c, ToJSON d, ToJSON e, ToJSON f, ToJSON g, 
     {-# INLINE toJSON #-}
     toEncoding = toEncoding2
     {-# INLINE toEncoding #-}
-
--------------------------------------------------------------------------------
--- pre-bytestring-0.10 compatibility
--------------------------------------------------------------------------------
-
-{-# INLINE lazyToStrictByteString #-}
-lazyToStrictByteString :: L.ByteString -> S.ByteString
-#if MIN_VERSION_bytestring(0,10,0)
-lazyToStrictByteString = L.toStrict
-#else
-lazyToStrictByteString = packChunks
-
--- packChunks is taken from the blaze-builder package.
-
--- | Pack the chunks of a lazy bytestring into a single strict bytestring.
-packChunks :: L.ByteString -> S.ByteString
-packChunks lbs =
-    S.unsafeCreate (fromIntegral $ L.length lbs) (copyChunks lbs)
-  where
-    copyChunks L.Empty                         _pf = return ()
-    copyChunks (L.Chunk (S.PS fpbuf o l) lbs') pf  = do
-        withForeignPtr fpbuf $ \pbuf ->
-            copyBytes pf (pbuf `plusPtr` o) l
-        copyChunks lbs' (pf `plusPtr` l)
-#endif
 
 --------------------------------------------------------------------------------
 

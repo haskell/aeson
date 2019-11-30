@@ -72,7 +72,6 @@ library
 
     exposed-modules:
       Data.Aeson
-      Data.Aeson.Compat
       Data.Aeson.Encoding
       Data.Aeson.Encoding.Builder
       Data.Aeson.Encoding.Internal
