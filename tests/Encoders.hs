@@ -188,7 +188,6 @@ gSomeTypeToEncoding2ElemArray = genericToEncoding opts2ElemArray
 gSomeTypeParseJSON2ElemArray :: Value -> Parser (SomeType Int)
 gSomeTypeParseJSON2ElemArray = genericParseJSON opts2ElemArray
 
-#if __GLASGOW_HASKELL__ >= 706
 gSomeTypeLiftToEncoding2ElemArray :: LiftToEncoding SomeType a
 gSomeTypeLiftToEncoding2ElemArray = genericLiftToEncoding opts2ElemArray
 
@@ -197,7 +196,6 @@ gSomeTypeLiftToJSON2ElemArray = genericLiftToJSON opts2ElemArray
 
 gSomeTypeLiftParseJSON2ElemArray :: LiftParseJSON SomeType a
 gSomeTypeLiftParseJSON2ElemArray = genericLiftParseJSON opts2ElemArray
-#endif
 
 
 gSomeTypeToJSONTaggedObject :: SomeType Int -> Value
@@ -209,7 +207,6 @@ gSomeTypeToEncodingTaggedObject = genericToEncoding optsTaggedObject
 gSomeTypeParseJSONTaggedObject :: Value -> Parser (SomeType Int)
 gSomeTypeParseJSONTaggedObject = genericParseJSON optsTaggedObject
 
-#if __GLASGOW_HASKELL__ >= 706
 gSomeTypeLiftToEncodingTaggedObject :: LiftToEncoding SomeType a
 gSomeTypeLiftToEncodingTaggedObject = genericLiftToEncoding optsTaggedObject
 
@@ -218,7 +215,6 @@ gSomeTypeLiftToJSONTaggedObject = genericLiftToJSON optsTaggedObject
 
 gSomeTypeLiftParseJSONTaggedObject :: LiftParseJSON SomeType a
 gSomeTypeLiftParseJSONTaggedObject = genericLiftParseJSON optsTaggedObject
-#endif
 
 
 gSomeTypeToJSONObjectWithSingleField :: SomeType Int -> Value
@@ -230,7 +226,6 @@ gSomeTypeToEncodingObjectWithSingleField = genericToEncoding optsObjectWithSingl
 gSomeTypeParseJSONObjectWithSingleField :: Value -> Parser (SomeType Int)
 gSomeTypeParseJSONObjectWithSingleField = genericParseJSON optsObjectWithSingleField
 
-#if __GLASGOW_HASKELL__ >= 706
 gSomeTypeLiftToEncodingObjectWithSingleField :: LiftToEncoding SomeType a
 gSomeTypeLiftToEncodingObjectWithSingleField = genericLiftToEncoding optsObjectWithSingleField
 
@@ -239,7 +234,6 @@ gSomeTypeLiftToJSONObjectWithSingleField = genericLiftToJSON optsObjectWithSingl
 
 gSomeTypeLiftParseJSONObjectWithSingleField :: LiftParseJSON SomeType a
 gSomeTypeLiftParseJSONObjectWithSingleField = genericLiftParseJSON optsObjectWithSingleField
-#endif
 
 
 gSomeTypeToJSONOmitNothingFields :: SomeType Int -> Value

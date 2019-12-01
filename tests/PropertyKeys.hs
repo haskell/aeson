@@ -1,4 +1,3 @@
-{-# LANGUAGE CPP #-}
 {-# LANGUAGE NoImplicitPrelude #-}
 
 module PropertyKeys ( keysTests ) where
@@ -31,12 +30,10 @@ keysTests =
     , testProperty "Natural" $ roundTripKey (undefined :: Natural)
     , testProperty "Float" $ roundTripKey (undefined :: Float)
     , testProperty "Double" $ roundTripKey (undefined :: Double)
-#if MIN_VERSION_base(4,7,0)
     , testProperty "Day" $ roundTripKey (undefined :: Day)
     , testProperty "LocalTime" $ roundTripKey (undefined :: LocalTime)
     , testProperty "TimeOfDay" $ roundTripKey (undefined :: TimeOfDay)
     , testProperty "UTCTime" $ roundTripKey (undefined :: UTCTime)
-#endif
     , testProperty "Version" $ roundTripKey (undefined :: Version)
     , testProperty "Lazy Text" $ roundTripKey (undefined :: LT.Text)
     , testProperty "UUID" $ roundTripKey UUID.nil

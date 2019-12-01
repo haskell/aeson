@@ -135,15 +135,8 @@ import Data.Map (Map)
 import Data.Maybe (catMaybes, fromMaybe, mapMaybe)
 import qualified Data.Monoid as Monoid
 import Data.Set (Set)
-#if MIN_VERSION_template_haskell(2,8,0)
 import Language.Haskell.TH hiding (Arity)
-#else
-import Language.Haskell.TH
-#endif
 import Language.Haskell.TH.Datatype
-#if MIN_VERSION_template_haskell(2,7,0) && !(MIN_VERSION_template_haskell(2,8,0))
-import Language.Haskell.TH.Lib (starK)
-#endif
 #if MIN_VERSION_template_haskell(2,8,0) && !(MIN_VERSION_template_haskell(2,10,0))
 import Language.Haskell.TH.Syntax (mkNameG_tc)
 #endif
@@ -1590,21 +1583,13 @@ type TyVarMap = Map Name (Name, Name)
 -- | Returns True if a Type has kind *.
 hasKindStar :: Type -> Bool
 hasKindStar VarT{}         = True
-#if MIN_VERSION_template_haskell(2,8,0)
 hasKindStar (SigT _ StarT) = True
-#else
-hasKindStar (SigT _ StarK) = True
-#endif
 hasKindStar _              = False
 
 -- Returns True is a kind is equal to *, or if it is a kind variable.
 isStarOrVar :: Kind -> Bool
-#if MIN_VERSION_template_haskell(2,8,0)
 isStarOrVar StarT  = True
 isStarOrVar VarT{} = True
-#else
-isStarOrVar StarK  = True
-#endif
 isStarOrVar _      = False
 
 -- Generate a list of fresh names with a common prefix, and numbered suffixes.
@@ -1662,9 +1647,7 @@ isTyFamily (ConT n) = do
 #else
          FamilyI (FamilyD TypeFam _ _ _) _ -> True
 #endif
-#if MIN_VERSION_template_haskell(2,9,0)
          FamilyI ClosedTypeFamilyD{} _     -> True
-#endif
          _ -> False
 isTyFamily _ = return False
 
@@ -1692,9 +1675,7 @@ mentionsName = go
     go :: Type -> [Name] -> Bool
     go (AppT t1 t2) names = go t1 names || go t2 names
     go (SigT t _k)  names = go t names
-#if MIN_VERSION_template_haskell(2,8,0)
                               || go _k names
-#endif
     go (VarT n)     names = n `elem` names
     go _            _     = False
 
@@ -1750,23 +1731,14 @@ uncurryTy t = ([], t :| [])
 
 -- | Like uncurryType, except on a kind level.
 uncurryKind :: Kind -> NonEmpty Kind
-#if MIN_VERSION_template_haskell(2,8,0)
 uncurryKind = snd . uncurryTy
-#else
-uncurryKind (ArrowK k1 k2) = k1 <| uncurryKind k2
-uncurryKind k              = k :| []
-#endif
 
 createKindChain :: Int -> Kind
 createKindChain = go starK
   where
     go :: Kind -> Int -> Kind
     go k 0 = k
-#if MIN_VERSION_template_haskell(2,8,0)
     go k !n = go (AppT (AppT ArrowT StarT) k) (n - 1)
-#else
-    go k !n = go (ArrowK StarK k) (n - 1)
-#endif
 
 -- | Makes a string literal expression from a constructor's name.
 conNameExp :: Options -> ConstructorInfo -> Q Exp
@@ -1820,11 +1792,7 @@ canEtaReduce remaining dropped =
 -------------------------------------------------------------------------------
 
 applySubstitutionKind :: Map Name Kind -> Type -> Type
-#if MIN_VERSION_template_haskell(2,8,0)
 applySubstitutionKind = applySubstitution
-#else
-applySubstitutionKind _ t = t
-#endif
 
 substNameWithKind :: Name -> Kind -> Type -> Type
 substNameWithKind n k = applySubstitutionKind (M.singleton n k)
@@ -1988,9 +1956,7 @@ data StarKindStatus = NotKindStar
 canRealizeKindStar :: Type -> StarKindStatus
 canRealizeKindStar t = case t of
     _ | hasKindStar t -> KindStar
-#if MIN_VERSION_template_haskell(2,8,0)
     SigT _ (VarT k) -> IsKindVar k
-#endif
     _ -> NotKindStar
 
 -- | Returns 'Just' the kind variable 'Name' of a 'StarKindStatus' if it exists.

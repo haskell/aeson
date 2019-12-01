@@ -36,7 +36,7 @@ library
     Data.Attoparsec.Time
   build-depends:
     attoparsec >= 0.13.0.1,
-    base >= 4.5 && < 5,
+    base >= 4.7 && < 5,
     base-compat >= 0.9.1 && < 0.12,
     text >= 1.1.1.0,
     time >= 1.1.1.4

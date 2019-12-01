@@ -44,11 +44,9 @@ genericTests =
           , testProperty "TaggedObject" (toParseJSON gSomeTypeParseJSONTaggedObject gSomeTypeToJSONTaggedObject)
           , testProperty "ObjectWithSingleField" (toParseJSON gSomeTypeParseJSONObjectWithSingleField gSomeTypeToJSONObjectWithSingleField)
 
-#if __GLASGOW_HASKELL__ >= 706
           , testProperty "2ElemArray unary" (toParseJSON1 gSomeTypeLiftParseJSON2ElemArray gSomeTypeLiftToJSON2ElemArray)
           , testProperty "TaggedObject unary" (toParseJSON1 gSomeTypeLiftParseJSONTaggedObject gSomeTypeLiftToJSONTaggedObject)
           , testProperty "ObjectWithSingleField unary" (toParseJSON1 gSomeTypeLiftParseJSONObjectWithSingleField gSomeTypeLiftToJSONObjectWithSingleField)
-#endif
           ]
         ]
       , testGroup "OneConstructor" [
@@ -85,30 +83,24 @@ genericTests =
 
       , testProperty "SomeType2ElemArray" $
         gSomeTypeToJSON2ElemArray `sameAs` gSomeTypeToEncoding2ElemArray
-#if __GLASGOW_HASKELL__ >= 706
       , testProperty "SomeType2ElemArray unary" $
         gSomeTypeLiftToJSON2ElemArray `sameAs1` gSomeTypeLiftToEncoding2ElemArray
       , testProperty "SomeType2ElemArray unary agree" $
         gSomeTypeToEncoding2ElemArray `sameAs1Agree` gSomeTypeLiftToEncoding2ElemArray
-#endif
 
       , testProperty "SomeTypeTaggedObject" $
         gSomeTypeToJSONTaggedObject `sameAs` gSomeTypeToEncodingTaggedObject
-#if __GLASGOW_HASKELL__ >= 706
       , testProperty "SomeTypeTaggedObject unary" $
         gSomeTypeLiftToJSONTaggedObject `sameAs1` gSomeTypeLiftToEncodingTaggedObject
       , testProperty "SomeTypeTaggedObject unary agree" $
         gSomeTypeToEncodingTaggedObject `sameAs1Agree` gSomeTypeLiftToEncodingTaggedObject
-#endif
 
       , testProperty "SomeTypeObjectWithSingleField" $
         gSomeTypeToJSONObjectWithSingleField `sameAs` gSomeTypeToEncodingObjectWithSingleField
-#if __GLASGOW_HASKELL__ >= 706
       , testProperty "SomeTypeObjectWithSingleField unary" $
         gSomeTypeLiftToJSONObjectWithSingleField `sameAs1` gSomeTypeLiftToEncodingObjectWithSingleField
       , testProperty "SomeTypeObjectWithSingleField unary agree" $
         gSomeTypeToEncodingObjectWithSingleField `sameAs1Agree` gSomeTypeLiftToEncodingObjectWithSingleField
-#endif
 
       , testProperty "SomeTypeOmitNothingFields" $
         gSomeTypeToJSONOmitNothingFields `sameAs` gSomeTypeToEncodingOmitNothingFields
