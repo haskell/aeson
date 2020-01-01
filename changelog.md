@@ -1,5 +1,10 @@
 For the latest version of this document, please see [https://github.com/bos/aeson/blob/master/changelog.md](https://github.com/bos/aeson/blob/master/changelog.md).
 
+### upcoming
+
+* `FromJSON` instance of `Ratio a` now parses numbers in addtion to
+  standard `{numerator=..., denumerator=...}` encoding.
+
 ### 1.4.6.0
 
 * Provide a clearer error message when a required tagKey for a constructor is missing, thanks to Guru Devanla.
