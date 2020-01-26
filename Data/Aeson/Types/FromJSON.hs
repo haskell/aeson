@@ -1541,7 +1541,9 @@ instance FromJSONKey Float where
         _           -> Scientific.toRealFloat <$> parseScientificText t
 
 instance (FromJSON a, Integral a) => FromJSON (Ratio a) where
-    parseJSON (Number x) = pure (realToFrac x)
+    parseJSON (Number x) = prependContext "Ratio"
+                         $ withBoundedScientific' (pure . realToFrac)
+                         $ Number x
     parseJSON o          = objParser o
       where
         objParser = withObject "Rational" $ \obj -> do
