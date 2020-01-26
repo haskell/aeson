@@ -100,7 +100,6 @@ import GHC.Generics
 import Numeric.Natural (Natural)
 import qualified Data.Aeson.Encoding as E
 import qualified Data.Aeson.Encoding.Internal as E (InArray, comma, econcat, retagEncoding)
-import qualified Data.ByteString as S
 import qualified Data.ByteString.Lazy as L
 import qualified Data.DList as DList
 import qualified Data.HashMap.Strict as H
