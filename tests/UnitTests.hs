@@ -116,6 +116,7 @@ tests = testGroup "unit" [
   , testCase "Ratio with denominator 0" ratioDenominator0
   , testCase "Rational parses number"   rationalNumber
   , testCase "Big rational"             bigRationalDecoding
+  , testCase "Small rational"           smallRationalDecoding
   , testCase "Big scientific exponent" bigScientificExponent
   , testCase "Big integer decoding" bigIntegerDecoding
   , testCase "Big natural decading" bigNaturalDecoding
@@ -631,8 +632,15 @@ rationalNumber =
 bigRationalDecoding :: Assertion
 bigRationalDecoding =
   assertEqual "Decoding an Integer with a large exponent should fail"
-    (Left "Error in $: parsing Ratio failed, found a number with exponent 2000, but it must not be greater than 1024")
+    (Left "Error in $: parsing Ratio failed, found a number with exponent 2000, but it must not be greater than 1024 or less than -1024")
     ((eitherDecode :: L.ByteString -> Either String Rational) "1e2000")
+
+smallRationalDecoding :: Assertion
+smallRationalDecoding =
+  assertEqual "Decoding an Integer with a large exponent should fail"
+    (Left "Error in $: parsing Ratio failed, found a number with exponent -2000, but it must not be greater than 1024 or less than -1024")
+    ((eitherDecode :: L.ByteString -> Either String Rational) "1e-2000")
+
 
 bigScientificExponent :: Assertion
 bigScientificExponent =

@@ -1541,10 +1541,15 @@ instance FromJSONKey Float where
         _           -> Scientific.toRealFloat <$> parseScientificText t
 
 instance (FromJSON a, Integral a) => FromJSON (Ratio a) where
-    parseJSON (Number x) = prependContext "Ratio"
-                         $ withBoundedScientific' (pure . realToFrac)
-                         $ Number x
-    parseJSON o          = objParser o
+    parseJSON (Number x)
+      | exp10 <= 1024
+      , exp10 >= -1024 = return $! realToFrac x
+      | otherwise      = prependContext "Ratio" $ fail msg
+      where
+        exp10 = base10Exponent x
+        msg = "found a number with exponent " ++ show exp10
+           ++ ", but it must not be greater than 1024 or less than -1024"
+    parseJSON o = objParser o
       where
         objParser = withObject "Rational" $ \obj -> do
             numerator <- obj .: "numerator"
