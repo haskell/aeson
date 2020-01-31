@@ -59,6 +59,7 @@ import Data.Attoparsec.ByteString.Char8 (Parser, char, decimal, endOfInput, isDi
 import Data.Function (fix)
 import Data.Functor.Compat (($>))
 import Data.Scientific (Scientific)
+import Data.Semigroup ((<>))
 import Data.Text (Text)
 import Data.Vector (Vector)
 import qualified Data.Vector as Vector (empty, fromList, fromListN, reverse)
@@ -67,6 +68,9 @@ import qualified Data.Attoparsec.Lazy as L
 import qualified Data.ByteString as B
 import qualified Data.ByteString.Unsafe as B
 import qualified Data.ByteString.Lazy as L
+import qualified Data.ByteString.Lazy as BSL
+import qualified Data.ByteString.Lazy.Char8 as C
+import qualified Data.ByteString.Builder as B
 import qualified Data.HashMap.Strict as H
 import qualified Data.Scientific as Sci
 import Data.Aeson.Parser.Unescape (unescapeText)
@@ -390,13 +394,34 @@ eitherDecodeWith p to s =
       L.Done _ v     -> case to v of
                           ISuccess a      -> Right a
                           IError path msg -> Left (path, msg)
-      L.Fail _ ctx msg -> Left ([], buildMsg ctx msg)
+      L.Fail notparsed ctx msg -> Left ([], buildMsg notparsed ctx msg)
   where
-    buildMsg :: [String] -> String -> String
-    buildMsg [] msg = msg
-    buildMsg (expectation:_) msg =
-      msg ++ ". Expecting " ++ expectation
+    buildMsg :: L.ByteString -> [String] -> String -> String
+    buildMsg notYetParsed [] msg = msg ++ formatErrorLine notYetParsed
+    buildMsg notYetParsed (expectation:_) msg =
+      msg ++ ". Expecting " ++ expectation ++ formatErrorLine notYetParsed
 {-# INLINE eitherDecodeWith #-}
+
+-- | Grab the first 100 bytes from the non parsed portion and
+-- format to get nicer error messages
+formatErrorLine :: L.ByteString -> String
+formatErrorLine bs =
+  C.unpack .
+  -- if formatting results in empty ByteString just return that
+  -- otherwise construct the error message with the bytestring builder
+  (\bs' ->
+     if BSL.null bs'
+       then BSL.empty
+       else
+         B.toLazyByteString $
+         B.stringUtf8 " at '" <> B.lazyByteString bs' <> B.stringUtf8 "'"
+  ) .
+  -- if newline is present cut at that position
+  BSL.takeWhile (10 /=) .
+  -- remove spaces, CR's, tabs, backslashes and quotes characters
+  BSL.filter (`notElem` [9, 13, 32, 34, 47, 92]) .
+  -- take 100 bytes
+  BSL.take 100 $ bs
 
 eitherDecodeStrictWith :: Parser Value -> (Value -> IResult a) -> B.ByteString
                        -> Either (JSONPath, String) a
