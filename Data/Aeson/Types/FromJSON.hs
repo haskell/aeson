@@ -11,6 +11,7 @@
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TypeOperators #-}
+{-# LANGUAGE TupleSections #-}
 {-# LANGUAGE UndecidableInstances #-}
 {-# LANGUAGE ViewPatterns #-}
 
@@ -1200,9 +1201,9 @@ class FromTaggedObject' arity f isRecord where
         :: String :* ConName :* TypeName :* Options :* FromArgs arity a
         -> Object -> Tagged isRecord (Parser (f a))
 
-instance (RecordFromJSON arity f) => FromTaggedObject' arity f True where
+instance (RecordFromJSON arity f, FieldNames f) => FromTaggedObject' arity f True where
     -- Records are unpacked in the tagged object
-    parseFromTaggedObject' (_ :* p) = Tagged . recordParseJSON p
+    parseFromTaggedObject' (_ :* p) = Tagged . recordParseJSON (True :* p)
 
 instance (ConsFromJSON arity f) => FromTaggedObject' arity f False where
     -- Nonnullary nonrecords are encoded in the contents field
@@ -1243,11 +1244,11 @@ instance OVERLAPPING_
          ) => ConsFromJSON' arity (S1 s a) True where
     consParseJSON' p@(cname :* tname :* opts :* fargs)
         | unwrapUnaryRecords opts = Tagged . fmap M1 . gParseJSON opts fargs
-        | otherwise = Tagged . withObject (showCons cname tname) (recordParseJSON p)
+        | otherwise = Tagged . withObject (showCons cname tname) (recordParseJSON (False :* p))
 
 instance RecordFromJSON arity f => ConsFromJSON' arity f True where
     consParseJSON' p@(cname :* tname :* _) =
-        Tagged . withObject (showCons cname tname) (recordParseJSON p)
+        Tagged . withObject (showCons cname tname) (recordParseJSON (False :* p))
 
 instance OVERLAPPING_
          ConsFromJSON' arity U1 False where
@@ -1273,21 +1274,55 @@ instance (ProductFromJSON arity f, ProductSize f
 
 --------------------------------------------------------------------------------
 
+class FieldNames f where
+    fieldNames :: f a -> [Text] -> [Text]
+
+instance (FieldNames a, FieldNames b) => FieldNames (a :*: b) where
+    fieldNames _ =
+      fieldNames (undefined :: a x) .
+      fieldNames (undefined :: b y)
+
+instance (Selector s) => FieldNames (S1 s f) where
+    fieldNames _ = (pack (selName (undefined :: M1 _i s _f _p)) :)
+
 class RecordFromJSON arity f where
     recordParseJSON
+        :: Bool :* ConName :* TypeName :* Options :* FromArgs arity a
+        -> Object -> Parser (f a)
+
+instance ( FieldNames f
+         , RecordFromJSON' arity f
+         ) => RecordFromJSON arity f where
+    recordParseJSON (fromTaggedSum :* p@(cname :* tname :* opts :* _)) =
+        \obj -> checkUnknown obj >> recordParseJSON' p obj
+        where
+            knownFields :: H.HashMap Text ()
+            knownFields = H.fromList $ map (,()) $
+                fieldNames (undefined :: f a)
+                [pack (tagFieldName (sumEncoding opts)) | fromTaggedSum]
+            checkUnknown =
+                if not (rejectUnknownFields opts)
+                then \_ -> return ()
+                else \obj -> case H.keys (H.difference obj knownFields) of
+                    [] -> return ()
+                    unknownFields -> contextCons cname tname $
+                        fail ("unknown fields: " ++ show unknownFields)
+
+class RecordFromJSON' arity f where
+    recordParseJSON'
         :: ConName :* TypeName :* Options :* FromArgs arity a
         -> Object -> Parser (f a)
 
-instance ( RecordFromJSON arity a
-         , RecordFromJSON arity b
-         ) => RecordFromJSON arity (a :*: b) where
-    recordParseJSON p obj =
-        (:*:) <$> recordParseJSON p obj
-              <*> recordParseJSON p obj
+instance ( RecordFromJSON' arity a
+         , RecordFromJSON' arity b
+         ) => RecordFromJSON' arity (a :*: b) where
+    recordParseJSON' p obj =
+        (:*:) <$> recordParseJSON' p obj
+              <*> recordParseJSON' p obj
 
 instance OVERLAPPABLE_ (Selector s, GFromJSON arity a) =>
-         RecordFromJSON arity (S1 s a) where
-    recordParseJSON (cname :* tname :* opts :* fargs) obj = do
+         RecordFromJSON' arity (S1 s a) where
+    recordParseJSON' (cname :* tname :* opts :* fargs) obj = do
         fv <- contextCons cname tname (obj .: label)
         M1 <$> gParseJSON opts fargs fv <?> Key label
       where
@@ -1295,16 +1330,16 @@ instance OVERLAPPABLE_ (Selector s, GFromJSON arity a) =>
         sname = selName (undefined :: M1 _i s _f _p)
 
 instance INCOHERENT_ (Selector s, FromJSON a) =>
-         RecordFromJSON arity (S1 s (K1 i (Maybe a))) where
-    recordParseJSON (_ :* _ :* opts :* _) obj = M1 . K1 <$> obj .:? pack label
+         RecordFromJSON' arity (S1 s (K1 i (Maybe a))) where
+    recordParseJSON' (_ :* _ :* opts :* _) obj = M1 . K1 <$> obj .:? pack label
       where
         label = fieldLabelModifier opts sname
         sname = selName (undefined :: M1 _i s _f _p)
 
 -- Parse an Option like a Maybe.
 instance INCOHERENT_ (Selector s, FromJSON a) =>
-         RecordFromJSON arity (S1 s (K1 i (Semigroup.Option a))) where
-    recordParseJSON p obj = wrap <$> recordParseJSON p obj
+         RecordFromJSON' arity (S1 s (K1 i (Semigroup.Option a))) where
+    recordParseJSON' p obj = wrap <$> recordParseJSON' p obj
       where
         wrap :: S1 s (K1 i (Maybe a)) p -> S1 s (K1 i (Semigroup.Option a)) p
         wrap (M1 (K1 a)) = M1 (K1 (Semigroup.Option a))

@@ -136,6 +136,29 @@ outputGeneric choice = concat
       , "[1,"
       ]
 
+  , testWithSomeType "SomeType (reject unknown fields)"
+      (select
+        thSomeTypeParseJSONRejectUnknownFields
+        gSomeTypeParseJSONRejectUnknownFields)
+      [ "{\"tag\": \"record\", \"testOne\": 1.0, \"testZero\": 1}"
+      , "{\"testZero\": 1}"
+      , "{\"tag\": \"record\", \"testone\": true, \"testtwo\": null, \"testthree\": null}"
+      ]
+
+  , testWithFoo "Foo (reject unknown fields)"
+      (select
+        thFooParseJSONRejectUnknownFields
+        gFooParseJSONRejectUnknownFields)
+      [ "{\"tag\": \"foo\"}"
+      ]
+
+  , testWithFoo "Foo (reject unknown fields, tagged single)"
+      (select
+        thFooParseJSONRejectUnknownFieldsTagged
+        gFooParseJSONRejectUnknownFieldsTagged)
+      [ "{\"tag\": \"foo\", \"unknownField\": 0}"
+      ]
+
   , testWith "EitherTextInt"
       (select
         thEitherTextIntParseJSONUntaggedValue
@@ -196,3 +219,6 @@ testFor name _ = testWith name (parseJSON :: Value -> Parser a)
 
 testWithSomeType :: String -> (Value -> Parser (SomeType Int)) -> [L.ByteString] -> Output
 testWithSomeType = testWith
+
+testWithFoo :: String -> (Value -> Parser Foo) -> [L.ByteString] -> Output
+testWithFoo = testWith

@@ -29,7 +29,7 @@ import Data.Hashable.Time ()
 -- "System" types.
 
 instance Arbitrary DotNetTime where
-    arbitrary = DotNetTime `liftM` arbitrary
+    arbitrary = DotNetTime `fmap` arbitrary
     shrink = map DotNetTime . shrink . fromDotNetTime
 
 -- | Compare timezone part only on 'timeZoneMinutes'

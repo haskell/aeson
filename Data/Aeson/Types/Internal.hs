@@ -64,6 +64,7 @@ module Data.Aeson.Types.Internal
         , sumEncoding
         , unwrapUnaryRecords
         , tagSingleConstructors
+        , rejectUnknownFields
         )
 
     , SumEncoding(..)
@@ -624,10 +625,14 @@ data Options = Options
     , tagSingleConstructors :: Bool
       -- ^ Encode types with a single constructor as sums,
       -- so that `allNullaryToStringTag` and `sumEncoding` apply.
+    , rejectUnknownFields :: Bool
+      -- ^ Applies only to 'Data.Aeson.FromJSON' instances. If a field appears in
+      -- the parsed object map, but does not appear in the target object, parsing
+      -- will fail, with an error message indicating which fields were unknown.
     }
 
 instance Show Options where
-  show (Options f c a o s u t) =
+  show (Options f c a o s u t r) =
        "Options {"
     ++ intercalate ", "
       [ "fieldLabelModifier =~ " ++ show (f "exampleField")
@@ -637,6 +642,7 @@ instance Show Options where
       , "sumEncoding = " ++ show s
       , "unwrapUnaryRecords = " ++ show u
       , "tagSingleConstructors = " ++ show t
+      , "rejectUnknownFields = " ++ show r
       ]
     ++ "}"
 
@@ -718,6 +724,7 @@ data JSONKeyOptions = JSONKeyOptions
 -- , 'sumEncoding'             = 'defaultTaggedObject'
 -- , 'unwrapUnaryRecords'      = False
 -- , 'tagSingleConstructors'   = False
+-- , 'rejectUnknownFields'     = False
 -- }
 -- @
 defaultOptions :: Options
@@ -729,6 +736,7 @@ defaultOptions = Options
                  , sumEncoding             = defaultTaggedObject
                  , unwrapUnaryRecords      = False
                  , tagSingleConstructors   = False
+                 , rejectUnknownFields     = False
                  }
 
 -- | Default 'TaggedObject' 'SumEncoding' options:

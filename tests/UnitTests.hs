@@ -33,15 +33,15 @@ import Data.Aeson.Parser
   ( json, jsonLast, jsonAccum, jsonNoDup
   , json', jsonLast', jsonAccum', jsonNoDup')
 import Data.Aeson.Types
-  ( Options(..), Result(Success), ToJSON(..), Value(Array, Bool, Null, Object)
-  , camelTo, camelTo2, defaultOptions, formatPath, formatRelativePath
-  , omitNothingFields, parse)
+  ( Options(..), Result(Success, Error), ToJSON(..)
+  , Value(Array, Bool, Null, Number, Object, String), camelTo, camelTo2
+  , defaultOptions, formatPath, formatRelativePath, omitNothingFields, parse)
 import Data.Attoparsec.ByteString (Parser, parseOnly)
 import Data.Char (toUpper)
 import Data.Either.Compat (isLeft, isRight)
 import Data.Hashable (hash)
 import Data.HashMap.Strict (HashMap)
-import Data.List (sort)
+import Data.List (sort, isSuffixOf)
 import Data.Maybe (fromMaybe)
 import Data.Scientific (Scientific, scientific)
 import Data.Tagged (Tagged(..))
@@ -112,6 +112,7 @@ tests = testGroup "unit" [
   , testGroup "SingleMaybeField" singleMaybeField
   , testCase "withEmbeddedJSON" withEmbeddedJSONTest
   , testCase "SingleFieldCon" singleFieldCon
+  , testGroup "UnknownFields" unknownFields
   , testGroup "Ordering of object keys" keyOrdering
   , testCase "Ratio with denominator 0" ratioDenominator0
   , testCase "Rational parses number"   rationalNumber
@@ -539,6 +540,7 @@ showOptions =
         ++ ", sumEncoding = TaggedObject {tagFieldName = \"tag\", contentsFieldName = \"contents\"}"
         ++ ", unwrapUnaryRecords = False"
         ++ ", tagSingleConstructors = False"
+        ++ ", rejectUnknownFields = False"
         ++ "}")
         (show defaultOptions)
 
@@ -582,6 +584,79 @@ instance FromJSON SingleFieldCon where
 singleFieldCon :: Assertion
 singleFieldCon =
   assertEqual "fromJSON" (Right (SingleFieldCon 0)) (eitherDecode "0")
+
+newtype UnknownFields = UnknownFields { knownField :: Int }
+  deriving (Eq, Show, Generic)
+newtype UnknownFieldsTag = UnknownFieldsTag { tag :: Int }
+  deriving (Eq, Show, Generic)
+newtype UnknownFieldsUnaryTagged = UnknownFieldsUnaryTagged { knownFieldUnaryTagged :: Int }
+  deriving (Eq, Show, Generic)
+data UnknownFieldsSum
+  = UnknownFields1 { knownField1 :: Int }
+  | UnknownFields2 { knownField2 :: Int }
+  deriving (Eq, Show, Generic)
+
+unknownFields :: [TestTree]
+unknownFields = concat
+    [ testsUnary
+        "unary-unknown"
+        (object [("knownField", Number 1), ("unknownField", Number 1)])
+        (Error "nknown fields: [\"unknownField\"]" :: Result UnknownFields)
+    , testsUnary
+        "unary-unknown-tag"
+        (object [("knownField", Number 1), ("tag", String "UnknownFields")])
+        (Error "nknown fields: [\"tag\"]" :: Result UnknownFields)
+    , testsUnaryTag
+        "unary-explicit-tag"
+        (object [("tag", Number 1)])
+        (Success $ UnknownFieldsTag 1)
+    , testsSum
+        "sum-tag"
+        (object [("knownField1", Number 1), ("tag", String "UnknownFields1")])
+        (Success $ UnknownFields1 1)
+    , testsSum
+        "sum-unknown-in-branch"
+        (object [("knownField1", Number 1), ("knownField2", Number 1), ("tag", String "UnknownFields1")])
+        (Error "nknown fields: [\"knownField2\"]" :: Result UnknownFieldsSum)
+    , testsSum
+        "sum-unknown"
+        (object [("knownField1", Number 1), ("unknownField", Number 1), ("tag", String "UnknownFields1")])
+        (Error "nknown fields: [\"unknownField\"]" :: Result UnknownFieldsSum)
+    , testsTagged
+        "unary-tagged"
+        (object [("knownFieldUnaryTagged", Number 1), ("tag", String "UnknownFieldsUnaryTagged")])
+        (Success $ UnknownFieldsUnaryTagged 1)
+    , -- Just a case to verify that the tag isn't optional, this is likely already tested by other unit tests
+      testsTagged
+        "unary-tagged-notag"
+        (object [("knownFieldUnaryTagged", Number 1)])
+        (Error "key \"tag\" not found" :: Result UnknownFieldsUnaryTagged)
+    , testsTagged
+        "unary-tagged-unknown"
+        (object [ ("knownFieldUnaryTagged", Number 1), ("unknownField", Number 1)
+                , ("tag", String "UnknownFieldsUnaryTagged")])
+        (Error "nknown fields: [\"unknownField\"]" :: Result UnknownFieldsUnaryTagged)
+    ]
+    where
+        opts = defaultOptions{rejectUnknownFields=True}
+        taggedOpts = opts{tagSingleConstructors=True}
+        assertApprox :: (Show a, Eq a) => Result a -> Result a -> IO ()
+        assertApprox (Error expected) (Error actual) | expected `isSuffixOf` actual = return ()
+        assertApprox expected actual = assertEqual "fromJSON" expected actual
+        testsBase :: (Show a, Eq a) => (Value -> Result a) -> (Value -> Result a)
+                                    -> String -> Value -> Result a -> [TestTree]
+        testsBase th g name value expected =
+            [ testCase (name ++ "-th") $ assertApprox expected (th value)
+            , testCase (name ++ "-generic") $ assertApprox expected (g value)
+            ]
+        testsUnary :: String -> Value -> Result UnknownFields -> [TestTree]
+        testsUnary = testsBase fromJSON (parse (genericParseJSON opts))
+        testsUnaryTag :: String -> Value -> Result UnknownFieldsTag -> [TestTree]
+        testsUnaryTag = testsBase fromJSON (parse (genericParseJSON opts))
+        testsSum :: String -> Value -> Result UnknownFieldsSum -> [TestTree]
+        testsSum = testsBase fromJSON (parse (genericParseJSON opts))
+        testsTagged :: String -> Value -> Result UnknownFieldsUnaryTagged -> [TestTree]
+        testsTagged = testsBase fromJSON (parse (genericParseJSON taggedOpts))
 
 testParser :: (Eq a, Show a)
            => String -> Parser a -> S.ByteString -> Either String a -> TestTree
@@ -678,3 +753,8 @@ deriveToJSON  defaultOptions ''Foo
 deriveToJSON1 defaultOptions ''Foo
 
 deriveJSON defaultOptions{omitNothingFields=True,unwrapUnaryRecords=True} ''SingleMaybeField
+
+deriveJSON defaultOptions{rejectUnknownFields=True} ''UnknownFields
+deriveJSON defaultOptions{rejectUnknownFields=True} ''UnknownFieldsTag
+deriveJSON defaultOptions{tagSingleConstructors=True,rejectUnknownFields=True} ''UnknownFieldsUnaryTagged
+deriveJSON defaultOptions{rejectUnknownFields=True} ''UnknownFieldsSum
