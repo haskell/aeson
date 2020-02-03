@@ -1541,12 +1541,22 @@ instance FromJSONKey Float where
         _           -> Scientific.toRealFloat <$> parseScientificText t
 
 instance (FromJSON a, Integral a) => FromJSON (Ratio a) where
-    parseJSON = withObject "Rational" $ \obj -> do
-        numerator <- obj .: "numerator"
-        denominator <- obj .: "denominator"
-        if denominator == 0
-        then fail "Ratio denominator was 0"
-        else pure $ numerator % denominator
+    parseJSON (Number x)
+      | exp10 <= 1024
+      , exp10 >= -1024 = return $! realToFrac x
+      | otherwise      = prependContext "Ratio" $ fail msg
+      where
+        exp10 = base10Exponent x
+        msg = "found a number with exponent " ++ show exp10
+           ++ ", but it must not be greater than 1024 or less than -1024"
+    parseJSON o = objParser o
+      where
+        objParser = withObject "Rational" $ \obj -> do
+            numerator <- obj .: "numerator"
+            denominator <- obj .: "denominator"
+            if denominator == 0
+            then fail "Ratio denominator was 0"
+            else pure $ numerator % denominator
     {-# INLINE parseJSON #-}
 
 -- | This instance includes a bounds check to prevent maliciously
