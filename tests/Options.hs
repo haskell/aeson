@@ -55,3 +55,14 @@ optsOptionField = optsDefault
                   { fieldLabelModifier = const "field"
                   , omitNothingFields = True
                   }
+
+optsRejectUnknownFields :: Options
+optsRejectUnknownFields = optsDefault
+                          { rejectUnknownFields = True
+                          }
+
+optsRejectUnknownFieldsTagged :: Options
+optsRejectUnknownFieldsTagged = optsDefault
+                                { rejectUnknownFields = True
+                                , tagSingleConstructors = True
+                                }

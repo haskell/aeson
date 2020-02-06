@@ -243,6 +243,31 @@ gSomeTypeToEncodingOmitNothingFields :: SomeType Int -> Encoding
 gSomeTypeToEncodingOmitNothingFields = genericToEncoding optsOmitNothingFields
 
 
+thSomeTypeParseJSONRejectUnknownFields :: Value -> Parser (SomeType Int)
+thSomeTypeParseJSONRejectUnknownFields = $(mkParseJSON optsRejectUnknownFields ''SomeType)
+
+gSomeTypeParseJSONRejectUnknownFields :: Value -> Parser (SomeType Int)
+gSomeTypeParseJSONRejectUnknownFields = genericParseJSON optsRejectUnknownFields
+
+
+--------------------------------------------------------------------------------
+-- Foo decoders
+--------------------------------------------------------------------------------
+
+thFooParseJSONRejectUnknownFields :: Value -> Parser Foo
+thFooParseJSONRejectUnknownFields = $(mkParseJSON optsRejectUnknownFields ''Foo)
+
+gFooParseJSONRejectUnknownFields :: Value -> Parser Foo
+gFooParseJSONRejectUnknownFields = genericParseJSON optsRejectUnknownFields
+
+
+thFooParseJSONRejectUnknownFieldsTagged :: Value -> Parser Foo
+thFooParseJSONRejectUnknownFieldsTagged = $(mkParseJSON optsRejectUnknownFieldsTagged ''Foo)
+
+gFooParseJSONRejectUnknownFieldsTagged :: Value -> Parser Foo
+gFooParseJSONRejectUnknownFieldsTagged = genericParseJSON optsRejectUnknownFieldsTagged
+
+
 --------------------------------------------------------------------------------
 -- Option fields
 --------------------------------------------------------------------------------

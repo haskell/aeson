@@ -143,7 +143,7 @@ import Language.Haskell.TH.Syntax (mkNameG_tc)
 import Text.Printf (printf)
 import qualified Data.Aeson.Encoding.Internal as E
 import qualified Data.Foldable as F (all)
-import qualified Data.HashMap.Strict as H (lookup, toList)
+import qualified Data.HashMap.Strict as H (difference, fromList, keys, lookup, toList)
 import qualified Data.List.NonEmpty as NE (length, reverse)
 import qualified Data.Map as M (fromList, keys, lookup , singleton, size)
 import qualified Data.Semigroup as Semigroup (Option(..))
@@ -922,12 +922,32 @@ parseRecord :: JSONClass
             -> Name
             -> [Name]
             -> Name
+            -> Bool
             -> ExpQ
-parseRecord jc tvMap argTys opts tName conName fields obj =
+parseRecord jc tvMap argTys opts tName conName fields obj inTaggedObject =
+    (if rejectUnknownFields opts
+     then infixApp checkUnknownRecords [|(>>)|]
+     else id) $
     foldl' (\a b -> infixApp a [|(<*>)|] b)
            (infixApp (conE conName) [|(<$>)|] x)
            xs
     where
+      tagFieldNameAppender =
+          if inTaggedObject then (tagFieldName (sumEncoding opts) :) else id
+      knownFields = appE [|H.fromList|] $ listE $
+          map (\knownName -> tupE [appE [|T.pack|] $ litE $ stringL knownName, [|()|]]) $
+              tagFieldNameAppender $ map nameBase fields
+      checkUnknownRecords =
+          caseE (appE [|H.keys|] $ infixApp (varE obj) [|H.difference|] knownFields)
+              [ match (listP []) (normalB [|return ()|]) []
+              , newName "unknownFields" >>=
+                  \unknownFields -> match (varP unknownFields)
+                      (normalB $ appE [|fail|] $ infixApp
+                          (litE (stringL "Unknown fields: "))
+                          [|(++)|]
+                          (appE [|show|] (varE unknownFields)))
+                      []
+              ]
       x:xs = [ [|lookupField|]
                `appE` dispatchParseJSON jc conName tvMap argTy
                `appE` litE (stringL $ show tName)
@@ -1002,7 +1022,7 @@ parseArgs jc tvMap tName opts
                   , constructorFields  = argTys }
   (Left (_, obj)) = do
     argTys' <- mapM resolveTypeSynonyms argTys
-    parseRecord jc tvMap argTys' opts tName conName fields obj
+    parseRecord jc tvMap argTys' opts tName conName fields obj True
 parseArgs jc tvMap tName opts
   info@ConstructorInfo { constructorName    = conName
                        , constructorVariant = RecordConstructor fields
@@ -1017,7 +1037,7 @@ parseArgs jc tvMap tName opts
         argTys' <- mapM resolveTypeSynonyms argTys
         caseE (varE valName)
           [ match (conP 'Object [varP obj]) (normalB $
-              parseRecord jc tvMap argTys' opts tName conName fields obj) []
+              parseRecord jc tvMap argTys' opts tName conName fields obj False) []
           , matchFailed tName conName "Object"
           ]
 
