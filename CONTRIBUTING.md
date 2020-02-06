@@ -85,4 +85,14 @@ Of course before submitting a PR, the following steps are recommended:
 
 ## Development Workflow (If you plan on using Cabal)
 
-TBD
+A ghci development experience would be:
+
+1. `cabal new-repl test:tests`
+2. `:r` to recompile
+3. `Main.main`  to run all tests, or `:m Main; :main --pattern Foo` to run specific tests matched by pattern.
+
+Of course before submitting a PR, the following steps are recommended:
+
+1. `cabal new-test` - Run the entire suite of tests
+2. `make hlint` - Run hlint on the source folders.
+3. Uncomment the `benchmarks` line in `cabal.project` - Run the benchmark tests if you believe your changes could affect the benchmarks.
