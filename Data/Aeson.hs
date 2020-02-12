@@ -257,7 +257,7 @@ eitherDecodeStrict =
 -- | Like 'decodeFileStrict' but returns an error message when decoding fails.
 eitherDecodeFileStrict :: (FromJSON a) => FilePath -> IO (Either String a)
 eitherDecodeFileStrict =
-  fmap (eitherFormatError . eitherDecodeStrictWith jsonEOF ifromJSON) . B.readFile
+  fmap eitherDecodeStrict . B.readFile
 {-# INLINE eitherDecodeFileStrict #-}
 
 -- | Like 'decode'' but returns an error message when decoding fails.
@@ -274,7 +274,7 @@ eitherDecodeStrict' =
 -- | Like 'decodeFileStrict'' but returns an error message when decoding fails.
 eitherDecodeFileStrict' :: (FromJSON a) => FilePath -> IO (Either String a)
 eitherDecodeFileStrict' =
-  fmap (eitherFormatError . eitherDecodeStrictWith jsonEOF' ifromJSON) . B.readFile
+  fmap eitherDecodeStrict' . B.readFile
 {-# INLINE eitherDecodeFileStrict' #-}
 
 -- $use
