@@ -2,9 +2,6 @@
 {-# LANGUAGE CPP #-}
 {-# LANGUAGE NoImplicitPrelude #-}
 {-# LANGUAGE OverloadedStrings #-}
-#if MIN_VERSION_ghc_prim(0,3,1)
-{-# LANGUAGE MagicHash #-}
-#endif
 #if __GLASGOW_HASKELL__ <= 710 && __GLASGOW_HASKELL__ >= 706
 -- Work around a compiler bug
 {-# OPTIONS_GHC -fsimpl-tick-factor=200 #-}
@@ -61,6 +58,7 @@ import Data.Functor.Compat (($>))
 import Data.Bits (testBit)
 import Data.Scientific (Scientific)
 import Data.Text (Text)
+import qualified Data.Text.Encoding as TE
 import Data.Vector (Vector)
 import qualified Data.Vector as Vector (empty, fromList, fromListN, reverse)
 import qualified Data.Attoparsec.ByteString as A
@@ -71,12 +69,6 @@ import qualified Data.ByteString.Lazy as L
 import qualified Data.HashMap.Strict as H
 import qualified Data.Scientific as Sci
 import Data.Aeson.Parser.Unescape (unescapeText)
-
-#if MIN_VERSION_ghc_prim(0,3,1)
-import GHC.Base (Int#, (==#), isTrue#, word2Int#, orI#, andI#)
-import GHC.Word (Word8(W8#))
-import qualified Data.Text.Encoding as TE
-#endif
 
 #define BACKSLASH 92
 #define CLOSE_CURLY 125
@@ -336,34 +328,6 @@ jstring_ = do
 jstringSlow :: B.ByteString -> Parser Text
 {-# INLINE jstringSlow #-}
 jstringSlow s' = {-# SCC "jstringSlow" #-} do
-#if MIN_VERSION_ghc_prim(0,3,1)
-  (s, S _ escaped) <- A.runScanner startState go <* A.anyWord8
-  -- We escape only if there are
-  -- non-ascii (over 7bit) characters or backslash present.
-  --
-  -- Note: if/when text will have fast ascii -> text conversion
-  -- (e.g. uses utf8 encoding) we can have further speedup.
-  if isTrue# escaped
-    then case unescapeText (s' <> s) of
-      Right r  -> return r
-      Left err -> fail $ show err
-    else return (TE.decodeUtf8 (s' <> s))
- where
-    startState              = S 0# 0#
-    go (S skip escaped) (W8# c)
-      | isTrue# skip        = Just (S 0# escaped')
-      | isTrue# (w ==# 34#) = Nothing   -- double quote
-      | otherwise           = Just (S skip' escaped')
-      where
-        w = word2Int# c
-        skip' = w ==# 92# -- backslash
-        escaped' = escaped
-            `orI#` (w `andI#` 0x80# ==# 0x80#) -- c >= 0x80
-            `orI#` skip'
-            `orI#` (w `andI#` 0x1f# ==# w)     -- c < 0x20
-
-data S = S Int# Int#
-#else
   s <- A.scan startState go <* A.anyWord8
   case unescapeText (s' <> s) of
     Right r  -> return r
@@ -376,7 +340,6 @@ data S = S Int# Int#
       | otherwise = let a' = c == backslash
                     in Just a'
       where backslash = BACKSLASH
-#endif
 
 decodeWith :: Parser Value -> (Value -> Result a) -> L.ByteString -> Maybe a
 decodeWith p to s =
