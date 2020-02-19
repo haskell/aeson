@@ -58,6 +58,7 @@ import Data.Aeson.Types.Internal (IResult(..), JSONPath, Object, Result(..), Val
 import Data.Attoparsec.ByteString.Char8 (Parser, char, decimal, endOfInput, isDigit_w8, signed, string)
 import Data.Function (fix)
 import Data.Functor.Compat (($>))
+import Data.Bits (testBit)
 import Data.Scientific (Scientific)
 import Data.Text (Text)
 import Data.Vector (Vector)
@@ -323,7 +324,18 @@ jstring = A.word8 DOUBLE_QUOTE *> jstring_
 -- | Parse a string without a leading quote.
 jstring_ :: Parser Text
 {-# INLINE jstring_ #-}
-jstring_ = {-# SCC "jstring_" #-} do
+jstring_ = do
+  s <- A.takeWhile (\w -> w /= DOUBLE_QUOTE && w /= BACKSLASH && not (testBit w 7))
+  let txt = TE.decodeUtf8 s
+  w <- A.peekWord8
+  case w of
+    Nothing -> fail "string without end"
+    Just DOUBLE_QUOTE -> A.anyWord8 *> return txt
+    _ -> jstringSlow s
+
+jstringSlow :: B.ByteString -> Parser Text
+{-# INLINE jstringSlow #-}
+jstringSlow s' = {-# SCC "jstringSlow" #-} do
 #if MIN_VERSION_ghc_prim(0,3,1)
   (s, S _ escaped) <- A.runScanner startState go <* A.anyWord8
   -- We escape only if there are
@@ -332,10 +344,10 @@ jstring_ = {-# SCC "jstring_" #-} do
   -- Note: if/when text will have fast ascii -> text conversion
   -- (e.g. uses utf8 encoding) we can have further speedup.
   if isTrue# escaped
-    then case unescapeText s of
+    then case unescapeText (s' <> s) of
       Right r  -> return r
       Left err -> fail $ show err
-    else return (TE.decodeUtf8 s)
+    else return (TE.decodeUtf8 (s' <> s))
  where
     startState              = S 0# 0#
     go (S skip escaped) (W8# c)
@@ -353,7 +365,7 @@ jstring_ = {-# SCC "jstring_" #-} do
 data S = S Int# Int#
 #else
   s <- A.scan startState go <* A.anyWord8
-  case unescapeText s of
+  case unescapeText (s' <> s) of
     Right r  -> return r
     Left err -> fail $ show err
  where
