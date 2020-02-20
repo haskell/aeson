@@ -581,17 +581,23 @@ data Options = Options
       -- the constructor tag. If 'False' the encoding will always
       -- follow the `sumEncoding`.
     , omitNothingFields :: Bool
-      -- ^ If 'True' record fields with a 'Nothing' value will be
-      -- omitted from the resulting object. If 'False' the resulting
+      -- ^ If 'True', record fields with a 'Nothing' value will be
+      -- omitted from the resulting object. If 'False', the resulting
       -- object will include those fields mapping to @null@.
+      --
+      -- Note that this /does not/ affect parsing: 'Maybe' fields are
+      -- optional regardless of the value of 'omitNothingFields', subject
+      -- to the note below.
       --
       -- === Note
       --
       -- Setting 'omitNothingFields' to 'True' only affects fields which are of
-      -- type 'Maybe' /uniformly/ in the 'ToJSON' or 'FromJSON' instance. In
-      -- particular, if the type of a field is declared as a type variable, it
+      -- type 'Maybe' /uniformly/ in the 'ToJSON' instance.
+      -- In particular, if the type of a field is declared as a type variable, it
       -- will not be omitted from the JSON object, unless the field is
       -- specialized upfront in the instance.
+      --
+      -- The same holds for 'Maybe' fields being optional in the 'FromJSON' instance.
       --
       -- ==== __Example__
       --
@@ -599,23 +605,29 @@ data Options = Options
       -- the instance head is @Fruit a@ or @Fruit (Maybe a)@.
       --
       -- @
-      -- data Fruit a =
+      -- data Fruit a = Fruit
       --   { apples :: a  -- A field whose type is a type variable.
       --   , oranges :: 'Maybe' Int
-      --   }
+      --   } deriving 'Generic'
+      --
+      -- -- apples required, oranges optional
+      -- -- Even if 'Data.Aeson.fromJSON' is then specialized to (Fruit ('Maybe' a)).
+      -- instance 'Data.Aeson.FromJSON' a => 'Data.Aeson.FromJSON' (Fruit a)
+      --
+      -- -- apples optional, oranges optional
+      -- -- In this instance, the field apples is uniformly of type ('Maybe' a).
+      -- instance 'Data.Aeson.FromJSON' a => 'Data.Aeson.FromJSON' (Fruit ('Maybe' a))
       --
       -- options :: 'Options'
       -- options = 'defaultOptions' { 'omitNothingFields' = 'True' }
       --
-      -- -- apples required, oranges optional
-      -- -- Even if 'Data.Aeson.fromJSON' is then specialized to (Fruit ('Maybe' a)).
-      -- instance 'Data.Aeson.FromJSON' a => 'Data.Aeson.FromJSON' (Fruit a) where
-      --   'Data.Aeson.fromJSON' = 'Data.Aeson.genericFromJSON' options
+      -- -- apples always present in the output, oranges is omitted if 'Nothing'
+      -- instance 'Data.Aeson.ToJSON' a => 'Data.Aeson.ToJSON' (Fruit a) where
+      --   'Data.Aeson.toJSON' = 'Data.Aeson.genericToJSON' options
       --
-      -- -- apples optional, oranges optional
-      -- -- In this instance, the field apples is uniformly of type ('Maybe' a).
-      -- instance 'Data.Aeson.FromJSON' a => 'Data.Aeson.FromJSON' (Fruit ('Maybe' a)) where
-      --   'Data.Aeson.fromJSON' = 'Data.Aeson.genericFromJSON' options
+      -- -- both apples and oranges are omitted if 'Nothing'
+      -- instance 'Data.Aeson.ToJSON' a => 'Data.Aeson.ToJSON' (Fruit ('Maybe' a)) where
+      --   'Data.Aeson.toJSON' = 'Data.Aeson.genericToJSON' options
       -- @
     , sumEncoding :: SumEncoding
       -- ^ Specifies how to encode constructors of a sum datatype.
