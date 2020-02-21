@@ -4,7 +4,7 @@
 {-# LANGUAGE OverloadedStrings #-}
 #if __GLASGOW_HASKELL__ <= 710 && __GLASGOW_HASKELL__ >= 706
 -- Work around a compiler bug
-{-# OPTIONS_GHC -fsimpl-tick-factor=200 #-}
+{-# OPTIONS_GHC -fsimpl-tick-factor=300 #-}
 #endif
 -- |
 -- Module:      Data.Aeson.Parser.Internal
