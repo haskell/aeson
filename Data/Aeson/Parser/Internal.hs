@@ -322,14 +322,14 @@ jstring_ = do
   w <- A.peekWord8
   case w of
     Nothing -> fail "string without end"
-    Just DOUBLE_QUOTE -> A.anyWord8 *> return txt
+    Just DOUBLE_QUOTE -> A.anyWord8 $> txt
     _ -> jstringSlow s
 
 jstringSlow :: B.ByteString -> Parser Text
 {-# INLINE jstringSlow #-}
 jstringSlow s' = {-# SCC "jstringSlow" #-} do
   s <- A.scan startState go <* A.anyWord8
-  case unescapeText (s' <> s) of
+  case unescapeText (B.append s' s) of
     Right r  -> return r
     Left err -> fail $ show err
  where
