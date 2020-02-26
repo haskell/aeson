@@ -11,7 +11,7 @@ import Prelude.Compat
 
 import Data.Aeson (FromJSON(..), Value, json)
 import Data.Aeson.Types (Parser)
-import Data.Aeson.Parser (eitherDecodeWith)
+import Data.Aeson.Scanner.Internal (eitherDecodeWith)
 import Data.Aeson.Internal (formatError, iparse)
 import Data.Algorithm.Diff (PolyDiff (..), getGroupedDiff)
 import Data.Proxy (Proxy(..))
