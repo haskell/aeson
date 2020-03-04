@@ -82,6 +82,7 @@ library
     Data.Aeson.Internal
     Data.Aeson.Internal.Time
     Data.Aeson.Parser.Internal
+    Data.Aeson.Types.Internal
 
   -- Deprecated modules
   exposed-modules:
@@ -96,7 +97,6 @@ library
     Data.Aeson.Types.Generic
     Data.Aeson.Types.ToJSON
     Data.Aeson.Types.Class
-    Data.Aeson.Types.Internal
     Data.Attoparsec.Time
     Data.Attoparsec.Time.Internal
 
