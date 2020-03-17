@@ -35,6 +35,7 @@ module Data.Aeson.Types
     , parse
     , parseEither
     , parseMaybe
+    , parseFail
     , ToJSON(..)
     , KeyValue(..)
     , modifyFailure
