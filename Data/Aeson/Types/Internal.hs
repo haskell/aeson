@@ -346,7 +346,6 @@ instance Monoid (Parser a) where
 -- | Raise a parsing failure with some custom message.
 parseFail :: String -> Parser a
 parseFail = fail
-{-# INLINE parseFail #-}
 
 apP :: Parser (a -> b) -> Parser a -> Parser b
 apP d e = do
