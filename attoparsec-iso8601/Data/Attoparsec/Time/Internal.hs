@@ -19,23 +19,15 @@ module Data.Attoparsec.Time.Internal
 
 import Prelude.Compat
 
+import Data.Fixed (Fixed(MkFixed), Pico)
 import Data.Int (Int64)
 import Data.Time
-import Unsafe.Coerce (unsafeCoerce)
-
-#if MIN_VERSION_time(1,6,0)
-
-import Data.Time.Clock (diffTimeToPicoseconds)
-
-#endif
-
-import Data.Fixed (Pico, Fixed(MkFixed))
 
 #if !MIN_VERSION_time(1,6,0)
+import Unsafe.Coerce (unsafeCoerce)
 
 diffTimeToPicoseconds :: DiffTime -> Integer
 diffTimeToPicoseconds = unsafeCoerce
-
 #endif
 
 toPico :: Integer -> Pico
