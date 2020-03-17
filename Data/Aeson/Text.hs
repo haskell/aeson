@@ -26,7 +26,6 @@ import Prelude.Compat
 
 import Data.Aeson.Types (Value(..), ToJSON(..))
 import Data.Aeson.Encoding (encodingToLazyByteString)
-import Data.Semigroup ((<>))
 import Data.Scientific (FPFormat(..), Scientific, base10Exponent)
 import Data.Text.Lazy.Builder
 import Data.Text.Lazy.Builder.Scientific (formatScientificBuilder)

@@ -59,7 +59,6 @@ import Data.Attoparsec.ByteString.Char8 (Parser, char, decimal, endOfInput, isDi
 import Data.Function (fix)
 import Data.Functor.Compat (($>))
 import Data.Scientific (Scientific)
-import Data.Semigroup ((<>))
 import Data.Text (Text)
 import Data.Vector (Vector)
 import qualified Data.Vector as Vector (empty, fromList, fromListN, reverse)
