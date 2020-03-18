@@ -5,6 +5,7 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TemplateHaskell #-}
+{-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE QuasiQuotes #-}
 
 -- For Data.Aeson.Types.camelTo
@@ -747,6 +748,11 @@ bigNaturalKeyDecoding =
     (Left "Error in $['1e2000']: found a number with exponent 2000, but it must not be greater than 1024")
     ((eitherDecode :: L.ByteString -> Either String (HashMap Natural Value)) "{ \"1e2000\": null }")
 
+-- A regression test for: https://github.com/bos/aeson/issues/757
+type family Fam757 :: * -> *
+type instance Fam757 = Maybe
+newtype Newtype757 a = MkNewtype757 (Fam757 a)
+
 deriveJSON defaultOptions{omitNothingFields=True} ''MyRecord
 
 deriveToJSON  defaultOptions ''Foo
@@ -758,3 +764,5 @@ deriveJSON defaultOptions{rejectUnknownFields=True} ''UnknownFields
 deriveJSON defaultOptions{rejectUnknownFields=True} ''UnknownFieldsTag
 deriveJSON defaultOptions{tagSingleConstructors=True,rejectUnknownFields=True} ''UnknownFieldsUnaryTagged
 deriveJSON defaultOptions{rejectUnknownFields=True} ''UnknownFieldsSum
+
+deriveToJSON1 defaultOptions ''Newtype757
