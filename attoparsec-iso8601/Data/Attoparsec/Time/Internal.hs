@@ -1,4 +1,3 @@
-{-# LANGUAGE CPP #-}
 {-# LANGUAGE NoImplicitPrelude #-}
 -- |
 -- Module:      Data.Aeson.Internal.Time
@@ -21,14 +20,8 @@ import Prelude.Compat
 
 import Data.Fixed (Fixed(MkFixed), Pico)
 import Data.Int (Int64)
-import Data.Time
-
-#if !MIN_VERSION_time(1,6,0)
-import Unsafe.Coerce (unsafeCoerce)
-
-diffTimeToPicoseconds :: DiffTime -> Integer
-diffTimeToPicoseconds = unsafeCoerce
-#endif
+import Data.Time (TimeOfDay(..))
+import Data.Time.Clock.Compat
 
 toPico :: Integer -> Pico
 toPico = MkFixed

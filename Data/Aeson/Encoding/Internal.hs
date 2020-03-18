@@ -1,4 +1,3 @@
-{-# LANGUAGE CPP #-}
 {-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE EmptyDataDecls #-}
 {-# LANGUAGE NoImplicitPrelude #-}
@@ -64,9 +63,6 @@ import Data.Aeson.Types.Internal (Value)
 import Data.ByteString.Builder (Builder, char7, toLazyByteString)
 import Data.Int
 import Data.Scientific (Scientific)
-#if !MIN_VERSION_base(4,11,0)
-import Data.Semigroup (Semigroup ((<>)))
-#endif
 import Data.Text (Text)
 import Data.Time (Day, LocalTime, TimeOfDay, UTCTime, ZonedTime)
 import Data.Typeable (Typeable)
