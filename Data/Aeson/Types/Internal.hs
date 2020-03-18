@@ -44,6 +44,7 @@ module Data.Aeson.Types.Internal
     , parse
     , parseEither
     , parseMaybe
+    , parseFail
     , modifyFailure
     , prependFailure
     , parserThrowError
@@ -341,6 +342,10 @@ instance Monoid (Parser a) where
     {-# INLINE mempty #-}
     mappend = (<>)
     {-# INLINE mappend #-}
+
+-- | Raise a parsing failure with some custom message.
+parseFail :: String -> Parser a
+parseFail = fail
 
 apP :: Parser (a -> b) -> Parser a -> Parser b
 apP d e = do
