@@ -44,7 +44,6 @@ import Data.ByteString.Builder as B
 import Data.ByteString.Builder.Prim as BP
 import Data.ByteString.Builder.Scientific (scientificBuilder)
 import Data.Char (chr, ord)
-import Data.Semigroup ((<>))
 import Data.Scientific (Scientific, base10Exponent, coefficient)
 import Data.Text.Encoding (encodeUtf8BuilderEscaped)
 import Data.Time (UTCTime(..))

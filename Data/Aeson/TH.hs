@@ -116,7 +116,10 @@ module Data.Aeson.TH
     , mkLiftParseJSON2
     ) where
 
-import Prelude.Compat
+import Prelude.Compat hiding (fail)
+
+-- We don't have MonadFail Q, so we should use `fail` from real `Prelude`
+import Prelude (fail)
 
 import Control.Applicative ((<|>))
 import Data.Aeson (Object, (.:), FromJSON(..), FromJSON1(..), FromJSON2(..), ToJSON(..), ToJSON1(..), ToJSON2(..))
