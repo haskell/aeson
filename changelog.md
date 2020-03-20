@@ -1,9 +1,64 @@
 For the latest version of this document, please see [https://github.com/bos/aeson/blob/master/changelog.md](https://github.com/bos/aeson/blob/master/changelog.md).
 
-### upcoming
+### 1.4.7.0
+
+Long overdue release (once again), so there's quite a bit of stuff
+included even though it's a "minor" release. Big thanks to all the
+contributors, the project would not exist without you!
+
+Special thanks to Oleg Grenrus and Xia Li-Yao for reviewing tons
+of stuff.
+
+New stuff:
+
+* Add `rejectUnknownFields` to Options which rejects unknown fields on
+  deserialization. Useful to find errors during development, but
+  enabling this should be considered a breaking change as previously
+  accepted inputs may now be rejected. Thanks to rmanne.
+
+```
+instance FromJSON Foo where
+  parseJSON = gParseJSON defaultOptions { rejectUnknownFields = True }
+```
 
 * `FromJSON` instance of `Ratio a` now parses numbers in addtion to
-  standard `{numerator=..., denumerator=...}` encoding.
+  standard `{numerator=..., denumerator=...}` encoding. Thanks to
+  Aleksey Khudyakov.
+
+* Add more information to parse errors, including a sample of the
+  surrounding text. Hopefully this will lead to less "Failed to read:
+  satisfy" confusion! Thanks to Sasha Bogicevic. We expect some
+  downstream test suites to break because of this, apologies in
+  advance. Hopefully you will like the improvement anyway :-)
+
+* Add `parseFail` to `Data.Aeson.Types`. `parseFail = fail` but
+  doesn't require users to know about `MonadFail`. Thanks to Colin
+  Woodbury.
+
+* Make Template Haskell type family detection smarter when deriving
+  `ToJSON1` instances, thanks to Ryan Scott.
+
+* Optimize string parsing for the common case of strings without
+  escapes, thanks to Yuras.
+
+
+Misc:
+
+* Clean up compiler warnings and switch from base-compat to
+  base-compat-batteries. Thanks to Colin Woodbury & Oleg Grenrus.
+
+* Clarification & fixes to documentation regarding treatment of Maybe fields, thanks to Roman Cheplyaka.
+
+* Add documentation for internal development workflows. Thanks to Guru
+  Devanla.
+
+* Drop support for GHC < 7.8. We've chosen to support older GHCs as
+  long as it doesn't prevent us from adding new features, but now it
+  does!  Thanks to Oleg Grenrus for the patch.
+
+* Allow generic-deriving 1.13 in test suite.
+
+* Some DRY fixes thanks to Mark Fajkus.
 
 ### 1.4.6.0
 
