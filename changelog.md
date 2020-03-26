@@ -1,5 +1,9 @@
 For the latest version of this document, please see [https://github.com/bos/aeson/blob/master/changelog.md](https://github.com/bos/aeson/blob/master/changelog.md).
 
+#### 1.4.7.1
+
+* GHC 8.10 compatibility, thanks to Ryan Scott.
+
 ### 1.4.7.0
 
 Long overdue release (once again), so there's quite a bit of stuff
