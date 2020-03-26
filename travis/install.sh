@@ -50,9 +50,14 @@ case $BUILD in
     fi
     ;;
   cabal2)
-	cabal v2-update -v
+	  cabal v2-update -v
     sed -i 's/^jobs:/-- jobs:/' ${HOME}/.cabal/config
 
-	cabal v2-build --only-dependencies --enable-tests --enable-benchmarks --dry
-	;;
+	  cabal v2-build --only-dependencies --enable-tests --enable-benchmarks --dry
+  	;;
+  attoparsec-iso8601)
+    cd attoparsec-iso8601
+    cabal v2-update -v
+    sed -i 's/^jobs:/-- jobs:/' ${HOME}/.cabal/config
+    cabal v2-build --only-dependencies --enable-tests --enable-benchmarks --dry
 esac
