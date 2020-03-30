@@ -267,7 +267,7 @@ formatPathExample =
 
 formatRelativePathExample :: Assertion
 formatRelativePathExample =
-  let rhs = formatPath [Key "x", Index 0]
+  let rhs = formatRelativePath [Key "x", Index 0]
       lhs = ".x[0]"
   in assertEqual "formatRelativePath example" lhs rhs
 
