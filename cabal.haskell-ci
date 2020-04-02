@@ -1,0 +1,2 @@
+cabal-check: False
+email-notifications: False
