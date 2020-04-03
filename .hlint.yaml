@@ -9,3 +9,9 @@
     name: "Use newtype instead of data"
     within:
       - Data.Aeson.Types.Internal
+
+# CPP confuses
+- ignore:
+    name: "Use fewer imports"
+    within:
+      - Data.Aeson.Types.Internal
