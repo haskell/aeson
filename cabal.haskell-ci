@@ -1,6 +1,9 @@
 cabal-check: False
 email-notifications: False
 
+-- GADT docs
+haddock: >=8.6
+
 hlint: True
 hlint-job: 8.8.3
 hlint-yaml: .hlint.yaml
