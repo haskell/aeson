@@ -30,11 +30,10 @@ library
     build-depends:
       attoparsec,
       base,
-      base-compat,
+      base-compat-batteries,
       containers,
       deepseq,
       dlist,
-      fail,
       ghc-prim,
       hashable,
       mtl,
@@ -58,7 +57,8 @@ library
     if !impl(ghc >= 8.0)
       -- `Data.Semigroup` is available in base only since GHC 8.0 / base 4.9
       build-depends: semigroups,
-                     transformers-compat
+                     transformers-compat,
+                     fail
 
     if !impl(ghc >= 7.10)
       -- `Numeric.Natural` is available in base only since GHC 7.10 / base 4.8
@@ -162,7 +162,7 @@ executable aeson-benchmark-compare
   build-depends:
     aeson-benchmarks,
     base,
-    base-compat,
+    base-compat-batteries,
     buffer-builder,
     bytestring,
     criterion >= 1.0,
@@ -175,9 +175,9 @@ executable aeson-benchmark-compare
      Compare.JsonBuilder
    build-depends:
      json-builder
- if impl(ghc < 8.0)
-   build-depends:
-     semigroups
+
+ if !impl(ghc >= 8.0)
+   build-depends: semigroups, fail
 
 executable aeson-benchmark-micro
   default-language: Haskell2010
@@ -266,6 +266,9 @@ executable aeson-benchmark-aeson-parse
     base-compat,
     bytestring,
     time
+
+ if !impl(ghc >= 8.0)
+   build-depends: semigroups, fail
 
 executable aeson-benchmark-json-parse
   default-language: Haskell2010

@@ -1,0 +1,3 @@
+with-compiler: ghc
+packages: benchmarks/
+tests: false

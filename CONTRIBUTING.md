@@ -96,3 +96,23 @@ Of course before submitting a PR, the following steps are recommended:
 1. `cabal new-test` - Run the entire suite of tests
 2. `make hlint` - Run hlint on the source folders.
 3. Uncomment the `benchmarks` line in `cabal.project` - Run the benchmark tests if you believe your changes could affect the benchmarks.
+
+### Running benchmarks
+
+You need to install `cabal-plan` and `criterion-compare` with
+
+```
+cabal install cabal-plan criterion-compare
+```
+
+Then to build benchmarks we use a different project, which builds
+`aeson` as a package with a different name to avoid rebuilding `criterion`
+etc tools all the time:
+
+```
+cabal build --project-file cabal.bench.project all
+```
+
+Then to run benchmarks
+
+... to be completed
