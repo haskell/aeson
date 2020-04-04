@@ -175,7 +175,7 @@ library
     hs-source-dirs: ffi
     other-modules: Data.Aeson.Parser.UnescapeFFI
 
-test-suite tests
+test-suite aeson-tests
   default-language: Haskell2010
   type: exitcode-stdio-1.0
   hs-source-dirs: tests ffi pure
