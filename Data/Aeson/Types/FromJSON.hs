@@ -419,38 +419,28 @@ class FromJSONKey a where
     default fromJSONKeyList :: FromJSON a => FromJSONKeyFunction [a]
     fromJSONKeyList = FromJSONKeyValue parseJSON
 
--- | With GHC 7.8+ we carry around @'Coercible' 'Text' a@ dictionary,
--- to give us an assurance that the program will not segfault.
--- Unfortunately we cannot enforce that the 'Eq' instances or the
--- 'Hashable' instances for 'Text' and @a@ agree.
---
--- At the moment this type is intentionally not exported. 'FromJSONKeyFunction'
--- can be inspected, but cannot be constructed.
-data CoerceText a where
-    CoerceText :: Coercible Text a => CoerceText a
-
 -- | This type is related to 'ToJSONKeyFunction'. If 'FromJSONKeyValue' is used in the
 --   'FromJSONKey' instance, then 'ToJSONKeyValue' should be used in the 'ToJSONKey'
 --   instance. The other three data constructors for this type all correspond to
 --   'ToJSONKeyText'. Strictly speaking, 'FromJSONKeyTextParser' is more powerful than
 --   'FromJSONKeyText', which is in turn more powerful than 'FromJSONKeyCoerce'.
 --   For performance reasons, these exist as three options instead of one.
-data FromJSONKeyFunction a
-    = FromJSONKeyCoerce !(CoerceText a)
-      -- ^ uses 'coerce' ('unsafeCoerce' in older GHCs)
-    | FromJSONKeyText !(Text -> a)
+data FromJSONKeyFunction a where
+    FromJSONKeyCoerce :: Coercible Text a => FromJSONKeyFunction a
+      -- ^ uses 'coerce'
+    FromJSONKeyText :: !(Text -> a) -> FromJSONKeyFunction a
       -- ^ conversion from 'Text' that always succeeds
-    | FromJSONKeyTextParser !(Text -> Parser a)
+    FromJSONKeyTextParser :: !(Text -> Parser a) -> FromJSONKeyFunction a
       -- ^ conversion from 'Text' that may fail
-    | FromJSONKeyValue !(Value -> Parser a)
+    FromJSONKeyValue :: !(Value -> Parser a) -> FromJSONKeyFunction a
       -- ^ conversion for non-textual keys
 
 -- | Only law abiding up to interpretation
 instance Functor FromJSONKeyFunction where
-    fmap h (FromJSONKeyCoerce CoerceText) = FromJSONKeyText (h . coerce)
-    fmap h (FromJSONKeyText f)            = FromJSONKeyText (h . f)
-    fmap h (FromJSONKeyTextParser f)      = FromJSONKeyTextParser (fmap h . f)
-    fmap h (FromJSONKeyValue f)           = FromJSONKeyValue (fmap h . f)
+    fmap h FromJSONKeyCoerce         = FromJSONKeyText (h . coerce)
+    fmap h (FromJSONKeyText f)       = FromJSONKeyText (h . f)
+    fmap h (FromJSONKeyTextParser f) = FromJSONKeyTextParser (fmap h . f)
+    fmap h (FromJSONKeyValue f)      = FromJSONKeyValue (fmap h . f)
 
 -- | Construct 'FromJSONKeyFunction' for types coercible from 'Text'. This
 -- conversion is still unsafe, as 'Hashable' and 'Eq' instances of @a@ should be
@@ -463,7 +453,7 @@ instance Functor FromJSONKeyFunction where
 fromJSONKeyCoerce ::
     Coercible Text a =>
     FromJSONKeyFunction a
-fromJSONKeyCoerce = FromJSONKeyCoerce CoerceText
+fromJSONKeyCoerce = FromJSONKeyCoerce
 
 -- | Semantically the same as @coerceFromJSONKeyFunction = fmap coerce = coerce@.
 --
@@ -473,10 +463,6 @@ coerceFromJSONKeyFunction ::
     FromJSONKeyFunction a -> FromJSONKeyFunction b
 coerceFromJSONKeyFunction = coerce
 
-{-# RULES
-  "FromJSONKeyCoerce: fmap id"     forall (x :: FromJSONKeyFunction a).
-                                   fmap id x = x
-  #-}
 {-# RULES
   "FromJSONKeyCoerce: fmap coerce" forall x .
                                    fmap coerce x = coerceFromJSONKeyFunction x
@@ -1887,7 +1873,7 @@ instance FromJSON a => FromJSON (IntMap.IntMap a) where
 
 instance (FromJSONKey k, Ord k) => FromJSON1 (M.Map k) where
     liftParseJSON p _ = case fromJSONKey of
-        FromJSONKeyCoerce _ -> withObject "Map" $
+        FromJSONKeyCoerce -> withObject "Map" $
             fmap (H.foldrWithKey (M.insert . unsafeCoerce) M.empty) . H.traverseWithKey (\k v -> p v <?> Key k)
         FromJSONKeyText f -> withObject "Map" $
             fmap (H.foldrWithKey (M.insert . f) M.empty) . H.traverseWithKey (\k v -> p v <?> Key k)
@@ -1967,7 +1953,7 @@ instance (Eq a, Hashable a, FromJSON a) => FromJSON (HashSet.HashSet a) where
 
 instance (FromJSONKey k, Eq k, Hashable k) => FromJSON1 (H.HashMap k) where
     liftParseJSON p _ = case fromJSONKey of
-        FromJSONKeyCoerce _ -> withObject "HashMap ~Text" $
+        FromJSONKeyCoerce -> withObject "HashMap ~Text" $
             uc . H.traverseWithKey (\k v -> p v <?> Key k)
         FromJSONKeyText f -> withObject "HashMap" $
             fmap (mapKey f) . H.traverseWithKey (\k v -> p v <?> Key k)

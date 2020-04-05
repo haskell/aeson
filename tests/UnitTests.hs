@@ -349,12 +349,14 @@ fromJSONKeyAssertions =
 #endif
     ]
   where
-    assertIsCoerce _ (FromJSONKeyCoerce _) = pure ()
-    assertIsCoerce n _                     = assertFailure n
+    assertIsCoerce :: String -> FromJSONKeyFunction a -> Assertion
+    assertIsCoerce _ FromJSONKeyCoerce = pure ()
+    assertIsCoerce n _                 = assertFailure n
 
 #if __GLASGOW_HASKELL__ >= 710
-    assertIsCoerce' _ (FromJSONKeyCoerce _) = pure ()
-    assertIsCoerce' n _                     = pickWithRules (assertFailure n) (pure ())
+    assertIsCoerce' :: String -> FromJSONKeyFunction a -> Assertion
+    assertIsCoerce' _ FromJSONKeyCoerce = pure ()
+    assertIsCoerce' n _                 = pickWithRules (assertFailure n) (pure ())
 
 -- | Pick the first when RULES are enabled, e.g. optimisations are on
 pickWithRules

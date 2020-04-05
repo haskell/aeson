@@ -160,7 +160,7 @@ script:
   - if [ $HCNUMVER -ge 80800 ] && [ $HCNUMVER -lt 81000 ] ; then (cd ${PKGDIR_aeson} && hlint -h ${TOP}/.hlint.yaml . attoparsec-iso8601/ pure ffi) ; fi
   - if [ $HCNUMVER -ge 80800 ] && [ $HCNUMVER -lt 81000 ] ; then (cd ${PKGDIR_attoparsec_iso8601} && hlint -h ${TOP}/.hlint.yaml .) ; fi
   # haddock...
-  - ${CABAL} v2-haddock $WITHCOMPILER --with-haddock $HADDOCK ${TEST} ${BENCH} all
+  - if [ $HCNUMVER -ge 80600 ] ; then ${CABAL} v2-haddock $WITHCOMPILER --with-haddock $HADDOCK ${TEST} ${BENCH} all ; fi
   # Building without installed constraints for packages in global-db...
   - rm -f cabal.project.local
   - ${CABAL} v2-build $WITHCOMPILER --disable-tests --disable-benchmarks all
