@@ -29,6 +29,8 @@ library
     c-sources:  ../cbits/unescape_string.c
     build-depends:
       attoparsec,
+      scanner,
+      scanner-attoparsec,
       base,
       base-compat,
       containers,
@@ -84,6 +86,7 @@ library
       Data.Aeson.Parser.Unescape
       Data.Aeson.Parser.UnescapeFFI
       Data.Aeson.Parser.UnescapePure
+      Data.Aeson.Scanner.Internal
       Data.Aeson.TH
       Data.Aeson.Text
       Data.Aeson.Types
@@ -248,7 +251,7 @@ executable aeson-benchmark-aeson-encode
   ghc-options: -Wall -O2 -rtsopts
   build-depends:
     aeson-benchmarks,
-    attoparsec,
+    scanner,
     base,
     base-compat,
     bytestring,
@@ -261,7 +264,7 @@ executable aeson-benchmark-aeson-parse
   ghc-options: -Wall -O2 -rtsopts
   build-depends:
     aeson-benchmarks,
-    attoparsec,
+    scanner,
     base,
     base-compat,
     bytestring,

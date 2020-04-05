@@ -8,7 +8,7 @@ import Prelude.Compat
 
 import Data.Aeson
 import Control.Monad
-import Data.Attoparsec.ByteString (IResult(..), parseWith)
+import Scanner (Result(..), scanWith)
 import Data.Time.Clock
 import System.Environment (getArgs)
 import System.IO
@@ -27,7 +27,7 @@ main = do
             | otherwise = do
           hSeek h AbsoluteSeek 0
           let refill = B.hGet h blkSize
-          result <- parseWith refill json =<< refill
+          result <- scanWith refill json =<< refill
           case result of
             Done _ _ -> loop (good+1) bad
             _        -> loop good (bad+1)

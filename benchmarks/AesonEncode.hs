@@ -9,7 +9,7 @@ import Prelude.Compat
 import Control.DeepSeq
 import Control.Monad (forM_)
 import Data.Aeson
-import Data.Attoparsec.ByteString (IResult(..), parseWith)
+import Scanner (Result(..), scanWith)
 import Data.Char (isDigit)
 import Data.Time.Clock
 import System.Environment (getArgs)
@@ -27,7 +27,7 @@ main = do
   forM_ args $ \arg -> withFile arg ReadMode $ \h -> do
     putStrLn $ arg ++ ":"
     let refill = B.hGet h 16384
-    result0 <- parseWith refill json =<< refill
+    result0 <- scanWith refill json =<< refill
     r0 <- case result0 of
             Done _ r -> return r
             _        -> fail $ "failed to read " ++ show arg
