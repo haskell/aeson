@@ -55,7 +55,6 @@ import Data.Aeson.Types.Internal (IResult(..), JSONPath, Object, Result(..), Val
 import Data.Attoparsec.ByteString.Char8 (Parser, char, decimal, endOfInput, isDigit_w8, signed, string)
 import Data.Function (fix)
 import Data.Functor.Compat (($>))
-import Data.Bits (testBit)
 import Data.Scientific (Scientific)
 import Data.Text (Text)
 import qualified Data.Text.Encoding as TE
@@ -320,13 +319,16 @@ jstring = A.word8 DOUBLE_QUOTE *> jstring_
 jstring_ :: Parser Text
 {-# INLINE jstring_ #-}
 jstring_ = do
-  s <- A.takeWhile (\w -> w /= DOUBLE_QUOTE && w /= BACKSLASH && not (testBit w 7))
+  -- not sure whether >= or bit hackery is faster
+  -- perfectly, we shouldn't care, it's compiler job.
+  s <- A.takeWhile (\w -> w /= DOUBLE_QUOTE && w /= BACKSLASH && w >= 0x20 && w < 0x80)
   let txt = TE.decodeUtf8 s
-  w <- A.peekWord8
-  case w of
-    Nothing -> fail "string without end"
+  mw <- A.peekWord8
+  case mw of
+    Nothing           -> fail "string without end"
     Just DOUBLE_QUOTE -> A.anyWord8 $> txt
-    _ -> jstringSlow s
+    Just w | w < 0x20 -> fail "unescaped control character"
+    _                 -> jstringSlow s
 
 jstringSlow :: B.ByteString -> Parser Text
 {-# INLINE jstringSlow #-}

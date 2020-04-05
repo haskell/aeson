@@ -87,7 +87,7 @@ Of course before submitting a PR, the following steps are recommended:
 
 A ghci development experience would be:
 
-1. `cabal new-repl test:tests`
+1. `cabal new-repl aeson-tests`
 2. `:r` to recompile
 3. `Main.main`  to run all tests, or `:m Main; :main --pattern Foo` to run specific tests matched by pattern.
 
