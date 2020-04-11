@@ -5,10 +5,9 @@
 module Main (main) where
 
 import Prelude.Compat
+import Data.Aeson
 
 import Control.Applicative (empty)
-import Data.Aeson
-import Data.Monoid
 import qualified Data.ByteString.Lazy.Char8 as BL
 
 data Coord = Coord { x :: Double, y :: Double }

@@ -99,20 +99,35 @@ Of course before submitting a PR, the following steps are recommended:
 
 ### Running benchmarks
 
-You need to install `cabal-plan` and `criterion-compare` with
+You need to install `cabal-plan`:
 
 ```
-cabal install cabal-plan criterion-compare
+cabal install cabal-plan
 ```
 
 Then to build benchmarks we use a different project, which builds
 `aeson` as a package with a different name to avoid rebuilding `criterion`
-etc tools all the time:
+etc tools all the time. There is a helper script which usage
+can be as simple as:
 
 ```
-cabal build --project-file cabal.bench.project all
+git checkout master
+./bench.sh run -n master
+git checkout your-branch
+./bench.sh run -n your-branch
+./bench.sh compare master your-branch
 ```
 
-Then to run benchmarks
+which will output a table like
 
-... to be completed
+```
+Benchmark                              master  your-branch
+Examples/decode/github-issues/lazy    1.77e-3      1.76e-3  -0.68%
+Examples/decode/github-issues/strict  1.75e-3      1.69e-3  -3.29%
+Examples/decode/jp100/lazy            1.97e-3      1.98e-3  +0.43%
+Examples/decode/jp100/strict          1.94e-3      1.96e-3  +1.10%
+Examples/decode/twitter100/lazy       1.54e-3      1.59e-3  +2.98%
+Examples/decode/twitter100/strict     1.51e-3      1.51e-3  -0.20%
+```
+
+Run `./bench.sh help` for more details.

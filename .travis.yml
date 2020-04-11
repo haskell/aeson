@@ -108,16 +108,20 @@ install:
   - |
     echo "packages: ." >> cabal.project
     echo "packages: attoparsec-iso8601" >> cabal.project
+    echo "packages: examples" >> cabal.project
   - if [ $HCNUMVER -ge 80200 ] ; then echo 'package aeson' >> cabal.project ; fi
   - "if [ $HCNUMVER -ge 80200 ] ; then echo '  ghc-options: -Werror=missing-methods' >> cabal.project ; fi"
   - if [ $HCNUMVER -ge 80200 ] ; then echo 'package attoparsec-iso8601' >> cabal.project ; fi
   - "if [ $HCNUMVER -ge 80200 ] ; then echo '  ghc-options: -Werror=missing-methods' >> cabal.project ; fi"
+  - if [ $HCNUMVER -ge 80200 ] ; then echo 'package aeson-examples' >> cabal.project ; fi
+  - "if [ $HCNUMVER -ge 80200 ] ; then echo '  ghc-options: -Werror=missing-methods' >> cabal.project ; fi"
   - |
-  - "for pkg in $($HCPKG list --simple-output); do echo $pkg | sed 's/-[^-]*$//' | (grep -vE -- '^(aeson|attoparsec-iso8601)$' || true) | sed 's/^/constraints: /' | sed 's/$/ installed/' >> cabal.project.local; done"
+  - "for pkg in $($HCPKG list --simple-output); do echo $pkg | sed 's/-[^-]*$//' | (grep -vE -- '^(aeson|aeson-examples|attoparsec-iso8601)$' || true) | sed 's/^/constraints: /' | sed 's/$/ installed/' >> cabal.project.local; done"
   - cat cabal.project || true
   - cat cabal.project.local || true
   - if [ -f "./configure.ac" ]; then (cd "." && autoreconf -i); fi
   - if [ -f "attoparsec-iso8601/configure.ac" ]; then (cd "attoparsec-iso8601" && autoreconf -i); fi
+  - if [ -f "examples/configure.ac" ]; then (cd "examples" && autoreconf -i); fi
   - ${CABAL} v2-freeze $WITHCOMPILER ${TEST} ${BENCH}
   - "cat cabal.project.freeze | sed -E 's/^(constraints: *| *)//' | sed 's/any.//'"
   - rm  cabal.project.freeze
@@ -134,18 +138,22 @@ script:
   - find . -maxdepth 1 -type f -name '*.tar.gz' -exec rm       '{}' \;
   - PKGDIR_aeson="$(find . -maxdepth 1 -type d -regex '.*/aeson-[0-9.]*')"
   - PKGDIR_attoparsec_iso8601="$(find . -maxdepth 1 -type d -regex '.*/attoparsec-iso8601-[0-9.]*')"
+  - PKGDIR_aeson_examples="$(find . -maxdepth 1 -type d -regex '.*/aeson-examples-[0-9.]*')"
   # Generate cabal.project
   - rm -rf cabal.project cabal.project.local cabal.project.freeze
   - touch cabal.project
   - |
     echo "packages: ${PKGDIR_aeson}" >> cabal.project
     echo "packages: ${PKGDIR_attoparsec_iso8601}" >> cabal.project
+    echo "packages: ${PKGDIR_aeson_examples}" >> cabal.project
   - if [ $HCNUMVER -ge 80200 ] ; then echo 'package aeson' >> cabal.project ; fi
   - "if [ $HCNUMVER -ge 80200 ] ; then echo '  ghc-options: -Werror=missing-methods' >> cabal.project ; fi"
   - if [ $HCNUMVER -ge 80200 ] ; then echo 'package attoparsec-iso8601' >> cabal.project ; fi
   - "if [ $HCNUMVER -ge 80200 ] ; then echo '  ghc-options: -Werror=missing-methods' >> cabal.project ; fi"
+  - if [ $HCNUMVER -ge 80200 ] ; then echo 'package aeson-examples' >> cabal.project ; fi
+  - "if [ $HCNUMVER -ge 80200 ] ; then echo '  ghc-options: -Werror=missing-methods' >> cabal.project ; fi"
   - |
-  - "for pkg in $($HCPKG list --simple-output); do echo $pkg | sed 's/-[^-]*$//' | (grep -vE -- '^(aeson|attoparsec-iso8601)$' || true) | sed 's/^/constraints: /' | sed 's/$/ installed/' >> cabal.project.local; done"
+  - "for pkg in $($HCPKG list --simple-output); do echo $pkg | sed 's/-[^-]*$//' | (grep -vE -- '^(aeson|aeson-examples|attoparsec-iso8601)$' || true) | sed 's/^/constraints: /' | sed 's/$/ installed/' >> cabal.project.local; done"
   - cat cabal.project || true
   - cat cabal.project.local || true
   # Building...
@@ -159,6 +167,7 @@ script:
   # HLint..
   - if [ $HCNUMVER -ge 80800 ] && [ $HCNUMVER -lt 81000 ] ; then (cd ${PKGDIR_aeson} && hlint -h ${TOP}/.hlint.yaml . attoparsec-iso8601/ pure ffi) ; fi
   - if [ $HCNUMVER -ge 80800 ] && [ $HCNUMVER -lt 81000 ] ; then (cd ${PKGDIR_attoparsec_iso8601} && hlint -h ${TOP}/.hlint.yaml .) ; fi
+  - if [ $HCNUMVER -ge 80800 ] && [ $HCNUMVER -lt 81000 ] ; then (cd ${PKGDIR_aeson_examples} && hlint -h ${TOP}/.hlint.yaml src/) ; fi
   # haddock...
   - if [ $HCNUMVER -ge 80600 ] ; then ${CABAL} v2-haddock $WITHCOMPILER --with-haddock $HADDOCK ${TEST} ${BENCH} all ; fi
   # Building without installed constraints for packages in global-db...
