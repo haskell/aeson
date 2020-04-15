@@ -28,10 +28,7 @@ import Data.Int (Int64)
 import Data.Text (Text)
 import GHC.Generics (Generic)
 
-{-# ANN module "Hlint: ignore Use camelCase" #-}
-{-# ANN module "Hlint: ignore Use newtype instead of data" #-}
-
-data Metadata = Metadata {
+newtype Metadata = Metadata {
     result_type :: Text
   } deriving (Eq, Show, Typeable, Data, Generic)
 

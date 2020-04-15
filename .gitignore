@@ -1,11 +1,13 @@
 dist
 dist-newstyle
 .ghc.environment.*
+cabal.project.local
 .cabal-sandbox/
 cabal.sandbox.config
 .stack-work/
 .stack-work-bench/
 *.yaml.lock
+.bench-results
 
 *.o
 *.hi

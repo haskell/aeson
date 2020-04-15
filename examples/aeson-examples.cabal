@@ -1,32 +1,113 @@
-name:                aeson-examples
-version:             0
-build-type:          Simple
-cabal-version:       >=1.8
+cabal-version: 2.0
+name:          aeson-examples
+version:       0
+build-type:    Simple
+license:       BSD3
+license-file:  LICENSE
+category:      Text, Web, JSON, Examples
+synopsis:      Aeson examples
+description:   Various aeson examples, also used in benchmarks
+maintainer:    Adam Bergmark <adam@bergmark.nl>
+tested-with:
+  GHC ==7.8.4
+   || ==7.10.3
+   || ==8.0.2
+   || ==8.2.2
+   || ==8.4.4
+   || ==8.6.5
+   || ==8.8.3
+   || ==8.10.1
+
+library twitter-generic
+  default-language: Haskell2010
+  hs-source-dirs:   src/
+  ghc-options:      -Wall
+  exposed-modules:
+    Twitter
+    Twitter.Generic
+    Twitter.Options
+
+  build-depends:
+      aeson
+    , base         >=0 && <5
+    , base-compat
+    , deepseq
+    , text
+
+library twitter-th
+  default-language: Haskell2010
+  hs-source-dirs:   src/
+  ghc-options:      -Wall
+  exposed-modules:
+    Twitter
+    Twitter.Options
+    Twitter.TH
+
+  build-depends:
+      aeson
+    , base         >=0 && <5
+    , base-compat
+    , deepseq
+    , text
+
+library twitter-manual
+  default-language: Haskell2010
+  hs-source-dirs:   src/
+  ghc-options:      -Wall
+  exposed-modules:
+    Twitter
+    Twitter.Manual
+
+  build-depends:
+      aeson
+    , base                   >=0 && <5
+    , base-compat-batteries
+    , deepseq
+    , text
+
+library github
+  default-language: Haskell2010
+  hs-source-dirs:   src/
+  ghc-options:      -Wall
+  exposed-modules:  GitHub
+  build-depends:
+      aeson
+    , base                   >=0 && <5
+    , base-compat-batteries
+    , deepseq
+    , text
+    , time
+    , vector
 
 executable aeson-example-generic
-  main-is: Generic.hs
-  ghc-options: -Wall
+  default-language: Haskell2010
+  hs-source-dirs:   src/
+  main-is:          Generic.hs
+  ghc-options:      -Wall
   build-depends:
-    aeson >= 0.10,
-    base,
-    base-compat,
-    bytestring,
-    ghc-prim
+      aeson
+    , base         >=0 && <5
+    , base-compat
+    , bytestring
 
 executable aeson-example-simplest
-  main-is: Simplest.hs
-  ghc-options: -Wall
+  default-language: Haskell2010
+  main-is:          Simplest.hs
+  hs-source-dirs:   src/
+  ghc-options:      -Wall
   build-depends:
-    aeson,
-    base,
-    base-compat,
-    bytestring
+      aeson
+    , base                   >=0 && <5
+    , base-compat-batteries
+    , bytestring
 
 executable aeson-example-th
-  main-is: TemplateHaskell.hs
-  ghc-options: -Wall
+  default-language: Haskell2010
+  hs-source-dirs:   src/
+  main-is:          TemplateHaskell.hs
+  ghc-options:      -Wall
   build-depends:
-    aeson,
-    base,
-    base-compat,
-    bytestring
+      aeson
+    , base         >=0 && <5
+    , base-compat
+    , bytestring

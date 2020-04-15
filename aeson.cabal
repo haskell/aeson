@@ -35,9 +35,6 @@ extra-source-files:
     benchmarks/json-data/*.json
     cbits/*.c
     changelog.md
-    examples/*.cabal
-    examples/*.hs
-    examples/Twitter/*.hs
     ffi/Data/Aeson/Parser/*.hs
     include/*.h
     tests/JSONTestSuite/test_parsing/*.json
