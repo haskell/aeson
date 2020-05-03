@@ -34,7 +34,7 @@ Error in $: not enough input. Expecting json list value
 SomeType (reject unknown fields)
 Error in $: parsing Types.SomeType(Record) failed, unknown fields: ["testZero"]
 Error in $: parsing Types.SomeType failed, expected Object with key "tag" containing one of ["nullary","unary","product","record","list"], key "tag" not found
-Error in $: parsing Types.SomeType(Record) failed, unknown fields: ["testtwo","testone","testthree"]
+Error in $.testone: parsing Double failed, unexpected Boolean
 Foo (reject unknown fields)
 Error in $: parsing Types.Foo(Foo) failed, unknown fields: ["tag"]
 Foo (reject unknown fields, tagged single)

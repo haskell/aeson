@@ -1260,7 +1260,7 @@ instance (ProductFromJSON arity f, ProductSize f
 --------------------------------------------------------------------------------
 
 class FieldNames f where
-    fieldNames :: f a -> [Text] -> [Text]
+    fieldNames :: f a -> [String] -> [String]
 
 instance (FieldNames a, FieldNames b) => FieldNames (a :*: b) where
     fieldNames _ =
@@ -1268,7 +1268,7 @@ instance (FieldNames a, FieldNames b) => FieldNames (a :*: b) where
       fieldNames (undefined :: b y)
 
 instance (Selector s) => FieldNames (S1 s f) where
-    fieldNames _ = (pack (selName (undefined :: M1 _i s _f _p)) :)
+    fieldNames _ = (selName (undefined :: M1 _i s _f _p) :)
 
 class RecordFromJSON arity f where
     recordParseJSON
@@ -1282,9 +1282,10 @@ instance ( FieldNames f
         \obj -> checkUnknown obj >> recordParseJSON' p obj
         where
             knownFields :: H.HashMap Text ()
-            knownFields = H.fromList $ map (,()) $
-                fieldNames (undefined :: f a)
-                [pack (tagFieldName (sumEncoding opts)) | fromTaggedSum]
+            knownFields = H.fromList $ map ((,()) . pack) $
+                [tagFieldName (sumEncoding opts) | fromTaggedSum] <>
+                (fieldLabelModifier opts <$> fieldNames (undefined :: f a) [])
+
             checkUnknown =
                 if not (rejectUnknownFields opts)
                 then \_ -> return ()

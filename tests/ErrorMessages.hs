@@ -141,7 +141,7 @@ outputGeneric choice = concat
       (select
         thSomeTypeParseJSONRejectUnknownFields
         gSomeTypeParseJSONRejectUnknownFields)
-      [ "{\"tag\": \"record\", \"testOne\": 1.0, \"testZero\": 1}"
+      [ "{\"tag\": \"record\", \"testone\": 1.0, \"testZero\": 1}"
       , "{\"testZero\": 1}"
       , "{\"tag\": \"record\", \"testone\": true, \"testtwo\": null, \"testthree\": null}"
       ]

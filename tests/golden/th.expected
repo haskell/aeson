@@ -34,7 +34,7 @@ Error in $: not enough input. Expecting json list value
 SomeType (reject unknown fields)
 Error in $: Unknown fields: ["testZero"]
 Error in $: key "tag" not found
-Error in $: Unknown fields: ["testtwo","testone","testthree"]
+Error in $.testone: parsing Double failed, unexpected Boolean
 Foo (reject unknown fields)
 Error in $: Unknown fields: ["tag"]
 Foo (reject unknown fields, tagged single)

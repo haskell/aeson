@@ -3,6 +3,7 @@ For the latest version of this document, please see [https://github.com/bos/aeso
 #### 1.4.7.1
 
 * GHC 8.10 compatibility, thanks to Ryan Scott.
+* Fix bug in `rejectUnknownFields` not respecting `fieldLabelModifier`.
 
 ### 1.4.7.0
 
