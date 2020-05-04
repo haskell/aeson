@@ -31,6 +31,7 @@ tests :: [TestTree]
 tests =
   [ aesonGoldenTest "simple" "tests/golden/simple.expected" output
   , aesonGoldenTest "generic" "tests/golden/generic.expected" (outputGeneric G)
+  , aesonGoldenTest "generic" "tests/golden/th.expected" (outputGeneric TH)
   ]
 
 output :: Output
@@ -140,7 +141,7 @@ outputGeneric choice = concat
       (select
         thSomeTypeParseJSONRejectUnknownFields
         gSomeTypeParseJSONRejectUnknownFields)
-      [ "{\"tag\": \"record\", \"testOne\": 1.0, \"testZero\": 1}"
+      [ "{\"tag\": \"record\", \"testone\": 1.0, \"testZero\": 1}"
       , "{\"testZero\": 1}"
       , "{\"tag\": \"record\", \"testone\": true, \"testtwo\": null, \"testthree\": null}"
       ]

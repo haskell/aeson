@@ -939,7 +939,7 @@ parseRecord jc tvMap argTys opts tName conName fields obj inTaggedObject =
           if inTaggedObject then (tagFieldName (sumEncoding opts) :) else id
       knownFields = appE [|H.fromList|] $ listE $
           map (\knownName -> tupE [appE [|T.pack|] $ litE $ stringL knownName, [|()|]]) $
-              tagFieldNameAppender $ map nameBase fields
+              tagFieldNameAppender $ map (fieldLabel opts) fields
       checkUnknownRecords =
           caseE (appE [|H.keys|] $ infixApp (varE obj) [|H.difference|] knownFields)
               [ match (listP []) (normalB [|return ()|]) []
