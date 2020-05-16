@@ -32,7 +32,7 @@ module Data.Aeson.Types.ToJSON
     , toJSON2
     , toEncoding2
     -- * Generic JSON classes
-    , GToJSON(..)
+    , GToJSON'(..)
     , ToArgs(..)
     , genericToJSON
     , genericToEncoding
@@ -155,7 +155,7 @@ realFloatToJSON d
 
 -- | Class of generic representation types that can be converted to
 -- JSON.
-class GToJSON enc arity f where
+class GToJSON' enc arity f where
     -- | This method (applied to 'defaultOptions') is used as the
     -- default generic implementation of 'toJSON'
     -- (with @enc ~ 'Value'@ and @arity ~ 'Zero'@)
@@ -176,14 +176,14 @@ data ToArgs res arity a where
 -- | A configurable generic JSON creator. This function applied to
 -- 'defaultOptions' is used as the default for 'toJSON' when the type
 -- is an instance of 'Generic'.
-genericToJSON :: (Generic a, GToJSON Value Zero (Rep a))
+genericToJSON :: (Generic a, GToJSON' Value Zero (Rep a))
               => Options -> a -> Value
 genericToJSON opts = gToJSON opts NoToArgs . from
 
 -- | A configurable generic JSON creator. This function applied to
 -- 'defaultOptions' is used as the default for 'liftToJSON' when the type
 -- is an instance of 'Generic1'.
-genericLiftToJSON :: (Generic1 f, GToJSON Value One (Rep1 f))
+genericLiftToJSON :: (Generic1 f, GToJSON' Value One (Rep1 f))
                   => Options -> (a -> Value) -> ([a] -> Value)
                   -> f a -> Value
 genericLiftToJSON opts tj tjl = gToJSON opts (To1Args tj tjl) . from1
@@ -191,14 +191,14 @@ genericLiftToJSON opts tj tjl = gToJSON opts (To1Args tj tjl) . from1
 -- | A configurable generic JSON encoder. This function applied to
 -- 'defaultOptions' is used as the default for 'toEncoding' when the type
 -- is an instance of 'Generic'.
-genericToEncoding :: (Generic a, GToJSON Encoding Zero (Rep a))
+genericToEncoding :: (Generic a, GToJSON' Encoding Zero (Rep a))
                   => Options -> a -> Encoding
 genericToEncoding opts = gToJSON opts NoToArgs . from
 
 -- | A configurable generic JSON encoder. This function applied to
 -- 'defaultOptions' is used as the default for 'liftToEncoding' when the type
 -- is an instance of 'Generic1'.
-genericLiftToEncoding :: (Generic1 f, GToJSON Encoding One (Rep1 f))
+genericLiftToEncoding :: (Generic1 f, GToJSON' Encoding One (Rep1 f))
                       => Options -> (a -> Encoding) -> ([a] -> Encoding)
                       -> f a -> Encoding
 genericLiftToEncoding opts te tel = gToJSON opts (To1Args te tel) . from1
@@ -287,7 +287,7 @@ class ToJSON a where
     -- | Convert a Haskell value to a JSON-friendly intermediate type.
     toJSON     :: a -> Value
 
-    default toJSON :: (Generic a, GToJSON Value Zero (Rep a)) => a -> Value
+    default toJSON :: (Generic a, GToJSON' Value Zero (Rep a)) => a -> Value
     toJSON = genericToJSON defaultOptions
 
     -- | Encode a Haskell value as JSON.
@@ -590,7 +590,7 @@ instance GetConName f => GToJSONKey f
 class ToJSON1 f where
     liftToJSON :: (a -> Value) -> ([a] -> Value) -> f a -> Value
 
-    default liftToJSON :: (Generic1 f, GToJSON Value One (Rep1 f))
+    default liftToJSON :: (Generic1 f, GToJSON' Value One (Rep1 f))
                        => (a -> Value) -> ([a] -> Value) -> f a -> Value
     liftToJSON = genericLiftToJSON defaultOptions
 
@@ -599,7 +599,7 @@ class ToJSON1 f where
 
     liftToEncoding :: (a -> Encoding) -> ([a] -> Encoding) -> f a -> Encoding
 
-    default liftToEncoding :: (Generic1 f, GToJSON Encoding One (Rep1 f))
+    default liftToEncoding :: (Generic1 f, GToJSON' Encoding One (Rep1 f))
                            => (a -> Encoding) -> ([a] -> Encoding)
                            -> f a -> Encoding
     liftToEncoding = genericLiftToEncoding defaultOptions
@@ -699,12 +699,12 @@ instance (ToJSON a) => ToJSON [a] where
 -- Generic toJSON / toEncoding
 -------------------------------------------------------------------------------
 
-instance OVERLAPPABLE_ (GToJSON enc arity a) => GToJSON enc arity (M1 i c a) where
+instance OVERLAPPABLE_ (GToJSON' enc arity a) => GToJSON' enc arity (M1 i c a) where
     -- Meta-information, which is not handled elsewhere, is ignored:
     gToJSON opts targs = gToJSON opts targs . unM1
     {-# INLINE gToJSON #-}
 
-instance GToJSON enc One Par1 where
+instance GToJSON' enc One Par1 where
     -- Direct occurrences of the last type parameter are encoded with the
     -- function passed in as an argument:
     gToJSON _opts (To1Args tj _) = tj . unPar1
@@ -713,7 +713,7 @@ instance GToJSON enc One Par1 where
 instance ( ConsToJSON enc arity a
          , AllNullary          (C1 c a) allNullary
          , SumToJSON enc arity (C1 c a) allNullary
-         ) => GToJSON enc arity (D1 d (C1 c a)) where
+         ) => GToJSON' enc arity (D1 d (C1 c a)) where
     -- The option 'tagSingleConstructors' determines whether to wrap
     -- a single-constructor type.
     gToJSON opts targs
@@ -723,7 +723,7 @@ instance ( ConsToJSON enc arity a
         | otherwise = consToJSON opts targs . unM1 . unM1
     {-# INLINE gToJSON #-}
 
-instance (ConsToJSON enc arity a) => GToJSON enc arity (C1 c a) where
+instance (ConsToJSON enc arity a) => GToJSON' enc arity (C1 c a) where
     -- Constructors need to be encoded differently depending on whether they're
     -- a record or not. This distinction is made by 'consToJSON':
     gToJSON opts targs = consToJSON opts targs . unM1
@@ -731,7 +731,7 @@ instance (ConsToJSON enc arity a) => GToJSON enc arity (C1 c a) where
 
 instance ( AllNullary       (a :+: b) allNullary
          , SumToJSON  enc arity (a :+: b) allNullary
-         ) => GToJSON enc arity (a :+: b)
+         ) => GToJSON' enc arity (a :+: b)
   where
     -- If all constructors of a sum datatype are nullary and the
     -- 'allNullaryToStringTag' option is set they are encoded to
@@ -747,31 +747,31 @@ instance ( AllNullary       (a :+: b) allNullary
 -- possible but makes error messages a bit harder to understand for missing
 -- instances.
 
-instance GToJSON Value arity V1 where
+instance GToJSON' Value arity V1 where
     -- Empty values do not exist, which makes the job of formatting them
     -- rather easy:
     gToJSON _ _ x = x `seq` error "case: V1"
     {-# INLINE gToJSON #-}
 
-instance ToJSON a => GToJSON Value arity (K1 i a) where
+instance ToJSON a => GToJSON' Value arity (K1 i a) where
     -- Constant values are encoded using their ToJSON instance:
     gToJSON _opts _ = toJSON . unK1
     {-# INLINE gToJSON #-}
 
-instance ToJSON1 f => GToJSON Value One (Rec1 f) where
+instance ToJSON1 f => GToJSON' Value One (Rec1 f) where
     -- Recursive occurrences of the last type parameter are encoded using their
     -- ToJSON1 instance:
     gToJSON _opts (To1Args tj tjl) = liftToJSON tj tjl . unRec1
     {-# INLINE gToJSON #-}
 
-instance GToJSON Value arity U1 where
+instance GToJSON' Value arity U1 where
     -- Empty constructors are encoded to an empty array:
     gToJSON _opts _ _ = emptyArray
     {-# INLINE gToJSON #-}
 
 instance ( WriteProduct arity a, WriteProduct arity b
          , ProductSize        a, ProductSize        b
-         ) => GToJSON Value arity (a :*: b)
+         ) => GToJSON' Value arity (a :*: b)
   where
     -- Products are encoded to an array. Here we allocate a mutable vector of
     -- the same size as the product and write the product's elements to it using
@@ -787,8 +787,8 @@ instance ( WriteProduct arity a, WriteProduct arity b
     {-# INLINE gToJSON #-}
 
 instance ( ToJSON1 f
-         , GToJSON Value One g
-         ) => GToJSON Value One (f :.: g)
+         , GToJSON' Value One g
+         ) => GToJSON' Value One (f :.: g)
   where
     -- If an occurrence of the last type parameter is nested inside two
     -- composed types, it is encoded by using the outermost type's ToJSON1
@@ -801,25 +801,25 @@ instance ( ToJSON1 f
 --------------------------------------------------------------------------------
 -- Generic toEncoding
 
-instance ToJSON a => GToJSON Encoding arity (K1 i a) where
+instance ToJSON a => GToJSON' Encoding arity (K1 i a) where
     -- Constant values are encoded using their ToJSON instance:
     gToJSON _opts _ = toEncoding . unK1
     {-# INLINE gToJSON #-}
 
-instance ToJSON1 f => GToJSON Encoding One (Rec1 f) where
+instance ToJSON1 f => GToJSON' Encoding One (Rec1 f) where
     -- Recursive occurrences of the last type parameter are encoded using their
     -- ToEncoding1 instance:
     gToJSON _opts (To1Args te tel) = liftToEncoding te tel . unRec1
     {-# INLINE gToJSON #-}
 
-instance GToJSON Encoding arity U1 where
+instance GToJSON' Encoding arity U1 where
     -- Empty constructors are encoded to an empty array:
     gToJSON _opts _ _ = E.emptyArray_
     {-# INLINE gToJSON #-}
 
 instance ( EncodeProduct  arity a
          , EncodeProduct  arity b
-         ) => GToJSON Encoding arity (a :*: b)
+         ) => GToJSON' Encoding arity (a :*: b)
   where
     -- Products are encoded to an array. Here we allocate a mutable vector of
     -- the same size as the product and write the product's elements to it using
@@ -828,8 +828,8 @@ instance ( EncodeProduct  arity a
     {-# INLINE gToJSON #-}
 
 instance ( ToJSON1 f
-         , GToJSON Encoding One g
-         ) => GToJSON Encoding One (f :.: g)
+         , GToJSON' Encoding One g
+         ) => GToJSON' Encoding One (f :.: g)
   where
     -- If an occurrence of the last type parameter is nested inside two
     -- composed types, it is encoded by using the outermost type's ToJSON1
@@ -939,7 +939,7 @@ class TaggedObject' enc pairs arity f isRecord where
     taggedObject' :: Options -> ToArgs enc arity a
                   -> String -> f a -> Tagged isRecord pairs
 
-instance ( GToJSON enc arity f
+instance ( GToJSON' enc arity f
          , KeyValuePair enc pairs
          ) => TaggedObject' enc pairs arity f False
   where
@@ -994,7 +994,7 @@ instance ( SumToJSON' s enc arity a
 
 --------------------------------------------------------------------------------
 
-instance ( GToJSON    Value arity a
+instance ( GToJSON'    Value arity a
          , ConsToJSON Value arity a
          , Constructor c
          ) => SumToJSON' TwoElemArray Value arity (C1 c a) where
@@ -1007,7 +1007,7 @@ instance ( GToJSON    Value arity a
 
 --------------------------------------------------------------------------------
 
-instance ( GToJSON    Encoding arity a
+instance ( GToJSON'    Encoding arity a
          , ConsToJSON Encoding arity a
          , Constructor c
          ) => SumToJSON' TwoElemArray Encoding arity (C1 c a)
@@ -1039,7 +1039,7 @@ instance ( IsRecord                f isRecord
 instance OVERLAPPING_
          ( RecordToPairs enc pairs arity (S1 s f)
          , FromPairs enc pairs
-         , GToJSON enc arity f
+         , GToJSON' enc arity f
          ) => ConsToJSON' enc arity (S1 s f) True
   where
     consToJSON' opts targs
@@ -1054,7 +1054,7 @@ instance ( RecordToPairs enc pairs arity f
     consToJSON' opts targs = Tagged . fromPairs . recordToPairs opts targs
     {-# INLINE consToJSON' #-}
 
-instance GToJSON enc arity f => ConsToJSON' enc arity f False where
+instance GToJSON' enc arity f => ConsToJSON' enc arity f False where
     consToJSON' opts targs = Tagged . gToJSON opts targs
     {-# INLINE consToJSON' #-}
 
@@ -1080,7 +1080,7 @@ instance ( Monoid pairs
     {-# INLINE recordToPairs #-}
 
 instance ( Selector s
-         , GToJSON enc arity a
+         , GToJSON' enc arity a
          , KeyValuePair enc pairs
          ) => RecordToPairs enc pairs arity (S1 s a)
   where
@@ -1089,7 +1089,7 @@ instance ( Selector s
 
 instance INCOHERENT_
     ( Selector s
-    , GToJSON enc arity (K1 i (Maybe a))
+    , GToJSON' enc arity (K1 i (Maybe a))
     , KeyValuePair enc pairs
     , Monoid pairs
     ) => RecordToPairs enc pairs arity (S1 s (K1 i (Maybe a)))
@@ -1101,7 +1101,7 @@ instance INCOHERENT_
 
 instance INCOHERENT_
     ( Selector s
-    , GToJSON enc arity (K1 i (Maybe a))
+    , GToJSON' enc arity (K1 i (Maybe a))
     , KeyValuePair enc pairs
     , Monoid pairs
     ) => RecordToPairs enc pairs arity (S1 s (K1 i (Semigroup.Option a)))
@@ -1113,7 +1113,7 @@ instance INCOHERENT_
     {-# INLINE recordToPairs #-}
 
 fieldToPair :: (Selector s
-               , GToJSON enc arity a
+               , GToJSON' enc arity a
                , KeyValuePair enc pairs)
             => Options -> ToArgs enc arity p
             -> S1 s a p -> pairs
@@ -1146,7 +1146,7 @@ instance ( WriteProduct arity a
           ixR  = ix  + lenL
     {-# INLINE writeProduct #-}
 
-instance OVERLAPPABLE_ (GToJSON Value arity a) => WriteProduct arity a where
+instance OVERLAPPABLE_ (GToJSON' Value arity a) => WriteProduct arity a where
     writeProduct opts targs mv ix _ =
       VM.unsafeWrite mv ix . gToJSON opts targs
     {-# INLINE writeProduct #-}
@@ -1169,13 +1169,13 @@ instance ( EncodeProduct    arity a
       encodeProduct opts targs b
     {-# INLINE encodeProduct #-}
 
-instance OVERLAPPABLE_ (GToJSON Encoding arity a) => EncodeProduct arity a where
+instance OVERLAPPABLE_ (GToJSON' Encoding arity a) => EncodeProduct arity a where
     encodeProduct opts targs a = E.retagEncoding $ gToJSON opts targs a
     {-# INLINE encodeProduct #-}
 
 --------------------------------------------------------------------------------
 
-instance ( GToJSON    enc arity a
+instance ( GToJSON'   enc arity a
          , ConsToJSON enc arity a
          , FromPairs  enc pairs
          , KeyValuePair  enc pairs

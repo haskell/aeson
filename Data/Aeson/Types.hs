@@ -77,6 +77,7 @@ module Data.Aeson.Types
     , FromArgs
     , GToJSON
     , GToEncoding
+    , GToJSON'
     , ToArgs
     , Zero
     , One
