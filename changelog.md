@@ -4,7 +4,7 @@ For the latest version of this document, please see [https://github.com/bos/aeso
 
 * Fix bug in `rejectUnknownFields` not respecting `fieldLabelModifier`, thanks to Markus Schirp.
 * `GFromJSON` members are no longer exported from `Data.Aeson(.Types)`, if you are using `gParseJSON` consider switching to `gParseJSON'`, thanks to Oleg Grenrus.
-* Aeson so longer accepts unescaped control characters, thanks to Oleg Grenrus.
+* Aeson no longer accepts unescaped control characters, thanks to Oleg Grenrus.
 * Remove `CoerceText` since GHC >=7.8 has `Coercible`, thanks to Oleg Grenrus.
 * Rename the `GToJSON` class to `GToJSON'` and expose it, thanks to Oleg Grenrus.
 
