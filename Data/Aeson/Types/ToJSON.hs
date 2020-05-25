@@ -76,6 +76,7 @@ import Data.Functor.Contravariant (Contravariant (..))
 import Data.Functor.Identity (Identity(..))
 import Data.Functor.Product (Product(..))
 import Data.Functor.Sum (Sum(..))
+import Data.Functor.These (These1 (..))
 import Data.Int (Int16, Int32, Int64, Int8)
 import Data.List (intersperse)
 import Data.List.NonEmpty (NonEmpty(..))
@@ -84,6 +85,7 @@ import Data.Ratio (Ratio, denominator, numerator)
 import Data.Scientific (Scientific)
 import Data.Tagged (Tagged(..))
 import Data.Text (Text, pack)
+import Data.These (These (..))
 import Data.Time (Day, DiffTime, LocalTime, NominalDiffTime, TimeOfDay, UTCTime, ZonedTime)
 import Data.Time.Calendar.Compat (CalendarDiffDays (..), DayOfWeek (..))
 import Data.Time.LocalTime.Compat (CalendarDiffTime (..))
@@ -2283,6 +2285,57 @@ instance ToJSON b => ToJSON (Tagged a b) where
 instance ToJSONKey b => ToJSONKey (Tagged a b) where
     toJSONKey = contramapToJSONKeyFunction unTagged toJSONKey
     toJSONKeyList = contramapToJSONKeyFunction (fmap unTagged) toJSONKeyList
+
+-------------------------------------------------------------------------------
+-- these
+-------------------------------------------------------------------------------
+
+-- | @since 1.5.1.0
+instance (ToJSON a, ToJSON b) => ToJSON (These a b) where
+    toJSON (This a)    = object [ "This" .= a ]
+    toJSON (That b)    = object [ "That" .= b ]
+    toJSON (These a b) = object [ "This" .= a, "That" .= b ]
+
+    toEncoding (This a)    = E.pairs $ "This" .= a
+    toEncoding (That b)    = E.pairs $ "That" .= b
+    toEncoding (These a b) = E.pairs $ "This" .= a <> "That" .= b
+
+-- | @since 1.5.1.0
+instance ToJSON2 These where
+    liftToJSON2  toa _ _tob _ (This a)    = object [ "This" .= toa a ]
+    liftToJSON2 _toa _  tob _ (That b)    = object [ "That" .= tob b ]
+    liftToJSON2  toa _  tob _ (These a b) = object [ "This" .= toa a, "That" .= tob b ]
+
+    liftToEncoding2  toa _ _tob _ (This a)    = E.pairs $ E.pair "This" (toa a)
+    liftToEncoding2 _toa _  tob _ (That b)    = E.pairs $ E.pair "That" (tob b)
+    liftToEncoding2  toa _  tob _ (These a b) = E.pairs $ E.pair "This" (toa a) <> E.pair "That" (tob b)
+
+-- | @since 1.5.1.0
+instance ToJSON a => ToJSON1 (These a) where
+    liftToJSON _tob _ (This a)    = object [ "This" .= a ]
+    liftToJSON  tob _ (That b)    = object [ "That" .= tob b ]
+    liftToJSON  tob _ (These a b) = object [ "This" .= a, "That" .= tob b ]
+
+    liftToEncoding _tob _ (This a)    = E.pairs $ "This" .= a
+    liftToEncoding  tob _ (That b)    = E.pairs $ E.pair "That" (tob b)
+    liftToEncoding  tob _ (These a b) = E.pairs $ "This" .= a <> E.pair "That" (tob b)
+
+-- | @since 1.5.1.0
+instance (ToJSON1 f, ToJSON1 g) => ToJSON1 (These1 f g) where
+    liftToJSON tx tl (This1 a)    = object [ "This" .= liftToJSON tx tl a ]
+    liftToJSON tx tl (That1 b)    = object [ "That" .= liftToJSON tx tl b ]
+    liftToJSON tx tl (These1 a b) = object [ "This" .= liftToJSON tx tl a, "That" .= liftToJSON tx tl b ]
+
+    liftToEncoding tx tl (This1 a)    = E.pairs $ E.pair "This" (liftToEncoding tx tl a)
+    liftToEncoding tx tl (That1 b)    = E.pairs $ E.pair "That" (liftToEncoding tx tl b)
+    liftToEncoding tx tl (These1 a b) = E.pairs $
+        pair "This" (liftToEncoding tx tl a) `mappend`
+        pair "That" (liftToEncoding tx tl b)
+
+-- | @since 1.5.1.0
+instance (ToJSON1 f, ToJSON1 g, ToJSON a) => ToJSON (These1 f g a) where
+    toJSON     = toJSON1
+    toEncoding = toEncoding1
 
 -------------------------------------------------------------------------------
 -- Instances for converting t map keys

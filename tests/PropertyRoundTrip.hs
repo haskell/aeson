@@ -12,6 +12,7 @@ import Data.Proxy (Proxy)
 import Data.Ratio (Ratio)
 import Data.Sequence (Seq)
 import Data.Tagged (Tagged)
+import Data.These (These (..))
 import Data.Time (Day, DiffTime, LocalTime, NominalDiffTime, TimeOfDay, UTCTime, ZonedTime)
 import Data.Version (Version)
 import Data.Time.Calendar.Compat (CalendarDiffDays, DayOfWeek)
@@ -64,6 +65,7 @@ roundTripTests =
     , testProperty "Rational" $ roundTripEq (undefined :: Rational)
     , testProperty "Ratio Int" $ roundTripEq (undefined :: Ratio Int)
     , testProperty "UUID" $ roundTripEq UUID.nil
+    , testProperty "These" $ roundTripEq (These 'x' True)
     , roundTripFunctorsTests
     , testGroup "ghcGenerics" [
         testProperty "OneConstructor" $ roundTripEq OneConstructor
