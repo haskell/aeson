@@ -39,6 +39,7 @@ module Data.Aeson.Types.Class
     , FromArgs(..)
     , GToJSON
     , GToEncoding
+    , GToJSON'
     , ToArgs(..)
     , Zero
     , One
@@ -100,10 +101,9 @@ module Data.Aeson.Types.Class
 
 import Data.Aeson.Types.FromJSON
 import Data.Aeson.Types.Generic (One, Zero)
-import Data.Aeson.Types.ToJSON hiding (GToJSON)
-import qualified Data.Aeson.Types.ToJSON as ToJSON
+import Data.Aeson.Types.ToJSON
 import Data.Aeson.Types.Internal (Value)
 import Data.Aeson.Encoding (Encoding)
 
-type GToJSON = ToJSON.GToJSON Value
-type GToEncoding = ToJSON.GToJSON Encoding
+type GToJSON = GToJSON' Value
+type GToEncoding = GToJSON' Encoding

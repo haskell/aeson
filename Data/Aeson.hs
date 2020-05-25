@@ -91,6 +91,7 @@ module Data.Aeson
     , FromArgs
     , GToJSON
     , GToEncoding
+    , GToJSON'
     , ToArgs
     , Zero
     , One
