@@ -1,5 +1,9 @@
 For the latest version of this document, please see [https://github.com/bos/aeson/blob/master/changelog.md](https://github.com/bos/aeson/blob/master/changelog.md).
 
+### 1.5.1.0
+
+* Add instances for `these`, thanks to Oleg Grenrus.
+
 ## 1.5.0.0
 
 * Fix bug in `rejectUnknownFields` not respecting `fieldLabelModifier`, thanks to Markus Schirp.
