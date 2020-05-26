@@ -25,6 +25,7 @@ library
     , template-haskell
     , text
     , th-abstraction
+    , these
     , time
     , time-compat
     , transformers

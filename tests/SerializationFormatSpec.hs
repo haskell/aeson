@@ -29,6 +29,7 @@ import Data.List.NonEmpty (NonEmpty(..))
 import Data.Proxy (Proxy(..))
 import Data.Scientific (Scientific)
 import Data.Tagged (Tagged(..))
+import Data.These (These (..))
 import Data.Time (fromGregorian)
 import Data.Time.Calendar.Compat (CalendarDiffDays (..), DayOfWeek (..))
 import Data.Time.LocalTime.Compat (CalendarDiffTime (..))
@@ -208,6 +209,15 @@ jsonExamples =
     [ "{\"months\":12,\"days\":20}", "{\"days\":20,\"months\":12}" ]
     (CalendarDiffDays 12 20)
   , example "DayOfWeek" "\"monday\"" Monday
+
+  -- these
+  , example "These: This" "{\"This\":\"x\"}" (This 'x'   :: These Char Bool)
+  , example "These: That" "{\"That\":true}"  (That True  :: These Char Bool)
+  , ndExample "These"
+    [ "{\"This\":\"y\",\"That\":false}"
+    , "{\"That\":false,\"This\":\"y\"}"
+    ]
+    (These 'y' False)
   ]
 
 jsonEncodingExamples :: [Example]
