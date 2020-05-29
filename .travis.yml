@@ -120,8 +120,6 @@ install:
   - if [ $HCNUMVER -ge 80200 ] ; then echo 'package aeson-examples' >> cabal.project ; fi
   - "if [ $HCNUMVER -ge 80200 ] ; then echo '  ghc-options: -Werror=missing-methods' >> cabal.project ; fi"
   - |
-    echo "packages: https://oleg.fi/these-1.1.tar.gz"                   >> cabal.project
-    echo "packages: https://oleg.fi/quickcheck-instances-0.3.23.tar.gz" >> cabal.project
   - "for pkg in $($HCPKG list --simple-output); do echo $pkg | sed 's/-[^-]*$//' | (grep -vE -- '^(aeson|aeson-examples|attoparsec-iso8601)$' || true) | sed 's/^/constraints: /' | sed 's/$/ installed/' >> cabal.project.local; done"
   - cat cabal.project || true
   - cat cabal.project.local || true
@@ -159,8 +157,6 @@ script:
   - if [ $HCNUMVER -ge 80200 ] ; then echo 'package aeson-examples' >> cabal.project ; fi
   - "if [ $HCNUMVER -ge 80200 ] ; then echo '  ghc-options: -Werror=missing-methods' >> cabal.project ; fi"
   - |
-    echo "packages: https://oleg.fi/these-1.1.tar.gz"                   >> cabal.project
-    echo "packages: https://oleg.fi/quickcheck-instances-0.3.23.tar.gz" >> cabal.project
   - "for pkg in $($HCPKG list --simple-output); do echo $pkg | sed 's/-[^-]*$//' | (grep -vE -- '^(aeson|aeson-examples|attoparsec-iso8601)$' || true) | sed 's/^/constraints: /' | sed 's/$/ installed/' >> cabal.project.local; done"
   - cat cabal.project || true
   - cat cabal.project.local || true

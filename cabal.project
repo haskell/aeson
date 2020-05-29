@@ -3,6 +3,3 @@ packages: .
 packages: attoparsec-iso8601
 packages: examples
 tests: true
-
-packages: https://oleg.fi/these-1.1.tar.gz
-packages: https://oleg.fi/quickcheck-instances-0.3.23.tar.gz
