@@ -113,6 +113,7 @@ module Data.Aeson
     , sumEncoding
     , unwrapUnaryRecords
     , tagSingleConstructors
+    , rejectUnknownFields
     -- *** Options utilities
     , SumEncoding(..)
     , camelTo2
