@@ -133,22 +133,17 @@ library
     build-depends: nats >= 1.1.1 && < 1.2,
                    void >= 0.7.2 && < 0.8
 
-  -- cannot use latest version
-  build-depends:
-    unordered-containers >= 0.2.8.0  && < 0.3,
-
-    -- not in LTS-12.10
-    tagged               >= 0.8.5    && < 0.9,
-    primitive            >= 0.6.3.0  && < 0.8
-
   -- Other dependencies
   build-depends:
     attoparsec           >= 0.13.2.2 && < 0.14,
     dlist                >= 0.8.0.4  && < 0.9,
     hashable             >= 1.2.7.0  && < 1.4,
+    primitive            >= 0.7.0.1  && < 0.8,
     scientific           >= 0.3.6.2  && < 0.4,
+    tagged               >= 0.8.6    && < 0.9,
     th-abstraction       >= 0.2.8.0  && < 0.4,
     these                >= 1.1      && < 1.2,
+    unordered-containers >= 0.2.10.0 && < 0.3,
     uuid-types           >= 1.0.3    && < 1.1,
     vector               >= 0.12.0.1 && < 0.13
 

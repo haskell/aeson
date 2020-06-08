@@ -4,6 +4,7 @@
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE NoImplicitPrelude #-}
 {-# LANGUAGE Rank2Types #-}
+{-# LANGUAGE StandaloneDeriving #-}
 #if __GLASGOW_HASKELL__ >= 800
 -- a) THQ works on cross-compilers and unregisterised GHCs
 -- b) may make compilation faster as no dynamic loading is ever needed (not sure about this)
@@ -366,6 +367,17 @@ data Value = Object !Object
            | Bool !Bool
            | Null
              deriving (Eq, Read, Show, Typeable, Data, Generic)
+
+-- |
+--
+-- The ordering is total, consistent with 'Eq' innstance.
+-- However, nothing else about the ordering is specified,
+-- and it may change from environment to environment and version to version
+-- of either this package or its dependencies ('hashable' and 'unordered-containers').
+--
+-- @since 1.5.2.0
+deriving instance Ord Value
+-- standalone deriving to attach since annotation.
 
 -- | A newtype wrapper for 'UTCTime' that uses the same non-standard
 -- serialization format as Microsoft .NET, whose
