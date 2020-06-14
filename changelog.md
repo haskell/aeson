@@ -2,7 +2,7 @@ For the latest version of this document, please see [https://github.com/bos/aeso
 
 ### 1.5.2.0
 
-* Add `Ord Value` instance
+* Add `Ord Value` instance, thanks to Oleg Grenrus.
 * Export `rejectUnknownFields` from `Data.Aeson`
 
 ### 1.5.1.0
