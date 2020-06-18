@@ -244,6 +244,7 @@ jsonDecodingExamples = [
   , MaybeExample "Word8 300"  "300"  (Nothing :: Maybe Word8)
   -- Negative zero year, encoding never produces such:
   , MaybeExample "Day -0000-02-03" "\"-0000-02-03\"" (Just (fromGregorian 0 2 3))
+  , Example "()" ["[]", "{}"] () ()
   ]
 
 data Example where

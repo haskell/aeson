@@ -1521,10 +1521,14 @@ instance FromJSON Ordering where
                   " (expected \"LT\", \"EQ\", or \"GT\")"
 
 instance FromJSON () where
-    parseJSON = withArray "()" $ \v ->
+    parseJSON j = (withArray "()" $ \v ->
                   if V.null v
                     then pure ()
-                    else prependContext "()" $ fail "expected an empty array"
+                    else prependContext "()" $ fail "expected an empty array or object") j <|>
+                (withObject "()" $ \o ->
+                       if H.size o == 0
+                         then pure ()
+                         else prependContext "()" $ fail "expected an empty array or object") j
     {-# INLINE parseJSON #-}
 
 instance FromJSON Char where
