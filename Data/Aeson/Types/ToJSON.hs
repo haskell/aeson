@@ -133,13 +133,7 @@ import qualified GHC.Exts as Exts
 import qualified Data.Primitive.Array as PM
 import qualified Data.Primitive.SmallArray as PM
 import qualified Data.Primitive.Types as PM
-
-#if MIN_VERSION_primitive(0,6,4)
-#if !MIN_VERSION_primitive(0,7,0)
-import qualified Data.Primitive.UnliftedArray as PM
-#endif
 import qualified Data.Primitive.PrimArray as PM
-#endif
 
 toJSONPair :: (a -> Value) -> (b -> Value) -> (a, b) -> Value
 toJSONPair a b = liftToJSON2 a (listValue a) b (listValue b)
@@ -1981,17 +1975,9 @@ instance ToJSON a => ToJSON (PM.SmallArray a) where
   toJSON = toJSON . Exts.toList
   toEncoding = toEncoding . Exts.toList
 
-#if (MIN_VERSION_primitive(0,6,4))
 instance (PM.Prim a,ToJSON a) => ToJSON (PM.PrimArray a) where
   toJSON = toJSON . Exts.toList
   toEncoding = toEncoding . Exts.toList
-
-#if !MIN_VERSION_primitive(0,7,0)
-instance (PM.PrimUnlifted a,ToJSON a) => ToJSON (PM.UnliftedArray a) where
-  toJSON = toJSON . Exts.toList
-  toEncoding = toEncoding . Exts.toList
-#endif
-#endif
 
 -------------------------------------------------------------------------------
 -- time
