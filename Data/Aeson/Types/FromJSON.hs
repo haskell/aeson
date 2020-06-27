@@ -1526,7 +1526,7 @@ instance FromJSON () where
                     then pure ()
                     else prependContext "()" $ fail "expected an empty array or object") j <|>
                 (withObject "()" $ \o ->
-                       if H.empty 0
+                       if H.empty o
                          then pure ()
                          else prependContext "()" $ fail "expected an empty array or object") j
     {-# INLINE parseJSON #-}
