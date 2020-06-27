@@ -110,10 +110,6 @@ import qualified Data.Scientific as S
 import qualified Data.Vector as V
 import qualified Language.Haskell.TH.Syntax as TH
 
-#if !MIN_VERSION_unordered_containers(0,2,6)
-import Data.List (sort)
-#endif
-
 -- | Elements of a JSON path used to describe the location of an
 -- error.
 data JSONPathElement = Key Text
@@ -405,14 +401,7 @@ instance IsString Value where
     {-# INLINE fromString #-}
 
 hashValue :: Int -> Value -> Int
-#if MIN_VERSION_unordered_containers(0,2,6)
 hashValue s (Object o)   = s `hashWithSalt` (0::Int) `hashWithSalt` o
-#else
-hashValue s (Object o)   = foldl' hashWithSalt
-                              (s `hashWithSalt` (0::Int)) assocHashesSorted
-  where
-    assocHashesSorted = sort [hash k `hashWithSalt` v | (k, v) <- H.toList o]
-#endif
 hashValue s (Array a)    = foldl' hashWithSalt
                               (s `hashWithSalt` (1::Int)) a
 hashValue s (String str) = s `hashWithSalt` (2::Int) `hashWithSalt` str
