@@ -123,6 +123,9 @@ import qualified Data.Aeson.Parser.Time as Time
 import qualified Data.Attoparsec.ByteString.Char8 as A (endOfInput, parseOnly, scientific)
 import qualified Data.ByteString.Lazy as L
 import qualified Data.DList as DList
+#if MIN_VERSION_dlist(1,0,0) && __GLASGOW_HASKELL__ >=800
+import qualified Data.DList.DNonEmpty as DNE
+#endif
 import qualified Data.Fix as F
 import qualified Data.HashMap.Strict as H
 import qualified Data.HashSet as HashSet
@@ -1755,8 +1758,24 @@ instance (FromJSON a) => FromJSON (DList.DList a) where
     parseJSON = parseJSON1
     {-# INLINE parseJSON #-}
 
+#if MIN_VERSION_dlist(1,0,0) && __GLASGOW_HASKELL__ >=800
+-- | @since 1.5.3.0
+instance FromJSON1 DNE.DNonEmpty where
+    liftParseJSON p _ = withArray "DNonEmpty" $
+        (>>= ne) . Tr.sequence . zipWith (parseIndexedJSON p) [0..] . V.toList
+      where
+        ne []     = fail "parsing DNonEmpty failed, unexpected empty list"
+        ne (x:xs) = pure (DNE.fromNonEmpty (x :| xs))
+    {-# INLINE liftParseJSON #-}
+
+-- | @since 1.5.3.0
+instance (FromJSON a) => FromJSON (DNE.DNonEmpty a) where
+    parseJSON = parseJSON1
+    {-# INLINE parseJSON #-}
+#endif
+
 -------------------------------------------------------------------------------
--- tranformers - Functors
+-- transformers - Functors
 -------------------------------------------------------------------------------
 
 instance FromJSON1 Identity where

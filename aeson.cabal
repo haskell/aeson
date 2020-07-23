@@ -137,7 +137,7 @@ library
   build-depends:
     attoparsec           >= 0.13.2.2 && < 0.14,
     data-fix             >= 0.3      && < 0.4,
-    dlist                >= 0.8.0.4  && < 0.9,
+    dlist                >= 0.8.0.4  && < 1.1,
     hashable             >= 1.2.7.0  && < 1.4,
     primitive            >= 0.7.0.1  && < 0.8,
     scientific           >= 0.3.6.2  && < 0.4,

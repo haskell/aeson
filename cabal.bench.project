@@ -3,5 +3,5 @@ packages: benchmarks/
 packages: criterion-compare-txt/
 tests: false
 
-packages: https://oleg.fi/these-1.1.tar.gz
-packages: https://oleg.fi/quickcheck-instances-0.3.23.tar.gz
+packages: https://hackage.haskell.org/package/quickcheck-instances-0.3.24/candidate/quickcheck-instances-0.3.24.tar.gz
+packages: https://hackage.haskell.org/package/strict-0.4/candidate/strict-0.4.tar.gz

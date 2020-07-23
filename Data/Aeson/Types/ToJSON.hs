@@ -103,6 +103,9 @@ import qualified Data.Aeson.Encoding as E
 import qualified Data.Aeson.Encoding.Internal as E (InArray, comma, econcat, retagEncoding)
 import qualified Data.ByteString.Lazy as L
 import qualified Data.DList as DList
+#if MIN_VERSION_dlist(1,0,0) && __GLASGOW_HASKELL__ >=800
+import qualified Data.DList.DNonEmpty as DNE
+#endif
 import qualified Data.Fix as F
 import qualified Data.HashMap.Strict as H
 import qualified Data.HashSet as HashSet
@@ -1613,6 +1616,24 @@ instance (ToJSON a) => ToJSON (DList.DList a) where
 
     toEncoding = toEncoding1
     {-# INLINE toEncoding #-}
+
+#if MIN_VERSION_dlist(1,0,0) && __GLASGOW_HASKELL__ >=800
+-- | @since 1.5.3.0
+instance ToJSON1 DNE.DNonEmpty where
+    liftToJSON t _ = listValue t . DNE.toList
+    {-# INLINE liftToJSON #-}
+
+    liftToEncoding t _ = listEncoding t . DNE.toList
+    {-# INLINE liftToEncoding #-}
+
+-- | @since 1.5.3.0
+instance (ToJSON a) => ToJSON (DNE.DNonEmpty a) where
+    toJSON = toJSON1
+    {-# INLINE toJSON #-}
+
+    toEncoding = toEncoding1
+    {-# INLINE toEncoding #-}
+#endif
 
 -------------------------------------------------------------------------------
 -- transformers - Functors
