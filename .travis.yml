@@ -8,7 +8,7 @@
 #
 # For more information, see https://github.com/haskell-CI/haskell-ci
 #
-# version: 0.10.1
+# version: 0.10.2
 #
 version: ~> 1.0
 language: c
@@ -120,6 +120,11 @@ install:
   - if [ $HCNUMVER -ge 80200 ] ; then echo 'package aeson-examples' >> cabal.project ; fi
   - "if [ $HCNUMVER -ge 80200 ] ; then echo '  ghc-options: -Werror=missing-methods' >> cabal.project ; fi"
   - |
+    echo "packages:"                                                                                                      >> cabal.project
+    echo "  https://hackage.haskell.org/package/quickcheck-instances-0.3.24/candidate/quickcheck-instances-0.3.24.tar.gz" >> cabal.project
+    echo ""                                                                                                               >> cabal.project
+    echo "packages:"                                                                                                      >> cabal.project
+    echo "  https://hackage.haskell.org/package/strict-0.4/candidate/strict-0.4.tar.gz"                                   >> cabal.project
   - "for pkg in $($HCPKG list --simple-output); do echo $pkg | sed 's/-[^-]*$//' | (grep -vE -- '^(aeson|aeson-examples|attoparsec-iso8601)$' || true) | sed 's/^/constraints: /' | sed 's/$/ installed/' >> cabal.project.local; done"
   - cat cabal.project || true
   - cat cabal.project.local || true
@@ -157,6 +162,11 @@ script:
   - if [ $HCNUMVER -ge 80200 ] ; then echo 'package aeson-examples' >> cabal.project ; fi
   - "if [ $HCNUMVER -ge 80200 ] ; then echo '  ghc-options: -Werror=missing-methods' >> cabal.project ; fi"
   - |
+    echo "packages:"                                                                                                      >> cabal.project
+    echo "  https://hackage.haskell.org/package/quickcheck-instances-0.3.24/candidate/quickcheck-instances-0.3.24.tar.gz" >> cabal.project
+    echo ""                                                                                                               >> cabal.project
+    echo "packages:"                                                                                                      >> cabal.project
+    echo "  https://hackage.haskell.org/package/strict-0.4/candidate/strict-0.4.tar.gz"                                   >> cabal.project
   - "for pkg in $($HCPKG list --simple-output); do echo $pkg | sed 's/-[^-]*$//' | (grep -vE -- '^(aeson|aeson-examples|attoparsec-iso8601)$' || true) | sed 's/^/constraints: /' | sed 's/$/ installed/' >> cabal.project.local; done"
   - cat cabal.project || true
   - cat cabal.project.local || true
@@ -186,5 +196,5 @@ script:
   - cd $TOP || false
   - ${CABAL} v2-build $WITHCOMPILER --project-file=cabal.bench.project all
 
-# REGENDATA ("0.10.1",["--config=cabal.haskell-ci","cabal.project"])
+# REGENDATA ("0.10.2",["--config=cabal.haskell-ci","cabal.project"])
 # EOF

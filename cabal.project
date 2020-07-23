@@ -3,3 +3,6 @@ packages: .
 packages: attoparsec-iso8601
 packages: examples
 tests: true
+
+packages: https://hackage.haskell.org/package/quickcheck-instances-0.3.24/candidate/quickcheck-instances-0.3.24.tar.gz
+packages: https://hackage.haskell.org/package/strict-0.4/candidate/strict-0.4.tar.gz

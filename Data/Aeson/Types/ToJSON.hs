@@ -103,6 +103,7 @@ import qualified Data.Aeson.Encoding as E
 import qualified Data.Aeson.Encoding.Internal as E (InArray, comma, econcat, retagEncoding)
 import qualified Data.ByteString.Lazy as L
 import qualified Data.DList as DList
+import qualified Data.Fix as F
 import qualified Data.HashMap.Strict as H
 import qualified Data.HashSet as HashSet
 import qualified Data.IntMap as IntMap
@@ -114,6 +115,7 @@ import qualified Data.Scientific as Scientific
 import qualified Data.Semigroup as Semigroup
 import qualified Data.Sequence as Seq
 import qualified Data.Set as Set
+import qualified Data.Strict as S
 import qualified Data.Text as T
 import qualified Data.Text.Encoding as T
 import qualified Data.Text.Lazy as LT
@@ -2227,6 +2229,84 @@ instance ToJSON a => ToJSON (Semigroup.Option a) where
 
     toEncoding = toEncoding1
     {-# INLINE toEncoding #-}
+
+-------------------------------------------------------------------------------
+-- data-fix
+-------------------------------------------------------------------------------
+
+-- | @since 1.5.3.0
+instance ToJSON1 f => ToJSON (F.Fix f) where
+    toJSON     = go where go (F.Fix f) = liftToJSON go toJSONList f
+    toEncoding = go where go (F.Fix f) = liftToEncoding go toEncodingList f
+
+-- | @since 1.5.3.0
+instance (ToJSON1 f, Functor f) => ToJSON (F.Mu f) where
+    toJSON     = F.foldMu (liftToJSON id (listValue id))
+    toEncoding = F.foldMu (liftToEncoding id (listEncoding id))
+
+-- | @since 1.5.3.0
+instance (ToJSON1 f, Functor f) => ToJSON (F.Nu f) where
+    toJSON     = F.foldNu (liftToJSON id (listValue id))
+    toEncoding = F.foldNu (liftToEncoding id (listEncoding id))
+
+-------------------------------------------------------------------------------
+-- strict
+-------------------------------------------------------------------------------
+
+-- | @since 1.5.3.0
+instance (ToJSON a, ToJSON b) => ToJSON (S.These a b) where
+    toJSON = toJSON . S.toLazy
+    toEncoding = toEncoding . S.toLazy
+
+-- | @since 1.5.3.0
+instance ToJSON2 S.These where
+    liftToJSON2 toa toas tob tobs = liftToJSON2 toa toas tob tobs . S.toLazy
+    liftToEncoding2 toa toas tob tobs = liftToEncoding2 toa toas tob tobs . S.toLazy
+
+-- | @since 1.5.3.0
+instance ToJSON a => ToJSON1 (S.These a) where
+    liftToJSON toa tos = liftToJSON toa tos . S.toLazy
+    liftToEncoding toa tos = liftToEncoding toa tos . S.toLazy
+
+-- | @since 1.5.3.0
+instance (ToJSON a, ToJSON b) => ToJSON (S.Pair a b) where
+    toJSON = toJSON . S.toLazy
+    toEncoding = toEncoding . S.toLazy
+
+-- | @since 1.5.3.0
+instance ToJSON2 S.Pair where
+    liftToJSON2 toa toas tob tobs = liftToJSON2 toa toas tob tobs . S.toLazy
+    liftToEncoding2 toa toas tob tobs = liftToEncoding2 toa toas tob tobs . S.toLazy
+
+-- | @since 1.5.3.0
+instance ToJSON a => ToJSON1 (S.Pair a) where
+    liftToJSON toa tos = liftToJSON toa tos . S.toLazy
+    liftToEncoding toa tos = liftToEncoding toa tos . S.toLazy
+
+-- | @since 1.5.3.0
+instance (ToJSON a, ToJSON b) => ToJSON (S.Either a b) where
+    toJSON = toJSON . S.toLazy
+    toEncoding = toEncoding . S.toLazy
+
+-- | @since 1.5.3.0
+instance ToJSON2 S.Either where
+    liftToJSON2 toa toas tob tobs = liftToJSON2 toa toas tob tobs . S.toLazy
+    liftToEncoding2 toa toas tob tobs = liftToEncoding2 toa toas tob tobs . S.toLazy
+
+-- | @since 1.5.3.0
+instance ToJSON a => ToJSON1 (S.Either a) where
+    liftToJSON toa tos = liftToJSON toa tos . S.toLazy
+    liftToEncoding toa tos = liftToEncoding toa tos . S.toLazy
+
+-- | @since 1.5.3.0
+instance ToJSON a => ToJSON (S.Maybe a) where
+    toJSON = toJSON . S.toLazy
+    toEncoding = toEncoding . S.toLazy
+
+-- | @since 1.5.3.0
+instance ToJSON1 S.Maybe where
+    liftToJSON toa tos = liftToJSON toa tos . S.toLazy
+    liftToEncoding toa tos = liftToEncoding toa tos . S.toLazy
 
 -------------------------------------------------------------------------------
 -- tagged

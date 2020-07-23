@@ -54,6 +54,8 @@ import qualified Data.Set as Set
 import qualified Data.Tree as Tree
 import qualified Data.UUID.Types as UUID
 import qualified Data.Vector as Vector
+import qualified Data.Fix as F
+import qualified Data.Strict as S
 
 tests :: [TestTree]
 tests =
@@ -218,6 +220,26 @@ jsonExamples =
     , "{\"That\":false,\"This\":\"y\"}"
     ]
     (These 'y' False)
+
+  -- data-fix and strict
+  , ndExample "Fix Strict.These"
+    [ "{\"This\":true,\"That\":{\"That\":{\"This\":false}}}"
+    , "{\"That\":{\"That\":{\"This\":false}},\"This\":true}"
+    ]
+    (F.Fix (S.These True (F.Fix (S.That (F.Fix (S.This False))))))
+
+  -- Mu and Nu are similar.
+  , ndExample "Mu Strict.These"
+    [ "{\"This\":true,\"That\":{\"That\":{\"This\":false}}}"
+    , "{\"That\":{\"That\":{\"This\":false}},\"This\":true}"
+    ]
+    $ F.unfoldMu F.unFix $ F.Fix (S.These True (F.Fix (S.That (F.Fix (S.This False)))))
+
+  , ndExample "Nu Strict.These"
+    [ "{\"This\":true,\"That\":{\"That\":{\"This\":false}}}"
+    , "{\"That\":{\"That\":{\"This\":false}},\"This\":true}"
+    ]
+    $ F.unfoldNu F.unFix $ F.Fix (S.These True (F.Fix (S.That (F.Fix (S.This False)))))
   ]
 
 jsonEncodingExamples :: [Example]

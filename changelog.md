@@ -1,5 +1,9 @@
 For the latest version of this document, please see [https://github.com/bos/aeson/blob/master/changelog.md](https://github.com/bos/aeson/blob/master/changelog.md).
 
+### 1.5.3.0
+
+* Add instances for types in `strict` and `data-fix` packages.
+
 ### 1.5.2.0
 
 * Add `Ord Value` instance, thanks to Oleg Grenrus.

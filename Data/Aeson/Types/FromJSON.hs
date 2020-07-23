@@ -123,6 +123,7 @@ import qualified Data.Aeson.Parser.Time as Time
 import qualified Data.Attoparsec.ByteString.Char8 as A (endOfInput, parseOnly, scientific)
 import qualified Data.ByteString.Lazy as L
 import qualified Data.DList as DList
+import qualified Data.Fix as F
 import qualified Data.HashMap.Strict as H
 import qualified Data.HashSet as HashSet
 import qualified Data.IntMap as IntMap
@@ -133,6 +134,7 @@ import qualified Data.Scientific as Scientific
 import qualified Data.Semigroup as Semigroup
 import qualified Data.Sequence as Seq
 import qualified Data.Set as Set
+import qualified Data.Strict as S
 import qualified Data.Text as T
 import qualified Data.Text.Encoding as T
 import qualified Data.Text.Lazy as LT
@@ -2212,6 +2214,70 @@ instance FromJSON1 Semigroup.Option where
 instance FromJSON a => FromJSON (Semigroup.Option a) where
     parseJSON = parseJSON1
     {-# INLINE parseJSON #-}
+
+-------------------------------------------------------------------------------
+-- data-fix
+-------------------------------------------------------------------------------
+
+-- | @since 1.5.3.0
+instance FromJSON1 f => FromJSON (F.Fix f) where
+    parseJSON = go where go = fmap F.Fix . liftParseJSON go parseJSONList
+
+-- | @since 1.5.3.0
+instance (FromJSON1 f, Functor f) => FromJSON (F.Mu f) where
+    parseJSON = fmap (F.unfoldMu F.unFix) . parseJSON
+
+-- | @since 1.5.3.0
+instance (FromJSON1 f, Functor f) => FromJSON (F.Nu f) where
+    parseJSON = fmap (F.unfoldNu F.unFix) . parseJSON
+
+-------------------------------------------------------------------------------
+-- strict
+-------------------------------------------------------------------------------
+
+-- | @since 1.5.3.0
+instance (FromJSON a, FromJSON b) => FromJSON (S.These a b) where
+    parseJSON = fmap S.toStrict . parseJSON
+
+-- | @since 1.5.3.0
+instance FromJSON2 S.These where
+    liftParseJSON2 pa pas pb pbs = fmap S.toStrict . liftParseJSON2 pa pas pb pbs
+
+-- | @since 1.5.3.0
+instance FromJSON a => FromJSON1 (S.These a) where
+    liftParseJSON pa pas = fmap S.toStrict . liftParseJSON pa pas
+
+-- | @since 1.5.3.0
+instance (FromJSON a, FromJSON b) => FromJSON (S.Pair a b) where
+    parseJSON = fmap S.toStrict . parseJSON
+
+-- | @since 1.5.3.0
+instance FromJSON2 S.Pair where
+    liftParseJSON2 pa pas pb pbs = fmap S.toStrict . liftParseJSON2 pa pas pb pbs
+
+-- | @since 1.5.3.0
+instance FromJSON a => FromJSON1 (S.Pair a) where
+    liftParseJSON pa pas = fmap S.toStrict . liftParseJSON pa pas
+
+-- | @since 1.5.3.0
+instance (FromJSON a, FromJSON b) => FromJSON (S.Either a b) where
+    parseJSON = fmap S.toStrict . parseJSON
+
+-- | @since 1.5.3.0
+instance FromJSON2 S.Either where
+    liftParseJSON2 pa pas pb pbs = fmap S.toStrict . liftParseJSON2 pa pas pb pbs
+
+-- | @since 1.5.3.0
+instance FromJSON a => FromJSON1 (S.Either a) where
+    liftParseJSON pa pas = fmap S.toStrict . liftParseJSON pa pas
+
+-- | @since 1.5.3.0
+instance FromJSON a => FromJSON (S.Maybe a) where
+    parseJSON = fmap S.toStrict . parseJSON
+
+-- | @since 1.5.3.0
+instance FromJSON1 S.Maybe where
+    liftParseJSON pa pas = fmap S.toStrict . liftParseJSON pa pas
 
 -------------------------------------------------------------------------------
 -- tagged
