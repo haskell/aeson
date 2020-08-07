@@ -1,5 +1,5 @@
 name:            aeson
-version:         1.5.2.0
+version:         1.5.3.0
 license:         BSD3
 license-file:    LICENSE
 category:        Text, Web, JSON
@@ -136,10 +136,12 @@ library
   -- Other dependencies
   build-depends:
     attoparsec           >= 0.13.2.2 && < 0.14,
+    data-fix             >= 0.3      && < 0.4,
     dlist                >= 0.8.0.4  && < 1.1,
     hashable             >= 1.2.7.0  && < 1.4,
     primitive            >= 0.7.0.1  && < 0.8,
     scientific           >= 0.3.6.2  && < 0.4,
+    strict               >= 0.4      && < 0.5,
     tagged               >= 0.8.6    && < 0.9,
     th-abstraction       >= 0.2.8.0  && < 0.4,
     these                >= 1.1      && < 1.2,
@@ -210,6 +212,7 @@ test-suite aeson-tests
     base-orphans >= 0.5.3 && <0.9,
     base16-bytestring,
     containers,
+    data-fix,
     directory,
     dlist,
     Diff >= 0.4 && < 0.5,
@@ -218,6 +221,7 @@ test-suite aeson-tests
     ghc-prim >= 0.2,
     hashable >= 1.2.4.0,
     scientific,
+    strict,
     tagged,
     template-haskell,
     tasty,
@@ -231,7 +235,7 @@ test-suite aeson-tests
     unordered-containers,
     uuid-types,
     vector,
-    quickcheck-instances >= 0.3.23 && <0.4
+    quickcheck-instances >= 0.3.24 && <0.4
 
   if flag(bytestring-builder)
     build-depends: bytestring >= 0.9 && < 0.10.4,

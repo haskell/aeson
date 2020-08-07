@@ -9,6 +9,7 @@ library
   c-sources:        ../cbits/unescape_string.c
   build-depends:
       attoparsec
+    , data-fix
     , base
     , base-compat-batteries
     , bytestring             >=0.10.4
@@ -21,6 +22,7 @@ library
     , primitive
     , scientific
     , syb
+    , strict
     , tagged
     , template-haskell
     , text

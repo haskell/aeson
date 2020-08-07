@@ -26,6 +26,8 @@ import Types
 import qualified Data.Text as T
 import qualified Data.Text.Lazy as LT
 import qualified Data.UUID.Types as UUID
+import qualified Data.Strict as S
+import qualified Data.Fix as F
 import PropUtils
 import PropertyRTFunctors
 
@@ -66,6 +68,13 @@ roundTripTests =
     , testProperty "Ratio Int" $ roundTripEq (undefined :: Ratio Int)
     , testProperty "UUID" $ roundTripEq UUID.nil
     , testProperty "These" $ roundTripEq (These 'x' True)
+    , testProperty "Fix" $ roundTripEq (undefined :: F.Fix (These Char))
+    , testProperty "Mu" $ roundTripEq (undefined :: F.Mu (These Char))
+    , testProperty "Nu" $ roundTripEq (undefined :: F.Nu (These Char))
+    , testProperty "Strict Pair" $ roundTripEq (undefined :: S.Pair Int Char)
+    , testProperty "Strict Either" $ roundTripEq (undefined :: S.Either Int Char)
+    , testProperty "Strict These" $ roundTripEq (undefined :: S.These Int Char)
+    , testProperty "Strict Maybe" $ roundTripEq (undefined :: S.Maybe Int)
     , roundTripFunctorsTests
     , testGroup "ghcGenerics" [
         testProperty "OneConstructor" $ roundTripEq OneConstructor
