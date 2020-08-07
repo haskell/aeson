@@ -2,7 +2,9 @@ For the latest version of this document, please see [https://github.com/bos/aeso
 
 ### 1.5.3.0
 
-* Add instances for types in `strict` and `data-fix` packages.
+* Add instances for types in `strict` and `data-fix` packages, thanks to Oleg Grenrus.
+* CPP cleanup, thanks to Oleg Grenrus.
+* Instances for `dlist`'s `Data.DList.DNonEmpty.DNonEmpty`, thanks to Oleg Grenrus.
 
 ### 1.5.2.0
 
