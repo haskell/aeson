@@ -1460,7 +1460,7 @@ instance FromJSON a => FromJSON (Const a b) where
     parseJSON = fmap Const . parseJSON
 
 instance FromJSONKey a => FromJSONKey (Const a b) where
-    fromJSONKey = fmap Const . fromJSONKey
+    fromJSONKey = fmap Const fromJSONKey
 
 
 instance FromJSON1 Maybe where
