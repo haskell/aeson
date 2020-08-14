@@ -1,5 +1,9 @@
 For the latest version of this document, please see [https://github.com/bos/aeson/blob/master/changelog.md](https://github.com/bos/aeson/blob/master/changelog.md).
 
+### Upcoming
+
+* Add instances for `ToJSONKey` and `FromJSONKey` to `Const`.
+
 ### 1.5.3.0
 
 * Add instances for types in `strict` and `data-fix` packages, thanks to Oleg Grenrus.
