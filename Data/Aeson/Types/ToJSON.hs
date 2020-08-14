@@ -1234,6 +1234,9 @@ instance ToJSON a => ToJSON (Const a b) where
     toEncoding (Const x) = toEncoding x
     {-# INLINE toEncoding #-}
 
+instance ToJSONKey a => ToJSONKey (Const a b) where
+    toJSONKey (Const x) = toJSONKey x
+
 
 instance ToJSON1 Maybe where
     liftToJSON t _ (Just a) = t a

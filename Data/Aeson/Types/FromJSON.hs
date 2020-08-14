@@ -1459,6 +1459,9 @@ instance FromJSON a => FromJSON (Const a b) where
     {-# INLINE parseJSON #-}
     parseJSON = fmap Const . parseJSON
 
+instance FromJSONKey a => FromJSONKey (Const a b) where
+    fromJSONKey = fmap Const . fromJSONKey
+
 
 instance FromJSON1 Maybe where
     liftParseJSON _ _ Null = pure Nothing
