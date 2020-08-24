@@ -37,4 +37,5 @@ keysTests =
     , testProperty "Version" $ roundTripKey (undefined :: Version)
     , testProperty "Lazy Text" $ roundTripKey (undefined :: LT.Text)
     , testProperty "UUID" $ roundTripKey UUID.nil
+    , testProperty "Const Text" $ roundTripKey (undefined :: Const Text)
     ]
