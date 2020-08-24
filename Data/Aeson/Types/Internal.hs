@@ -366,7 +366,7 @@ data Value = Object !Object
 
 -- |
 --
--- The ordering is total, consistent with 'Eq' innstance.
+-- The ordering is total, consistent with 'Eq' instance.
 -- However, nothing else about the ordering is specified,
 -- and it may change from environment to environment and version to version
 -- of either this package or its dependencies ('hashable' and 'unordered-containers').
