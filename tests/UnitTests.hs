@@ -24,6 +24,7 @@ module UnitTests
 
 import Prelude.Compat
 
+import Control.Applicative (Const)
 import Control.Monad (forM, forM_)
 import Data.Aeson ((.=), (.:), (.:?), (.:!), FromJSON(..), FromJSONKeyFunction(..), FromJSONKey(..), ToJSON1(..), decode, eitherDecode, encode, fromJSON, genericParseJSON, genericToEncoding, genericToJSON, object, withObject, withEmbeddedJSON)
 import Data.Aeson.Internal (JSONPathElement(..), formatError)
@@ -346,6 +347,7 @@ fromJSONKeyAssertions =
 
 #if __GLASGOW_HASKELL__ >= 710
     , assertIsCoerce' "MyText'"         (fromJSONKey :: FromJSONKeyFunction MyText')
+    , assertIsCoerce  "Const Text"      (fromJSONKey :: FromJSONKeyFunction (Const Text ()))
 #endif
     ]
   where

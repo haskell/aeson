@@ -4,6 +4,7 @@ module PropertyKeys ( keysTests ) where
 
 import Prelude.Compat
 
+import Control.Applicative (Const)
 import Data.Time (Day, LocalTime, TimeOfDay, UTCTime)
 import Data.Version (Version)
 import Instances ()
@@ -37,4 +38,5 @@ keysTests =
     , testProperty "Version" $ roundTripKey (undefined :: Version)
     , testProperty "Lazy Text" $ roundTripKey (undefined :: LT.Text)
     , testProperty "UUID" $ roundTripKey UUID.nil
+    , testProperty "Const Text" $ roundTripKey (undefined :: Const T.Text ())
     ]
