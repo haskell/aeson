@@ -426,7 +426,9 @@ instance TH.Lift Value where
       where a' = V.toList a
     lift (Object o) = [| Object (H.fromList . map (first pack) $ o') |]
       where o' = map (first unpack) . H.toList $ o
-#if MIN_VERSION_template_haskell(2,16,0)
+#if MIN_VERSION_template_haskell(2,17,0)
+    liftTyped = TH.unsafeCodeCoerce . TH.lift
+#elif MIN_VERSION_template_haskell(2,16,0)
     liftTyped = TH.unsafeTExpCoerce . TH.lift
 #endif
 
