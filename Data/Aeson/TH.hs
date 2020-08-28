@@ -127,8 +127,12 @@ import Data.Aeson.Types (Options(..), Parser, SumEncoding(..), Value(..), defaul
 import Data.Aeson.Types.Internal ((<?>), JSONPathElement(Key))
 import Data.Aeson.Types.FromJSON (parseOptionalFieldWith)
 import Data.Aeson.Types.ToJSON (fromPairs, pair)
+import Data.ByteString.Builder as B
+import qualified Data.ByteString.Short as S (pack)
+import qualified Data.ByteString.Lazy as BL (unpack)
 import Control.Monad (liftM2, unless, when)
 import Data.Foldable (foldr')
+import Data.IORef (IORef, newIORef, readIORef, modifyIORef)
 #if MIN_VERSION_template_haskell(2,8,0) && !MIN_VERSION_template_haskell(2,10,0)
 import Data.List (nub)
 #endif
@@ -145,12 +149,13 @@ import Language.Haskell.TH.Syntax (mkNameG_tc)
 #endif
 import Text.Printf (printf)
 import qualified Data.Aeson.Encoding.Internal as E
+import qualified Data.Aeson.Encoding.Builder as EB
 import qualified Data.Foldable as F (all)
 import qualified Data.HashMap.Strict as H (difference, fromList, keys, lookup, toList)
 import qualified Data.List.NonEmpty as NE (length, reverse)
 import qualified Data.Map as M (fromList, keys, lookup , singleton, size)
 import qualified Data.Semigroup as Semigroup (Option(..))
-import qualified Data.Set as Set (empty, insert, member)
+import qualified Data.Set as Set (empty, insert, member, toList)
 import qualified Data.Text as T (Text, pack, unpack)
 import qualified Data.Vector as V (unsafeIndex, null, length, create, empty)
 import qualified Data.Vector.Mutable as VM (unsafeNew, unsafeWrite)
@@ -248,8 +253,8 @@ deriveToJSONCommon :: JSONClass
                    -> Name
                    -- ^ Name of the type for which to generate an instance.
                    -> Q [Dec]
-deriveToJSONCommon = deriveJSONClass [ (ToJSON,     \jc _ -> consToValue Value jc)
-                                     , (ToEncoding, \jc _ -> consToValue Encoding jc)
+deriveToJSONCommon = deriveJSONClass [ (ToJSON,     \jc _ _ -> consToValue Value jc)
+                                     , (ToEncoding, \jc _ r -> consToValue (Encoding r) jc)
                                      ]
 
 -- | Generates a lambda expression which encodes the given data type or
@@ -279,7 +284,7 @@ mkToJSONCommon :: JSONClass -- ^ Which class's method is being derived.
                -> Options -- ^ Encoding options.
                -> Name -- ^ Name of the encoded type.
                -> Q Exp
-mkToJSONCommon = mkFunCommon (\jc _ -> consToValue Value jc)
+mkToJSONCommon = mkFunCommon (\jc _ _ -> consToValue Value jc)
 
 -- | Generates a lambda expression which encodes the given data type or
 -- data family instance constructor as a JSON string.
@@ -308,7 +313,7 @@ mkToEncodingCommon :: JSONClass -- ^ Which class's method is being derived.
                    -> Options -- ^ Encoding options.
                    -> Name -- ^ Name of the encoded type.
                    -> Q Exp
-mkToEncodingCommon = mkFunCommon (\jc _ -> consToValue Encoding jc)
+mkToEncodingCommon = mkFunCommon (\jc _ r -> consToValue (Encoding r) jc)
 
 -- | Helper function used by both 'deriveToJSON' and 'mkToJSON'. Generates
 -- code to generate a 'Value' or 'Encoding' of a number of constructors. All
@@ -336,7 +341,7 @@ consToValue target jc opts instTys cons = do
         interleavedTJs = interleave tjs tjls
         lastTyVars     = map varTToName $ drop (length instTys - arityInt jc) instTys
         tvMap          = M.fromList $ zip lastTyVars zippedTJs
-    lamE (map varP $ interleavedTJs ++ [value]) $
+    lets target $ lamE (map varP $ interleavedTJs ++ [value]) $
         caseE (varE value) (matches tvMap)
   where
     matches tvMap = case cons of
@@ -349,11 +354,35 @@ consToValue target jc opts instTys cons = do
               , let conName = constructorName con
               ]
         | otherwise -> [argsToValue target jc tvMap opts True con | con <- cons]
+    lets :: ToJSONFun -> ExpQ -> ExpQ
+    lets Value e = e
+    lets (Encoding r) e = do
+      e' <- e -- collect used keys
+      labels <- runIO $ readIORef r
+      let decs = map
+            (\k -> let str = BL.unpack $ B.toLazyByteString $ EB.string k
+                  in valD (varP $ varOfKey k) (normalB [| S.pack str |]) [])
+            (Set.toList labels)
+      letE decs $ pure e'
+
+varOfKey :: String -> Name
+varOfKey l = mkName $ "bs_" ++ l
+
+type KeySet = IORef (Set String)
+
+newKeySet :: Q KeySet
+newKeySet = runIO $ newIORef Set.empty
+
+keyRef :: KeySet -> String -> ExpQ
+keyRef ref s = do
+  runIO $ modifyIORef ref $ Set.insert s
+  let var = varE $ varOfKey s
+  [|E.Encoding|] `appE` ([|B.shortByteString|] `appE` var)
 
 -- | Name of the constructor as a quoted 'Value' or 'Encoding'.
 conStr :: ToJSONFun -> Options -> Name -> Q Exp
-conStr Value opts = appE [|String|] . conTxt opts
-conStr Encoding opts = appE [|E.text|] . conTxt opts
+conStr Value opts name = appE [|String|] $ conTxt opts name
+conStr (Encoding ref) opts name = keyRef ref $ conString opts name
 
 -- | Name of the constructor as a quoted 'Text'.
 conTxt :: Options -> Name -> Q Exp
@@ -376,7 +405,7 @@ opaqueSumToValue target opts multiCons nullary conName value =
     value
     pairs
   where
-    pairs contentsFieldName = pairE contentsFieldName value
+    pairs contentsFieldName = pairE target contentsFieldName value
 
 -- | Wrap fields of a record constructor. See 'sumToValue'.
 recordSumToValue :: ToJSONFun -> Options -> Bool -> Bool -> Name -> ExpQ -> ExpQ
@@ -417,12 +446,12 @@ sumToValue target opts multiCons nullary conName value pairs
           TaggedObject{tagFieldName, contentsFieldName} ->
             -- TODO: Maybe throw an error in case
             -- tagFieldName overwrites a field in pairs.
-            let tag = pairE tagFieldName (conStr target opts conName)
+            let tag = pairE target tagFieldName (conStr target opts conName)
                 content = pairs contentsFieldName
             in fromPairsE $
               if nullary then tag else infixApp tag [|(Monoid.<>)|] content
           ObjectWithSingleField ->
-            objectE [(conString opts conName, value)]
+            objectE target [(conString opts conName, value)]
           UntaggedValue | nullary -> conStr target opts conName
           UntaggedValue -> value
     | otherwise = value
@@ -483,7 +512,7 @@ argsToValue target jc tvMap opts multiCons
             toPairLifted lifted (arg, argTy, field) =
               let toValue = dispatchToJSON target jc conName tvMap argTy
                   fieldName = fieldLabel opts field
-                  e arg' = pairE fieldName (toValue `appE` arg')
+                  e arg' = pairE target fieldName (toValue `appE` arg')
               in if lifted
                 then do
                   x <- newName "x"
@@ -534,9 +563,9 @@ infixr 4 <%>
 
 -- | Wrap a list of quoted 'Value's in a quoted 'Array' (of type 'Value').
 array :: ToJSONFun -> [ExpQ] -> ExpQ
-array Encoding [] = [|E.emptyArray_|]
+array (Encoding _) [] = [|E.emptyArray_|]
 array Value [] = [|Array V.empty|]
-array Encoding es = [|E.wrapArray|] `appE` foldr1 (<%>) es
+array (Encoding _) es = [|E.wrapArray|] `appE` foldr1 (<%>) es
 array Value es = do
   mv <- newName "mv"
   let newMV = bindS (varP mv)
@@ -555,8 +584,8 @@ array Value es = do
                doE (newMV:stmts++[ret]))
 
 -- | Wrap an associative list of keys and quoted values in a quoted 'Object'.
-objectE :: [(String, ExpQ)] -> ExpQ
-objectE = fromPairsE . mconcatE . fmap (uncurry pairE)
+objectE :: ToJSONFun -> [(String, ExpQ)] -> ExpQ
+objectE target = fromPairsE . mconcatE . fmap (uncurry $ pairE target)
 
 -- | 'mconcat' a list of fixed length.
 --
@@ -572,8 +601,9 @@ fromPairsE = ([|fromPairs|] `appE`)
 -- | Create (an encoding of) a key-value pair.
 --
 -- > pairE "k" [|v|] = [|pair "k" v|]
-pairE :: String -> ExpQ -> ExpQ
-pairE k v = [|pair k|] `appE` v
+pairE :: ToJSONFun -> String -> ExpQ -> ExpQ
+pairE (Encoding ref) k v = [|E.pair'|] `appE` keyRef ref k `appE` v
+pairE Value k v = [|pair k|] `appE` v
 
 --------------------------------------------------------------------------------
 -- FromJSON
@@ -655,6 +685,7 @@ consFromJSON :: JSONClass
              -- ^ The FromJSON variant being derived.
              -> Name
              -- ^ Name of the type to which the constructors belong.
+             -> KeySet
              -> Options
              -- ^ Encoding options
              -> [Type]
@@ -663,10 +694,10 @@ consFromJSON :: JSONClass
              -- ^ Constructors for which to generate JSON parsing code.
              -> Q Exp
 
-consFromJSON _ _ _ _ [] = error $ "Data.Aeson.TH.consFromJSON: "
+consFromJSON _ _ _ _ _ [] = error $ "Data.Aeson.TH.consFromJSON: "
                                 ++ "Not a single constructor given!"
 
-consFromJSON jc tName opts instTys cons = do
+consFromJSON jc tName _ opts instTys cons = do
   value <- newName "value"
   pjs   <- newNameList "_pj"  $ arityInt jc
   pjls  <- newNameList "_pjl" $ arityInt jc
@@ -1209,7 +1240,7 @@ deriveJSONBoth dtj dfj opts name =
     liftM2 (++) (dtj opts name) (dfj opts name)
 
 -- | Functionality common to @deriveToJSON(1)(2)@ and @deriveFromJSON(1)(2)@.
-deriveJSONClass :: [(JSONFun, JSONClass -> Name -> Options -> [Type]
+deriveJSONClass :: [(JSONFun, JSONClass -> Name -> KeySet -> Options -> [Type]
                                         -> [ConstructorInfo] -> Q Exp)]
                 -- ^ The class methods and the functions which derive them.
                 -> JSONClass
@@ -1240,14 +1271,15 @@ deriveJSONClass consFuns jc opts name = do
                           (methodDecs parentName instTys cons)
   where
     methodDecs :: Name -> [Type] -> [ConstructorInfo] -> [Q Dec]
-    methodDecs parentName instTys cons = flip map consFuns $ \(jf, jfMaker) ->
+    methodDecs parentName instTys cons = flip map consFuns $ \(jf, jfMaker) -> do
+      ref <- newKeySet
       funD (jsonFunValName jf (arity jc))
            [ clause []
-                    (normalB $ jfMaker jc parentName opts instTys cons)
+                    (normalB $ jfMaker jc parentName ref opts instTys cons)
                     []
            ]
 
-mkFunCommon :: (JSONClass -> Name -> Options -> [Type] -> [ConstructorInfo] -> Q Exp)
+mkFunCommon :: (JSONClass -> Name -> KeySet -> Options -> [Type] -> [ConstructorInfo] -> Q Exp)
             -- ^ The function which derives the expression.
             -> JSONClass
             -- ^ Which class's method is being derived.
@@ -1257,6 +1289,7 @@ mkFunCommon :: (JSONClass -> Name -> Options -> [Type] -> [ConstructorInfo] -> Q
             -- ^ Name of the encoded type.
             -> Q Exp
 mkFunCommon consFun jc opts name = do
+  lset <- newKeySet
   info <- reifyDatatype name
   case info of
     DatatypeInfo { datatypeContext   = ctxt
@@ -1273,7 +1306,7 @@ mkFunCommon consFun jc opts name = do
       -- or not the provided datatype's kind matches the derived method's
       -- typeclass, and produces errors if it can't.
       !_ <- buildTypeInstance parentName jc ctxt instTys variant
-      consFun jc parentName opts instTys cons
+      consFun jc parentName lset opts instTys cons
 
 dispatchFunByType :: JSONClass
                   -> JSONFun
@@ -1929,11 +1962,11 @@ data Direction = To | From
 data JSONFun = ToJSON | ToEncoding | ParseJSON
 
 -- | A refinement of JSONFun to [ToJSON, ToEncoding].
-data ToJSONFun = Value | Encoding
+data ToJSONFun = Value | Encoding KeySet
 
 targetToJSONFun :: ToJSONFun -> JSONFun
 targetToJSONFun Value = ToJSON
-targetToJSONFun Encoding = ToEncoding
+targetToJSONFun (Encoding _) = ToEncoding
 
 -- | A representation of which typeclass is being derived.
 data JSONClass = JSONClass { direction :: Direction, arity :: Arity }
