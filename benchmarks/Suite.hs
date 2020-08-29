@@ -7,7 +7,7 @@ import           Data.Aeson
 import           Prelude.Compat
 
 import           Control.DeepSeq      (NFData)
-import           Criterion.Main       (Benchmark, bench, bgroup, defaultMain,
+import           Gauge.Main           (Benchmark, bench, bgroup, defaultMain,
                                        env, nf)
 import           Data.Maybe           (fromMaybe)
 import           Data.Proxy           (Proxy (..))

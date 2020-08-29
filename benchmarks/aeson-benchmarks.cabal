@@ -90,7 +90,7 @@ executable aeson-benchmark-suite
     , base
     , base-compat-batteries
     , bytestring
-    , criterion
+    , gauge
     , deepseq
     , filepath
     , template-haskell
@@ -124,7 +124,7 @@ executable aeson-benchmark-auto-compare
   build-depends:
       aeson-benchmarks
     , base
-    , criterion
+    , gauge
     , deepseq
     , template-haskell
 
@@ -138,7 +138,7 @@ executable aeson-benchmark-escape
     , base
     , base-compat-batteries
     , bytestring
-    , criterion              >=1.0
+    , gauge              >=0.2.5
     , deepseq
     , ghc-prim
     , text
@@ -161,7 +161,7 @@ executable aeson-benchmark-compare
     , base-compat-batteries
     , buffer-builder
     , bytestring
-    , criterion              >=1.0
+    , gauge              >=0.2.5
     , deepseq
     , ghc-prim
     , text
@@ -185,7 +185,7 @@ executable aeson-benchmark-micro
     , base
     , base-compat-batteries
     , bytestring
-    , criterion              >=1.0
+    , gauge              >=0.2.5
     , deepseq
     , ghc-prim
     , text
@@ -211,7 +211,7 @@ executable aeson-benchmark-typed
     , base
     , base-compat-batteries
     , bytestring
-    , criterion              >=1.0
+    , gauge              >=0.2.5
     , deepseq
     , ghc-prim
     , text
@@ -230,7 +230,7 @@ executable aeson-benchmark-compare-with-json
     , base-compat-batteries
     , blaze-builder
     , bytestring
-    , criterion
+    , gauge
     , deepseq
     , json
     , text
@@ -285,7 +285,7 @@ executable aeson-benchmark-dates
     , base
     , base-compat-batteries
     , bytestring
-    , criterion
+    , gauge
     , deepseq
     , text
     , time
@@ -303,7 +303,7 @@ executable aeson-benchmark-map
     , base-compat-batteries
     , bytestring
     , containers
-    , criterion              >=1.0
+    , gauge              >=0.2.5
     , deepseq
     , hashable
     , tagged
@@ -320,7 +320,7 @@ executable aeson-benchmark-foldable
     , base-compat-batteries
     , bytestring
     , containers
-    , criterion              >=1.0
+    , gauge              >=0.2.5
     , deepseq
     , hashable
     , tagged
@@ -338,7 +338,7 @@ executable aeson-issue-673
     , base
     , base-compat-batteries
     , bytestring
-    , criterion              >=1.0
+    , gauge              >=0.2.5
     , scientific
 
   if impl(ghc <8.0)
