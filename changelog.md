@@ -1,8 +1,10 @@
 For the latest version of this document, please see [https://github.com/bos/aeson/blob/master/changelog.md](https://github.com/bos/aeson/blob/master/changelog.md).
 
-### Upcoming
+### 1.5.4.0
 
-* Add instances for `ToJSONKey` and `FromJSONKey` to `Const`.
+* Add instances for `ToJSONKey` and `FromJSONKey` to `Const`, thanks to Dan Fithian.
+* Add support for template-haskell 2.17, thanks to Galen Huntington.
+* Documentation typo fix, thanks to Jean-Baptiste Mazon.
 
 ### 1.5.3.0
 
