@@ -322,7 +322,7 @@ jstring_ = do
   -- not sure whether >= or bit hackery is faster
   -- perfectly, we shouldn't care, it's compiler job.
   s <- A.takeWhile (\w -> w /= DOUBLE_QUOTE && w /= BACKSLASH && w >= 0x20 && w < 0x80)
-  let txt = TE.decodeUtf8 s
+  let txt = TE.decodeLatin1 s
   mw <- A.peekWord8
   case mw of
     Nothing           -> fail "string without end"
