@@ -322,13 +322,19 @@ jstring_ = do
   -- not sure whether >= or bit hackery is faster
   -- perfectly, we shouldn't care, it's compiler job.
   s <- A.takeWhile (\w -> w /= DOUBLE_QUOTE && w /= BACKSLASH && w >= 0x20 && w < 0x80)
-  let txt = TE.decodeLatin1 s
+  let txt = unsafeDecodeASCII s
   mw <- A.peekWord8
   case mw of
     Nothing           -> fail "string without end"
     Just DOUBLE_QUOTE -> A.anyWord8 $> txt
     Just w | w < 0x20 -> fail "unescaped control character"
     _                 -> jstringSlow s
+
+-- | The input is assumed to contain only 7bit ASCII characters (i.e. @< 0x80@).
+--   We use TE.decodeLatin1 here because TE.decodeASCII is currently (text-1.2.4.0)
+--   deprecated and equal to TE.decodeUtf8, which is slower than TE.decodeLatin1.
+unsafeDecodeASCII :: B.ByteString -> Text
+unsafeDecodeASCII = TE.decodeLatin1
 
 jstringSlow :: B.ByteString -> Parser Text
 {-# INLINE jstringSlow #-}
