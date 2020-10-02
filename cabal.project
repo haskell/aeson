@@ -3,3 +3,4 @@ packages: .
 packages: attoparsec-iso8601
 packages: examples
 tests: true
+-- constraints: aeson +cffi

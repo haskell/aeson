@@ -1,3 +1,4 @@
+{-# LANGUAGE CPP #-}
 {-# LANGUAGE ForeignFunctionInterface #-}
 {-# LANGUAGE MagicHash #-}
 {-# LANGUAGE UnliftedFFITypes #-}
@@ -29,7 +30,12 @@ foreign import ccall unsafe "_js_decode_string" c_js_decode
     -> Ptr Word8 -> Ptr Word8 -> IO CInt
 
 unescapeText' :: ByteString -> Text
+#if MIN_VERSION_bytestring(0,11,0)
+unescapeText' (BS fp len) = runText $ \done -> do
+  let off = 0
+#else
 unescapeText' (PS fp off len) = runText $ \done -> do
+#endif
   let go dest = withForeignPtr fp $ \ptr ->
         with (0::CSize) $ \destOffPtr -> do
           let end = ptr `plusPtr` (off + len)
