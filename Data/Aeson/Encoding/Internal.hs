@@ -47,6 +47,8 @@ module Data.Aeson.Encoding.Internal
     , integerText, floatText, doubleText, scientificText
     -- ** Time
     , day
+    , month
+    , quarter
     , localTime
     , utcTime
     , timeOfDay
@@ -65,6 +67,8 @@ import Data.Int
 import Data.Scientific (Scientific)
 import Data.Text (Text)
 import Data.Time (Day, LocalTime, TimeOfDay, UTCTime, ZonedTime)
+import Data.Time.Calendar.Month.Compat (Month)
+import Data.Time.Calendar.Quarter.Compat (Quarter)
 import Data.Typeable (Typeable)
 import Data.Word
 import qualified Data.Aeson.Encoding.Builder as EB
@@ -349,6 +353,12 @@ scientificText = Encoding . EB.quote . EB.scientific
 
 day :: Day -> Encoding' a
 day = Encoding . EB.quote . EB.day
+
+month :: Month -> Encoding' a
+month = Encoding . EB.quote . EB.month
+
+quarter :: Quarter -> Encoding' a
+quarter = Encoding . EB.quote . EB.quarter
 
 localTime :: LocalTime -> Encoding' a
 localTime = Encoding . EB.quote . EB.localTime

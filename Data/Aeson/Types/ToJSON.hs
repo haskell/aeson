@@ -87,6 +87,8 @@ import Data.Tagged (Tagged(..))
 import Data.Text (Text, pack)
 import Data.These (These (..))
 import Data.Time (Day, DiffTime, LocalTime, NominalDiffTime, TimeOfDay, UTCTime, ZonedTime)
+import Data.Time.Calendar.Month.Compat (Month)
+import Data.Time.Calendar.Quarter.Compat (Quarter, QuarterOfYear (..))
 import Data.Time.Calendar.Compat (CalendarDiffDays (..), DayOfWeek (..))
 import Data.Time.LocalTime.Compat (CalendarDiffTime (..))
 import Data.Time.Clock.System.Compat (SystemTime (..))
@@ -2016,6 +2018,19 @@ instance ToJSON Day where
 instance ToJSONKey Day where
     toJSONKey = toJSONKeyTextEnc E.day
 
+instance ToJSON Month where
+    toJSON     = stringEncoding . E.month
+    toEncoding = E.month
+
+instance ToJSONKey Month where
+    toJSONKey = toJSONKeyTextEnc E.month
+
+instance ToJSON Quarter where
+    toJSON     = stringEncoding . E.quarter
+    toEncoding = E.quarter
+
+instance ToJSONKey Quarter where
+    toJSONKey = toJSONKeyTextEnc E.quarter
 
 instance ToJSON TimeOfDay where
     toJSON     = stringEncoding . E.timeOfDay
@@ -2105,7 +2120,9 @@ instance ToJSON DayOfWeek where
     toJSON Saturday  = "saturday"
     toJSON Sunday    = "sunday"
 
-toEncodingDayOfWeek :: DayOfWeek -> E.Encoding' Text
+    toEncoding = toEncodingDayOfWeek
+
+toEncodingDayOfWeek :: DayOfWeek -> E.Encoding' a
 toEncodingDayOfWeek Monday    = E.unsafeToEncoding "\"monday\""
 toEncodingDayOfWeek Tuesday   = E.unsafeToEncoding "\"tuesday\""
 toEncodingDayOfWeek Wednesday = E.unsafeToEncoding "\"wednesday\""
@@ -2116,6 +2133,21 @@ toEncodingDayOfWeek Sunday    = E.unsafeToEncoding "\"sunday\""
 
 instance ToJSONKey DayOfWeek where
     toJSONKey = toJSONKeyTextEnc toEncodingDayOfWeek
+
+instance ToJSON QuarterOfYear where
+    toJSON Q1 = "q1"
+    toJSON Q2 = "q2"
+    toJSON Q3 = "q3"
+    toJSON Q4 = "q4"
+
+toEncodingQuarterOfYear :: QuarterOfYear -> E.Encoding' a
+toEncodingQuarterOfYear Q1 = E.unsafeToEncoding "\"q1\""
+toEncodingQuarterOfYear Q2 = E.unsafeToEncoding "\"q2\""
+toEncodingQuarterOfYear Q3 = E.unsafeToEncoding "\"q3\""
+toEncodingQuarterOfYear Q4 = E.unsafeToEncoding "\"q4\""
+
+instance ToJSONKey QuarterOfYear where
+    toJSONKey = toJSONKeyTextEnc toEncodingQuarterOfYear
 
 -------------------------------------------------------------------------------
 -- base Monoid/Semigroup

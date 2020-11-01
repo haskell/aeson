@@ -27,6 +27,8 @@ module Data.Aeson.Encoding.Builder
     , quote
     , scientific
     , day
+    , month
+    , quarter
     , localTime
     , utcTime
     , timeOfDay
@@ -48,6 +50,8 @@ import Data.Scientific (Scientific, base10Exponent, coefficient)
 import Data.Text.Encoding (encodeUtf8BuilderEscaped)
 import Data.Time (UTCTime(..))
 import Data.Time.Calendar (Day(..), toGregorian)
+import Data.Time.Calendar.Month.Compat (Month, toYearMonth)
+import Data.Time.Calendar.Quarter.Compat (Quarter, toYearQuarter, QuarterOfYear (..))
 import Data.Time.LocalTime
 import Data.Word (Word8)
 import qualified Data.HashMap.Strict as HMS
@@ -147,6 +151,11 @@ ascii2 :: (Char, Char) -> BP.BoundedPrim a
 ascii2 cs = BP.liftFixedToBounded $ const cs BP.>$< BP.char7 >*< BP.char7
 {-# INLINE ascii2 #-}
 
+ascii3 :: (Char, (Char, Char)) -> BP.BoundedPrim a
+ascii3 cs = BP.liftFixedToBounded $ const cs >$<
+    BP.char7 >*< BP.char7 >*< BP.char7
+{-# INLINE ascii3 #-}
+
 ascii4 :: (Char, (Char, (Char, Char))) -> BP.BoundedPrim a
 ascii4 cs = BP.liftFixedToBounded $ const cs >$<
     BP.char7 >*< BP.char7 >*< BP.char7 >*< BP.char7
@@ -175,16 +184,39 @@ day dd = encodeYear yr <>
   where (yr,m,d)    = toGregorian dd
         !(T mh ml)  = twoDigits m
         !(T dh dl)  = twoDigits d
-        encodeYear y
-            | y >= 1000 = B.integerDec y
-            | y >= 0    = BP.primBounded (ascii4 (padYear y)) ()
-            | y >= -999 = BP.primBounded (ascii5 ('-',padYear (- y))) ()
-            | otherwise = B.integerDec y
-        padYear y =
-            let (ab,c) = fromIntegral y `quotRem` 10
-                (a,b)  = ab `quotRem` 10
-            in ('0',(digit a,(digit b,digit c)))
 {-# INLINE day #-}
+
+month :: Month -> Builder
+month mm = encodeYear yr <>
+           BP.primBounded (ascii3 ('-',(mh,ml))) ()
+  where (yr,m) = toYearMonth mm
+        !(T mh ml) = twoDigits m
+{-# INLINE month #-}
+
+quarter :: Quarter -> Builder
+quarter qq = encodeYear yr <>
+             BP.primBounded (ascii3 ('-',('q',qd))) ()
+  where (yr,q) = toYearQuarter qq
+        qd = case q of
+            Q1 -> '1'
+            Q2 -> '2'
+            Q3 -> '3'
+            Q4 -> '4'
+{-# INLINE quarter #-}
+
+-- | Used in encoding day, month, quarter
+encodeYear :: Integer -> Builder
+encodeYear y
+    | y >= 1000 = B.integerDec y
+    | y >= 0    = BP.primBounded (ascii4 (padYear y)) ()
+    | y >= -999 = BP.primBounded (ascii5 ('-',padYear (- y))) ()
+    | otherwise = B.integerDec y
+  where
+    padYear y' =
+        let (ab,c) = fromIntegral y' `quotRem` 10
+            (a,b)  = ab `quotRem` 10
+        in ('0',(digit a,(digit b,digit c)))
+{-# INLINE encodeYear #-}
 
 timeOfDay :: TimeOfDay -> Builder
 timeOfDay t = timeOfDay64 (toTimeOfDay64 t)
