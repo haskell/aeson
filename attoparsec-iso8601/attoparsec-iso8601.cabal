@@ -11,8 +11,8 @@ author:          Bryan O'Sullivan <bos@serpentine.com>
 maintainer:      Adam Bergmark <adam@bergmark.nl>
 stability:       experimental
 cabal-version:   >=1.10
-homepage:        https://github.com/bos/aeson
-bug-reports:     https://github.com/bos/aeson/issues
+homepage:        https://github.com/haskell/aeson
+bug-reports:     https://github.com/haskell/aeson/issues
 build-type:      Simple
 tested-with:     GHC == 7.8.4, GHC == 7.10.3, GHC == 8.0.2, GHC == 8.2.2, GHC == 8.4.4, GHC == 8.6.5, GHC == 8.8.3, GHC == 8.10.1
 extra-source-files:
@@ -54,4 +54,5 @@ library
 
 source-repository head
   type:     git
-  location: git://github.com/bos/aeson.git
+  location: git://github.com/haskell/aeson.git
+  subdir:   attoparsec-iso8601
