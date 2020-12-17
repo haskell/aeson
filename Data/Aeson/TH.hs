@@ -132,7 +132,7 @@ import qualified Data.ByteString.Short as S (pack)
 import qualified Data.ByteString.Lazy as BL (unpack)
 import Control.Monad (liftM2, unless, when)
 import Data.Foldable (foldr')
-import Data.IORef (IORef, newIORef, readIORef, modifyIORef)
+import Data.IORef (IORef, atomicModifyIORef, newIORef, readIORef)
 #if MIN_VERSION_template_haskell(2,8,0) && !MIN_VERSION_template_haskell(2,10,0)
 import Data.List (nub)
 #endif
@@ -151,11 +151,11 @@ import Text.Printf (printf)
 import qualified Data.Aeson.Encoding.Internal as E
 import qualified Data.Aeson.Encoding.Builder as EB
 import qualified Data.Foldable as F (all)
-import qualified Data.HashMap.Strict as H (difference, fromList, keys, lookup, toList)
+import qualified Data.HashMap.Strict as H (HashMap, difference, empty, fromList, insert, keys, lookup, toList)
 import qualified Data.List.NonEmpty as NE (length, reverse)
 import qualified Data.Map as M (fromList, keys, lookup , singleton, size)
 import qualified Data.Semigroup as Semigroup (Option(..))
-import qualified Data.Set as Set (empty, insert, member, toList)
+import qualified Data.Set as Set (empty, insert, member)
 import qualified Data.Text as T (Text, pack, unpack)
 import qualified Data.Vector as V (unsafeIndex, null, length, create, empty)
 import qualified Data.Vector.Mutable as VM (unsafeNew, unsafeWrite)
@@ -354,30 +354,39 @@ consToValue target jc opts instTys cons = do
               , let conName = constructorName con
               ]
         | otherwise -> [argsToValue target jc tvMap opts True con | con <- cons]
+    -- Bind the definitions of used JSON keys at top-level
     lets :: ToJSONFun -> ExpQ -> ExpQ
     lets Value e = e
     lets (Encoding r) e = do
-      e' <- e -- collect used keys
+      e' <- e -- collect used JSON keys
       labels <- runIO $ readIORef r
       let decs = map
-            (\k -> let str = BL.unpack $ B.toLazyByteString $ EB.string k
-                  in valD (varP $ varOfKey k) (normalB [| S.pack str |]) [])
-            (Set.toList labels)
+            (\(k,v) ->
+              let str = BL.unpack $ B.toLazyByteString $ EB.string k
+              in valD (varP v) (normalB [| S.pack str |]) [])
+            (H.toList labels)
       letE decs $ pure e'
 
-varOfKey :: String -> Name
-varOfKey l = mkName $ "bs_" ++ l
+-- | Map a JSON string to the name of the Haskell variable that
+-- holds that string. Used to gather all necessary JSON keys and
+-- bind them at top-level.
+-- By performing this manual floating, we avoid GHC to
+-- re-allocate the keys at each call of 'toJSON'/'toEncoding'.
+type KeyMap = IORef (H.HashMap String Name)
 
-type KeySet = IORef (Set String)
+newKeyMap :: Q KeyMap
+newKeyMap = runIO $ newIORef H.empty
 
-newKeySet :: Q KeySet
-newKeySet = runIO $ newIORef Set.empty
-
-keyRef :: KeySet -> String -> ExpQ
+-- | Name of the Haskell variable that is going to hold
+-- the supplied JSON string.
+keyRef :: KeyMap -> String -> Q Exp
 keyRef ref s = do
-  runIO $ modifyIORef ref $ Set.insert s
-  let var = varE $ varOfKey s
-  [|E.Encoding|] `appE` ([|B.shortByteString|] `appE` var)
+  vNew <- newName "key"
+  v <- runIO $ atomicModifyIORef ref $ \hm ->
+    case H.lookup s hm of
+      Nothing -> (H.insert s vNew hm, vNew)
+      Just v -> (hm, v)
+  [|E.Encoding|] `appE` ([|B.shortByteString|] `appE` varE v)
 
 -- | Name of the constructor as a quoted 'Value' or 'Encoding'.
 conStr :: ToJSONFun -> Options -> Name -> Q Exp
@@ -685,7 +694,7 @@ consFromJSON :: JSONClass
              -- ^ The FromJSON variant being derived.
              -> Name
              -- ^ Name of the type to which the constructors belong.
-             -> KeySet
+             -> KeyMap
              -> Options
              -- ^ Encoding options
              -> [Type]
@@ -1240,7 +1249,7 @@ deriveJSONBoth dtj dfj opts name =
     liftM2 (++) (dtj opts name) (dfj opts name)
 
 -- | Functionality common to @deriveToJSON(1)(2)@ and @deriveFromJSON(1)(2)@.
-deriveJSONClass :: [(JSONFun, JSONClass -> Name -> KeySet -> Options -> [Type]
+deriveJSONClass :: [(JSONFun, JSONClass -> Name -> KeyMap -> Options -> [Type]
                                         -> [ConstructorInfo] -> Q Exp)]
                 -- ^ The class methods and the functions which derive them.
                 -> JSONClass
@@ -1272,14 +1281,14 @@ deriveJSONClass consFuns jc opts name = do
   where
     methodDecs :: Name -> [Type] -> [ConstructorInfo] -> [Q Dec]
     methodDecs parentName instTys cons = flip map consFuns $ \(jf, jfMaker) -> do
-      ref <- newKeySet
+      ref <- newKeyMap
       funD (jsonFunValName jf (arity jc))
            [ clause []
                     (normalB $ jfMaker jc parentName ref opts instTys cons)
                     []
            ]
 
-mkFunCommon :: (JSONClass -> Name -> KeySet -> Options -> [Type] -> [ConstructorInfo] -> Q Exp)
+mkFunCommon :: (JSONClass -> Name -> KeyMap -> Options -> [Type] -> [ConstructorInfo] -> Q Exp)
             -- ^ The function which derives the expression.
             -> JSONClass
             -- ^ Which class's method is being derived.
@@ -1289,7 +1298,7 @@ mkFunCommon :: (JSONClass -> Name -> KeySet -> Options -> [Type] -> [Constructor
             -- ^ Name of the encoded type.
             -> Q Exp
 mkFunCommon consFun jc opts name = do
-  lset <- newKeySet
+  lset <- newKeyMap
   info <- reifyDatatype name
   case info of
     DatatypeInfo { datatypeContext   = ctxt
@@ -1962,7 +1971,7 @@ data Direction = To | From
 data JSONFun = ToJSON | ToEncoding | ParseJSON
 
 -- | A refinement of JSONFun to [ToJSON, ToEncoding].
-data ToJSONFun = Value | Encoding KeySet
+data ToJSONFun = Value | Encoding KeyMap
 
 targetToJSONFun :: ToJSONFun -> JSONFun
 targetToJSONFun Value = ToJSON
