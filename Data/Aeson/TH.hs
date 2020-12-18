@@ -370,15 +370,15 @@ consToValue target jc opts instTys cons = do
 -- | Map a JSON string to the name of the Haskell variable that
 -- holds that string. Used to gather all necessary JSON keys and
 -- bind them at top-level.
--- By performing this manual floating, we avoid GHC to
--- re-allocate the keys at each call of 'toJSON'/'toEncoding'.
+-- By performing this manual floating, we prevent GHC from
+-- re-allocating the keys at each call of 'toEncoding' (see #804).
 type KeyMap = IORef (H.HashMap String Name)
 
 newKeyMap :: Q KeyMap
 newKeyMap = runIO $ newIORef H.empty
 
--- | Name of the Haskell variable that is going to hold
--- the supplied JSON string.
+-- | Quoted builder for the supplied JSON string, computed using
+-- the variable stored in the 'KeyMap'.
 keyRef :: KeyMap -> String -> Q Exp
 keyRef ref s = do
   vNew <- newName "key"
