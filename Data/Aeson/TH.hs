@@ -128,8 +128,8 @@ import Data.Aeson.Types.Internal ((<?>), JSONPathElement(Key))
 import Data.Aeson.Types.FromJSON (parseOptionalFieldWith)
 import Data.Aeson.Types.ToJSON (fromPairs, pair)
 import Data.ByteString.Builder as B
-import qualified Data.ByteString.Short as S (pack)
-import qualified Data.ByteString.Lazy as BL (unpack)
+import qualified Data.ByteString.Lazy.Char8 as C (unpack)
+import Data.ByteString.Short (ShortByteString)
 import Control.Monad (liftM2, unless, when)
 import Data.Foldable (foldr')
 import Data.IORef (IORef, atomicModifyIORef, newIORef, readIORef)
@@ -142,6 +142,7 @@ import Data.Map (Map)
 import Data.Maybe (catMaybes, fromMaybe, mapMaybe)
 import qualified Data.Monoid as Monoid
 import Data.Set (Set)
+import Data.String (IsString (..))
 import Language.Haskell.TH hiding (Arity)
 import Language.Haskell.TH.Datatype
 #if MIN_VERSION_template_haskell(2,8,0) && !(MIN_VERSION_template_haskell(2,10,0))
@@ -362,8 +363,8 @@ consToValue target jc opts instTys cons = do
       labels <- runIO $ readIORef r
       let decs = map
             (\(k,v) ->
-              let str = BL.unpack $ B.toLazyByteString $ EB.string k
-              in valD (varP v) (normalB [| S.pack str |]) [])
+              let str = C.unpack $ B.toLazyByteString $ EB.string k
+              in valD (varP v) (normalB [| fromString str :: ShortByteString |]) [])
             (H.toList labels)
       letE decs $ pure e'
 
