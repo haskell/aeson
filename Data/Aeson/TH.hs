@@ -363,7 +363,7 @@ consToValue target jc opts instTys cons = do
       let decs = map
             (\(k,v) ->
               let str = C.unpack $ B.toLazyByteString $ EB.string k
-              in valD (varP v) (normalB $ [|E.Encoding (B.shortByteString (fromString str))|]) [])
+              in valD (varP v) (normalB [|E.Encoding (B.shortByteString (fromString str))|]) [])
             (H.toList labels)
       letE decs $ pure e'
 
