@@ -364,7 +364,7 @@ consToValue target jc opts instTys cons = do
       let decs = map
             (\(k,v) ->
               let str = C.unpack $ B.toLazyByteString $ EB.string k
-              in valD (varP v) (normalB [| fromString str :: ShortByteString |]) [])
+              in valD (varP v) (normalB $ [|E.Encoding (B.shortByteString (fromString str))|]) [])
             (H.toList labels)
       letE decs $ pure e'
 
@@ -378,8 +378,7 @@ type KeyMap = IORef (H.HashMap String Name)
 newKeyMap :: Q KeyMap
 newKeyMap = runIO $ newIORef H.empty
 
--- | Quoted builder for the supplied JSON string, computed using
--- the variable stored in the 'KeyMap'.
+-- | Variable holding the builder for the supplied JSON string.
 keyRef :: KeyMap -> String -> Q Exp
 keyRef ref s = do
   vNew <- newName "key"
@@ -387,7 +386,7 @@ keyRef ref s = do
     case H.lookup s hm of
       Nothing -> (H.insert s vNew hm, vNew)
       Just v -> (hm, v)
-  [|E.Encoding|] `appE` ([|B.shortByteString|] `appE` varE v)
+  varE v
 
 -- | Name of the constructor as a quoted 'Value' or 'Encoding'.
 conStr :: ToJSONFun -> Options -> Name -> Q Exp
