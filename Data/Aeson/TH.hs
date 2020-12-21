@@ -129,7 +129,6 @@ import Data.Aeson.Types.FromJSON (parseOptionalFieldWith)
 import Data.Aeson.Types.ToJSON (fromPairs, pair)
 import Data.ByteString.Builder as B
 import qualified Data.ByteString.Lazy.Char8 as C (unpack)
-import Data.ByteString.Short (ShortByteString)
 import Control.Monad (liftM2, unless, when)
 import Data.Foldable (foldr')
 import Data.IORef (IORef, atomicModifyIORef, newIORef, readIORef)
@@ -373,13 +372,13 @@ consToValue target jc opts instTys cons = do
 -- bind them at top-level.
 -- By performing this manual floating, we prevent GHC from
 -- re-allocating the keys at each call of 'toEncoding' (see #804).
-type KeyMap = IORef (H.HashMap String Name)
+type KeyMapIORef = IORef (H.HashMap String Name)
 
-newKeyMap :: Q KeyMap
+newKeyMap :: Q KeyMapIORef
 newKeyMap = runIO $ newIORef H.empty
 
 -- | Variable holding the builder for the supplied JSON string.
-keyRef :: KeyMap -> String -> Q Exp
+keyRef :: KeyMapIORef -> String -> Q Exp
 keyRef ref s = do
   vNew <- newName "key"
   v <- runIO $ atomicModifyIORef ref $ \hm ->
@@ -694,7 +693,7 @@ consFromJSON :: JSONClass
              -- ^ The FromJSON variant being derived.
              -> Name
              -- ^ Name of the type to which the constructors belong.
-             -> KeyMap
+             -> KeyMapIORef
              -> Options
              -- ^ Encoding options
              -> [Type]
@@ -1249,7 +1248,7 @@ deriveJSONBoth dtj dfj opts name =
     liftM2 (++) (dtj opts name) (dfj opts name)
 
 -- | Functionality common to @deriveToJSON(1)(2)@ and @deriveFromJSON(1)(2)@.
-deriveJSONClass :: [(JSONFun, JSONClass -> Name -> KeyMap -> Options -> [Type]
+deriveJSONClass :: [(JSONFun, JSONClass -> Name -> KeyMapIORef -> Options -> [Type]
                                         -> [ConstructorInfo] -> Q Exp)]
                 -- ^ The class methods and the functions which derive them.
                 -> JSONClass
@@ -1288,7 +1287,7 @@ deriveJSONClass consFuns jc opts name = do
                     []
            ]
 
-mkFunCommon :: (JSONClass -> Name -> KeyMap -> Options -> [Type] -> [ConstructorInfo] -> Q Exp)
+mkFunCommon :: (JSONClass -> Name -> KeyMapIORef -> Options -> [Type] -> [ConstructorInfo] -> Q Exp)
             -- ^ The function which derives the expression.
             -> JSONClass
             -- ^ Which class's method is being derived.
@@ -1971,7 +1970,7 @@ data Direction = To | From
 data JSONFun = ToJSON | ToEncoding | ParseJSON
 
 -- | A refinement of JSONFun to [ToJSON, ToEncoding].
-data ToJSONFun = Value | Encoding KeyMap
+data ToJSONFun = Value | Encoding KeyMapIORef
 
 targetToJSONFun :: ToJSONFun -> JSONFun
 targetToJSONFun Value = ToJSON
