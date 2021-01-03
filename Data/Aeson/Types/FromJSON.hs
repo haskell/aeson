@@ -52,6 +52,7 @@ module Data.Aeson.Types.FromJSON
     , withObject
     , withText
     , withArray
+    , withBoundedScientific
     , withScientific
     , withBool
     , withEmbeddedJSON
