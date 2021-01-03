@@ -4,6 +4,8 @@ module Data.Aeson.Parser.Time
     (
       run
     , day
+    , month
+    , quarter
     , localTime
     , timeOfDay
     , timeZone
@@ -16,6 +18,8 @@ import Prelude.Compat
 import Data.Attoparsec.Text (Parser)
 import Data.Text (Text)
 import Data.Time.Calendar (Day)
+import Data.Time.Calendar.Quarter.Compat (Quarter)
+import Data.Time.Calendar.Month.Compat (Month)
 import Data.Time.Clock (UTCTime(..))
 import qualified Data.Aeson.Types.Internal as Aeson
 import qualified Data.Attoparsec.Text as A
@@ -33,10 +37,22 @@ day :: Parser Day
 day = T.day
 {-# INLINE day #-}
 
+-- | Parse a date of the form @[+,-]YYYY-MM@.
+month :: Parser Month
+month = T.month
+{-# INLINE month #-}
+
+-- | Parse a date of the form @[+,-]YYYY-QN@.
+quarter :: Parser Quarter
+quarter = T.quarter
+{-# INLINE quarter #-}
+
 -- | Parse a time of the form @HH:MM[:SS[.SSS]]@.
 timeOfDay :: Parser Local.TimeOfDay
 timeOfDay = T.timeOfDay
 {-# INLINE timeOfDay #-}
+
+-- | Parse a quarter of the form @[+,-]YYYY-QN@.
 
 -- | Parse a time zone, and return 'Nothing' if the offset from UTC is
 -- zero. (This makes some speedups possible.)

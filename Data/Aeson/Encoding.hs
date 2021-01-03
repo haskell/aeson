@@ -42,6 +42,8 @@ module Data.Aeson.Encoding
 
     -- ** Time
     , day
+    , month
+    , quarter
     , localTime
     , utcTime
     , timeOfDay

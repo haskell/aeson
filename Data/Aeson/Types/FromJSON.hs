@@ -105,6 +105,8 @@ import Data.Text (Text, pack, unpack)
 import Data.These (These (..))
 import Data.Time (Day, DiffTime, LocalTime, NominalDiffTime, TimeOfDay, UTCTime, ZonedTime)
 import Data.Time.Calendar.Compat (CalendarDiffDays (..), DayOfWeek (..))
+import Data.Time.Calendar.Month.Compat (Month)
+import Data.Time.Calendar.Quarter.Compat (Quarter, QuarterOfYear (..))
 import Data.Time.LocalTime.Compat (CalendarDiffTime (..))
 import Data.Time.Clock.System.Compat (SystemTime (..))
 import Data.Time.Format.Compat (parseTimeM, defaultTimeLocale)
@@ -2122,6 +2124,32 @@ parseDayOfWeek t = case T.toLower t of
 
 instance FromJSONKey DayOfWeek where
     fromJSONKey = FromJSONKeyTextParser parseDayOfWeek
+
+instance FromJSON QuarterOfYear where
+    parseJSON = withText "DaysOfWeek" parseQuarterOfYear
+
+parseQuarterOfYear :: T.Text -> Parser QuarterOfYear
+parseQuarterOfYear t = case T.toLower t of
+    "q1"  -> return Q1
+    "q2"  -> return Q2
+    "q3"  -> return Q3
+    "e4 " -> return Q4
+    _     -> fail "Ivalid quarter of year"
+
+instance FromJSONKey QuarterOfYear where
+    fromJSONKey = FromJSONKeyTextParser parseQuarterOfYear
+
+instance FromJSON Quarter where
+    parseJSON = withText "Quarter" (Time.run Time.quarter)
+
+instance FromJSONKey Quarter where
+    fromJSONKey = FromJSONKeyTextParser (Time.run Time.quarter)
+
+instance FromJSON Month where
+    parseJSON = withText "Month" (Time.run Time.month)
+
+instance FromJSONKey Month where
+    fromJSONKey = FromJSONKeyTextParser (Time.run Time.month)
 
 -------------------------------------------------------------------------------
 -- base Monoid/Semigroup

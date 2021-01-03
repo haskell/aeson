@@ -1,5 +1,8 @@
 For the latest version of this document, please see [https://github.com/bos/aeson/blob/master/changelog.md](https://github.com/bos/aeson/blob/master/changelog.md).
 
+#### next
+* Add instances for `Month`, `Quarter` and `QuarterOfYear` (from `time-1.11`)
+
 #### 1.5.4.1
 * Use `Text.Encoding.decodeLatin1` to speed up ASCII string decoding, thanks to Dmitry Ivanov.
 * Support `bytestring 0.11.*` and `th-abstraction 0.4.*`, thanks to Oleg Grenrus.

@@ -19,6 +19,8 @@ module Data.Attoparsec.Time
     , timeZone
     , utcTime
     , zonedTime
+    , month
+    , quarter
     ) where
 
 import Prelude.Compat
@@ -33,6 +35,8 @@ import Data.Fixed (Pico)
 import Data.Int (Int64)
 import Data.Maybe (fromMaybe)
 import Data.Time.Calendar (Day, fromGregorianValid)
+import Data.Time.Calendar.Quarter.Compat (Quarter, QuarterOfYear (..), fromYearQuarter)
+import Data.Time.Calendar.Month.Compat (Month, fromYearMonthValid)
 import Data.Time.Clock (UTCTime(..))
 import qualified Data.Text as T
 import qualified Data.Time.LocalTime as Local
@@ -45,6 +49,28 @@ day = do
   m <- (twoDigits <* char '-') <|> fail "date must be of form [+,-]YYYY-MM-DD"
   d <- twoDigits <|> fail "date must be of form [+,-]YYYY-MM-DD"
   maybe (fail "invalid date") return (fromGregorianValid (absOrNeg y) m d)
+
+-- | Parse a month of the form @[+,-]YYYY-MM@.
+month :: Parser Month
+month = do
+  absOrNeg <- negate <$ char '-' <|> id <$ char '+' <|> pure id
+  y <- (decimal <* char '-') <|> fail "month must be of form [+,-]YYYY-MM"
+  m <- twoDigits <|> fail "month must be of form [+,-]YYYY-MM"
+  maybe (fail "invalid month") return (fromYearMonthValid (absOrNeg y) m)
+
+-- | Parse a quarter of the form @[+,-]YYYY-QN@.
+quarter :: Parser Quarter
+quarter = do
+  absOrNeg <- negate <$ char '-' <|> id <$ char '+' <|> pure id
+  y <- (decimal <* char '-') <|> fail "month must be of form [+,-]YYYY-MM"
+  _ <- char 'q' <|> char 'Q'
+  q <- parseQ
+  return $! fromYearQuarter (absOrNeg y) q
+  where
+    parseQ = Q1 <$ char '1'
+      <|> Q2 <$ char '2'
+      <|> Q3 <$ char '3'
+      <|> Q4 <$ char '4'
 
 -- | Parse a two-digit integer (e.g. day of month, hour).
 twoDigits :: Parser Int

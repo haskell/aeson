@@ -17,7 +17,7 @@ module SerializationFormatSpec
 import Prelude.Compat
 
 import Control.Applicative (Const(..))
-import Data.Aeson (FromJSON(..), decode, encode, genericParseJSON, genericToEncoding, genericToJSON)
+import Data.Aeson (FromJSON(..), decode, eitherDecode, encode, genericParseJSON, genericToEncoding, genericToJSON)
 import Data.Aeson.Types (Options(..), SumEncoding(..), ToJSON(..), defaultOptions)
 import Data.Fixed (Pico)
 import Data.Foldable (for_, toList)
@@ -31,6 +31,8 @@ import Data.Scientific (Scientific)
 import Data.Tagged (Tagged(..))
 import Data.These (These (..))
 import Data.Time (fromGregorian)
+import Data.Time.Calendar.Month.Compat (fromYearMonth)
+import Data.Time.Calendar.Quarter.Compat (fromYearQuarter, QuarterOfYear (..))
 import Data.Time.Calendar.Compat (CalendarDiffDays (..), DayOfWeek (..))
 import Data.Time.LocalTime.Compat (CalendarDiffTime (..))
 import Data.Time.Clock.System.Compat (SystemTime (..))
@@ -147,6 +149,20 @@ jsonExamples =
   , example "Day; year == 0" "\"0000-02-20\""           (fromGregorian 0       2  20)
   , example "Day; year < 0" "\"-0234-01-01\""           (fromGregorian (-234)  1  1)
   , example "Day; year < -1000" "\"-1234-01-01\""       (fromGregorian (-1234) 1  1)
+
+  , example "Month; year >= 1000" "\"1999-10\""        (fromYearMonth 1999    10)
+  , example "Month; year > 0 && < 1000" "\"0500-03\""  (fromYearMonth 500     3)
+  , example "Month; year == 0" "\"0000-02\""           (fromYearMonth 0       2)
+  , example "Month; year < 0" "\"-0234-01\""           (fromYearMonth (-234)  1)
+  , example "Month; year < -1000" "\"-1234-01\""       (fromYearMonth (-1234) 1)
+
+  , example "Quarter; year >= 1000" "\"1999-q1\""        (fromYearQuarter 1999    Q1)
+  , example "Quarter; year > 0 && < 1000" "\"0500-q4\""  (fromYearQuarter 500     Q4)
+  , example "Quarter; year == 0" "\"0000-q3\""           (fromYearQuarter 0       Q3)
+  , example "Quarter; year < 0" "\"-0234-q2\""           (fromYearQuarter (-234)  Q2)
+  , example "Quarter; year < -1000" "\"-1234-q1\""       (fromYearQuarter (-1234) Q1)
+
+  , example "QuarterOfYear" "\"q1\"" Q1
 
   , example "Product I Maybe Int" "[1,2]"         (Pair (pure 1) (pure 2) :: Product I Maybe Int)
   , example "Product I Maybe Int" "[1,null]"      (Pair (pure 1) Nothing :: Product I Maybe Int)
@@ -306,7 +322,8 @@ assertJsonExample (Example name bss val val') = testCase name $ do
     assertSomeEqual "encode"           bss        (encode val)
     assertSomeEqual "encode/via value" bss        (encode $ toJSON val)
     for_ bss $ \bs ->
-        assertEqual "decode"           (Just val') (decode bs)
+        assertEqual "decode"           (Right val') (eitherDecode bs)
+
 assertJsonExample (MaybeExample name bs mval) = testCase name $
     assertEqual "decode" mval (decode bs)
 
