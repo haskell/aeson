@@ -1,5 +1,8 @@
 For the latest version of this document, please see [https://github.com/bos/aeson/blob/master/changelog.md](https://github.com/bos/aeson/blob/master/changelog.md).
 
+### 1.5.5.1
+* Fix a bug in `FromJSON QuarterOfYear` instance.
+
 ### 1.5.5.0
 * Add instances for `Month`, `Quarter` and `QuarterOfYear` (from `time-1.11`), thanks to Oleg Grenrus.
 
