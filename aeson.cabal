@@ -1,5 +1,5 @@
 name:            aeson
-version:         1.5.5.0
+version:         1.5.5.1
 license:         BSD3
 license-file:    LICENSE
 category:        Text, Web, JSON
@@ -235,7 +235,7 @@ test-suite aeson-tests
     unordered-containers,
     uuid-types,
     vector,
-    quickcheck-instances >= 0.3.24 && <0.4
+    quickcheck-instances >= 0.3.25.2 && <0.4
 
   if flag(bytestring-builder)
     build-depends: bytestring >= 0.9 && < 0.10.4,

@@ -2130,11 +2130,11 @@ instance FromJSON QuarterOfYear where
 
 parseQuarterOfYear :: T.Text -> Parser QuarterOfYear
 parseQuarterOfYear t = case T.toLower t of
-    "q1"  -> return Q1
-    "q2"  -> return Q2
-    "q3"  -> return Q3
-    "e4 " -> return Q4
-    _     -> fail "Ivalid quarter of year"
+    "q1" -> return Q1
+    "q2" -> return Q2
+    "q3" -> return Q3
+    "q4" -> return Q4
+    _    -> fail "Invalid quarter of year"
 
 instance FromJSONKey QuarterOfYear where
     fromJSONKey = FromJSONKeyTextParser parseQuarterOfYear
