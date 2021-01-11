@@ -569,7 +569,7 @@ instance GetConName f => GToJSONKey f
 --
 -- import "GHC.Generics"
 --
--- data Pair = Pair { pairFst :: a, pairSnd :: b } deriving 'Generic1'
+-- data Pair a b = Pair { pairFst :: a, pairSnd :: b } deriving 'Generic1'
 --
 -- instance 'ToJSON' a => 'ToJSON1' (Pair a)
 -- @
