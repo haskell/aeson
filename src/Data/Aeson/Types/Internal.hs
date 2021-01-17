@@ -682,6 +682,8 @@ data SumEncoding =
     -- by the encoded value of that field! If the constructor is not a
     -- record the encoded constructor contents will be stored under
     -- the 'contentsFieldName' field.
+  | TaggedFlatObject { tagFieldName :: String }
+    -- ^ A constructor will be encoded to an object with a field
   | UntaggedValue
     -- ^ Constructor names won't be encoded. Instead only the contents of the
     -- constructor will be encoded as if the type had a single constructor. JSON
