@@ -1,4 +1,4 @@
--- | Like "Data.Aeson.QQ" but without interpolation.
+-- | Like @<https://hackage.haskell.org/package/aeson-qq/docs/Data-Aeson-QQ.html Data.Aeson.QQ>@ but without interpolation.
 module Data.Aeson.QQ.Simple (aesonQQ) where
 
 import           Data.Aeson
