@@ -39,6 +39,9 @@ optsOmitNothingFields = optsDefault
                         { omitNothingFields = True
                         }
 
+optsTaggedFlatObject :: Options
+optsTaggedFlatObject = optsDefault { allNullaryToStringTag = False, sumEncoding = TaggedFlatObject "tag"}
+
 optsUntaggedValue :: Options
 optsUntaggedValue = optsDefault
     { sumEncoding = UntaggedValue
