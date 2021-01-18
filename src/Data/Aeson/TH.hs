@@ -421,6 +421,7 @@ sumToValue target opts multiCons nullary conName value pairs
                 content = pairs contentsFieldName
             in fromPairsE $
               if nullary then tag else infixApp tag [|(Monoid.<>)|] content
+          TaggedFlatObject {} -> error "impossible"
           ObjectWithSingleField ->
             objectE [(conString opts conName, value)]
           UntaggedValue | nullary -> conStr target opts conName
@@ -434,7 +435,21 @@ argsToValue :: ToJSONFun -> JSONClass -> TyVarMap -> Options -> Bool -> Construc
 argsToValue target jc tvMap opts multiCons
   ConstructorInfo { constructorName    = conName
                   , constructorVariant = NormalConstructor
-                  , constructorFields  = argTys } = do
+                  , constructorFields  = argTys }
+      | TaggedFlatObject{tagFieldName} <- sumEncoding opts
+      , multiCons = do
+        let tag = (tagFieldName, conStr target opts conName)
+        argTys' <- mapM resolveTypeSynonyms argTys
+        let len = length argTys'
+        args <- newNameList "arg" len
+        let os = zipWith (\arg argTy -> dispatchToJSON target jc conName tvMap argTy `appE` varE arg) args argTys'
+            pairs = zip (fmap (show :: Int -> String) [1..]) os
+            obj = objectE (tag : pairs)
+        match (conP conName $ map varP args)
+              (normalB obj)
+              []
+      | otherwise =
+    do
     argTys' <- mapM resolveTypeSynonyms argTys
     let len = length argTys'
     args <- newNameList "arg" len
@@ -491,14 +506,33 @@ argsToValue target jc tvMap opts multiCons
                 else e arg
 
         match (conP conName $ map varP args)
-              (normalB $ recordSumToValue target opts multiCons (null argTys) conName pairs)
+              (normalB $ case () of
+                           ()
+                            | TaggedFlatObject {tagFieldName} <- sumEncoding opts -> do
+                               let tag = pairE tagFieldName (conStr target opts conName)
+                               fromPairsE $ infixApp tag [|(<>)|] pairs
+                            | otherwise -> recordSumToValue target opts multiCons (null argTys) conName pairs)
               []
 
 -- Infix constructors.
 argsToValue target jc tvMap opts multiCons
   ConstructorInfo { constructorName    = conName
                   , constructorVariant = InfixConstructor
-                  , constructorFields  = argTys } = do
+                  , constructorFields  = argTys }
+      | TaggedFlatObject {tagFieldName} <- sumEncoding opts
+      , multiCons = do
+        [alTy, arTy] <- mapM resolveTypeSynonyms argTys
+        al <- newName "argL"
+        ar <- newName "argR"
+        let tag = (tagFieldName, conStr target opts conName)
+            os = zipWith (\arg argTy -> dispatchToJSON target jc conName tvMap argTy `appE` varE arg) [al, ar] [alTy, arTy]
+            pairs = zip (fmap (show :: Int -> String) [1..]) os
+            obj = objectE (tag : pairs)
+        match (infixP (varP al) conName (varP ar))
+              (normalB obj)
+              []
+      | otherwise =
+    do
     [alTy, arTy] <- mapM resolveTypeSynonyms argTys
     al <- newName "argL"
     ar <- newName "argR"
@@ -729,6 +763,7 @@ consFromJSON jc tName opts instTys cons = do
         case sumEncoding opts of
           TaggedObject {tagFieldName, contentsFieldName} ->
             parseObject $ parseTaggedObject tvMap tagFieldName contentsFieldName
+          TaggedFlatObject {tagFieldName} -> error "unsupported"
           UntaggedValue -> error "UntaggedValue: Should be handled already"
           ObjectWithSingleField ->
             parseObject $ parseObjectWithSingleField tvMap
@@ -777,6 +812,13 @@ consFromJSON jc tName opts instTys cons = do
                             [|(.:)|]
                             ([|T.pack|] `appE` stringE typFieldName))
           , noBindS $ parseContents tvMap conKey (Left (valFieldName, obj)) 'conNotFoundFailTaggedObject
+          ]
+
+    parseTaggedFlatObject tvMap typFieldName obj = do
+      conKey <- newName "conKey"
+      doE [ bindS (varP conKey)
+                  (infixApp (varE obj) [|(.:)|] ([|T.pack|] `appE` stringE typFieldName))
+          , noBindS $ parseContents tvMap conKey (Right obj) 'conNotFoundFailTaggedObject
           ]
 
     parseUntaggedValue tvMap cons' conVal =
