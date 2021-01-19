@@ -142,7 +142,7 @@ import qualified Data.Primitive.Array as PM
 import qualified Data.Primitive.SmallArray as PM
 import qualified Data.Primitive.Types as PM
 import qualified Data.Primitive.PrimArray as PM
-import GHC.TypeNats
+import GHC.TypeLits
 
 toJSONPair :: (a -> Value) -> (b -> Value) -> (a, b) -> Value
 toJSONPair a b = liftToJSON2 a (listValue a) b (listValue b)
