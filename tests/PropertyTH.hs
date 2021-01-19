@@ -22,12 +22,14 @@ templateHaskellTests =
             testProperty "string" (isString . thNullaryToJSONString)
           , testProperty "2ElemArray" (is2ElemArray . thNullaryToJSON2ElemArray)
           , testProperty "TaggedObject" (isNullaryTaggedObject . thNullaryToJSONTaggedObject)
+          , testProperty "TaggedFlatObject" (isNullaryTaggedObject . thNullaryToJSONTaggedFlatObject)
           , testProperty "ObjectWithSingleField" (isObjectWithSingleField . thNullaryToJSONObjectWithSingleField)
 
           , testGroup "roundTrip" [
               testProperty "string" (toParseJSON thNullaryParseJSONString thNullaryToJSONString)
             , testProperty "2ElemArray" (toParseJSON thNullaryParseJSON2ElemArray thNullaryToJSON2ElemArray)
             , testProperty "TaggedObject" (toParseJSON thNullaryParseJSONTaggedObject thNullaryToJSONTaggedObject)
+            , testProperty "TaggedFlatObject" (toParseJSON thNullaryParseJSONTaggedFlatObject thNullaryToJSONTaggedFlatObject)
             , testProperty "ObjectWithSingleField" (toParseJSON thNullaryParseJSONObjectWithSingleField thNullaryToJSONObjectWithSingleField)
             ]
         ]
@@ -38,14 +40,17 @@ templateHaskellTests =
       , testGroup "SomeType" [
           testProperty "2ElemArray" (is2ElemArray . thSomeTypeToJSON2ElemArray)
         , testProperty "TaggedObject" (isTaggedObject . thSomeTypeToJSONTaggedObject)
+        , testProperty "TaggedFlatObject" (isTaggedObject . thSomeTypeToJSONTaggedFlatObject)
         , testProperty "ObjectWithSingleField" (isObjectWithSingleField . thSomeTypeToJSONObjectWithSingleField)
         , testGroup "roundTrip" [
             testProperty "2ElemArray" (toParseJSON thSomeTypeParseJSON2ElemArray thSomeTypeToJSON2ElemArray)
           , testProperty "TaggedObject" (toParseJSON thSomeTypeParseJSONTaggedObject thSomeTypeToJSONTaggedObject)
+          , testProperty "TaggedFlatObject" (toParseJSON thSomeTypeParseJSONTaggedFlatObject thSomeTypeToJSONTaggedFlatObject)
           , testProperty "ObjectWithSingleField" (toParseJSON thSomeTypeParseJSONObjectWithSingleField thSomeTypeToJSONObjectWithSingleField)
 
           , testProperty "2ElemArray unary" (toParseJSON1 thSomeTypeLiftParseJSON2ElemArray thSomeTypeLiftToJSON2ElemArray)
           , testProperty "TaggedObject unary" (toParseJSON1 thSomeTypeLiftParseJSONTaggedObject thSomeTypeLiftToJSONTaggedObject)
+          , testProperty "TaggedFlatObject unary" (toParseJSON1 thSomeTypeLiftParseJSONTaggedFlatObject thSomeTypeLiftToJSONTaggedFlatObject)
           , testProperty "ObjectWithSingleField unary" (toParseJSON1 thSomeTypeLiftParseJSONObjectWithSingleField thSomeTypeLiftToJSONObjectWithSingleField)
 
           ]
@@ -87,6 +92,8 @@ templateHaskellTests =
         thNullaryToJSON2ElemArray `sameAs` thNullaryToEncoding2ElemArray
       , testProperty "NullaryTaggedObject" $
         thNullaryToJSONTaggedObject `sameAs` thNullaryToEncodingTaggedObject
+      , testProperty "NullaryTaggedFlatObject" $
+        thNullaryToJSONTaggedFlatObject `sameAs` thNullaryToEncodingTaggedFlatObject
       , testProperty "NullaryObjectWithSingleField" $
         thNullaryToJSONObjectWithSingleField `sameAs`
         thNullaryToEncodingObjectWithSingleField
@@ -111,6 +118,13 @@ templateHaskellTests =
         thSomeTypeLiftToJSONTaggedObject `sameAs1` thSomeTypeLiftToEncodingTaggedObject
       , testProperty "SomeTypeTaggedObject unary agree" $
         thSomeTypeToEncodingTaggedObject `sameAs1Agree` thSomeTypeLiftToEncodingTaggedObject
+
+      , testProperty "SomeTypeTaggedFlatObject" $
+        thSomeTypeToJSONTaggedFlatObject `sameAs` thSomeTypeToEncodingTaggedFlatObject
+      , testProperty "SomeTypeTaggedFlatObject unary" $
+        thSomeTypeLiftToJSONTaggedFlatObject `sameAs1` thSomeTypeLiftToEncodingTaggedFlatObject
+      , testProperty "SomeTypeTaggedFlatObject unary agree" $
+        thSomeTypeToEncodingTaggedFlatObject `sameAs1Agree` thSomeTypeLiftToEncodingTaggedFlatObject
 
       , testProperty "SomeTypeObjectWithSingleField" $
         thSomeTypeToJSONObjectWithSingleField `sameAs` thSomeTypeToEncodingObjectWithSingleField
