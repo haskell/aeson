@@ -763,7 +763,8 @@ consFromJSON jc tName opts instTys cons = do
         case sumEncoding opts of
           TaggedObject {tagFieldName, contentsFieldName} ->
             parseObject $ parseTaggedObject tvMap tagFieldName contentsFieldName
-          TaggedFlatObject {tagFieldName} -> error "unsupported"
+          TaggedFlatObject {tagFieldName} -> 
+            parseObject $ parseTaggedFlatObject tvMap tagFieldName
           UntaggedValue -> error "UntaggedValue: Should be handled already"
           ObjectWithSingleField ->
             parseObject $ parseObjectWithSingleField tvMap
@@ -814,12 +815,87 @@ consFromJSON jc tName opts instTys cons = do
           , noBindS $ parseContents tvMap conKey (Left (valFieldName, obj)) 'conNotFoundFailTaggedObject
           ]
 
-    parseTaggedFlatObject tvMap typFieldName obj = do
+    parseTaggedFlatObject tvMap tagFieldName obj = do
       conKey <- newName "conKey"
       doE [ bindS (varP conKey)
-                  (infixApp (varE obj) [|(.:)|] ([|T.pack|] `appE` stringE typFieldName))
-          , noBindS $ parseContents tvMap conKey (Right obj) 'conNotFoundFailTaggedObject
+                  (infixApp (varE obj) [|(.:)|] ([|T.pack|] `appE` stringE tagFieldName))
+          , noBindS $
+            caseE (varE conKey)
+              [ match wildP
+                ( guardedB $
+                  [ do g <- normalG $ infixApp (varE conKey)
+                                               [|(==)|]
+                                               ([|T.pack|] `appE`
+                                                  conNameExp opts con)
+                       argTys <- mapM resolveTypeSynonyms (constructorFields con)
+                       let conName = constructorName con
+                       e <- case constructorVariant con of
+                              RecordConstructor fields ->
+                                parseRecord jc tvMap argTys opts tName conName fields obj False
+                              _ ->
+                                parseNumRec tvMap argTys conName obj
+                       return (g, e)
+                  | con <- cons
+                  ]
+                  ++
+                  [ liftM2 (,)
+                           (normalG [e|otherwise|])
+                           ( varE 'conNotFoundFailTaggedObject
+                             `appE` litE (stringL $ show tName)
+                             `appE` listE (map ( litE
+                                               . stringL
+                                               . constructorTagModifier opts
+                                               . nameBase
+                                               . constructorName
+                                               ) cons
+                                          )
+                             `appE` ([|T.unpack|] `appE` varE conKey)
+                           )
+                  ]
+                )
+                []
+              ]
           ]
+
+    parseNumRec :: TyVarMap
+                -> [Type]
+                -> Name
+                -> Name
+                -> ExpQ
+    parseNumRec tvMap argTys conName obj =
+        (if rejectUnknownFields opts
+          then infixApp checkUnknownRecords [|(>>)|]
+          else id) $
+          if null argTys
+            then [|pure|] `appE` conE conName
+            else
+              foldl' (\a b -> infixApp a [|(<*>)|] b)
+                     (infixApp (conE conName) [|(<$>)|] x)
+                     xs
+        where
+          fields = map (show :: Int -> String) $ take (length argTys) [1..]
+          knownFields = appE [|H.fromList|] $ listE $
+              map (\knownName -> tupE [appE [|T.pack|] $ litE $ stringL knownName, [|()|]]) fields
+          checkUnknownRecords =
+              caseE (appE [|H.keys|] $ infixApp (varE obj) [|H.difference|] knownFields)
+                  [ match (listP []) (normalB [|return ()|]) []
+                  , newName "unknownFields" >>=
+                      \unknownFields -> match (varP unknownFields)
+                          (normalB $ appE [|fail|] $ infixApp
+                              (litE (stringL "Unknown fields: "))
+                              [|(++)|]
+                              (appE [|show|] (varE unknownFields)))
+                          []
+                  ]
+          x:xs = [ [|lookupField|]
+                   `appE` dispatchParseJSON jc conName tvMap argTy
+                   `appE` litE (stringL $ show tName)
+                   `appE` litE (stringL $ constructorTagModifier opts $ nameBase conName)
+                   `appE` varE obj
+                   `appE` ( [|T.pack|] `appE` stringE field
+                          )
+                 | (field, argTy) <- zip fields argTys
+                 ]
 
     parseUntaggedValue tvMap cons' conVal =
         foldr1 (\e e' -> infixApp e [|(<|>)|] e')
