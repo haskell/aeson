@@ -954,17 +954,23 @@ instance RecordToPairs pairs enc arity f => TaggedFlatObject' pairs enc arity f 
 instance Monoid pairs => TaggedFlatObject' enc pairs arity U1 False where
     taggedFlatObject' _ _ _ = Tagged mempty
 
-instance OVERLAPPABLE_ (PositionToPairs 1 pairs enc arity f) => TaggedFlatObject' enc pairs arity f False where
+instance PositionToPairs 1 pairs enc arity f => TaggedFlatObject' enc pairs arity f False where
     taggedFlatObject' opts targs a = Tagged $ positionToPairs (Proxy :: Proxy 1) opts targs a
 
 class KnownNat n => PositionToPairs n pairs enc arity f where
     positionToPairs :: Proxy n -> Options -> ToArgs enc arity a -> f a -> pairs
 
-instance (KeyValuePair enc pairs, GToJSON' enc arity a, KnownNat n) => PositionToPairs n pairs enc arity (S1 m a) where
+instance ( KeyValuePair enc pairs
+         , GToJSON' enc arity a
+         , KnownNat n
+         ) => PositionToPairs n pairs enc arity (S1 m a) where
     positionToPairs p opts targs (M1 a) =
         show (natVal p) `pair` gToJSON opts targs a
 
-instance (Semigroup pairs, PositionToPairs n pairs enc arity f, PositionToPairs (n+1) pairs enc arity g) => PositionToPairs n pairs enc arity (f :*: g) where
+instance ( Semigroup pairs
+         , PositionToPairs n pairs enc arity f
+         , PositionToPairs (n+1) pairs enc arity g
+         ) => PositionToPairs n pairs enc arity (f :*: g) where
     positionToPairs _ opts targs (f :*: g) =
         positionToPairs (Proxy :: Proxy n) opts targs f
          <> positionToPairs (Proxy :: Proxy (n+1)) opts targs g
