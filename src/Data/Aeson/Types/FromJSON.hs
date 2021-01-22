@@ -1454,7 +1454,7 @@ instance (RecordFromJSON arity f, FieldNames f) => FromTaggedFlatObject' arity f
 instance FromTaggedFlatObject' arity U1 False where
     parseTaggedFlatObject' _ _ = Tagged (pure U1)
 
-instance PositionFromObject 1 arity f => FromTaggedFlatObject' arity f False where
+instance OVERLAPPABLE_ PositionFromObject 1 arity f => FromTaggedFlatObject' arity f False where
     parseTaggedFlatObject' (_ :* p) obj = Tagged (positionFromObject (Proxy :: Proxy 1) p obj)
  
 class KnownNat n => PositionFromObject n arity f where
