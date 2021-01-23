@@ -967,13 +967,13 @@ instance ( KeyValuePair enc pairs
     positionToPairs p opts targs (M1 a) =
         show (natVal p) `pair` gToJSON opts targs a
 
-instance ( Semigroup pairs
+instance ( Monoid pairs
          , PositionToPairs n pairs enc arity f
          , PositionToPairs (n+1) pairs enc arity g
          ) => PositionToPairs n pairs enc arity (f :*: g) where
     positionToPairs _ opts targs (f :*: g) =
         positionToPairs (Proxy :: Proxy n) opts targs f
-         <> positionToPairs (Proxy :: Proxy (n+1)) opts targs g
+         `mappend` positionToPairs (Proxy :: Proxy (n+1)) opts targs g
 
 --------------------------------------------------------------------------------
 
