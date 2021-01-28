@@ -510,7 +510,7 @@ argsToValue target jc tvMap opts multiCons
                            ()
                             | TaggedFlatObject {tagFieldName} <- sumEncoding opts -> do
                                let tag = pairE tagFieldName (conStr target opts conName)
-                               fromPairsE $ infixApp tag [|(<>)|] pairs
+                               fromPairsE $ infixApp tag [|(Monoid.<>)|] pairs
                             | otherwise -> recordSumToValue target opts multiCons (null argTys) conName pairs)
               []
 
@@ -763,7 +763,7 @@ consFromJSON jc tName opts instTys cons = do
         case sumEncoding opts of
           TaggedObject {tagFieldName, contentsFieldName} ->
             parseObject $ parseTaggedObject tvMap tagFieldName contentsFieldName
-          TaggedFlatObject {tagFieldName} -> 
+          TaggedFlatObject {tagFieldName} ->
             parseObject $ parseTaggedFlatObject tvMap tagFieldName
           UntaggedValue -> error "UntaggedValue: Should be handled already"
           ObjectWithSingleField ->
