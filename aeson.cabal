@@ -26,21 +26,15 @@ description:
 extra-source-files:
     *.yaml
     README.markdown
-    benchmarks/*.cabal
-    benchmarks/*.hs
-    benchmarks/*.py
-    benchmarks/Compare/*.hs
-    benchmarks/Makefile
-    benchmarks/Typed/*.hs
-    benchmarks/json-data/*.json
     cbits/*.c
     changelog.md
-    ffi/Data/Aeson/Parser/*.hs
     include/*.h
     tests/JSONTestSuite/test_parsing/*.json
     tests/JSONTestSuite/test_transform/*.json
     tests/golden/*.expected
-    pure/Data/Aeson/Parser/*.hs
+    src-ffi/Data/Aeson/Parser/*.hs
+    src-pure/Data/Aeson/Parser/*.hs
+    benchmarks/json-data/*.json
 
 flag developer
   description: operate in developer mode
