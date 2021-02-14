@@ -1,7 +1,6 @@
-# Welcome to `aeson` [![Hackage](https://img.shields.io/hackage/v/aeson.svg)](https://hackage.haskell.org/package/aeson) [![Build Status](https://travis-ci.org/bos/aeson.svg)](https://travis-ci.org/bos/aeson)
+# Welcome to `aeson` [![Hackage](https://img.shields.io/hackage/v/aeson.svg)](https://hackage.haskell.org/package/aeson) [![Build Status](https://travis-ci.org/haskell/aeson.svg)](https://travis-ci.org/haskell/aeson)
 
 aeson is a fast Haskell library for working with JSON data.
-
 
 # Join in!
 
@@ -9,15 +8,15 @@ We are happy to receive bug reports, fixes, documentation enhancements,
 and other improvements.
 
 Please report bugs via the
-[github issue tracker](http://github.com/bos/aeson/issues).
+[github issue tracker](http://github.com/haskell/aeson/issues).
 
-Master [git repository](http://github.com/bos/aeson):
+Master [git repository](http://github.com/haskell/aeson):
 
-* `git clone git://github.com/bos/aeson.git`
+* `git clone git://github.com/haskell/aeson.git`
 
 See what's changed in recent (and upcoming) releases:
 
-* https://github.com/bos/aeson/blob/master/changelog.md
+* https://github.com/haskell/aeson/blob/master/changelog.md
 
 (You can create and contribute changes using either git or Mercurial.)
 
