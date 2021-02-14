@@ -1,5 +1,5 @@
+branches: master
 cabal-check: False
-email-notifications: False
 
 -- GADT docs
 haddock: >=8.6
@@ -12,7 +12,3 @@ constraint-set cffi
   constraints: aeson +cffi
   tests:       True
   run-tests:   True
-
-raw-travis:
-  cd $TOP || false
-  ${CABAL} v2-build $WITHCOMPILER --project-file=cabal.bench.project all
