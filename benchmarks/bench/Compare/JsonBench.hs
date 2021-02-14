@@ -19,7 +19,7 @@ import Criterion
 import Data.Aeson ((.:))
 import Data.Monoid ((<>))
 import Data.Text (Text)
-import Typed.Common (load)
+import Utils (readV)
 import qualified Control.Monad.Fail as Fail
 import qualified Data.Aeson as Aeson
 import qualified Data.BufferBuilder.Json as Json
@@ -328,9 +328,9 @@ instance JB.Value User where
 #endif
 
 benchmarks :: Benchmark
-benchmarks = env (load "json-data/buffer-builder.json") $
+benchmarks = env (readV "buffer-builder.json") $
     \ ~(parsedUserList :: [User]) ->
-    bgroup "json-bench" [
+    bgroup "CompareEncodeUserList" [
       bench "aeson" $ nf Aeson.encode parsedUserList
     , bench "buffer-builder" $ nf Json.encodeJson parsedUserList
 #ifdef MIN_VERSION_json_builder

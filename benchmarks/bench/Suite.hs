@@ -10,11 +10,8 @@ import           Prelude.Compat
 import           Control.DeepSeq                (NFData)
 import           Criterion.Main                 (Benchmark, bench, bgroup,
                                                  defaultMain, env, nf, whnf)
-import           Data.Maybe                     (fromMaybe)
 import           Data.Proxy                     (Proxy (..))
 import           Data.Vector                    (Vector)
-import           System.Environment             (lookupEnv)
-import           System.FilePath                ((</>))
 
 import qualified Data.Aeson.Encoding.Builder    as Aeson.EB
 import qualified Data.Aeson.Parser.UnescapeFFI  as FFI
@@ -25,10 +22,12 @@ import qualified Data.ByteString.Char8          as BS8
 import qualified Data.ByteString.Lazy           as LBS
 import qualified Data.Text                      as T
 
+import qualified AutoCompare
 import qualified GitHub
 import qualified Issue673
-import qualified Twitter
-import qualified Twitter.Manual                 ()
+import qualified Typed
+
+import           Utils
 
 -------------------------------------------------------------------------------
 -- Decode bench
@@ -77,32 +76,20 @@ escapeBench = bgroup "Escape"
       ]
 
 -------------------------------------------------------------------------------
--- Helpers
--------------------------------------------------------------------------------
-
-readS :: FilePath -> IO BS.ByteString
-readS fp = do
-    dataDir <- lookupEnv "AESON_BENCH_DATADIR"
-    BS.readFile $ fromMaybe "json-data" dataDir </> fp
-
-readL :: FilePath -> IO LBS.ByteString
-readL fp = do
-    dataDir <- lookupEnv "AESON_BENCH_DATADIR"
-    LBS.readFile $ fromMaybe "json-data" dataDir </> fp
-
--------------------------------------------------------------------------------
 -- Main
 -------------------------------------------------------------------------------
 
 main :: IO ()
-main = defaultMain
-  [ bgroup "Examples"
-    [ bgroup "decode"
-      [ decodeBench "twitter100"    "twitter100.json"    (Proxy :: Proxy Twitter.Result)
-      , decodeBench "jp100"         "jp100.json"         (Proxy :: Proxy Twitter.Result)
-      , decodeBench "github-issues" "github-issues.json" (Proxy :: Proxy (Vector GitHub.Issue))
+main = do
+  AutoCompare.sanityCheck
+  defaultMain
+    [ bgroup "Examples"
+      [ bgroup "decode"
+        [ decodeBench "github-issues" "github-issues.json" (Proxy :: Proxy (Vector GitHub.Issue))
+        ]
       ]
+    , escapeBench
+    , Issue673.benchmark
+    , Typed.benchmark -- Twitter
+    , AutoCompare.benchmark -- compares Generic and TH
     ]
-  , escapeBench
-  , Issue673.benchmark
-  ]

@@ -1,20 +1,22 @@
 {-# LANGUAGE NoImplicitPrelude #-}
 
-module Main (main) where
+module Typed (benchmark) where
 
-import Prelude.Compat
+import           Criterion.Main
+import qualified Typed.Generic  as Generic
+import qualified Typed.Manual   as Manual
+import qualified Typed.TH       as TH
 
-import Criterion.Main
-import qualified Typed.Generic as Generic
-import qualified Typed.Manual as Manual
-import qualified Typed.TH as TH
-
-main :: IO ()
-main = defaultMain [
-    Generic.benchmarks
-  , Manual.benchmarks
-  , TH.benchmarks
-  , Generic.decodeBenchmarks
-  , Manual.decodeBenchmarks
-  , TH.decodeBenchmarks
+benchmark :: Benchmark
+benchmark = bgroup "Twitter"
+  [ bgroup "encode"
+    [ Generic.benchmarks
+    , Manual.benchmarks
+    , TH.benchmarks
+    ]
+  , bgroup "decode"
+    [ Generic.decodeBenchmarks
+    , Manual.decodeBenchmarks
+    , TH.decodeBenchmarks
+    ]
   ]
