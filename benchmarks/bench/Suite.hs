@@ -20,15 +20,15 @@ import qualified Data.Aeson.Encoding.Builder    as Aeson.EB
 import qualified Data.Aeson.Parser.UnescapeFFI  as FFI
 import qualified Data.Aeson.Parser.UnescapePure as Pure
 import qualified Data.ByteString                as BS
+import qualified Data.ByteString.Builder        as B
 import qualified Data.ByteString.Char8          as BS8
 import qualified Data.ByteString.Lazy           as LBS
 import qualified Data.Text                      as T
-import qualified Data.ByteString.Builder as B
-
-import qualified Twitter
-import qualified Twitter.Manual                 ()
 
 import qualified GitHub
+import qualified Issue673
+import qualified Twitter
+import qualified Twitter.Manual                 ()
 
 -------------------------------------------------------------------------------
 -- Decode bench
@@ -104,4 +104,5 @@ main = defaultMain
       ]
     ]
   , escapeBench
+  , Issue673.benchmark
   ]
