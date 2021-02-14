@@ -114,19 +114,6 @@ executable aeson-benchmark-suite
     , vector
 
   other-modules:
-    GitHub
-    Twitter
-    Twitter.Manual
-    Issue673
-
--- Benchmarks below are haven't been worked out yet
-
-executable aeson-benchmark-auto-compare
-  default-language: Haskell2010
-  main-is:          AutoCompare.hs
-  hs-source-dirs:   bench
-  ghc-options:      -Wall -O2 -rtsopts
-  other-modules:
     Auto.G.BigProduct
     Auto.G.BigRecord
     Auto.G.BigSum
@@ -135,14 +122,22 @@ executable aeson-benchmark-auto-compare
     Auto.T.BigRecord
     Auto.T.BigSum
     Auto.T.D
+    AutoCompare
+    GitHub
+    Issue673
     Options
+    Twitter
+    Twitter.Generic
+    Twitter.Manual
+    Twitter.Options
+    Twitter.TH
+    Typed
+    Typed.Generic
+    Typed.Manual
+    Typed.TH
+    Utils
 
-  build-depends:
-      aeson-benchmarks
-    , base
-    , criterion
-    , deepseq
-    , template-haskell
+-- Benchmarks below are haven't been worked out yet
 
 executable aeson-benchmark-compare
   default-language: Haskell2010
@@ -154,7 +149,7 @@ executable aeson-benchmark-compare
     Compare.JsonBench
     Twitter
     Twitter.Manual
-    Typed.Common
+    Utils
 
   build-depends:
       aeson-benchmarks
@@ -164,6 +159,7 @@ executable aeson-benchmark-compare
     , bytestring
     , criterion              >=1.0
     , deepseq
+    , filepath
     , ghc-prim
     , text
 
@@ -190,36 +186,6 @@ executable aeson-benchmark-micro
     , deepseq
     , ghc-prim
     , text
-
-executable aeson-benchmark-typed
-  default-language: Haskell2010
-  main-is:          Typed.hs
-  hs-source-dirs:   bench examples/src
-  ghc-options:      -Wall -O2 -rtsopts
-  other-modules:
-    Twitter
-    Twitter.Generic
-    Twitter.Manual
-    Twitter.Options
-    Twitter.TH
-    Typed.Common
-    Typed.Generic
-    Typed.Manual
-    Typed.TH
-
-  build-depends:
-      aeson-benchmarks
-    , base
-    , base-compat-batteries
-    , bytestring
-    , criterion              >=1.0
-    , deepseq
-    , ghc-prim
-    , text
-    , time
-
-  if impl(ghc <8.0)
-    build-depends: semigroups
 
 executable aeson-benchmark-compare-with-json
   default-language: Haskell2010

@@ -1,7 +1,7 @@
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 
-module Main (main) where
+module AutoCompare (benchmark, sanityCheck) where
 
 import Control.DeepSeq
 import Control.Monad
@@ -19,8 +19,8 @@ import qualified Auto.G.BigSum as G
 
 --------------------------------------------------------------------------------
 
-runBench :: IO ()
-runBench = defaultMain
+benchmark :: Benchmark
+benchmark = bgroup "AutoBench"
   [ compareBench "D" T.d G.d
   , compareBench "BigRecord" T.bigRecord G.bigRecord
   , compareBench "BigProduct" T.bigProduct G.bigProduct
@@ -66,8 +66,3 @@ check x = do
     decode_ s = case decode s of
       Just v -> fromJSON v
       Nothing -> fail ""
-
-main :: IO ()
-main = do
-  sanityCheck
-  runBench

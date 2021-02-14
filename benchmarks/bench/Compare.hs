@@ -11,7 +11,7 @@ import Criterion.Main
 import Data.BufferBuilder.Json
 import Twitter
 import Twitter.Manual ()
-import Typed.Common
+import Utils (readV)
 import qualified Data.Aeson as Aeson
 import qualified Compare.JsonBench as JsonBench
 
@@ -23,8 +23,8 @@ import Compare.JsonBuilder ()
 main :: IO ()
 main =
   defaultMain [
-     env (load "json-data/twitter100.json") $ \ ~(twtr :: Result) ->
-     bgroup "twitter" [
+     env (readV "json-data/twitter100.json") $ \ ~(twtr :: Result) ->
+     bgroup "CompareEncodeTwitter" [
          bench "aeson" $ nf Aeson.encode twtr
        , bench "buffer-builder" $ nf encodeJson twtr
 #ifdef MIN_VERSION_json_builder
