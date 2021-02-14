@@ -2,6 +2,3 @@ with-compiler: ghc
 packages: benchmarks/
 packages: criterion-compare-txt/
 tests: false
-
-packages: https://hackage.haskell.org/package/quickcheck-instances-0.3.24/candidate/quickcheck-instances-0.3.24.tar.gz
-packages: https://hackage.haskell.org/package/strict-0.4/candidate/strict-0.4.tar.gz
