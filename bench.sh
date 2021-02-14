@@ -108,7 +108,7 @@ cmdBuild() {
     # Building
     putInfo "Building benchmarks"
 
-    command cabal build --project-file cabal.bench.project -w "$HC"  aeson-benchmark-suite criterion-compare-txt
+    command cabal build --project-file cabal.bench.project -w "$HC"  aeson-benchmark-suite
 }
 
 # run
@@ -197,10 +197,6 @@ cmdCompare() {
         esac
     done
 
-    # Building
-    putInfo "Building criterion-compare-txt"
-    command cabal build --project-file cabal.bench.project -w "$HC" criterion-compare-txt
-
 	# Comparing th eresults
     putInfo "Comparing runs:$RUNS"
 
@@ -211,7 +207,7 @@ cmdCompare() {
     done
 
     # shellcheck disable=SC2086
-    command "$(cabal-plan list-bin criterion-compare-txt)" $CSV
+    command "criterion-cmp" $CSV
 }
 
 # main

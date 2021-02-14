@@ -3,3 +3,4 @@ github-action-name: Z Bench CI
 branches:           master
 haddock:            False
 cabal-check:        False
+unconstrained:      False

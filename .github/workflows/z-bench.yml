@@ -125,7 +125,6 @@ jobs:
         run: |
           touch cabal.project
           echo "packages: $GITHUB_WORKSPACE/source/benchmarks" >> cabal.project
-          echo "packages: $GITHUB_WORKSPACE/source/criterion-compare-txt" >> cabal.project
           cat cabal.project
       - name: sdist
         run: |
@@ -139,19 +138,14 @@ jobs:
         run: |
           PKGDIR_aeson_benchmarks="$(find "$GITHUB_WORKSPACE/unpacked" -maxdepth 1 -type d -regex '.*/aeson-benchmarks-[0-9.]*')"
           echo "PKGDIR_aeson_benchmarks=${PKGDIR_aeson_benchmarks}" >> $GITHUB_ENV
-          PKGDIR_criterion_compare_txt="$(find "$GITHUB_WORKSPACE/unpacked" -maxdepth 1 -type d -regex '.*/criterion-compare-txt-[0-9.]*')"
-          echo "PKGDIR_criterion_compare_txt=${PKGDIR_criterion_compare_txt}" >> $GITHUB_ENV
           touch cabal.project
           touch cabal.project.local
           echo "packages: ${PKGDIR_aeson_benchmarks}" >> cabal.project
-          echo "packages: ${PKGDIR_criterion_compare_txt}" >> cabal.project
           if [ $((HCNUMVER >= 80200)) -ne 0 ] ; then echo "package aeson-benchmarks" >> cabal.project ; fi
-          if [ $((HCNUMVER >= 80200)) -ne 0 ] ; then echo "    ghc-options: -Werror=missing-methods" >> cabal.project ; fi
-          if [ $((HCNUMVER >= 80200)) -ne 0 ] ; then echo "package criterion-compare-txt" >> cabal.project ; fi
           if [ $((HCNUMVER >= 80200)) -ne 0 ] ; then echo "    ghc-options: -Werror=missing-methods" >> cabal.project ; fi
           cat >> cabal.project <<EOF
           EOF
-          $HCPKG list --simple-output --names-only | perl -ne 'for (split /\s+/) { print "constraints: $_ installed\n" unless /^(aeson-benchmarks|criterion-compare-txt)$/; }' >> cabal.project.local
+          $HCPKG list --simple-output --names-only | perl -ne 'for (split /\s+/) { print "constraints: $_ installed\n" unless /^(aeson-benchmarks)$/; }' >> cabal.project.local
           cat cabal.project
           cat cabal.project.local
       - name: dump install plan
@@ -174,7 +168,3 @@ jobs:
       - name: build
         run: |
           $CABAL v2-build $ARG_COMPILER $ARG_TESTS $ARG_BENCH all --write-ghc-environment-files=always
-      - name: unconstrained build
-        run: |
-          rm -f cabal.project.local
-          $CABAL v2-build $ARG_COMPILER --disable-tests --disable-benchmarks all
