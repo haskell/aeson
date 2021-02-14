@@ -1,24 +1,12 @@
 {-# LANGUAGE NoImplicitPrelude #-}
 {-# LANGUAGE OverloadedStrings #-}
 
-module Main (
-    main,
-    input17,
-    input32,
-    input64,
-    input128,
-    input256,
-    input2048,
-    input4096,
-    input8192,
-    input16384,
-  ) where
+module Issue673 where
 
 import Criterion.Main
 import Prelude.Compat
 import Data.Int (Int64)
 import Data.Scientific (Scientific)
-import Data.Semigroup ((<>))
 import Data.Aeson.Parser (scientific)
 
 import qualified Data.Attoparsec.ByteString.Lazy as AttoL
@@ -87,8 +75,8 @@ input16384 :: LBS.ByteString
 input16384 = generate 16384
 
 
-main :: IO ()
-main =  defaultMain
+benchmark :: Benchmark
+benchmark = bgroup "Integer-decoder"
     -- works on 64bit
     [ benchPair "17" input17
     -- , benchPair "32" input32
@@ -96,20 +84,22 @@ main =  defaultMain
     -- , benchPair "128" input128
     -- , benchPair "256" input256
     , benchPair "2048" input2048
-    , benchPair "4096" input4096
-    , benchPair "8192" input8192
+    -- , benchPair "4096" input4096
+    -- , benchPair "8192" input8192
     , benchPair "16384" input16384
     ]
   where
     benchPair name input = bgroup name
         [ bench "Int"        $ whnf decodeInt input
         , bench "Simple"     $ whnf bsToIntegerSimple (LBS.toStrict input)
-        , bench "Optim"      $ whnf bsToInteger (LBS.toStrict input)
-        , bench "Read"       $ whnf decodeViaRead input
-        , bench "Scientific" $ whnf decodeScientific input
-        , bench "parserA"    $ whnf decodeAtto  input
-        , bench "parserS"    $ whnf decodeAtto8  input
-        , bench "String"     $ whnf decodeString $ "\"" <> input <> "\""
+
+        -- other disabled, they are interesting for comparison only.
+        -- , bench "Optim"      $ whnf bsToInteger (LBS.toStrict input)
+        -- , bench "Read"       $ whnf decodeViaRead input
+        -- , bench "Scientific" $ whnf decodeScientific input
+        -- , bench "parserA"    $ whnf decodeAtto  input
+        -- , bench "parserS"    $ whnf decodeAtto8  input
+        -- , bench "String"     $ whnf decodeString $ "\"" <> input <> "\""
         ]
 
 -------------------------------------------------------------------------------
