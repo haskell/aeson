@@ -169,8 +169,8 @@ script:
   # Testing...
   - ${CABAL} v2-test $WITHCOMPILER ${TEST} ${BENCH} all
   # HLint..
-  - if [ $HCNUMVER -ge 80800 ] && [ $HCNUMVER -lt 81000 ] ; then (cd ${PKGDIR_aeson} && hlint -h ${TOP}/.hlint.yaml . attoparsec-iso8601/ pure ffi) ; fi
-  - if [ $HCNUMVER -ge 80800 ] && [ $HCNUMVER -lt 81000 ] ; then (cd ${PKGDIR_attoparsec_iso8601} && hlint -h ${TOP}/.hlint.yaml .) ; fi
+  - if [ $HCNUMVER -ge 80800 ] && [ $HCNUMVER -lt 81000 ] ; then (cd ${PKGDIR_aeson} && hlint -h ${TOP}/.hlint.yaml src attoparsec-iso8601/src src-pure src-ffi) ; fi
+  - if [ $HCNUMVER -ge 80800 ] && [ $HCNUMVER -lt 81000 ] ; then (cd ${PKGDIR_attoparsec_iso8601} && hlint -h ${TOP}/.hlint.yaml src/) ; fi
   - if [ $HCNUMVER -ge 80800 ] && [ $HCNUMVER -lt 81000 ] ; then (cd ${PKGDIR_aeson_examples} && hlint -h ${TOP}/.hlint.yaml src/) ; fi
   # haddock...
   - if [ $HCNUMVER -ge 80600 ] ; then ${CABAL} v2-haddock $WITHCOMPILER --with-haddock $HADDOCK ${TEST} ${BENCH} all ; fi

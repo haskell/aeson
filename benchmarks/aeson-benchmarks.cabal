@@ -5,7 +5,7 @@ build-type:    Simple
 
 library
   default-language: Haskell2010
-  hs-source-dirs:   .. ../ffi ../pure ../attoparsec-iso8601
+  hs-source-dirs:   ../src ../src-ffi ../src-pure ../attoparsec-iso8601/src
   c-sources:        ../cbits/unescape_string.c
   build-depends:
       attoparsec
@@ -83,7 +83,7 @@ library
 executable aeson-benchmark-suite
   default-language: Haskell2010
   main-is:          Suite.hs
-  hs-source-dirs:   . ../examples/src
+  hs-source-dirs:   bench ../examples/src
   ghc-options:      -Wall -O2 -rtsopts
   build-depends:
       aeson-benchmarks
@@ -108,7 +108,7 @@ executable aeson-benchmark-suite
 executable aeson-benchmark-auto-compare
   default-language: Haskell2010
   main-is:          AutoCompare.hs
-  hs-source-dirs:   .
+  hs-source-dirs:   bench
   ghc-options:      -Wall -O2 -rtsopts
   other-modules:
     Auto.G.BigProduct
@@ -131,7 +131,7 @@ executable aeson-benchmark-auto-compare
 executable aeson-benchmark-escape
   default-language: Haskell2010
   main-is:          Escape.hs
-  hs-source-dirs:   ../examples/src .
+  hs-source-dirs:   bench ../examples/src
   ghc-options:      -Wall -O2 -rtsopts
   build-depends:
       aeson-benchmarks
@@ -146,7 +146,7 @@ executable aeson-benchmark-escape
 executable aeson-benchmark-compare
   default-language: Haskell2010
   main-is:          Compare.hs
-  hs-source-dirs:   ../examples/src .
+  hs-source-dirs:   bench ../examples/src
   ghc-options:      -Wall -O2 -rtsopts
   other-modules:
     Compare.BufferBuilder
@@ -178,7 +178,7 @@ executable aeson-benchmark-compare
 executable aeson-benchmark-micro
   default-language: Haskell2010
   main-is:          Micro.hs
-  hs-source-dirs:   ../examples/src .
+  hs-source-dirs:   bench ../examples/src
   ghc-options:      -Wall -O2 -rtsopts
   build-depends:
       aeson-benchmarks
@@ -193,7 +193,7 @@ executable aeson-benchmark-micro
 executable aeson-benchmark-typed
   default-language: Haskell2010
   main-is:          Typed.hs
-  hs-source-dirs:   ../examples/src .
+  hs-source-dirs:   bench ../examples/src
   ghc-options:      -Wall -O2 -rtsopts
   other-modules:
     Twitter
@@ -223,6 +223,7 @@ executable aeson-benchmark-typed
 executable aeson-benchmark-compare-with-json
   default-language: Haskell2010
   main-is:          CompareWithJSON.hs
+  hs-source-dirs:   bench
   ghc-options:      -Wall -O2 -rtsopts
   build-depends:
       aeson-benchmarks
@@ -238,6 +239,7 @@ executable aeson-benchmark-compare-with-json
 executable aeson-benchmark-aeson-encode
   default-language: Haskell2010
   main-is:          AesonEncode.hs
+  hs-source-dirs:   bench
   ghc-options:      -Wall -O2 -rtsopts
   build-depends:
       aeson-benchmarks
@@ -251,6 +253,7 @@ executable aeson-benchmark-aeson-encode
 executable aeson-benchmark-aeson-parse
   default-language: Haskell2010
   main-is:          AesonParse.hs
+  hs-source-dirs:   bench
   ghc-options:      -Wall -O2 -rtsopts
   build-depends:
       aeson-benchmarks
@@ -268,6 +271,7 @@ executable aeson-benchmark-aeson-parse
 executable aeson-benchmark-json-parse
   default-language: Haskell2010
   main-is:          JsonParse.hs
+  hs-source-dirs:   bench
   ghc-options:      -Wall -O2 -rtsopts
   build-depends:
       base
@@ -279,6 +283,7 @@ executable aeson-benchmark-json-parse
 executable aeson-benchmark-dates
   default-language: Haskell2010
   main-is:          Dates.hs
+  hs-source-dirs:   bench
   ghc-options:      -Wall -O2 -rtsopts
   build-depends:
       aeson-benchmarks
@@ -296,6 +301,7 @@ executable aeson-benchmark-dates
 executable aeson-benchmark-map
   default-language: Haskell2010
   main-is:          AesonMap.hs
+  hs-source-dirs:   bench
   ghc-options:      -Wall -O2 -rtsopts
   build-depends:
       aeson-benchmarks
@@ -313,6 +319,7 @@ executable aeson-benchmark-map
 executable aeson-benchmark-foldable
   default-language: Haskell2010
   main-is:          AesonFoldable.hs
+  hs-source-dirs:   bench
   ghc-options:      -Wall -O2 -rtsopts
   build-depends:
       aeson-benchmarks
@@ -331,6 +338,7 @@ executable aeson-benchmark-foldable
 executable aeson-issue-673
   default-language: Haskell2010
   main-is:          Issue673.hs
+  hs-source-dirs:   bench
   ghc-options:      -Wall -O1 -rtsopts
   build-depends:
       aeson-benchmarks
