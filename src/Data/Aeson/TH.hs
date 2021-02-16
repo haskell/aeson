@@ -421,7 +421,7 @@ sumToValue target opts multiCons nullary conName value pairs
                 content = pairs contentsFieldName
             in fromPairsE $
               if nullary then tag else infixApp tag [|(Monoid.<>)|] content
-          TaggedFlatObject {} -> error "impossible"
+          TaggedFlatObject {} -> error "TaggedFlatObject: Should be handled already"
           ObjectWithSingleField ->
             objectE [(conString opts conName, value)]
           UntaggedValue | nullary -> conStr target opts conName
