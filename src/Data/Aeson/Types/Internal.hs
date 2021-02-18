@@ -711,7 +711,7 @@ data SumEncoding =
     --      in that data type with an additional field '$tagFieldName'.
     --      For example, given @A@ defined as
     --      @data A = A Int Int | B@,
-    --      this option will encode @A 1 2@ as @{"1": 1, "2": 2, "$tagFieldName": \"A"}@
+    --      this option will encode @A 1 2@ as @{"0": 1, "1": 2, "$tagFieldName": \"A"}@
     --   5. The behavior is undefined when the '$tagFieldName' collides with another field name and should
     --      not be relied upon. It may or may not overwite the field.
     --      It may or may not throw an runtime exception. It may or may not raise an compile time error.

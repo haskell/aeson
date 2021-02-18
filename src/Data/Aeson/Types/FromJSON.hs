@@ -1123,14 +1123,14 @@ parseNonAllNullarySum p@(tname :* opts :* _) =
               ", but found tag " ++ show tag
           cnames_ = unTagged2 (constructorTags (constructorTagModifier opts) :: Tagged2 f [String])
 
-      TaggedFlatObject{..} -> 
+      TaggedFlatObject{..} ->
           withObject tname $ \obj -> do
               let tagKey = pack tagFieldName
                   badTag tag = failWith_ $ \cnames ->
                     "expected tag field to be one of " ++ show cnames ++
                     ", but found tag " ++ show tag
                   cnames_ = unTagged2 (constructorTags (constructorTagModifier opts) :: Tagged2 f [String])
-              tag <- contextType tname . contextTag tagKey cnames_ $ obj .: tagKey 
+              tag <- contextType tname . contextTag tagKey cnames_ $ obj .: tagKey
               fromMaybe (badTag tag <?> Key tagKey) $
                 parseTaggedFlatObject (tag :* p) obj
 
@@ -1454,9 +1454,9 @@ instance (RecordFromJSON arity f, FieldNames f) => FromTaggedFlatObject' arity f
 instance FromTaggedFlatObject' arity U1 False where
     parseTaggedFlatObject' _ _ = Tagged (pure U1)
 
-instance OVERLAPPABLE_ PositionFromObject 1 arity f => FromTaggedFlatObject' arity f False where
-    parseTaggedFlatObject' (_ :* p) obj = Tagged (positionFromObject (Proxy :: Proxy 1) p obj)
- 
+instance OVERLAPPABLE_ PositionFromObject 0 arity f => FromTaggedFlatObject' arity f False where
+    parseTaggedFlatObject' (_ :* p) obj = Tagged (positionFromObject (Proxy :: Proxy 0) p obj)
+
 class KnownNat n => PositionFromObject n arity f where
     positionFromObject :: Proxy n
                        -> TypeName :* Options :* FromArgs arity a

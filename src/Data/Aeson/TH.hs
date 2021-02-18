@@ -443,7 +443,7 @@ argsToValue target jc tvMap opts multiCons
         let len = length argTys'
         args <- newNameList "arg" len
         let os = zipWith (\arg argTy -> dispatchToJSON target jc conName tvMap argTy `appE` varE arg) args argTys'
-            pairs = zip (fmap (show :: Int -> String) [1..]) os
+            pairs = zip (fmap (show :: Int -> String) [0..]) os
             obj = objectE (tag : pairs)
         match (conP conName $ map varP args)
               (normalB obj)
@@ -526,7 +526,7 @@ argsToValue target jc tvMap opts multiCons
         ar <- newName "argR"
         let tag = (tagFieldName, conStr target opts conName)
             os = zipWith (\arg argTy -> dispatchToJSON target jc conName tvMap argTy `appE` varE arg) [al, ar] [alTy, arTy]
-            pairs = zip (fmap (show :: Int -> String) [1..]) os
+            pairs = zip (fmap (show :: Int -> String) [0..]) os
             obj = objectE (tag : pairs)
         match (infixP (varP al) conName (varP ar))
               (normalB obj)
@@ -873,7 +873,7 @@ consFromJSON jc tName opts instTys cons = do
                      (infixApp (conE conName) [|(<$>)|] x)
                      xs
         where
-          fields = map (show :: Int -> String) $ take (length argTys) [1..]
+          fields = map (show :: Int -> String) $ take (length argTys) [0..]
           knownFields = appE [|H.fromList|] $ listE $
               map (\knownName -> tupE [appE [|T.pack|] $ litE $ stringL knownName, [|()|]]) fields
           checkUnknownRecords =

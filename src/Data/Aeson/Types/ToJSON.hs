@@ -954,8 +954,8 @@ instance RecordToPairs pairs enc arity f => TaggedFlatObject' pairs enc arity f 
 instance Monoid pairs => TaggedFlatObject' enc pairs arity U1 False where
     taggedFlatObject' _ _ _ = Tagged mempty
 
-instance OVERLAPPABLE_ PositionToPairs 1 pairs enc arity f => TaggedFlatObject' enc pairs arity f False where
-    taggedFlatObject' opts targs a = Tagged $ positionToPairs (Proxy :: Proxy 1) opts targs a
+instance OVERLAPPABLE_ PositionToPairs 0 pairs enc arity f => TaggedFlatObject' enc pairs arity f False where
+    taggedFlatObject' opts targs a = Tagged $ positionToPairs (Proxy :: Proxy 0) opts targs a
 
 class KnownNat n => PositionToPairs n pairs enc arity f where
     positionToPairs :: Proxy n -> Options -> ToArgs enc arity a -> f a -> pairs
