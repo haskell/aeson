@@ -21,6 +21,7 @@ import Encoders
 import Instances ()
 import Test.QuickCheck (Arbitrary(..), Property, Testable, (===), (.&&.), counterexample)
 import Types
+import Text.Read (readMaybe)
 import qualified Data.Attoparsec.Lazy as L
 import qualified Data.ByteString.Lazy.Char8 as L
 import qualified Data.HashMap.Strict as H
@@ -73,6 +74,9 @@ roundTripNoEnc eq _ i =
 
 roundTripEq :: (Eq a, FromJSON a, ToJSON a, Show a) => a -> a -> Property
 roundTripEq x y = roundTripEnc (===) x y .&&. roundTripNoEnc (===) x y
+
+roundtripReadShow :: Value -> Property
+roundtripReadShow v = readMaybe (show v) === Just v
 
 -- We test keys by encoding HashMap and Map with it
 roundTripKey

@@ -17,9 +17,10 @@ import Data.Function (on)
 import Data.Time (ZonedTime(..), TimeZone(..))
 import Data.Time.Clock (UTCTime(..))
 import Functions
-import Test.QuickCheck (Arbitrary(..), elements,  oneof)
+import Test.QuickCheck (Arbitrary(..), elements,  oneof, sized, Gen, chooseInt, shuffle)
 import Types
 import qualified Data.DList as DList
+import qualified Data.Vector as V
 import qualified Data.HashMap.Strict as HM
 
 import Data.Orphans ()
@@ -165,3 +166,38 @@ instance (ApproxEq a) => ApproxEq [a] where
 
 instance Arbitrary a => Arbitrary (DList.DList a) where
     arbitrary = DList.fromList <$> arbitrary
+
+instance Arbitrary Value where
+    arbitrary = sized arb where
+        arb :: Int -> Gen Value
+        arb n
+            | n <= 1 = oneof
+                [ return Null
+                , fmap Bool arbitrary
+                , fmap String arbitrary
+                , fmap Number arbitrary
+                ]
+
+            | otherwise = oneof [arr n, obj n]
+
+        arr n = do
+            pars <- arbPartition (n - 1)
+            fmap (Array . V.fromList) (traverse arb pars)
+
+        obj n = do
+            pars <- arbPartition (n - 1)
+            fmap (Object . HM.fromList) (traverse pair pars)
+
+        pair n = do
+            k <- arbitrary
+            v <- arb n
+            return (k, v)
+
+        arbPartition :: Int -> Gen [Int]
+        arbPartition k = case compare k 1 of
+            LT -> pure []
+            EQ -> pure [1]
+            GT -> do
+                first <- chooseInt (1, k)
+                rest <- arbPartition $ k - first
+                shuffle (first : rest)

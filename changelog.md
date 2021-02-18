@@ -1,5 +1,8 @@
 For the latest version of this document, please see [https://github.com/bos/aeson/blob/master/changelog.md](https://github.com/bos/aeson/blob/master/changelog.md).
 
+### 1.5.6.0
+* Make `Show Value` instance print object keys in lexicographic order.
+
 ### 1.5.5.1
 * Fix a bug in `FromJSON QuarterOfYear` instance.
 

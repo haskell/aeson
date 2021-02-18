@@ -37,7 +37,8 @@ import PropertyRTFunctors
 roundTripTests :: TestTree
 roundTripTests =
   testGroup "roundTrip" [
-      testProperty "Bool" $ roundTripEq True
+      testProperty "Value" $ roundTripEq (undefined :: Value)
+    , testProperty "Bool" $ roundTripEq True
     , testProperty "Double" $ roundTripEq (1 :: Approx Double)
     , testProperty "Int" $ roundTripEq (1 :: Int)
     , testProperty "NonEmpty Char" $ roundTripEq (undefined :: NonEmpty Char)

@@ -72,6 +72,10 @@ import qualified Data.HashMap.Strict as H
 import qualified Data.Scientific as Sci
 import Data.Aeson.Parser.Unescape (unescapeText)
 
+-- $setup
+-- >>> :set -XOverloadedStrings
+-- >>> import Data.Aeson.Types
+
 #define BACKSLASH 92
 #define CLOSE_CURLY 125
 #define CLOSE_SQUARE 93
@@ -260,7 +264,7 @@ jsonNoDup = jsonWith parseListNoDup
 -- associated values from the original list @kvs@.
 --
 -- >>> fromListAccum [("apple", Bool True), ("apple", Bool False), ("orange", Bool False)]
--- fromList [("apple", [Bool False, Bool True]), ("orange", [Bool False])]
+-- fromList [("apple",Array [Bool False,Bool True]),("orange",Array [Bool False])]
 fromListAccum :: [(Text, Value)] -> Object
 fromListAccum =
   fmap (Array . Vector.fromList . ($ [])) . H.fromListWith (.) . (fmap . fmap) (:)
