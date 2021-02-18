@@ -683,7 +683,38 @@ data SumEncoding =
     -- record the encoded constructor contents will be stored under
     -- the 'contentsFieldName' field.
   | TaggedFlatObject { tagFieldName :: String }
-    -- ^ A constructor will be encoded to an object with a field
+    -- ^ Conceptually, this option will allow data types to be encoded to an object
+    -- with an additional field 'tagFieldName' which specifies the constructor tag.
+    -- This option differs from 'TaggedObject' in that the fields are encoded
+    -- in the same object as the tag, instead of in another object under the
+    -- field @contentsFieldName@.
+    --
+    -- The detailed behavior is as follows:
+    --
+    --   1. If the data type has only a single constructor and has field names
+    --      (a record), it will be encoded as an object without any additional fields.
+    --      For example, given @A@ defined as
+    --      @data A = A {field1 :: Int, field2 :: Int}@,
+    --      this option will encode @A 1 2@ as @{"field1": 1, "field2": 2}@
+    --   2. If the data type has only a single constructor but does not have any fields,
+    --      it will be encoded as an array.
+    --      For example, given @A@ defined as
+    --      @data A = A Int Int@,
+    --      this option will encode @A 1 2@ as @[1, 2]@
+    --   3. If the data type has multiple constructors and the constructor has field names,
+    --      it will be encoded as an object with an additional field '$tagFieldName'.
+    --      For example, given @A@ defined as
+    --      @data A = A {field1 :: Int, field2 :: Int} | B@,
+    --      this option will encode @A 1 2@ as @{"field1": 1, "field2": 2, "$tagFieldName": \"A"}@
+    --   4. If the data type has multiple constructors and the constructor does not have
+    --      any feild names, it will be encoded as an object whose keys are the position of the value
+    --      in that data type with an additional field '$tagFieldName'.
+    --      For example, given @A@ defined as
+    --      @data A = A Int Int | B@,
+    --      this option will encode @A 1 2@ as @{"1": 1, "2": 2, "$tagFieldName": \"A"}@
+    --   5. The behavior is undefined when the '$tagFieldName' collides with another field name and should
+    --      not be relied upon. It may or may not overwite the field.
+    --      It may or may not throw an runtime exception. It may or may not raise an compile time error.
   | UntaggedValue
     -- ^ Constructor names won't be encoded. Instead only the contents of the
     -- constructor will be encoded as if the type had a single constructor. JSON
