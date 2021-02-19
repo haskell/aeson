@@ -94,7 +94,8 @@ import Data.Data (Data)
 import Data.Foldable (foldl')
 import Data.HashMap.Strict (HashMap)
 import Data.Hashable (Hashable(..))
-import Data.List (intercalate)
+import Data.List (intercalate, sortBy)
+import Data.Ord (comparing)
 import Data.Scientific (Scientific)
 import Data.String (IsString(..))
 import Data.Text (Text, pack, unpack)
@@ -362,7 +363,30 @@ data Value = Object !Object
            | Number !Scientific
            | Bool !Bool
            | Null
-             deriving (Eq, Read, Show, Typeable, Data, Generic)
+             deriving (Eq, Read, Typeable, Data, Generic)
+
+-- | Since version 1.5.6.0 version object values are printed in lexicographic key order
+--
+-- >>> toJSON $ H.fromList [("a", True), ("z", False)]
+-- Object (fromList [("a",Bool True),("z",Bool False)])
+--
+-- >>> toJSON $ H.fromList [("z", False), ("a", True)]
+-- Object (fromList [("a",Bool True),("z",Bool False)])
+--
+instance Show Value where
+    showsPrec _ Null = showString "Null"
+    showsPrec d (Bool b) = showParen (d > 10)
+        $ showString "Bool " . showsPrec 11 b
+    showsPrec d (Number s) = showParen (d > 10)
+        $ showString "Number " . showsPrec 11 s
+    showsPrec d (String s) = showParen (d > 10)
+        $ showString "String " . showsPrec 11 s
+    showsPrec d (Array xs) = showParen (d > 10)
+        $ showString "Array " . showsPrec 11 xs
+    showsPrec d (Object xs) = showParen (d > 10)
+        $ showString "Object (fromList "
+        . showsPrec 11 (sortBy (comparing fst) (H.toList xs))
+        . showChar ')'
 
 -- |
 --

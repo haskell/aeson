@@ -60,8 +60,9 @@ d = Record { testOne = 3.14159
            }
 @
 
->>> fromJSON (toJSON d) == Success d
-> True
+@
+fromJSON (toJSON d) == Success d
+@
 
 This also works for data family instances, but instead of passing in the data
 family name (with double quotes), we pass in a data family instance

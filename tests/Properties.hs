@@ -21,6 +21,7 @@ tests = testGroup "properties" [
       testProperty "encodeDouble" encodeDouble
     , testProperty "encodeInteger" encodeInteger
     ]
+  , testProperty "read . show = id" roundtripReadShow
   , roundTripTests
   , keysTests
   , testGroup "toFromJSON" [
