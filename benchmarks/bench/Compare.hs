@@ -22,7 +22,7 @@ import Compare.JsonBuilder ()
 
 benchmarks :: [Benchmark]
 benchmarks =
-  [ env (readV "json-data/twitter100.json") $ \ ~(twtr :: Result) ->
+  [ env (readV "twitter100.json") $ \ ~(twtr :: Result) ->
     bgroup "CompareEncodeTwitter"
     [ bench "aeson" $ nf Aeson.encode twtr
     , bench "buffer-builder" $ nf encodeJson twtr

@@ -2,7 +2,7 @@
 
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 
-module Main (main) where
+module CompareWithJSON (benchmark) where
 
 import Prelude.Compat
 
@@ -20,6 +20,8 @@ import qualified Data.Text.Lazy          as TL
 import qualified Data.Text.Lazy.Builder  as TLB
 import qualified Data.Text.Lazy.Encoding as TLE
 import qualified Text.JSON as J
+
+import Utils
 
 instance (NFData v) => NFData (J.JSObject v) where
   rnf o = rnf (J.fromJSObject o)
@@ -60,17 +62,15 @@ encodeToText = TLB.toLazyText . A.encodeToTextBuilder . A.toJSON
 encodeViaText :: A.Value -> BL.ByteString
 encodeViaText = TLE.encodeUtf8 . encodeToText
 
-main :: IO ()
-main = do
-  let enFile = "json-data/twitter100.json"
-      jpFile = "json-data/jp100.json"
-  enA <- BL.readFile enFile
-  enS <- BS.readFile enFile
-  enJ <- readFile enFile
-  jpA <- BL.readFile jpFile
-  jpS <- BS.readFile jpFile
-  jpJ <- readFile jpFile
-  defaultMain [
+benchmark :: Benchmark
+benchmark =
+  env (readL enFile) $ \enA ->
+  env (readS enFile) $ \enS ->
+  env (readStr enFile) $ \enJ ->
+  env (readL jpFile) $ \jpA ->
+  env (readS jpFile) $ \jpS ->
+  env (readStr jpFile) $ \jpJ ->
+  bgroup "compare-json" [
       bgroup "decode" [
         bgroup "en" [
           bench "aeson/lazy"     $ nf decode enA
@@ -100,3 +100,6 @@ main = do
         ]
       ]
     ]
+  where
+    enFile = "twitter100.json"
+    jpFile = "jp100.json"

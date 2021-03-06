@@ -22,8 +22,12 @@ import qualified Data.ByteString.Char8          as BS8
 import qualified Data.ByteString.Lazy           as LBS
 import qualified Data.Text                      as T
 
+import qualified AesonFoldable
+import qualified AesonMap
 import qualified AutoCompare
 import qualified Compare
+import qualified CompareWithJSON
+import qualified Dates
 import qualified GitHub
 import qualified Issue673
 import qualified Micro
@@ -90,10 +94,14 @@ main = do
         [ decodeBench "github-issues" "github-issues.json" (Proxy :: Proxy (Vector GitHub.Issue))
         ]
       ]
-    , escapeBench
-    , Issue673.benchmark
-    , Typed.benchmark -- Twitter
-    , AutoCompare.benchmark -- compares Generic and TH
-    , Micro.benchmark
+    , escapeBench              -- text decoding
+    , Issue673.benchmark       -- issue673: big integers
+    , Typed.benchmark          -- Twitter
+    , AutoCompare.benchmark    -- compares Generic and TH
+    , Micro.benchmark          -- benchmarking some tight loops
+    , Dates.benchmark          -- dates
+    , AesonMap.benchmark       -- maps
+    , AesonFoldable.benchmark  -- different ways to encode foldable containers
     ]
-    ++ Compare.benchmarks
+    ++ Compare.benchmarks -- compares to different libs (encoding)
+    ++ [ CompareWithJSON.benchmark ]
