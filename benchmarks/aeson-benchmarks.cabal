@@ -112,6 +112,7 @@ executable aeson-benchmark-suite
     , text
     , time
     , vector
+    , buffer-builder
 
   other-modules:
     Auto.G.BigProduct
@@ -125,6 +126,9 @@ executable aeson-benchmark-suite
     AutoCompare
     GitHub
     Issue673
+    Compare
+    Compare.BufferBuilder
+    Compare.JsonBench
     Options
     Twitter
     Twitter.Generic
@@ -135,57 +139,14 @@ executable aeson-benchmark-suite
     Typed.Generic
     Typed.Manual
     Typed.TH
+    Micro
     Utils
-
--- Benchmarks below are haven't been worked out yet
-
-executable aeson-benchmark-compare
-  default-language: Haskell2010
-  main-is:          Compare.hs
-  hs-source-dirs:   bench examples/src
-  ghc-options:      -Wall -O2 -rtsopts
-  other-modules:
-    Compare.BufferBuilder
-    Compare.JsonBench
-    Twitter
-    Twitter.Manual
-    Utils
-
-  build-depends:
-      aeson-benchmarks
-    , base
-    , base-compat-batteries
-    , buffer-builder
-    , bytestring
-    , criterion              >=1.0
-    , deepseq
-    , filepath
-    , ghc-prim
-    , text
 
   if impl(ghc <8.4)
     other-modules: Compare.JsonBuilder
     build-depends: json-builder
 
-  if !impl(ghc >=8.0)
-    build-depends:
-        fail
-      , semigroups
-
-executable aeson-benchmark-micro
-  default-language: Haskell2010
-  main-is:          Micro.hs
-  hs-source-dirs:   bench examples/src
-  ghc-options:      -Wall -O2 -rtsopts
-  build-depends:
-      aeson-benchmarks
-    , base
-    , base-compat-batteries
-    , bytestring
-    , criterion              >=1.0
-    , deepseq
-    , ghc-prim
-    , text
+-- Benchmarks below are haven't been worked out yet
 
 executable aeson-benchmark-compare-with-json
   default-language: Haskell2010

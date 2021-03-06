@@ -23,8 +23,10 @@ import qualified Data.ByteString.Lazy           as LBS
 import qualified Data.Text                      as T
 
 import qualified AutoCompare
+import qualified Compare
 import qualified GitHub
 import qualified Issue673
+import qualified Micro
 import qualified Typed
 
 import           Utils
@@ -82,7 +84,7 @@ escapeBench = bgroup "Escape"
 main :: IO ()
 main = do
   AutoCompare.sanityCheck
-  defaultMain
+  defaultMain $
     [ bgroup "Examples"
       [ bgroup "decode"
         [ decodeBench "github-issues" "github-issues.json" (Proxy :: Proxy (Vector GitHub.Issue))
@@ -92,4 +94,6 @@ main = do
     , Issue673.benchmark
     , Typed.benchmark -- Twitter
     , AutoCompare.benchmark -- compares Generic and TH
+    , Micro.benchmark
     ]
+    ++ Compare.benchmarks

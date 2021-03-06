@@ -1,6 +1,6 @@
 {-# LANGUAGE NoImplicitPrelude #-}
 
-module Main (main) where
+module Micro (benchmark) where
 
 import Prelude.Compat
 
@@ -10,13 +10,12 @@ import Criterion.Main
 import Data.Aeson.Encoding (text, string, encodingToLazyByteString)
 import qualified Data.Text as T
 
-main :: IO ()
-main = do
-  let txt = "append (append b (primBounded w1 x1)) (primBounded w2 x2)"
-  defaultMain [
-    bgroup "string" [
-      bench "text" $ nf (encodingToLazyByteString . text) (T.pack txt)
+benchmark :: Benchmark
+benchmark = bgroup "micro"
+  [ bgroup "string"
+    [ bench "text" $ nf (encodingToLazyByteString . text) (T.pack txt)
     , bench "string direct" $ nf (encodingToLazyByteString . string) txt
     , bench "string via text" $ nf (encodingToLazyByteString . text . T.pack) txt
     ]
    ]
+  where txt = "append (append b (primBounded w1 x1)) (primBounded w2 x2)"
