@@ -1,7 +1,7 @@
-cabal-version: >=1.10
-name:          aeson-benchmarks
-version:       0
-build-type:    Simple
+cabal-version:      >=1.10
+name:               aeson-benchmarks
+version:            0
+build-type:         Simple
 tested-with:
   GHC ==7.8.4
    || ==7.10.3
@@ -9,12 +9,13 @@ tested-with:
    || ==8.2.2
    || ==8.4.4
    || ==8.6.5
-   || ==8.8.3
-   || ==8.10.1
+   || ==8.8.4
+   || ==8.10.4
+   || ==9.0.1
 
 extra-source-files:
-    cbits/*.c
-    include/*.h
+  cbits/*.c
+  include/*.h
 
 library
   default-language: Haskell2010
@@ -22,11 +23,11 @@ library
   c-sources:        cbits/unescape_string.c
   build-depends:
       attoparsec
-    , data-fix
     , base
     , base-compat-batteries
     , bytestring             >=0.10.4
     , containers
+    , data-fix
     , deepseq
     , dlist
     , ghc-prim
@@ -34,8 +35,8 @@ library
     , mtl
     , primitive
     , scientific
-    , syb
     , strict
+    , syb
     , tagged
     , template-haskell
     , text
@@ -103,17 +104,26 @@ executable aeson-benchmark-suite
     , attoparsec
     , base
     , base-compat-batteries
+    , blaze-builder
+    , buffer-builder
     , bytestring
+    , containers
     , criterion
     , deepseq
     , filepath
+    , hashable
+    , json
     , scientific
+    , tagged
     , template-haskell
     , text
     , time
+    , unordered-containers
     , vector
 
   other-modules:
+    AesonFoldable
+    AesonMap
     Auto.G.BigProduct
     Auto.G.BigRecord
     Auto.G.BigSum
@@ -123,8 +133,14 @@ executable aeson-benchmark-suite
     Auto.T.BigSum
     Auto.T.D
     AutoCompare
+    Compare
+    Compare.BufferBuilder
+    Compare.JsonBench
+    CompareWithJSON
+    Dates
     GitHub
     Issue673
+    Micro
     Options
     Twitter
     Twitter.Generic
@@ -137,32 +153,6 @@ executable aeson-benchmark-suite
     Typed.TH
     Utils
 
--- Benchmarks below are haven't been worked out yet
-
-executable aeson-benchmark-compare
-  default-language: Haskell2010
-  main-is:          Compare.hs
-  hs-source-dirs:   bench examples/src
-  ghc-options:      -Wall -O2 -rtsopts
-  other-modules:
-    Compare.BufferBuilder
-    Compare.JsonBench
-    Twitter
-    Twitter.Manual
-    Utils
-
-  build-depends:
-      aeson-benchmarks
-    , base
-    , base-compat-batteries
-    , buffer-builder
-    , bytestring
-    , criterion              >=1.0
-    , deepseq
-    , filepath
-    , ghc-prim
-    , text
-
   if impl(ghc <8.4)
     other-modules: Compare.JsonBuilder
     build-depends: json-builder
@@ -170,134 +160,3 @@ executable aeson-benchmark-compare
   if !impl(ghc >=8.0)
     build-depends:
         fail
-      , semigroups
-
-executable aeson-benchmark-micro
-  default-language: Haskell2010
-  main-is:          Micro.hs
-  hs-source-dirs:   bench examples/src
-  ghc-options:      -Wall -O2 -rtsopts
-  build-depends:
-      aeson-benchmarks
-    , base
-    , base-compat-batteries
-    , bytestring
-    , criterion              >=1.0
-    , deepseq
-    , ghc-prim
-    , text
-
-executable aeson-benchmark-compare-with-json
-  default-language: Haskell2010
-  main-is:          CompareWithJSON.hs
-  hs-source-dirs:   bench
-  ghc-options:      -Wall -O2 -rtsopts
-  build-depends:
-      aeson-benchmarks
-    , base
-    , base-compat-batteries
-    , blaze-builder
-    , bytestring
-    , criterion
-    , deepseq
-    , json
-    , text
-
-executable aeson-benchmark-aeson-encode
-  default-language: Haskell2010
-  main-is:          AesonEncode.hs
-  hs-source-dirs:   bench
-  ghc-options:      -Wall -O2 -rtsopts
-  build-depends:
-      aeson-benchmarks
-    , attoparsec
-    , base
-    , base-compat-batteries
-    , bytestring
-    , deepseq
-    , time
-
-executable aeson-benchmark-aeson-parse
-  default-language: Haskell2010
-  main-is:          AesonParse.hs
-  hs-source-dirs:   bench
-  ghc-options:      -Wall -O2 -rtsopts
-  build-depends:
-      aeson-benchmarks
-    , attoparsec
-    , base
-    , base-compat-batteries
-    , bytestring
-    , time
-
-  if !impl(ghc >=8.0)
-    build-depends:
-        fail
-      , semigroups
-
-executable aeson-benchmark-json-parse
-  default-language: Haskell2010
-  main-is:          JsonParse.hs
-  hs-source-dirs:   bench
-  ghc-options:      -Wall -O2 -rtsopts
-  build-depends:
-      base
-    , base-compat-batteries
-    , deepseq
-    , json
-    , time
-
-executable aeson-benchmark-dates
-  default-language: Haskell2010
-  main-is:          Dates.hs
-  hs-source-dirs:   bench
-  ghc-options:      -Wall -O2 -rtsopts
-  build-depends:
-      aeson-benchmarks
-    , base
-    , base-compat-batteries
-    , bytestring
-    , criterion
-    , deepseq
-    , text
-    , time
-
-  if impl(ghc >=8.2)
-    ghc-options: -Wno-simplifiable-class-constraints
-
-executable aeson-benchmark-map
-  default-language: Haskell2010
-  main-is:          AesonMap.hs
-  hs-source-dirs:   bench
-  ghc-options:      -Wall -O2 -rtsopts
-  build-depends:
-      aeson-benchmarks
-    , base
-    , base-compat-batteries
-    , bytestring
-    , containers
-    , criterion              >=1.0
-    , deepseq
-    , hashable
-    , tagged
-    , text
-    , unordered-containers
-
-executable aeson-benchmark-foldable
-  default-language: Haskell2010
-  main-is:          AesonFoldable.hs
-  hs-source-dirs:   bench
-  ghc-options:      -Wall -O2 -rtsopts
-  build-depends:
-      aeson-benchmarks
-    , base
-    , base-compat-batteries
-    , bytestring
-    , containers
-    , criterion              >=1.0
-    , deepseq
-    , hashable
-    , tagged
-    , text
-    , unordered-containers
-    , vector

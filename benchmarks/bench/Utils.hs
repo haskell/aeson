@@ -3,15 +3,21 @@ module Utils where
 
 import           Prelude.Compat
 
-import           Data.Maybe           (fromMaybe)
-import           System.Environment   (lookupEnv)
-import           System.Exit          (exitFailure)
-import           System.FilePath      ((</>))
-import           System.IO            (hPutStrLn, stderr)
+import           Data.Maybe            (fromMaybe)
+import           System.Environment    (lookupEnv)
+import           System.Exit           (exitFailure)
+import           System.FilePath       ((</>))
+import           System.IO             (hPutStrLn, stderr)
 
-import qualified Data.Aeson           as A
-import qualified Data.ByteString      as BS
-import qualified Data.ByteString.Lazy as LBS
+import qualified Data.Aeson            as A
+import qualified Data.ByteString       as BS
+import qualified Data.ByteString.Char8 as BS8
+import qualified Data.ByteString.Lazy  as LBS
+
+readStr :: FilePath -> IO String
+readStr fp = do
+    dataDir <- lookupEnv "AESON_BENCH_DATADIR"
+    fmap BS8.unpack $ BS.readFile $ fromMaybe "json-data" dataDir </> fp
 
 readS :: FilePath -> IO BS.ByteString
 readS fp = do

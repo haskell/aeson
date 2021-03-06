@@ -1,24 +1,25 @@
-{-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE FlexibleContexts  #-}
+{-# LANGUAGE MonoLocalBinds    #-}
 {-# LANGUAGE NoImplicitPrelude #-}
-{-# LANGUAGE RankNTypes #-}
+{-# LANGUAGE RankNTypes        #-}
 
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 
-module Main (main) where
+module AesonMap (benchmark) where
 
-import Prelude.Compat
+import           Prelude.Compat
 
-import Control.DeepSeq
-import Criterion.Main
-import Data.Hashable
-import Data.Proxy (Proxy (..))
-import Data.Tagged (Tagged (..))
-import Data.Aeson
-import Data.Aeson.Types (fromJSONKeyCoerce)
+import           Control.DeepSeq
+import           Criterion.Main
+import           Data.Aeson
+import           Data.Aeson.Types     (fromJSONKeyCoerce)
 import qualified Data.ByteString.Lazy as LBS
-import qualified Data.HashMap.Strict as HM
-import qualified Data.Map as M
-import qualified Data.Text as T
+import qualified Data.HashMap.Strict  as HM
+import           Data.Hashable
+import qualified Data.Map             as M
+import           Data.Proxy           (Proxy (..))
+import           Data.Tagged          (Tagged (..))
+import qualified Data.Text            as T
 
 value :: Int -> HM.HashMap T.Text T.Text
 value n = HM.fromList $ map f [1..n]
@@ -183,8 +184,8 @@ benchEncodeMap name val = bgroup name
     val' :: M.Map T.Text T.Text
     val' = M.fromList . HM.toList $ val
 
-main :: IO ()
-main = defaultMain
+benchmark :: Benchmark
+benchmark = bgroup "maps"
     [ bgroup "decode"
         [ bgroup "HashMap"
             [ benchDecodeHM "10"    encodedValue10
