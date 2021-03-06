@@ -8,7 +8,7 @@ copyright:       (c) 2011-2016 Bryan O'Sullivan
 author:          Bryan O'Sullivan <bos@serpentine.com>
 maintainer:      Adam Bergmark <adam@bergmark.nl>
 stability:       experimental
-tested-with:     GHC == 7.8.4, GHC == 7.10.3, GHC == 8.0.2, GHC == 8.2.2, GHC == 8.4.4, GHC == 8.6.5, GHC == 8.8.3, GHC == 8.10.4, GHC == 9.0.1
+tested-with:     GHC == 7.8.4, GHC == 7.10.3, GHC == 8.0.2, GHC == 8.2.2, GHC == 8.4.4, GHC == 8.6.5, GHC == 8.8.4, GHC == 8.10.4, GHC == 9.0.1
 synopsis:        Fast JSON parsing and encoding
 cabal-version:   >= 1.10
 homepage:        https://github.com/haskell/aeson

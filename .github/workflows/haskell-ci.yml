@@ -8,9 +8,9 @@
 #
 # For more information, see https://github.com/haskell-CI/haskell-ci
 #
-# version: 0.11.20210220
+# version: 0.11.20210222
 #
-# REGENDATA ("0.11.20210220",["github","cabal.project"])
+# REGENDATA ("0.11.20210222",["github","cabal.project"])
 #
 name: Haskell-CI
 on:
@@ -34,7 +34,7 @@ jobs:
             allow-failure: false
           - ghc: 8.10.4
             allow-failure: false
-          - ghc: 8.8.3
+          - ghc: 8.8.4
             allow-failure: false
           - ghc: 8.6.5
             allow-failure: false
@@ -75,7 +75,7 @@ jobs:
           echo "ARG_TESTS=--enable-tests" >> $GITHUB_ENV
           echo "ARG_BENCH=--enable-benchmarks" >> $GITHUB_ENV
           echo "HEADHACKAGE=false" >> $GITHUB_ENV
-          echo "ARG_COMPILER=--ghc --with-compiler=/opt/ghc/$GHC_VERSION/bin/ghc" >> $GITHUB_ENV
+          echo "ARG_COMPILER=--ghc --with-compiler=$HC" >> $GITHUB_ENV
           echo "GHCJSARITH=0" >> $GITHUB_ENV
         env:
           GHC_VERSION: ${{ matrix.ghc }}
@@ -124,12 +124,6 @@ jobs:
           rm -f cabal-plan.xz
           chmod a+x $HOME/.cabal/bin/cabal-plan
           cabal-plan --version
-      - name: install hlint
-        run: |
-          if [ $((HCNUMVER >= 80800 && HCNUMVER < 81000)) -ne 0 ] ; then HLINTVER=$(cd /tmp && (${CABAL} v2-install -v $ARG_COMPILER --dry-run hlint  --constraint='hlint >=3.2 && <3.3' |  perl -ne 'if (/\bhlint-(\d+(\.\d+)*)\b/) { print "$1"; last; }')); echo "HLint version $HLINTVER" ; fi
-          if [ $((HCNUMVER >= 80800 && HCNUMVER < 81000)) -ne 0 ] ; then if [ ! -e $HOME/.haskell-ci-tools/hlint-$HLINTVER/hlint ]; then echo "Downloading HLint version $HLINTVER"; mkdir -p $HOME/.haskell-ci-tools; curl --write-out 'Status Code: %{http_code} Redirects: %{num_redirects} Total time: %{time_total} Total Dsize: %{size_download}\n' --silent --location --output $HOME/.haskell-ci-tools/hlint-$HLINTVER.tar.gz "https://github.com/ndmitchell/hlint/releases/download/v$HLINTVER/hlint-$HLINTVER-x86_64-linux.tar.gz"; tar -xzv -f $HOME/.haskell-ci-tools/hlint-$HLINTVER.tar.gz -C $HOME/.haskell-ci-tools; fi ; fi
-          if [ $((HCNUMVER >= 80800 && HCNUMVER < 81000)) -ne 0 ] ; then mkdir -p $CABAL_DIR/bin && ln -sf "$HOME/.haskell-ci-tools/hlint-$HLINTVER/hlint" $CABAL_DIR/bin/hlint ; fi
-          if [ $((HCNUMVER >= 80800 && HCNUMVER < 81000)) -ne 0 ] ; then hlint --version ; fi
       - name: checkout
         uses: actions/checkout@v2
         with:
@@ -196,11 +190,6 @@ jobs:
       - name: tests
         run: |
           $CABAL v2-test $ARG_COMPILER $ARG_TESTS $ARG_BENCH all --test-show-details=direct
-      - name: hlint
-        run: |
-          if [ $((HCNUMVER >= 80800 && HCNUMVER < 81000)) -ne 0 ] ; then (cd ${PKGDIR_aeson} && hlint -h ${GITHUB_WORKSPACE}/source/.hlint.yaml src attoparsec-iso8601/src src-pure src-ffi) ; fi
-          if [ $((HCNUMVER >= 80800 && HCNUMVER < 81000)) -ne 0 ] ; then (cd ${PKGDIR_attoparsec_iso8601} && hlint -h ${GITHUB_WORKSPACE}/source/.hlint.yaml src) ; fi
-          if [ $((HCNUMVER >= 80800 && HCNUMVER < 81000)) -ne 0 ] ; then (cd ${PKGDIR_aeson_examples} && hlint -h ${GITHUB_WORKSPACE}/source/.hlint.yaml src/) ; fi
       - name: haddock
         run: |
           if [ $((HCNUMVER >= 80600)) -ne 0 ] ; then $CABAL v2-haddock $ARG_COMPILER --with-haddock $HADDOCK $ARG_TESTS $ARG_BENCH all ; fi
