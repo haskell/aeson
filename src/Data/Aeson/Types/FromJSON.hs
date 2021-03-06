@@ -161,7 +161,6 @@ import Data.Coerce (Coercible, coerce)
 
 parseIndexedJSON :: (Value -> Parser a) -> Int -> Value -> Parser a
 parseIndexedJSON p idx value = p value <?> Index idx
-{-# INLINE parseIndexedJSON #-}
 
 parseIndexedJSONPair :: (Value -> Parser a) -> (Value -> Parser b) -> Int -> Value -> Parser (a, b)
 parseIndexedJSONPair keyParser valParser idx value = p value <?> Index idx
@@ -173,7 +172,6 @@ parseIndexedJSONPair keyParser valParser idx value = p value <?> Index idx
                       <*> parseJSONElemAtIndex valParser 1 ab
              else fail $ "cannot unpack array of length " ++
                          show n ++ " into a pair"
-{-# INLINE parseIndexedJSONPair #-}
 
 parseJSONElemAtIndex :: (Value -> Parser a) -> Int -> V.Vector Value -> Parser a
 parseJSONElemAtIndex p idx ary = p (V.unsafeIndex ary idx) <?> Index idx
@@ -182,31 +180,26 @@ parseRealFloat :: RealFloat a => String -> Value -> Parser a
 parseRealFloat _    (Number s) = pure $ Scientific.toRealFloat s
 parseRealFloat _    Null       = pure (0/0)
 parseRealFloat name v          = prependContext name (unexpected v)
-{-# INLINE parseRealFloat #-}
 
 parseIntegralFromScientific :: forall a. Integral a => Scientific -> Parser a
 parseIntegralFromScientific s =
     case Scientific.floatingOrInteger s :: Either Double a of
         Right x -> pure x
         Left _  -> fail $ "unexpected floating number " ++ show s
-{-# INLINE parseIntegralFromScientific #-}
 
 parseIntegral :: Integral a => String -> Value -> Parser a
 parseIntegral name =
     prependContext name . withBoundedScientific' parseIntegralFromScientific
-{-# INLINE parseIntegral #-}
 
 parseBoundedIntegralFromScientific :: (Bounded a, Integral a) => Scientific -> Parser a
 parseBoundedIntegralFromScientific s = maybe
     (fail $ "value is either floating or will cause over or underflow " ++ show s)
     pure
     (Scientific.toBoundedInteger s)
-{-# INLINE parseBoundedIntegralFromScientific #-}
 
 parseBoundedIntegral :: (Bounded a, Integral a) => String -> Value -> Parser a
 parseBoundedIntegral name =
     prependContext name . withScientific' parseBoundedIntegralFromScientific
-{-# INLINE parseBoundedIntegral #-}
 
 parseScientificText :: Text -> Parser Scientific
 parseScientificText
@@ -223,7 +216,6 @@ parseIntegralText name t =
   where
     rejectLargeExponent :: Scientific -> Parser Scientific
     rejectLargeExponent s = withBoundedScientific' pure (Number s)
-{-# INLINE parseIntegralText #-}
 
 parseBoundedIntegralText :: (Bounded a, Integral a) => String -> Text -> Parser a
 parseBoundedIntegralText name t =
@@ -236,7 +228,6 @@ parseOptionalFieldWith pj obj key =
     case H.lookup key obj of
      Nothing -> pure Nothing
      Just v  -> pj v <?> Key key
-{-# INLINE parseOptionalFieldWith #-}
 
 -------------------------------------------------------------------------------
 -- Generics
@@ -646,7 +637,6 @@ listParser _ v          = typeMismatch "Array" v
 
 instance FromJSON1 [] where
     liftParseJSON _ p' = p'
-    {-# INLINE liftParseJSON #-}
 
 instance (FromJSON a) => FromJSON [a] where
     parseJSON = parseJSON1
@@ -673,7 +663,6 @@ prependContext name = prependFailure ("parsing " ++ name ++ " failed, ")
 withObject :: String -> (Object -> Parser a) -> Value -> Parser a
 withObject _    f (Object obj) = f obj
 withObject name _ v            = prependContext name (typeMismatch "Object" v)
-{-# INLINE withObject #-}
 
 -- | @'withText' name f value@ applies @f@ to the 'Text' when @value@ is a
 -- 'Data.Aeson.String' and fails otherwise.
@@ -685,7 +674,6 @@ withObject name _ v            = prependContext name (typeMismatch "Object" v)
 withText :: String -> (Text -> Parser a) -> Value -> Parser a
 withText _    f (String txt) = f txt
 withText name _ v            = prependContext name (typeMismatch "String" v)
-{-# INLINE withText #-}
 
 -- | @'withArray' expected f value@ applies @f@ to the 'Array' when @value@ is
 -- an 'Data.Aeson.Array' and fails otherwise.
@@ -697,7 +685,6 @@ withText name _ v            = prependContext name (typeMismatch "String" v)
 withArray :: String -> (Array -> Parser a) -> Value -> Parser a
 withArray _    f (Array arr) = f arr
 withArray name _ v           = prependContext name (typeMismatch "Array" v)
-{-# INLINE withArray #-}
 
 -- | @'withScientific' name f value@ applies @f@ to the 'Scientific' number
 -- when @value@ is a 'Data.Aeson.Number' and fails using 'typeMismatch'
@@ -715,7 +702,6 @@ withArray name _ v           = prependContext name (typeMismatch "Array" v)
 withScientific :: String -> (Scientific -> Parser a) -> Value -> Parser a
 withScientific _ f (Number scientific) = f scientific
 withScientific name _ v = prependContext name (typeMismatch "Number" v)
-{-# INLINE withScientific #-}
 
 -- | A variant of 'withScientific' which doesn't use 'prependContext', so that
 -- such context can be added separately in a way that also applies when the
@@ -737,20 +723,17 @@ withScientific' :: (Scientific -> Parser a) -> Value -> Parser a
 withScientific' f v = case v of
     Number n -> f n
     _ -> typeMismatch "Number" v
-{-# INLINE withScientific' #-}
 
 -- | @'withBoundedScientific' name f value@ applies @f@ to the 'Scientific' number
 -- when @value@ is a 'Number' with exponent less than or equal to 1024.
 withBoundedScientific :: String -> (Scientific -> Parser a) -> Value -> Parser a
 withBoundedScientific name f v = withBoundedScientific_ (prependContext name) f v
-{-# INLINE withBoundedScientific #-}
 
 -- | A variant of 'withBoundedScientific' which doesn't use 'prependContext',
 -- so that such context can be added separately in a way that also applies
 -- when the continuation @f :: Scientific -> Parser a@ fails.
 withBoundedScientific' :: (Scientific -> Parser a) -> Value -> Parser a
 withBoundedScientific' f v = withBoundedScientific_ id f v
-{-# INLINE withBoundedScientific' #-}
 
 -- | A variant of 'withBoundedScientific_' parameterized by a function to apply
 -- to the 'Parser' in case of failure.
@@ -764,7 +747,6 @@ withBoundedScientific_ whenFail f (Number scientific) =
     msg = "found a number with exponent " ++ show exp10 ++ ", but it must not be greater than 1024"
 withBoundedScientific_ whenFail _ v =
     whenFail (typeMismatch "Number" v)
-{-# INLINE withBoundedScientific_ #-}
 
 -- | @'withBool' expected f value@ applies @f@ to the 'Bool' when @value@ is a
 -- 'Boolean' and fails otherwise.
@@ -776,7 +758,6 @@ withBoundedScientific_ whenFail _ v =
 withBool :: String -> (Bool -> Parser a) -> Value -> Parser a
 withBool _    f (Bool arr) = f arr
 withBool name _ v          = prependContext name (typeMismatch "Boolean" v)
-{-# INLINE withBool #-}
 
 -- | Decode a nested JSON-encoded string.
 withEmbeddedJSON :: String -> (Value -> Parser a) -> Value -> Parser a
@@ -786,17 +767,14 @@ withEmbeddedJSON _ innerParser (String txt) =
         eitherDecode = eitherFormatError . eitherDecodeWith jsonEOF ifromJSON
         eitherFormatError = either (Left . uncurry formatError) Right
 withEmbeddedJSON name _ v = prependContext name (typeMismatch "String" v)
-{-# INLINE withEmbeddedJSON #-}
 
 -- | Convert a value from JSON, failing if the types do not match.
 fromJSON :: (FromJSON a) => Value -> Result a
 fromJSON = parse parseJSON
-{-# INLINE fromJSON #-}
 
 -- | Convert a value from JSON, failing if the types do not match.
 ifromJSON :: (FromJSON a) => Value -> IResult a
 ifromJSON = iparse parseJSON
-{-# INLINE ifromJSON #-}
 
 -- | Retrieve the value associated with the given key of an 'Object'.
 -- The result is 'empty' if the key is not present or the value cannot
@@ -807,7 +785,6 @@ ifromJSON = iparse parseJSON
 -- optional, use '.:?' instead.
 (.:) :: (FromJSON a) => Object -> Text -> Parser a
 (.:) = explicitParseField parseJSON
-{-# INLINE (.:) #-}
 
 -- | Retrieve the value associated with the given key of an 'Object'. The
 -- result is 'Nothing' if the key is not present or if its value is 'Null',
@@ -818,7 +795,6 @@ ifromJSON = iparse parseJSON
 -- value are mandatory, use '.:' instead.
 (.:?) :: (FromJSON a) => Object -> Text -> Parser (Maybe a)
 (.:?) = explicitParseFieldMaybe parseJSON
-{-# INLINE (.:?) #-}
 
 -- | Retrieve the value associated with the given key of an 'Object'.
 -- The result is 'Nothing' if the key is not present or 'empty' if the
@@ -828,22 +804,18 @@ ifromJSON = iparse parseJSON
 -- other JSON value, instead of interpreting it as 'Nothing'.
 (.:!) :: (FromJSON a) => Object -> Text -> Parser (Maybe a)
 (.:!) = explicitParseFieldMaybe' parseJSON
-{-# INLINE (.:!) #-}
 
 -- | Function variant of '.:'.
 parseField :: (FromJSON a) => Object -> Text -> Parser a
 parseField = (.:)
-{-# INLINE parseField #-}
 
 -- | Function variant of '.:?'.
 parseFieldMaybe :: (FromJSON a) => Object -> Text -> Parser (Maybe a)
 parseFieldMaybe = (.:?)
-{-# INLINE parseFieldMaybe #-}
 
 -- | Function variant of '.:!'.
 parseFieldMaybe' :: (FromJSON a) => Object -> Text -> Parser (Maybe a)
 parseFieldMaybe' = (.:!)
-{-# INLINE parseFieldMaybe' #-}
 
 -- | Variant of '.:' with explicit parser function.
 --
@@ -852,21 +824,18 @@ explicitParseField :: (Value -> Parser a) -> Object -> Text -> Parser a
 explicitParseField p obj key = case H.lookup key obj of
     Nothing -> fail $ "key " ++ show key ++ " not found"
     Just v  -> p v <?> Key key
-{-# INLINE explicitParseField #-}
 
 -- | Variant of '.:?' with explicit parser function.
 explicitParseFieldMaybe :: (Value -> Parser a) -> Object -> Text -> Parser (Maybe a)
 explicitParseFieldMaybe p obj key = case H.lookup key obj of
     Nothing -> pure Nothing
     Just v  -> liftParseJSON p (listParser p) v <?> Key key -- listParser isn't used by maybe instance.
-{-# INLINE explicitParseFieldMaybe #-}
 
 -- | Variant of '.:!' with explicit parser function.
 explicitParseFieldMaybe' :: (Value -> Parser a) -> Object -> Text -> Parser (Maybe a)
 explicitParseFieldMaybe' p obj key = case H.lookup key obj of
     Nothing -> pure Nothing
     Just v  -> Just <$> p v <?> Key key
-{-# INLINE explicitParseFieldMaybe' #-}
 
 -- | Helper for use in combination with '.:?' to provide default
 -- values for optional JSON object fields.
@@ -884,7 +853,6 @@ explicitParseFieldMaybe' p obj key = case H.lookup key obj of
 -- @
 (.!=) :: Parser (Maybe a) -> a -> Parser a
 pmval .!= val = fromMaybe val <$> pmval
-{-# INLINE (.!=) #-}
 
 --------------------------------------------------------------------------------
 -- Generic parseJSON
@@ -893,12 +861,14 @@ pmval .!= val = fromMaybe val <$> pmval
 instance GFromJSON arity V1 where
     -- Whereof we cannot format, thereof we cannot parse:
     gParseJSON _ _ _ = fail "Attempted to parse empty type"
+    {-# INLINE gParseJSON #-}
 
 
 instance OVERLAPPABLE_ (GFromJSON arity a) => GFromJSON arity (M1 i c a) where
     -- Meta-information, which is not handled elsewhere, is just added to the
     -- parsed value:
     gParseJSON opts fargs = fmap M1 . gParseJSON opts fargs
+    {-# INLINE gParseJSON #-}
 
 -- Information for error messages
 
@@ -934,16 +904,19 @@ showCons cname tname = tname ++ "(" ++ cname ++ ")"
 instance (FromJSON a) => GFromJSON arity (K1 i a) where
     -- Constant values are decoded using their FromJSON instance:
     gParseJSON _opts _ = fmap K1 . parseJSON
+    {-# INLINE gParseJSON #-}
 
 instance GFromJSON One Par1 where
     -- Direct occurrences of the last type parameter are decoded with the
     -- function passed in as an argument:
     gParseJSON _opts (From1Args pj _) = fmap Par1 . pj
+    {-# INLINE gParseJSON #-}
 
 instance (FromJSON1 f) => GFromJSON One (Rec1 f) where
     -- Recursive occurrences of the last type parameter are decoded using their
     -- FromJSON1 instance:
     gParseJSON _opts (From1Args pj pjl) = fmap Rec1 . liftParseJSON pj pjl
+    {-# INLINE gParseJSON #-}
 
 instance (FromJSON1 f, GFromJSON One g) => GFromJSON One (f :.: g) where
     -- If an occurrence of the last type parameter is nested inside two
@@ -952,6 +925,7 @@ instance (FromJSON1 f, GFromJSON One g) => GFromJSON One (f :.: g) where
     gParseJSON opts fargs =
         let gpj = gParseJSON opts fargs in
         fmap Comp1 . liftParseJSON gpj (listParser gpj)
+    {-# INLINE gParseJSON #-}
 
 --------------------------------------------------------------------------------
 
@@ -962,6 +936,7 @@ instance (GFromJSON' arity a, Datatype d) => GFromJSON arity (D1 d a) where
       where
         tname = moduleName proxy ++ "." ++ datatypeName proxy
         proxy = undefined :: M1 _i d _f _p
+    {-# INLINE gParseJSON #-}
 
 -- | 'GFromJSON', after unwrapping the 'D1' constructor, now carrying the data
 -- type's name.
@@ -985,6 +960,7 @@ instance ( ConsFromJSON arity a
         | otherwise = fmap M1 . consParseJSON (cname :* p)
       where
         cname = conName (undefined :: M1 _i c _f _p)
+    {-# INLINE gParseJSON' #-}
 
 -- | Multiple constructors.
 instance ( AllNullary          (a :+: b) allNullary
@@ -997,6 +973,7 @@ instance ( AllNullary          (a :+: b) allNullary
         (unTagged :: Tagged allNullary (Parser ((a :+: b) _d)) ->
                                         Parser ((a :+: b) _d))
                    . parseSum p
+    {-# INLINE gParseJSON' #-}
 
 --------------------------------------------------------------------------------
 
@@ -1014,6 +991,7 @@ instance ( ConstructorNames        f
     parseSum p@(tname :* opts :* _)
         | allNullaryToStringTag opts = Tagged . parseAllNullarySum tname opts
         | otherwise                  = Tagged . parseNonAllNullarySum p
+    {-# INLINE parseSum #-}
 
 instance ( ConstructorNames        f
          , FromPair          arity f
@@ -1021,6 +999,7 @@ instance ( ConstructorNames        f
          , FromUntaggedValue arity f
          ) => ParseSum       arity f False where
     parseSum p = Tagged . parseNonAllNullarySum p
+    {-# INLINE parseSum #-}
 
 --------------------------------------------------------------------------------
 
@@ -1053,6 +1032,7 @@ class SumFromString f where
 instance (SumFromString a, SumFromString b) => SumFromString (a :+: b) where
     parseSumFromString opts key = (L1 <$> parseSumFromString opts key) <|>
                                   (R1 <$> parseSumFromString opts key)
+    {-# INLINE parseSumFromString #-}
 
 instance (Constructor c) => SumFromString (C1 c U1) where
     parseSumFromString modifier key
@@ -1060,10 +1040,12 @@ instance (Constructor c) => SumFromString (C1 c U1) where
         | otherwise   = Nothing
       where
         name = pack $ modifier $ conName (undefined :: M1 _i c _f _p)
+    {-# INLINE parseSumFromString #-}
 
 -- For genericFromJSONKey
 instance SumFromString a => SumFromString (D1 d a) where
     parseSumFromString modifier key = M1 <$> parseSumFromString modifier key
+    {-# INLINE parseSumFromString #-}
 
 -- | List of all constructor tags.
 constructorTags :: ConstructorNames a => (String -> t) -> Tagged2 a [t]
@@ -1083,11 +1065,13 @@ instance (ConstructorNames a, ConstructorNames b) => ConstructorNames (a :+: b) 
           -> Tagged2 b (DList.DList t)
           -> Tagged2 (a :+: b) (DList.DList t)
         append (Tagged2 xs) (Tagged2 ys) = Tagged2 (DList.append xs ys)
+    {-# INLINE constructorNames' #-}
 
 instance Constructor c => ConstructorNames (C1 c a) where
     constructorNames' f = Tagged2 (pure (f cname))
       where
         cname = conName (undefined :: M1 _i c _f _p)
+    {-# INLINE constructorNames' #-}
 
 -- For genericFromJSONKey
 instance ConstructorNames a => ConstructorNames (D1 d a) where
@@ -1095,6 +1079,7 @@ instance ConstructorNames a => ConstructorNames (D1 d a) where
       where
         retag :: Tagged2 a u -> Tagged2 (D1 d a) u
         retag (Tagged2 x) = Tagged2 x
+    {-# INLINE constructorNames' #-}
 
 --------------------------------------------------------------------------------
 parseNonAllNullarySum :: forall f c arity.
@@ -1165,6 +1150,7 @@ instance ( FromTaggedObject arity a, FromTaggedObject arity b) =>
         parseFromTaggedObject p obj =
             (fmap L1 <$> parseFromTaggedObject p obj) <|>
             (fmap R1 <$> parseFromTaggedObject p obj)
+        {-# INLINE parseFromTaggedObject #-}
 
 instance ( IsRecord                f isRecord
          , FromTaggedObject' arity f isRecord
@@ -1179,6 +1165,7 @@ instance ( IsRecord                f isRecord
       where
         tag' = pack $ constructorTagModifier opts cname
         cname = conName (undefined :: M1 _i c _f _p)
+    {-# INLINE parseFromTaggedObject #-}
 
 --------------------------------------------------------------------------------
 
@@ -1191,6 +1178,7 @@ class FromTaggedObject' arity f isRecord where
 instance (RecordFromJSON arity f, FieldNames f) => FromTaggedObject' arity f True where
     -- Records are unpacked in the tagged object
     parseFromTaggedObject' (_ :* p) = Tagged . recordParseJSON (True :* p)
+    {-# INLINE parseFromTaggedObject' #-}
 
 instance (ConsFromJSON arity f) => FromTaggedObject' arity f False where
     -- Nonnullary nonrecords are encoded in the contents field
@@ -1200,10 +1188,12 @@ instance (ConsFromJSON arity f) => FromTaggedObject' arity f False where
       where
         key = pack contentsFieldName
         contentsFieldName :* p'@(cname :* tname :* _) = p
+    {-# INLINE parseFromTaggedObject' #-}
 
 instance OVERLAPPING_ FromTaggedObject' arity U1 False where
     -- Nullary constructors don't need a contents field
     parseFromTaggedObject' _ _ = Tagged (pure U1)
+    {-# INLINE parseFromTaggedObject' #-}
 
 --------------------------------------------------------------------------------
 
@@ -1225,6 +1215,7 @@ instance ( IsRecord            f isRecord
     consParseJSON p =
       (unTagged :: Tagged isRecord (Parser (f a)) -> Parser (f a))
           . consParseJSON' p
+    {-# INLINE consParseJSON #-}
 
 instance OVERLAPPING_
          ( GFromJSON arity a, RecordFromJSON arity (S1 s a)
@@ -1232,10 +1223,12 @@ instance OVERLAPPING_
     consParseJSON' p@(cname :* tname :* opts :* fargs)
         | unwrapUnaryRecords opts = Tagged . fmap M1 . gParseJSON opts fargs
         | otherwise = Tagged . withObject (showCons cname tname) (recordParseJSON (False :* p))
+    {-# INLINE consParseJSON' #-}
 
 instance RecordFromJSON arity f => ConsFromJSON' arity f True where
     consParseJSON' p@(cname :* tname :* _) =
         Tagged . withObject (showCons cname tname) (recordParseJSON (False :* p))
+    {-# INLINE consParseJSON' #-}
 
 instance OVERLAPPING_
          ConsFromJSON' arity U1 False where
@@ -1249,15 +1242,18 @@ instance OVERLAPPING_
         fail_ a = fail $
             "expected an empty Array, but encountered an Array of length " ++
             show (V.length a)
+    {-# INLINE consParseJSON' #-}
 
 instance OVERLAPPING_
          GFromJSON arity f => ConsFromJSON' arity (S1 s f) False where
     consParseJSON' (_ :* _ :* opts :* fargs) =
         Tagged . fmap M1 . gParseJSON opts fargs
+    {-# INLINE consParseJSON' #-}
 
 instance (ProductFromJSON arity f, ProductSize f
          ) => ConsFromJSON' arity f False where
     consParseJSON' p = Tagged . productParseJSON0 p
+    {-# INLINE consParseJSON' #-}
 
 --------------------------------------------------------------------------------
 
@@ -1268,9 +1264,11 @@ instance (FieldNames a, FieldNames b) => FieldNames (a :*: b) where
     fieldNames _ =
       fieldNames (undefined :: a x) .
       fieldNames (undefined :: b y)
+    {-# INLINE fieldNames #-}
 
 instance (Selector s) => FieldNames (S1 s f) where
     fieldNames _ = (selName (undefined :: M1 _i s _f _p) :)
+    {-# INLINE fieldNames #-}
 
 class RecordFromJSON arity f where
     recordParseJSON
@@ -1295,6 +1293,7 @@ instance ( FieldNames f
                     [] -> return ()
                     unknownFields -> contextCons cname tname $
                         fail ("unknown fields: " ++ show unknownFields)
+    {-# INLINE recordParseJSON #-}
 
 class RecordFromJSON' arity f where
     recordParseJSON'
@@ -1307,6 +1306,7 @@ instance ( RecordFromJSON' arity a
     recordParseJSON' p obj =
         (:*:) <$> recordParseJSON' p obj
               <*> recordParseJSON' p obj
+    {-# INLINE recordParseJSON' #-}
 
 instance OVERLAPPABLE_ (Selector s, GFromJSON arity a) =>
          RecordFromJSON' arity (S1 s a) where
@@ -1316,6 +1316,7 @@ instance OVERLAPPABLE_ (Selector s, GFromJSON arity a) =>
       where
         label = pack $ fieldLabelModifier opts sname
         sname = selName (undefined :: M1 _i s _f _p)
+    {-# INLINE recordParseJSON' #-}
 
 instance INCOHERENT_ (Selector s, FromJSON a) =>
          RecordFromJSON' arity (S1 s (K1 i (Maybe a))) where
@@ -1323,6 +1324,7 @@ instance INCOHERENT_ (Selector s, FromJSON a) =>
       where
         label = fieldLabelModifier opts sname
         sname = selName (undefined :: M1 _i s _f _p)
+    {-# INLINE recordParseJSON' #-}
 
 -- Parse an Option like a Maybe.
 instance INCOHERENT_ (Selector s, FromJSON a) =>
@@ -1331,6 +1333,7 @@ instance INCOHERENT_ (Selector s, FromJSON a) =>
       where
         wrap :: S1 s (K1 i (Maybe a)) p -> S1 s (K1 i (Semigroup.Option a)) p
         wrap (M1 (K1 a)) = M1 (K1 (Semigroup.Option a))
+    {-# INLINE recordParseJSON' #-}
 
 --------------------------------------------------------------------------------
 
@@ -1373,6 +1376,7 @@ instance ( ProductFromJSON    arity a
 instance (GFromJSON arity a) => ProductFromJSON arity (S1 s a) where
     productParseJSON (_ :* _ :* opts :* fargs) arr ix _ =
         M1 <$> gParseJSON opts fargs (V.unsafeIndex arr ix) <?> Index ix
+    {-# INLINE productParseJSON #-}
 
 --------------------------------------------------------------------------------
 
@@ -1388,6 +1392,7 @@ instance ( FromPair arity a
     parsePair p pair =
         (fmap L1 <$> parsePair p pair) <|>
         (fmap R1 <$> parsePair p pair)
+    {-# INLINE parsePair #-}
 
 instance ( Constructor c
          , ConsFromJSON arity a
@@ -1398,6 +1403,7 @@ instance ( Constructor c
       where
         tag' = pack $ constructorTagModifier opts cname
         cname = conName (undefined :: M1 _i c _a _p)
+    {-# INLINE parsePair #-}
 
 --------------------------------------------------------------------------------
 
@@ -1414,6 +1420,7 @@ instance
     parseUntaggedValue p value =
         L1 <$> parseUntaggedValue p value <|>
         R1 <$> parseUntaggedValue p value
+    {-# INLINE parseUntaggedValue #-}
 
 instance OVERLAPPABLE_
     ( ConsFromJSON arity a
@@ -1423,6 +1430,7 @@ instance OVERLAPPABLE_
     parseUntaggedValue p = fmap M1 . consParseJSON (cname :* p)
       where
         cname = conName (undefined :: M1 _i c _f _p)
+    {-# INLINE parseUntaggedValue #-}
 
 instance OVERLAPPING_
     ( Constructor c )
@@ -1439,6 +1447,7 @@ instance OVERLAPPING_
         cname = conName (undefined :: M1 _i c _f _p)
         fail_ tag = fail $
           "expected tag " ++ show tag' ++ ", but found tag " ++ show tag
+    {-# INLINE parseUntaggedValue #-}
 
 -------------------------------------------------------------------------------
 -- Instances
@@ -1451,14 +1460,11 @@ instance OVERLAPPING_
 
 instance FromJSON2 Const where
     liftParseJSON2 p _ _ _ = fmap Const . p
-    {-# INLINE liftParseJSON2 #-}
 
 instance FromJSON a => FromJSON1 (Const a) where
     liftParseJSON _ _ = fmap Const . parseJSON
-    {-# INLINE liftParseJSON #-}
 
 instance FromJSON a => FromJSON (Const a b) where
-    {-# INLINE parseJSON #-}
     parseJSON = fmap Const . parseJSON
 
 instance (FromJSON a, FromJSONKey a) => FromJSONKey (Const a b) where
@@ -1468,12 +1474,9 @@ instance (FromJSON a, FromJSONKey a) => FromJSONKey (Const a b) where
 instance FromJSON1 Maybe where
     liftParseJSON _ _ Null = pure Nothing
     liftParseJSON p _ a    = Just <$> p a
-    {-# INLINE liftParseJSON #-}
 
 instance (FromJSON a) => FromJSON (Maybe a) where
     parseJSON = parseJSON1
-    {-# INLINE parseJSON #-}
-
 
 
 instance FromJSON2 Either where
@@ -1489,24 +1492,19 @@ instance FromJSON2 Either where
         "expected an object with a single property " ++
         "where the property key should be either " ++
         "\"Left\" or \"Right\""
-    {-# INLINE liftParseJSON2 #-}
 
 instance (FromJSON a) => FromJSON1 (Either a) where
     liftParseJSON = liftParseJSON2 parseJSON parseJSONList
-    {-# INLINE liftParseJSON #-}
 
 instance (FromJSON a, FromJSON b) => FromJSON (Either a b) where
     parseJSON = parseJSON2
-    {-# INLINE parseJSON #-}
 
 instance FromJSON Void where
     parseJSON _ = fail "Cannot parse Void"
-    {-# INLINE parseJSON #-}
 
 instance FromJSON Bool where
     parseJSON (Bool b) = pure b
     parseJSON v = typeMismatch "Bool" v
-    {-# INLINE parseJSON #-}
 
 instance FromJSONKey Bool where
     fromJSONKey = FromJSONKeyTextParser $ \t -> case t of
@@ -1528,15 +1526,12 @@ instance FromJSON () where
                   if V.null v
                     then pure ()
                     else prependContext "()" $ fail "expected an empty array"
-    {-# INLINE parseJSON #-}
 
 instance FromJSON Char where
     parseJSON = withText "Char" parseChar
-    {-# INLINE parseJSON #-}
 
     parseJSONList (String s) = pure (T.unpack s)
     parseJSONList v = typeMismatch "String" v
-    {-# INLINE parseJSONList #-}
 
 parseChar :: Text -> Parser Char
 parseChar t =
@@ -1546,7 +1541,6 @@ parseChar t =
 
 instance FromJSON Double where
     parseJSON = parseRealFloat "Double"
-    {-# INLINE parseJSON #-}
 
 instance FromJSONKey Double where
     fromJSONKey = FromJSONKeyTextParser $ \t -> case t of
@@ -1557,7 +1551,6 @@ instance FromJSONKey Double where
 
 instance FromJSON Float where
     parseJSON = parseRealFloat "Float"
-    {-# INLINE parseJSON #-}
 
 instance FromJSONKey Float where
     fromJSONKey = FromJSONKeyTextParser $ \t -> case t of
@@ -1583,7 +1576,6 @@ instance (FromJSON a, Integral a) => FromJSON (Ratio a) where
             if denominator == 0
             then fail "Ratio denominator was 0"
             else pure $ numerator % denominator
-    {-# INLINE parseJSON #-}
 
 -- | This instance includes a bounds check to prevent maliciously
 -- large inputs to fill up the memory of the target system. You can
@@ -1591,11 +1583,9 @@ instance (FromJSON a, Integral a) => FromJSON (Ratio a) where
 -- 'withScientific' if you want to allow larger inputs.
 instance HasResolution a => FromJSON (Fixed a) where
     parseJSON = prependContext "Fixed" . withBoundedScientific' (pure . realToFrac)
-    {-# INLINE parseJSON #-}
 
 instance FromJSON Int where
     parseJSON = parseBoundedIntegral "Int"
-    {-# INLINE parseJSON #-}
 
 instance FromJSONKey Int where
     fromJSONKey = FromJSONKeyTextParser $ parseBoundedIntegralText "Int"
@@ -1606,7 +1596,6 @@ instance FromJSONKey Int where
 -- 'withScientific' if you want to allow larger inputs.
 instance FromJSON Integer where
     parseJSON = parseIntegral "Integer"
-    {-# INLINE parseJSON #-}
 
 instance FromJSONKey Integer where
     fromJSONKey = FromJSONKeyTextParser $ parseIntegralText "Integer"
@@ -1630,74 +1619,63 @@ parseNatural integer =
 
 instance FromJSON Int8 where
     parseJSON = parseBoundedIntegral "Int8"
-    {-# INLINE parseJSON #-}
 
 instance FromJSONKey Int8 where
     fromJSONKey = FromJSONKeyTextParser $ parseBoundedIntegralText "Int8"
 
 instance FromJSON Int16 where
     parseJSON = parseBoundedIntegral "Int16"
-    {-# INLINE parseJSON #-}
 
 instance FromJSONKey Int16 where
     fromJSONKey = FromJSONKeyTextParser $ parseBoundedIntegralText "Int16"
 
 instance FromJSON Int32 where
     parseJSON = parseBoundedIntegral "Int32"
-    {-# INLINE parseJSON #-}
 
 instance FromJSONKey Int32 where
     fromJSONKey = FromJSONKeyTextParser $ parseBoundedIntegralText "Int32"
 
 instance FromJSON Int64 where
     parseJSON = parseBoundedIntegral "Int64"
-    {-# INLINE parseJSON #-}
 
 instance FromJSONKey Int64 where
     fromJSONKey = FromJSONKeyTextParser $ parseBoundedIntegralText "Int64"
 
 instance FromJSON Word where
     parseJSON = parseBoundedIntegral "Word"
-    {-# INLINE parseJSON #-}
 
 instance FromJSONKey Word where
     fromJSONKey = FromJSONKeyTextParser $ parseBoundedIntegralText "Word"
 
 instance FromJSON Word8 where
     parseJSON = parseBoundedIntegral "Word8"
-    {-# INLINE parseJSON #-}
 
 instance FromJSONKey Word8 where
     fromJSONKey = FromJSONKeyTextParser $ parseBoundedIntegralText "Word8"
 
 instance FromJSON Word16 where
     parseJSON = parseBoundedIntegral "Word16"
-    {-# INLINE parseJSON #-}
 
 instance FromJSONKey Word16 where
     fromJSONKey = FromJSONKeyTextParser $ parseBoundedIntegralText "Word16"
 
 instance FromJSON Word32 where
     parseJSON = parseBoundedIntegral "Word32"
-    {-# INLINE parseJSON #-}
 
 instance FromJSONKey Word32 where
     fromJSONKey = FromJSONKeyTextParser $ parseBoundedIntegralText "Word32"
 
 instance FromJSON Word64 where
     parseJSON = parseBoundedIntegral "Word64"
-    {-# INLINE parseJSON #-}
 
 instance FromJSONKey Word64 where
     fromJSONKey = FromJSONKeyTextParser $ parseBoundedIntegralText "Word64"
 
 instance FromJSON CTime where
     parseJSON = fmap CTime . parseJSON
-    {-# INLINE parseJSON #-}
 
 instance FromJSON Text where
     parseJSON = withText "Text" pure
-    {-# INLINE parseJSON #-}
 
 instance FromJSONKey Text where
     fromJSONKey = fromJSONKeyCoerce
@@ -1705,7 +1683,6 @@ instance FromJSONKey Text where
 
 instance FromJSON LT.Text where
     parseJSON = withText "Lazy Text" $ pure . LT.fromStrict
-    {-# INLINE parseJSON #-}
 
 instance FromJSONKey LT.Text where
     fromJSONKey = FromJSONKeyText LT.fromStrict
@@ -1713,7 +1690,6 @@ instance FromJSONKey LT.Text where
 
 instance FromJSON Version where
     parseJSON = withText "Version" parseVersionText
-    {-# INLINE parseJSON #-}
 
 instance FromJSONKey Version where
     fromJSONKey = FromJSONKeyTextParser parseVersionText
@@ -1735,11 +1711,9 @@ instance FromJSON1 NonEmpty where
       where
         ne []     = fail "parsing NonEmpty failed, unexpected empty list"
         ne (x:xs) = pure (x :| xs)
-    {-# INLINE liftParseJSON #-}
 
 instance (FromJSON a) => FromJSON (NonEmpty a) where
     parseJSON = parseJSON1
-    {-# INLINE parseJSON #-}
 
 -------------------------------------------------------------------------------
 -- scientific
@@ -1747,7 +1721,6 @@ instance (FromJSON a) => FromJSON (NonEmpty a) where
 
 instance FromJSON Scientific where
     parseJSON = withScientific "Scientific" pure
-    {-# INLINE parseJSON #-}
 
 -------------------------------------------------------------------------------
 -- DList
@@ -1757,11 +1730,9 @@ instance FromJSON1 DList.DList where
     liftParseJSON p _ = withArray "DList" $
       fmap DList.fromList .
       Tr.sequence . zipWith (parseIndexedJSON p) [0..] . V.toList
-    {-# INLINE liftParseJSON #-}
 
 instance (FromJSON a) => FromJSON (DList.DList a) where
     parseJSON = parseJSON1
-    {-# INLINE parseJSON #-}
 
 #if MIN_VERSION_dlist(1,0,0) && __GLASGOW_HASKELL__ >=800
 -- | @since 1.5.3.0
@@ -1771,12 +1742,10 @@ instance FromJSON1 DNE.DNonEmpty where
       where
         ne []     = fail "parsing DNonEmpty failed, unexpected empty list"
         ne (x:xs) = pure (DNE.fromNonEmpty (x :| xs))
-    {-# INLINE liftParseJSON #-}
 
 -- | @since 1.5.3.0
 instance (FromJSON a) => FromJSON (DNE.DNonEmpty a) where
     parseJSON = parseJSON1
-    {-# INLINE parseJSON #-}
 #endif
 
 -------------------------------------------------------------------------------
@@ -1785,17 +1754,13 @@ instance (FromJSON a) => FromJSON (DNE.DNonEmpty a) where
 
 instance FromJSON1 Identity where
     liftParseJSON p _ a = Identity <$> p a
-    {-# INLINE liftParseJSON #-}
 
     liftParseJSONList _ p a = fmap Identity <$> p a
-    {-# INLINE liftParseJSONList #-}
 
 instance (FromJSON a) => FromJSON (Identity a) where
     parseJSON = parseJSON1
-    {-# INLINE parseJSON #-}
 
     parseJSONList = liftParseJSONList parseJSON parseJSONList
-    {-# INLINE parseJSONList #-}
 
 instance (FromJSONKey a) => FromJSONKey (Identity a) where
     fromJSONKey = coerceFromJSONKeyFunction (fromJSONKey :: FromJSONKeyFunction a)
@@ -1807,20 +1772,16 @@ instance (FromJSON1 f, FromJSON1 g) => FromJSON1 (Compose f g) where
       where
         g  = liftParseJSON p pl
         gl = liftParseJSONList p pl
-    {-# INLINE liftParseJSON #-}
 
     liftParseJSONList p pl a = map Compose <$> liftParseJSONList g gl a
       where
         g  = liftParseJSON p pl
         gl = liftParseJSONList p pl
-    {-# INLINE liftParseJSONList #-}
 
 instance (FromJSON1 f, FromJSON1 g, FromJSON a) => FromJSON (Compose f g a) where
     parseJSON = parseJSON1
-    {-# INLINE parseJSON #-}
 
     parseJSONList = liftParseJSONList parseJSON parseJSONList
-    {-# INLINE parseJSONList #-}
 
 
 instance (FromJSON1 f, FromJSON1 g) => FromJSON1 (Product f g) where
@@ -1830,11 +1791,9 @@ instance (FromJSON1 f, FromJSON1 g) => FromJSON1 (Product f g) where
         pxl = liftParseJSONList p pl
         py  = liftParseJSON p pl
         pyl = liftParseJSONList p pl
-    {-# INLINE liftParseJSON #-}
 
 instance (FromJSON1 f, FromJSON1 g, FromJSON a) => FromJSON (Product f g a) where
     parseJSON = parseJSON1
-    {-# INLINE parseJSON #-}
 
 
 instance (FromJSON1 f, FromJSON1 g) => FromJSON1 (Sum f g) where
@@ -1850,11 +1809,9 @@ instance (FromJSON1 f, FromJSON1 g) => FromJSON1 (Sum f g) where
         "parsing Sum failed, expected an object with a single property " ++
         "where the property key should be either " ++
         "\"InL\" or \"InR\""
-    {-# INLINE liftParseJSON #-}
 
 instance (FromJSON1 f, FromJSON1 g, FromJSON a) => FromJSON (Sum f g a) where
     parseJSON = parseJSON1
-    {-# INLINE parseJSON #-}
 
 -------------------------------------------------------------------------------
 -- containers
@@ -1864,21 +1821,17 @@ instance FromJSON1 Seq.Seq where
     liftParseJSON p _ = withArray "Seq" $
       fmap Seq.fromList .
       Tr.sequence . zipWith (parseIndexedJSON p) [0..] . V.toList
-    {-# INLINE liftParseJSON #-}
 
 instance (FromJSON a) => FromJSON (Seq.Seq a) where
     parseJSON = parseJSON1
-    {-# INLINE parseJSON #-}
 
 
 instance (Ord a, FromJSON a) => FromJSON (Set.Set a) where
     parseJSON = fmap Set.fromList . parseJSON
-    {-# INLINE parseJSON #-}
 
 
 instance FromJSON IntSet.IntSet where
     parseJSON = fmap IntSet.fromList . parseJSON
-    {-# INLINE parseJSON #-}
 
 
 instance FromJSON1 IntMap.IntMap where
@@ -1886,11 +1839,9 @@ instance FromJSON1 IntMap.IntMap where
       where
         p'  = liftParseJSON2     parseJSON parseJSONList p pl
         pl' = liftParseJSONList2 parseJSON parseJSONList p pl
-    {-# INLINE liftParseJSON #-}
 
 instance FromJSON a => FromJSON (IntMap.IntMap a) where
     parseJSON = fmap IntMap.fromList . parseJSON
-    {-# INLINE parseJSON #-}
 
 
 instance (FromJSONKey k, Ord k) => FromJSON1 (M.Map k) where
@@ -1904,11 +1855,9 @@ instance (FromJSONKey k, Ord k) => FromJSON1 (M.Map k) where
         FromJSONKeyValue f -> withArray "Map" $ \arr ->
             fmap M.fromList . Tr.sequence .
                 zipWith (parseIndexedJSONPair f p) [0..] . V.toList $ arr
-    {-# INLINE liftParseJSON #-}
 
 instance (FromJSONKey k, Ord k, FromJSON v) => FromJSON (M.Map k v) where
     parseJSON = parseJSON1
-    {-# INLINE parseJSON #-}
 
 
 instance FromJSON1 Tree.Tree where
@@ -1921,7 +1870,6 @@ instance FromJSON1 Tree.Tree where
 
 instance (FromJSON v) => FromJSON (Tree.Tree v) where
     parseJSON = parseJSON1
-    {-# INLINE parseJSON #-}
 
 -------------------------------------------------------------------------------
 -- uuid
@@ -1942,27 +1890,22 @@ instance FromJSONKey UUID.UUID where
 instance FromJSON1 Vector where
     liftParseJSON p _ = withArray "Vector" $
         V.mapM (uncurry $ parseIndexedJSON p) . V.indexed
-    {-# INLINE liftParseJSON #-}
 
 instance (FromJSON a) => FromJSON (Vector a) where
     parseJSON = parseJSON1
-    {-# INLINE parseJSON #-}
 
 
 vectorParseJSON :: (FromJSON a, VG.Vector w a) => String -> Value -> Parser (w a)
 vectorParseJSON s = withArray s $ fmap V.convert . V.mapM (uncurry $ parseIndexedJSON parseJSON) . V.indexed
-{-# INLINE vectorParseJSON #-}
 
 instance (Storable a, FromJSON a) => FromJSON (VS.Vector a) where
     parseJSON = vectorParseJSON "Data.Vector.Storable.Vector"
 
 instance (VP.Prim a, FromJSON a) => FromJSON (VP.Vector a) where
     parseJSON = vectorParseJSON "Data.Vector.Primitive.Vector"
-    {-# INLINE parseJSON #-}
 
 instance (VG.Vector VU.Vector a, FromJSON a) => FromJSON (VU.Vector a) where
     parseJSON = vectorParseJSON "Data.Vector.Unboxed.Vector"
-    {-# INLINE parseJSON #-}
 
 -------------------------------------------------------------------------------
 -- unordered-containers
@@ -1970,7 +1913,6 @@ instance (VG.Vector VU.Vector a, FromJSON a) => FromJSON (VU.Vector a) where
 
 instance (Eq a, Hashable a, FromJSON a) => FromJSON (HashSet.HashSet a) where
     parseJSON = fmap HashSet.fromList . parseJSON
-    {-# INLINE parseJSON #-}
 
 
 instance (FromJSONKey k, Eq k, Hashable k) => FromJSON1 (H.HashMap k) where
@@ -1990,7 +1932,6 @@ instance (FromJSONKey k, Eq k, Hashable k) => FromJSON1 (H.HashMap k) where
 
 instance (FromJSON v, FromJSONKey k, Eq k, Hashable k) => FromJSON (H.HashMap k v) where
     parseJSON = parseJSON1
-    {-# INLINE parseJSON #-}
 
 -------------------------------------------------------------------------------
 -- aeson
@@ -1998,7 +1939,6 @@ instance (FromJSON v, FromJSONKey k, Eq k, Hashable k) => FromJSON (H.HashMap k 
 
 instance FromJSON Value where
     parseJSON = pure
-    {-# INLINE parseJSON #-}
 
 instance FromJSON DotNetTime where
     parseJSON = withText "DotNetTime" $ \t ->
@@ -2007,7 +1947,6 @@ instance FromJSON DotNetTime where
         in case parseTimeM True defaultTimeLocale "/Date(%s%Q)/" (unpack t') of
              Just d -> pure (DotNetTime d)
              _      -> fail "could not parse .NET time"
-    {-# INLINE parseJSON #-}
 
 -------------------------------------------------------------------------------
 -- primitive
@@ -2080,7 +2019,6 @@ instance FromJSONKey UTCTime where
 -- 'withScientific' if you want to allow larger inputs.
 instance FromJSON NominalDiffTime where
     parseJSON = withBoundedScientific "NominalDiffTime" $ pure . realToFrac
-    {-# INLINE parseJSON #-}
 
 
 -- | This instance includes a bounds check to prevent maliciously
@@ -2089,7 +2027,6 @@ instance FromJSON NominalDiffTime where
 -- 'withScientific' if you want to allow larger inputs.
 instance FromJSON DiffTime where
     parseJSON = withBoundedScientific "DiffTime" $ pure . realToFrac
-    {-# INLINE parseJSON #-}
 
 instance FromJSON SystemTime where
     parseJSON v = prependContext "SystemTime" $ do
@@ -2157,113 +2094,85 @@ instance FromJSONKey Month where
 
 instance FromJSON1 Monoid.Dual where
     liftParseJSON p _ = fmap Monoid.Dual . p
-    {-# INLINE liftParseJSON #-}
 
 instance FromJSON a => FromJSON (Monoid.Dual a) where
     parseJSON = parseJSON1
-    {-# INLINE parseJSON #-}
 
 
 instance FromJSON1 Monoid.First where
     liftParseJSON p p' = fmap Monoid.First . liftParseJSON p p'
-    {-# INLINE liftParseJSON #-}
 
 instance FromJSON a => FromJSON (Monoid.First a) where
     parseJSON = parseJSON1
-    {-# INLINE parseJSON #-}
 
 
 instance FromJSON1 Monoid.Last where
     liftParseJSON p p' = fmap Monoid.Last . liftParseJSON p p'
-    {-# INLINE liftParseJSON #-}
 
 instance FromJSON a => FromJSON (Monoid.Last a) where
     parseJSON = parseJSON1
-    {-# INLINE parseJSON #-}
 
 
 instance FromJSON1 Semigroup.Min where
     liftParseJSON p _ a = Semigroup.Min <$> p a
-    {-# INLINE liftParseJSON #-}
 
     liftParseJSONList _ p a = fmap Semigroup.Min <$> p a
-    {-# INLINE liftParseJSONList #-}
 
 instance (FromJSON a) => FromJSON (Semigroup.Min a) where
     parseJSON = parseJSON1
-    {-# INLINE parseJSON #-}
 
     parseJSONList = liftParseJSONList parseJSON parseJSONList
-    {-# INLINE parseJSONList #-}
 
 
 instance FromJSON1 Semigroup.Max where
     liftParseJSON p _ a = Semigroup.Max <$> p a
-    {-# INLINE liftParseJSON #-}
 
     liftParseJSONList _ p a = fmap Semigroup.Max <$> p a
-    {-# INLINE liftParseJSONList #-}
 
 instance (FromJSON a) => FromJSON (Semigroup.Max a) where
     parseJSON = parseJSON1
-    {-# INLINE parseJSON #-}
 
     parseJSONList = liftParseJSONList parseJSON parseJSONList
-    {-# INLINE parseJSONList #-}
 
 
 instance FromJSON1 Semigroup.First where
     liftParseJSON p _ a = Semigroup.First <$> p a
-    {-# INLINE liftParseJSON #-}
 
     liftParseJSONList _ p a = fmap Semigroup.First <$> p a
-    {-# INLINE liftParseJSONList #-}
 
 instance (FromJSON a) => FromJSON (Semigroup.First a) where
     parseJSON = parseJSON1
-    {-# INLINE parseJSON #-}
 
     parseJSONList = liftParseJSONList parseJSON parseJSONList
-    {-# INLINE parseJSONList #-}
 
 
 instance FromJSON1 Semigroup.Last where
     liftParseJSON p _ a = Semigroup.Last <$> p a
-    {-# INLINE liftParseJSON #-}
 
     liftParseJSONList _ p a = fmap Semigroup.Last <$> p a
-    {-# INLINE liftParseJSONList #-}
 
 instance (FromJSON a) => FromJSON (Semigroup.Last a) where
     parseJSON = parseJSON1
-    {-# INLINE parseJSON #-}
 
     parseJSONList = liftParseJSONList parseJSON parseJSONList
-    {-# INLINE parseJSONList #-}
 
 
 instance FromJSON1 Semigroup.WrappedMonoid where
     liftParseJSON p _ a = Semigroup.WrapMonoid <$> p a
-    {-# INLINE liftParseJSON #-}
 
     liftParseJSONList _ p a = fmap Semigroup.WrapMonoid <$> p a
-    {-# INLINE liftParseJSONList #-}
 
 instance (FromJSON a) => FromJSON (Semigroup.WrappedMonoid a) where
     parseJSON = parseJSON1
-    {-# INLINE parseJSON #-}
 
     parseJSONList = liftParseJSONList parseJSON parseJSONList
-    {-# INLINE parseJSONList #-}
 
 
 instance FromJSON1 Semigroup.Option where
     liftParseJSON p p' = fmap Semigroup.Option . liftParseJSON p p'
-    {-# INLINE liftParseJSON #-}
 
 instance FromJSON a => FromJSON (Semigroup.Option a) where
     parseJSON = parseJSON1
-    {-# INLINE parseJSON #-}
 
 -------------------------------------------------------------------------------
 -- data-fix
@@ -2334,11 +2243,9 @@ instance FromJSON1 S.Maybe where
 -------------------------------------------------------------------------------
 
 instance FromJSON1 Proxy where
-    {-# INLINE liftParseJSON #-}
     liftParseJSON _ _ = fromNull "Proxy" Proxy
 
 instance FromJSON (Proxy a) where
-    {-# INLINE parseJSON #-}
     parseJSON = fromNull "Proxy" Proxy
 
 fromNull :: String -> a -> Value -> Parser a
@@ -2347,15 +2254,12 @@ fromNull c _ v    = prependContext c (typeMismatch "Null" v)
 
 instance FromJSON2 Tagged where
     liftParseJSON2 _ _ p _ = fmap Tagged . p
-    {-# INLINE liftParseJSON2 #-}
 
 instance FromJSON1 (Tagged a) where
     liftParseJSON p _ = fmap Tagged . p
-    {-# INLINE liftParseJSON #-}
 
 instance FromJSON b => FromJSON (Tagged a b) where
     parseJSON = parseJSON1
-    {-# INLINE parseJSON #-}
 
 instance FromJSONKey b => FromJSONKey (Tagged a b) where
     fromJSONKey = coerceFromJSONKeyFunction (fromJSONKey :: FromJSONKeyFunction b)
@@ -2436,15 +2340,12 @@ instance FromJSON2 (,) where
                 <$> parseJSONElemAtIndex pA 0 t
                 <*> parseJSONElemAtIndex pB 1 t
             else fail $ "cannot unpack array of length " ++ show n ++ " into a tuple of length 2"
-    {-# INLINE liftParseJSON2 #-}
 
 instance (FromJSON a) => FromJSON1 ((,) a) where
     liftParseJSON = liftParseJSON2 parseJSON parseJSONList
-    {-# INLINE liftParseJSON #-}
 
 instance (FromJSON a, FromJSON b) => FromJSON (a, b) where
     parseJSON = parseJSON2
-    {-# INLINE parseJSON #-}
 
 
 instance (FromJSON a) => FromJSON2 ((,,) a) where
@@ -2456,15 +2357,12 @@ instance (FromJSON a) => FromJSON2 ((,,) a) where
                 <*> parseJSONElemAtIndex pB 1 t
                 <*> parseJSONElemAtIndex pC 2 t
             else fail $ "cannot unpack array of length " ++ show n ++ " into a tuple of length 3"
-    {-# INLINE liftParseJSON2 #-}
 
 instance (FromJSON a, FromJSON b) => FromJSON1 ((,,) a b) where
     liftParseJSON = liftParseJSON2 parseJSON parseJSONList
-    {-# INLINE liftParseJSON #-}
 
 instance (FromJSON a, FromJSON b, FromJSON c) => FromJSON (a, b, c) where
     parseJSON = parseJSON2
-    {-# INLINE parseJSON #-}
 
 
 instance (FromJSON a, FromJSON b) => FromJSON2 ((,,,) a b) where
@@ -2477,15 +2375,12 @@ instance (FromJSON a, FromJSON b) => FromJSON2 ((,,,) a b) where
                 <*> parseJSONElemAtIndex pC 2 t
                 <*> parseJSONElemAtIndex pD 3 t
             else fail $ "cannot unpack array of length " ++ show n ++ " into a tuple of length 4"
-    {-# INLINE liftParseJSON2 #-}
 
 instance (FromJSON a, FromJSON b, FromJSON c) => FromJSON1 ((,,,) a b c) where
     liftParseJSON = liftParseJSON2 parseJSON parseJSONList
-    {-# INLINE liftParseJSON #-}
 
 instance (FromJSON a, FromJSON b, FromJSON c, FromJSON d) => FromJSON (a, b, c, d) where
     parseJSON = parseJSON2
-    {-# INLINE parseJSON #-}
 
 
 instance (FromJSON a, FromJSON b, FromJSON c) => FromJSON2 ((,,,,) a b c) where
@@ -2499,15 +2394,12 @@ instance (FromJSON a, FromJSON b, FromJSON c) => FromJSON2 ((,,,,) a b c) where
                 <*> parseJSONElemAtIndex pD 3 t
                 <*> parseJSONElemAtIndex pE 4 t
             else fail $ "cannot unpack array of length " ++ show n ++ " into a tuple of length 5"
-    {-# INLINE liftParseJSON2 #-}
 
 instance (FromJSON a, FromJSON b, FromJSON c, FromJSON d) => FromJSON1 ((,,,,) a b c d) where
     liftParseJSON = liftParseJSON2 parseJSON parseJSONList
-    {-# INLINE liftParseJSON #-}
 
 instance (FromJSON a, FromJSON b, FromJSON c, FromJSON d, FromJSON e) => FromJSON (a, b, c, d, e) where
     parseJSON = parseJSON2
-    {-# INLINE parseJSON #-}
 
 
 instance (FromJSON a, FromJSON b, FromJSON c, FromJSON d) => FromJSON2 ((,,,,,) a b c d) where
@@ -2522,15 +2414,12 @@ instance (FromJSON a, FromJSON b, FromJSON c, FromJSON d) => FromJSON2 ((,,,,,) 
                 <*> parseJSONElemAtIndex pE 4 t
                 <*> parseJSONElemAtIndex pF 5 t
             else fail $ "cannot unpack array of length " ++ show n ++ " into a tuple of length 6"
-    {-# INLINE liftParseJSON2 #-}
 
 instance (FromJSON a, FromJSON b, FromJSON c, FromJSON d, FromJSON e) => FromJSON1 ((,,,,,) a b c d e) where
     liftParseJSON = liftParseJSON2 parseJSON parseJSONList
-    {-# INLINE liftParseJSON #-}
 
 instance (FromJSON a, FromJSON b, FromJSON c, FromJSON d, FromJSON e, FromJSON f) => FromJSON (a, b, c, d, e, f) where
     parseJSON = parseJSON2
-    {-# INLINE parseJSON #-}
 
 
 instance (FromJSON a, FromJSON b, FromJSON c, FromJSON d, FromJSON e) => FromJSON2 ((,,,,,,) a b c d e) where
@@ -2546,15 +2435,12 @@ instance (FromJSON a, FromJSON b, FromJSON c, FromJSON d, FromJSON e) => FromJSO
                 <*> parseJSONElemAtIndex pF 5 t
                 <*> parseJSONElemAtIndex pG 6 t
             else fail $ "cannot unpack array of length " ++ show n ++ " into a tuple of length 7"
-    {-# INLINE liftParseJSON2 #-}
 
 instance (FromJSON a, FromJSON b, FromJSON c, FromJSON d, FromJSON e, FromJSON f) => FromJSON1 ((,,,,,,) a b c d e f) where
     liftParseJSON = liftParseJSON2 parseJSON parseJSONList
-    {-# INLINE liftParseJSON #-}
 
 instance (FromJSON a, FromJSON b, FromJSON c, FromJSON d, FromJSON e, FromJSON f, FromJSON g) => FromJSON (a, b, c, d, e, f, g) where
     parseJSON = parseJSON2
-    {-# INLINE parseJSON #-}
 
 
 instance (FromJSON a, FromJSON b, FromJSON c, FromJSON d, FromJSON e, FromJSON f) => FromJSON2 ((,,,,,,,) a b c d e f) where
@@ -2571,15 +2457,12 @@ instance (FromJSON a, FromJSON b, FromJSON c, FromJSON d, FromJSON e, FromJSON f
                 <*> parseJSONElemAtIndex pG 6 t
                 <*> parseJSONElemAtIndex pH 7 t
             else fail $ "cannot unpack array of length " ++ show n ++ " into a tuple of length 8"
-    {-# INLINE liftParseJSON2 #-}
 
 instance (FromJSON a, FromJSON b, FromJSON c, FromJSON d, FromJSON e, FromJSON f, FromJSON g) => FromJSON1 ((,,,,,,,) a b c d e f g) where
     liftParseJSON = liftParseJSON2 parseJSON parseJSONList
-    {-# INLINE liftParseJSON #-}
 
 instance (FromJSON a, FromJSON b, FromJSON c, FromJSON d, FromJSON e, FromJSON f, FromJSON g, FromJSON h) => FromJSON (a, b, c, d, e, f, g, h) where
     parseJSON = parseJSON2
-    {-# INLINE parseJSON #-}
 
 
 instance (FromJSON a, FromJSON b, FromJSON c, FromJSON d, FromJSON e, FromJSON f, FromJSON g) => FromJSON2 ((,,,,,,,,) a b c d e f g) where
@@ -2597,15 +2480,12 @@ instance (FromJSON a, FromJSON b, FromJSON c, FromJSON d, FromJSON e, FromJSON f
                 <*> parseJSONElemAtIndex pH 7 t
                 <*> parseJSONElemAtIndex pI 8 t
             else fail $ "cannot unpack array of length " ++ show n ++ " into a tuple of length 9"
-    {-# INLINE liftParseJSON2 #-}
 
 instance (FromJSON a, FromJSON b, FromJSON c, FromJSON d, FromJSON e, FromJSON f, FromJSON g, FromJSON h) => FromJSON1 ((,,,,,,,,) a b c d e f g h) where
     liftParseJSON = liftParseJSON2 parseJSON parseJSONList
-    {-# INLINE liftParseJSON #-}
 
 instance (FromJSON a, FromJSON b, FromJSON c, FromJSON d, FromJSON e, FromJSON f, FromJSON g, FromJSON h, FromJSON i) => FromJSON (a, b, c, d, e, f, g, h, i) where
     parseJSON = parseJSON2
-    {-# INLINE parseJSON #-}
 
 
 instance (FromJSON a, FromJSON b, FromJSON c, FromJSON d, FromJSON e, FromJSON f, FromJSON g, FromJSON h) => FromJSON2 ((,,,,,,,,,) a b c d e f g h) where
@@ -2624,15 +2504,12 @@ instance (FromJSON a, FromJSON b, FromJSON c, FromJSON d, FromJSON e, FromJSON f
                 <*> parseJSONElemAtIndex pI 8 t
                 <*> parseJSONElemAtIndex pJ 9 t
             else fail $ "cannot unpack array of length " ++ show n ++ " into a tuple of length 10"
-    {-# INLINE liftParseJSON2 #-}
 
 instance (FromJSON a, FromJSON b, FromJSON c, FromJSON d, FromJSON e, FromJSON f, FromJSON g, FromJSON h, FromJSON i) => FromJSON1 ((,,,,,,,,,) a b c d e f g h i) where
     liftParseJSON = liftParseJSON2 parseJSON parseJSONList
-    {-# INLINE liftParseJSON #-}
 
 instance (FromJSON a, FromJSON b, FromJSON c, FromJSON d, FromJSON e, FromJSON f, FromJSON g, FromJSON h, FromJSON i, FromJSON j) => FromJSON (a, b, c, d, e, f, g, h, i, j) where
     parseJSON = parseJSON2
-    {-# INLINE parseJSON #-}
 
 
 instance (FromJSON a, FromJSON b, FromJSON c, FromJSON d, FromJSON e, FromJSON f, FromJSON g, FromJSON h, FromJSON i) => FromJSON2 ((,,,,,,,,,,) a b c d e f g h i) where
@@ -2652,15 +2529,12 @@ instance (FromJSON a, FromJSON b, FromJSON c, FromJSON d, FromJSON e, FromJSON f
                 <*> parseJSONElemAtIndex pJ 9 t
                 <*> parseJSONElemAtIndex pK 10 t
             else fail $ "cannot unpack array of length " ++ show n ++ " into a tuple of length 11"
-    {-# INLINE liftParseJSON2 #-}
 
 instance (FromJSON a, FromJSON b, FromJSON c, FromJSON d, FromJSON e, FromJSON f, FromJSON g, FromJSON h, FromJSON i, FromJSON j) => FromJSON1 ((,,,,,,,,,,) a b c d e f g h i j) where
     liftParseJSON = liftParseJSON2 parseJSON parseJSONList
-    {-# INLINE liftParseJSON #-}
 
 instance (FromJSON a, FromJSON b, FromJSON c, FromJSON d, FromJSON e, FromJSON f, FromJSON g, FromJSON h, FromJSON i, FromJSON j, FromJSON k) => FromJSON (a, b, c, d, e, f, g, h, i, j, k) where
     parseJSON = parseJSON2
-    {-# INLINE parseJSON #-}
 
 
 instance (FromJSON a, FromJSON b, FromJSON c, FromJSON d, FromJSON e, FromJSON f, FromJSON g, FromJSON h, FromJSON i, FromJSON j) => FromJSON2 ((,,,,,,,,,,,) a b c d e f g h i j) where
@@ -2681,15 +2555,12 @@ instance (FromJSON a, FromJSON b, FromJSON c, FromJSON d, FromJSON e, FromJSON f
                 <*> parseJSONElemAtIndex pK 10 t
                 <*> parseJSONElemAtIndex pL 11 t
             else fail $ "cannot unpack array of length " ++ show n ++ " into a tuple of length 12"
-    {-# INLINE liftParseJSON2 #-}
 
 instance (FromJSON a, FromJSON b, FromJSON c, FromJSON d, FromJSON e, FromJSON f, FromJSON g, FromJSON h, FromJSON i, FromJSON j, FromJSON k) => FromJSON1 ((,,,,,,,,,,,) a b c d e f g h i j k) where
     liftParseJSON = liftParseJSON2 parseJSON parseJSONList
-    {-# INLINE liftParseJSON #-}
 
 instance (FromJSON a, FromJSON b, FromJSON c, FromJSON d, FromJSON e, FromJSON f, FromJSON g, FromJSON h, FromJSON i, FromJSON j, FromJSON k, FromJSON l) => FromJSON (a, b, c, d, e, f, g, h, i, j, k, l) where
     parseJSON = parseJSON2
-    {-# INLINE parseJSON #-}
 
 
 instance (FromJSON a, FromJSON b, FromJSON c, FromJSON d, FromJSON e, FromJSON f, FromJSON g, FromJSON h, FromJSON i, FromJSON j, FromJSON k) => FromJSON2 ((,,,,,,,,,,,,) a b c d e f g h i j k) where
@@ -2711,15 +2582,12 @@ instance (FromJSON a, FromJSON b, FromJSON c, FromJSON d, FromJSON e, FromJSON f
                 <*> parseJSONElemAtIndex pL 11 t
                 <*> parseJSONElemAtIndex pM 12 t
             else fail $ "cannot unpack array of length " ++ show n ++ " into a tuple of length 13"
-    {-# INLINE liftParseJSON2 #-}
 
 instance (FromJSON a, FromJSON b, FromJSON c, FromJSON d, FromJSON e, FromJSON f, FromJSON g, FromJSON h, FromJSON i, FromJSON j, FromJSON k, FromJSON l) => FromJSON1 ((,,,,,,,,,,,,) a b c d e f g h i j k l) where
     liftParseJSON = liftParseJSON2 parseJSON parseJSONList
-    {-# INLINE liftParseJSON #-}
 
 instance (FromJSON a, FromJSON b, FromJSON c, FromJSON d, FromJSON e, FromJSON f, FromJSON g, FromJSON h, FromJSON i, FromJSON j, FromJSON k, FromJSON l, FromJSON m) => FromJSON (a, b, c, d, e, f, g, h, i, j, k, l, m) where
     parseJSON = parseJSON2
-    {-# INLINE parseJSON #-}
 
 
 instance (FromJSON a, FromJSON b, FromJSON c, FromJSON d, FromJSON e, FromJSON f, FromJSON g, FromJSON h, FromJSON i, FromJSON j, FromJSON k, FromJSON l) => FromJSON2 ((,,,,,,,,,,,,,) a b c d e f g h i j k l) where
@@ -2742,15 +2610,12 @@ instance (FromJSON a, FromJSON b, FromJSON c, FromJSON d, FromJSON e, FromJSON f
                 <*> parseJSONElemAtIndex pM 12 t
                 <*> parseJSONElemAtIndex pN 13 t
             else fail $ "cannot unpack array of length " ++ show n ++ " into a tuple of length 14"
-    {-# INLINE liftParseJSON2 #-}
 
 instance (FromJSON a, FromJSON b, FromJSON c, FromJSON d, FromJSON e, FromJSON f, FromJSON g, FromJSON h, FromJSON i, FromJSON j, FromJSON k, FromJSON l, FromJSON m) => FromJSON1 ((,,,,,,,,,,,,,) a b c d e f g h i j k l m) where
     liftParseJSON = liftParseJSON2 parseJSON parseJSONList
-    {-# INLINE liftParseJSON #-}
 
 instance (FromJSON a, FromJSON b, FromJSON c, FromJSON d, FromJSON e, FromJSON f, FromJSON g, FromJSON h, FromJSON i, FromJSON j, FromJSON k, FromJSON l, FromJSON m, FromJSON n) => FromJSON (a, b, c, d, e, f, g, h, i, j, k, l, m, n) where
     parseJSON = parseJSON2
-    {-# INLINE parseJSON #-}
 
 
 instance (FromJSON a, FromJSON b, FromJSON c, FromJSON d, FromJSON e, FromJSON f, FromJSON g, FromJSON h, FromJSON i, FromJSON j, FromJSON k, FromJSON l, FromJSON m) => FromJSON2 ((,,,,,,,,,,,,,,) a b c d e f g h i j k l m) where
@@ -2774,12 +2639,9 @@ instance (FromJSON a, FromJSON b, FromJSON c, FromJSON d, FromJSON e, FromJSON f
                 <*> parseJSONElemAtIndex pN 13 t
                 <*> parseJSONElemAtIndex pO 14 t
             else fail $ "cannot unpack array of length " ++ show n ++ " into a tuple of length 15"
-    {-# INLINE liftParseJSON2 #-}
 
 instance (FromJSON a, FromJSON b, FromJSON c, FromJSON d, FromJSON e, FromJSON f, FromJSON g, FromJSON h, FromJSON i, FromJSON j, FromJSON k, FromJSON l, FromJSON m, FromJSON n) => FromJSON1 ((,,,,,,,,,,,,,,) a b c d e f g h i j k l m n) where
     liftParseJSON = liftParseJSON2 parseJSON parseJSONList
-    {-# INLINE liftParseJSON #-}
 
 instance (FromJSON a, FromJSON b, FromJSON c, FromJSON d, FromJSON e, FromJSON f, FromJSON g, FromJSON h, FromJSON i, FromJSON j, FromJSON k, FromJSON l, FromJSON m, FromJSON n, FromJSON o) => FromJSON (a, b, c, d, e, f, g, h, i, j, k, l, m, n, o) where
     parseJSON = parseJSON2
-    {-# INLINE parseJSON #-}

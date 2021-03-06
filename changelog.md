@@ -1,5 +1,13 @@
 For the latest version of this document, please see [https://github.com/bos/aeson/blob/master/changelog.md](https://github.com/bos/aeson/blob/master/changelog.md).
 
+### 1.6.0.0
+
+* Remove forced `-O2` and then unneeded `fast` flag.
+  Also remove most of `INLINE` pragmas.
+  In the effect, `aeson` compiles almost twice as fast.
+
+  To get `fast` compilation effect cabal-install users may specify `optimization: False`.
+
 ### 1.5.6.0
 * Make `Show Value` instance print object keys in lexicographic order.
 

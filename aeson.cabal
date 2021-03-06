@@ -41,11 +41,6 @@ flag developer
   default: False
   manual: True
 
-flag fast
-  description: compile without optimizations
-  default: False
-  manual: True
-
 flag bytestring-builder
   description: Depend on the bytestring-builder package for backwards compatibility.
   default: False
@@ -149,11 +144,6 @@ library
     ghc-options: -Werror
     ghc-prof-options: -auto-all
 
-  if flag(fast)
-    ghc-options: -O0
-  else
-    ghc-options: -O2
-
   include-dirs: include
   if impl(ghcjs) || !flag(cffi)
     hs-source-dirs: src-pure
@@ -247,10 +237,6 @@ test-suite aeson-tests
   if !impl(ghc >= 7.10)
     build-depends: nats >=1 && <1.2,
                    void >=0.7.2 && <0.8
-
-
-  if flag(fast)
-    ghc-options: -fno-enable-rewrite-rules
 
 source-repository head
   type:     git
