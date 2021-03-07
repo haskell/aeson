@@ -169,6 +169,13 @@ class GToJSON' enc arity f where
     -- and 'liftToEncoding' (if the @arity@ is 'One').
     gToJSON :: Options -> ToArgs enc arity a -> f a -> enc
 
+-- | TODO
+class GToFieldJSON' enc arity f where
+    -- | TODO
+    --
+    -- This probably doesn't need opts nor ToArgs.
+    gToFieldJSON :: Options -> ToArgs enc arity a -> f a -> Maybe enc
+
 -- | A 'ToArgs' value either stores nothing (for 'ToJSON') or it stores the two
 -- function arguments that encode occurrences of the type parameter (for
 -- 'ToJSON1').
@@ -314,6 +321,12 @@ class ToJSON a where
     toEncoding :: a -> Encoding
     toEncoding = E.value . toJSON
     {-# INLINE toEncoding #-}
+
+    toFieldJSON :: a -> Maybe Value
+    toFieldJSON = Just . toJSON
+    
+    toFieldEncoding :: a -> Maybe Encoding
+    toFieldEncoding = Just . toEncoding
 
     toJSONList :: [a] -> Value
     toJSONList = listValue toJSON
@@ -761,11 +774,24 @@ instance ToJSON a => GToJSON' Value arity (K1 i a) where
     gToJSON _opts _ = toJSON . unK1
     {-# INLINE gToJSON #-}
 
+instance ToJSON a => GToFieldJSON' Value arity (K1 i a) where
+    -- Constant values are encoded using their ToJSON instance:
+    gToFieldJSON _opts _ = toFieldJSON . unK1
+    {-# INLINE gToFieldJSON #-}
+
 instance ToJSON1 f => GToJSON' Value One (Rec1 f) where
     -- Recursive occurrences of the last type parameter are encoded using their
     -- ToJSON1 instance:
     gToJSON _opts (To1Args tj tjl) = liftToJSON tj tjl . unRec1
     {-# INLINE gToJSON #-}
+
+instance ToJSON1 f => GToFieldJSON' Value One (Rec1 f) where
+    -- Recursive occurrences of the last type parameter are encoded using their
+    -- ToJSON1 instance:
+    --
+    -- TODO: add ember to ToJSON1
+    gToFieldJSON _opts (To1Args tj tjl) = Just . liftToJSON tj tjl . unRec1
+    {-# INLINE gToFieldJSON #-}
 
 instance GToJSON' Value arity U1 where
     -- Empty constructors are encoded to an empty array:
@@ -808,6 +834,20 @@ instance ToJSON a => GToJSON' Encoding arity (K1 i a) where
     -- Constant values are encoded using their ToJSON instance:
     gToJSON _opts _ = toEncoding . unK1
     {-# INLINE gToJSON #-}
+
+instance ToJSON a => GToFieldJSON' Encoding arity (K1 i a) where
+    -- Constant values are encoded using their ToJSON instance:
+    gToFieldJSON _opts _ = toFieldEncoding . unK1
+    {-# INLINE gToFieldJSON #-}
+
+instance ToJSON1 f => GToFieldJSON' Encoding One (Rec1 f) where
+    -- Recursive occurrences of the last type parameter are encoded using their
+    -- ToEncoding1 instance:
+    --
+    -- TODO: add ember to ToJSON1
+    gToFieldJSON _opts (To1Args te tel) = Just . liftToEncoding te tel . unRec1
+    {-# INLINE gToFieldJSON #-}
+
 
 instance ToJSON1 f => GToJSON' Encoding One (Rec1 f) where
     -- Recursive occurrences of the last type parameter are encoded using their
@@ -931,7 +971,7 @@ instance ( IsRecord                      a isRecord
     taggedObject opts targs tagFieldName contentsFieldName =
       fromPairs . mappend tag . contents
       where
-        tag = tagFieldName `pair`
+        tag = pair tagFieldName 
           (fromString (constructorTagModifier opts (conName (undefined :: t c a p)))
             :: enc)
         contents =
@@ -947,7 +987,7 @@ instance ( GToJSON' enc arity f
          ) => TaggedObject' enc pairs arity f False
   where
     taggedObject' opts targs contentsFieldName =
-        Tagged . (contentsFieldName `pair`) . gToJSON opts targs
+        Tagged . pair contentsFieldName . gToJSON opts targs
 
 instance OVERLAPPING_ Monoid pairs => TaggedObject' enc pairs arity U1 False where
     taggedObject' _ _ _ _ = Tagged mempty
@@ -1083,47 +1123,22 @@ instance ( Monoid pairs
     {-# INLINE recordToPairs #-}
 
 instance ( Selector s
-         , GToJSON' enc arity a
+         , GToFieldJSON' enc arity a
          , KeyValuePair enc pairs
          ) => RecordToPairs enc pairs arity (S1 s a)
   where
     recordToPairs = fieldToPair
     {-# INLINE recordToPairs #-}
 
-instance INCOHERENT_
-    ( Selector s
-    , GToJSON' enc arity (K1 i (Maybe a))
-    , KeyValuePair enc pairs
-    , Monoid pairs
-    ) => RecordToPairs enc pairs arity (S1 s (K1 i (Maybe a)))
-  where
-    recordToPairs opts _ (M1 k1) | omitNothingFields opts
-                                 , K1 Nothing <- k1 = mempty
-    recordToPairs opts targs m1 = fieldToPair opts targs m1
-    {-# INLINE recordToPairs #-}
-
-instance INCOHERENT_
-    ( Selector s
-    , GToJSON' enc arity (K1 i (Maybe a))
-    , KeyValuePair enc pairs
-    , Monoid pairs
-    ) => RecordToPairs enc pairs arity (S1 s (K1 i (Semigroup.Option a)))
-  where
-    recordToPairs opts targs = recordToPairs opts targs . unwrap
-      where
-        unwrap :: S1 s (K1 i (Semigroup.Option a)) p -> S1 s (K1 i (Maybe a)) p
-        unwrap (M1 (K1 (Semigroup.Option a))) = M1 (K1 a)
-    {-# INLINE recordToPairs #-}
-
 fieldToPair :: (Selector s
-               , GToJSON' enc arity a
+               , GToFieldJSON' enc arity a
                , KeyValuePair enc pairs)
             => Options -> ToArgs enc arity p
             -> S1 s a p -> pairs
 fieldToPair opts targs m1 =
   let key   = fieldLabelModifier opts (selName m1)
-      value = gToJSON opts targs (unM1 m1)
-  in key `pair` value
+      value = gToFieldJSON opts targs (unM1 m1)
+  in pair' (omitNothingFields opts) key value
 {-# INLINE fieldToPair #-}
 
 --------------------------------------------------------------------------------
@@ -1186,7 +1201,7 @@ instance ( GToJSON'   enc arity a
          ) => SumToJSON' ObjectWithSingleField enc arity (C1 c a)
   where
     sumToJSON' opts targs =
-      Tagged . fromPairs . (typ `pair`) . gToJSON opts targs
+      Tagged . fromPairs . pair typ . gToJSON opts targs
         where
           typ = constructorTagModifier opts $
                          conName (undefined :: t c a p)
@@ -1256,6 +1271,8 @@ instance (ToJSON a) => ToJSON (Maybe a) where
     toEncoding = toEncoding1
     {-# INLINE toEncoding #-}
 
+    toFieldJSON = (>>= toFieldJSON)
+    toFieldEncoding = (>>= toFieldEncoding)
 
 instance ToJSON2 Either where
     liftToJSON2  toA _ _toB _ (Left a)  = Object $ H.singleton "Left"  (toA a)
@@ -2286,6 +2303,9 @@ instance ToJSON a => ToJSON (Semigroup.Option a) where
     toEncoding = toEncoding1
     {-# INLINE toEncoding #-}
 
+    toFieldJSON = (>>= toFieldJSON) . Semigroup.getOption
+    toFieldEncoding = (>>= toFieldEncoding) . Semigroup.getOption
+
 -------------------------------------------------------------------------------
 -- data-fix
 -------------------------------------------------------------------------------
@@ -2358,6 +2378,9 @@ instance ToJSON a => ToJSON1 (S.Either a) where
 instance ToJSON a => ToJSON (S.Maybe a) where
     toJSON = toJSON . S.toLazy
     toEncoding = toEncoding . S.toLazy
+
+    toFieldJSON = (>>= toFieldJSON) . S.toLazy
+    toFieldEncoding = (>>= toFieldEncoding) . S.toLazy
 
 -- | @since 1.5.3.0
 instance ToJSON1 S.Maybe where
@@ -3037,10 +3060,19 @@ instance FromPairs Value (DList Pair) where
 -- ('Value' or 'Encoding'), and the result actually represents lists of pairs
 -- so it can be readily concatenated.
 class Monoid kv => KeyValuePair v kv where
+    -- softly deprecated
     pair :: String -> v -> kv
+    pair k v = pair' False k (Just v)
+
+    pair' :: Bool -> String -> Maybe v -> kv
+
 
 instance (v ~ Value) => KeyValuePair v (DList Pair) where
-    pair k v = DList.singleton (pack k .= v)
+    pair' True  _ Nothing  = DList.empty
+    pair' False k Nothing  = DList.singleton (pack k .= Null)
+    pair' _     k (Just v) = DList.singleton (pack k .= v)
 
 instance (e ~ Encoding) => KeyValuePair e Series where
-    pair = E.pairStr
+    pair' True  _ Nothing  = mempty
+    pair' False k Nothing  = E.pairStr k E.null_
+    pair' _     k (Just v) = E.pairStr k v
