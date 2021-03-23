@@ -1,5 +1,6 @@
 name:            attoparsec-iso8601
 version:         1.0.2.0
+x-revision:      1
 synopsis:        Parsing of ISO 8601 dates, originally from aeson.
 description:     Parsing of ISO 8601 dates, originally from aeson.
 license:         BSD3
@@ -36,7 +37,7 @@ library
     Data.Attoparsec.Time.Internal
     Data.Attoparsec.Time
   build-depends:
-    attoparsec >= 0.13.0.1 && < 0.14.0.0,
+    attoparsec >= 0.13.0.1 && < 0.15.0.0,
     base >= 4.7 && < 5,
     base-compat-batteries >= 0.10.0 && < 0.12,
     time-compat >= 1.9.4 && < 1.10,
