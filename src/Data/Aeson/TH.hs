@@ -163,7 +163,7 @@ import qualified Data.Vector.Mutable as VM (unsafeNew, unsafeWrite)
 -- | Generates both 'ToJSON' and 'FromJSON' instance declarations for the given
 -- data type or data family instance constructor.
 --
--- This is a convienience function which is equivalent to calling both
+-- This is a convenience function which is equivalent to calling both
 -- 'deriveToJSON' and 'deriveFromJSON'.
 deriveJSON :: Options
            -- ^ Encoding options.
@@ -176,7 +176,7 @@ deriveJSON = deriveJSONBoth deriveToJSON deriveFromJSON
 -- | Generates both 'ToJSON1' and 'FromJSON1' instance declarations for the given
 -- data type or data family instance constructor.
 --
--- This is a convienience function which is equivalent to calling both
+-- This is a convenience function which is equivalent to calling both
 -- 'deriveToJSON1' and 'deriveFromJSON1'.
 deriveJSON1 :: Options
             -- ^ Encoding options.
@@ -189,7 +189,7 @@ deriveJSON1 = deriveJSONBoth deriveToJSON1 deriveFromJSON1
 -- | Generates both 'ToJSON2' and 'FromJSON2' instance declarations for the given
 -- data type or data family instance constructor.
 --
--- This is a convienience function which is equivalent to calling both
+-- This is a convenience function which is equivalent to calling both
 -- 'deriveToJSON2' and 'deriveFromJSON2'.
 deriveJSON2 :: Options
             -- ^ Encoding options.
