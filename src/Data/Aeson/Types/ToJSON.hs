@@ -1102,6 +1102,7 @@ instance INCOHERENT_
     recordToPairs opts targs m1 = fieldToPair opts targs m1
     {-# INLINE recordToPairs #-}
 
+#if !MIN_VERSION_base(4,16,0)
 instance INCOHERENT_
     ( Selector s
     , GToJSON' enc arity (K1 i (Maybe a))
@@ -1114,6 +1115,7 @@ instance INCOHERENT_
         unwrap :: S1 s (K1 i (Semigroup.Option a)) p -> S1 s (K1 i (Maybe a)) p
         unwrap (M1 (K1 (Semigroup.Option a))) = M1 (K1 a)
     {-# INLINE recordToPairs #-}
+#endif
 
 fieldToPair :: (Selector s
                , GToJSON' enc arity a
@@ -2272,6 +2274,7 @@ instance ToJSON a => ToJSON (Semigroup.WrappedMonoid a) where
     {-# INLINE toEncoding #-}
 
 
+#if !MIN_VERSION_base(4,16,0)
 instance ToJSON1 Semigroup.Option where
     liftToJSON t to' = liftToJSON t to' . Semigroup.getOption
     {-# INLINE liftToJSON #-}
@@ -2285,6 +2288,7 @@ instance ToJSON a => ToJSON (Semigroup.Option a) where
 
     toEncoding = toEncoding1
     {-# INLINE toEncoding #-}
+#endif
 
 -------------------------------------------------------------------------------
 -- data-fix

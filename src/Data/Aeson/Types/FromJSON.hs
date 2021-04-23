@@ -1324,6 +1324,7 @@ instance INCOHERENT_ (Selector s, FromJSON a) =>
         label = fieldLabelModifier opts sname
         sname = selName (undefined :: M1 _i s _f _p)
 
+#if !MIN_VERSION_base(4,16,0)
 -- Parse an Option like a Maybe.
 instance INCOHERENT_ (Selector s, FromJSON a) =>
          RecordFromJSON' arity (S1 s (K1 i (Semigroup.Option a))) where
@@ -1331,6 +1332,8 @@ instance INCOHERENT_ (Selector s, FromJSON a) =>
       where
         wrap :: S1 s (K1 i (Maybe a)) p -> S1 s (K1 i (Semigroup.Option a)) p
         wrap (M1 (K1 a)) = M1 (K1 (Semigroup.Option a))
+    {-# INLINE recordParseJSON' #-}
+#endif
 
 --------------------------------------------------------------------------------
 
@@ -2256,14 +2259,18 @@ instance (FromJSON a) => FromJSON (Semigroup.WrappedMonoid a) where
     parseJSONList = liftParseJSONList parseJSON parseJSONList
     {-# INLINE parseJSONList #-}
 
-
+#if !MIN_VERSION_base(4,16,0)
 instance FromJSON1 Semigroup.Option where
     liftParseJSON p p' = fmap Semigroup.Option . liftParseJSON p p'
     {-# INLINE liftParseJSON #-}
 
 instance FromJSON a => FromJSON (Semigroup.Option a) where
     parseJSON = parseJSON1
+<<<<<<< HEAD
     {-# INLINE parseJSON #-}
+=======
+#endif
+>>>>>>> 996aa15 (Add some changes to support GHC-9.2 / base-4.16 (removal of Option))
 
 -------------------------------------------------------------------------------
 -- data-fix
