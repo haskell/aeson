@@ -150,7 +150,9 @@ import qualified Data.Foldable as F (all)
 import qualified Data.HashMap.Strict as H (difference, fromList, keys, lookup, toList)
 import qualified Data.List.NonEmpty as NE (length, reverse)
 import qualified Data.Map as M (fromList, keys, lookup , singleton, size)
+#if !MIN_VERSION_base(4,16,0)
 import qualified Data.Semigroup as Semigroup (Option(..))
+#endif
 import qualified Data.Set as Set (empty, insert, member)
 import qualified Data.Text as T (Text, pack, unpack)
 import qualified Data.Vector as V (unsafeIndex, null, length, create, empty)
@@ -475,8 +477,13 @@ argsToValue target jc tvMap opts multiCons
             restFields = mconcatE (map pureToPair rest)
 
             (maybes0, rest0) = partition isMaybe argCons
+#if MIN_VERSION_base(4,16,0)
+            maybes = maybes0
+            rest   = rest0
+#else
             (options, rest) = partition isOption rest0
             maybes = maybes0 ++ map optionToMaybe options
+#endif
 
             maybeToPair = toPairLifted True
             pureToPair = toPairLifted False
@@ -518,12 +525,14 @@ isMaybe :: (a, Type, b) -> Bool
 isMaybe (_, AppT (ConT t) _, _) = t == ''Maybe
 isMaybe _                       = False
 
+#if !MIN_VERSION_base(4,16,0)
 isOption :: (a, Type, b) -> Bool
 isOption (_, AppT (ConT t) _, _) = t == ''Semigroup.Option
 isOption _                       = False
 
 optionToMaybe :: (ExpQ, b, c) -> (ExpQ, b, c)
 optionToMaybe (a, b, c) = ([|Semigroup.getOption|] `appE` a, b, c)
+#endif
 
 (<^>) :: ExpQ -> ExpQ -> ExpQ
 (<^>) a b = infixApp a [|(E.><)|] b
@@ -1129,11 +1138,13 @@ instance OVERLAPPABLE_ LookupField a where
 
 instance INCOHERENT_ LookupField (Maybe a) where
     lookupField pj _ _ = parseOptionalFieldWith pj
-
+ 
+#if !MIN_VERSION_base(4,16,0)
 instance INCOHERENT_ LookupField (Semigroup.Option a) where
     lookupField pj tName rec obj key =
         fmap Semigroup.Option
              (lookupField (fmap Semigroup.getOption . pj) tName rec obj key)
+#endif
 
 lookupFieldWith :: (Value -> Parser a) -> String -> String
                 -> Object -> T.Text -> Parser a
