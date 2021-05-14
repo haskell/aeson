@@ -534,7 +534,7 @@ formatRelativePath path = format "" path
 type Pair = (Text, Value)
 
 -- | Create a 'Value' from a list of name\/value 'Pair's.  If duplicate
--- keys arise, earlier keys and their associated values win.
+-- keys arise, later keys and their associated values win.
 object :: [Pair] -> Value
 object = Object . H.fromList
 {-# INLINE object #-}
