@@ -25,7 +25,6 @@ import qualified Data.HashMap.Strict as HM
 
 import Data.Orphans ()
 import Test.QuickCheck.Instances ()
-import Data.Hashable.Time ()
 
 -- "System" types.
 
