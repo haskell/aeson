@@ -103,7 +103,7 @@ library
   -- Compat
   build-depends:
     base-compat-batteries >= 0.10.0   && < 0.12,
-    time-compat           >= 1.9.4    && < 1.10
+    time-compat           >= 1.9.6    && < 1.10
 
   if !impl(ghc >= 8.6)
     build-depends:
@@ -129,7 +129,7 @@ library
     dlist                >= 0.8.0.4  && < 1.1,
     hashable             >= 1.2.7.0  && < 1.4,
     primitive            >= 0.7.0.1  && < 0.8,
-    scientific           >= 0.3.6.2  && < 0.4,
+    scientific           >= 0.3.7.0  && < 0.4,
     strict               >= 0.4      && < 0.5,
     tagged               >= 0.8.6    && < 0.9,
     th-abstraction       >= 0.2.8.0  && < 0.5,
@@ -204,7 +204,6 @@ test-suite aeson-tests
     generic-deriving >= 1.10 && < 1.15,
     ghc-prim >= 0.2,
     hashable >= 1.2.4.0,
-    hashable-time >= 0.2.1 && <0.3,
     scientific,
     strict,
     tagged,
