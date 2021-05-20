@@ -2266,11 +2266,8 @@ instance FromJSON1 Semigroup.Option where
 
 instance FromJSON a => FromJSON (Semigroup.Option a) where
     parseJSON = parseJSON1
-<<<<<<< HEAD
     {-# INLINE parseJSON #-}
-=======
 #endif
->>>>>>> 996aa15 (Add some changes to support GHC-9.2 / base-4.16 (removal of Option))
 
 -------------------------------------------------------------------------------
 -- data-fix
