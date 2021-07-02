@@ -272,6 +272,7 @@ gFooParseJSONRejectUnknownFieldsTagged = genericParseJSON optsRejectUnknownField
 -- Option fields
 --------------------------------------------------------------------------------
 
+#if !MIN_VERSION_base(4,16,0)
 thOptionFieldToJSON :: OptionField -> Value
 thOptionFieldToJSON = $(mkToJSON optsOptionField 'OptionField)
 
@@ -289,6 +290,7 @@ gOptionFieldToEncoding = genericToEncoding optsOptionField
 
 gOptionFieldParseJSON :: Value -> Parser OptionField
 gOptionFieldParseJSON = genericParseJSON optsOptionField
+#endif
 
 thMaybeFieldToJSON :: MaybeField -> Value
 thMaybeFieldToJSON = $(mkToJSON optsOptionField 'MaybeField)
