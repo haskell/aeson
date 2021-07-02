@@ -5,13 +5,17 @@ module PropertyGeneric ( genericTests ) where
 
 import Prelude.Compat
 
+#if !MIN_VERSION_base(4,16,0)
 import Data.Semigroup (Option(..))
+#endif
 import Encoders
 import Instances ()
 import Test.Tasty (TestTree, testGroup)
 import Test.Tasty.QuickCheck (testProperty)
+#if !MIN_VERSION_base(4,16,0)
 import Test.QuickCheck ( (===) )
 import Types
+#endif
 import PropUtils
 
 
@@ -57,11 +61,13 @@ genericTests =
           , testProperty "Tagged"  (toParseJSON gOneConstructorParseJSONTagged  gOneConstructorToJSONTagged)
           ]
         ]
+#if !MIN_VERSION_base(4,16,0)
       , testGroup "OptionField" [
           testProperty "like Maybe" $
           \x -> gOptionFieldToJSON (OptionField (Option x)) === thMaybeFieldToJSON (MaybeField x)
         , testProperty "roundTrip" (toParseJSON gOptionFieldParseJSON gOptionFieldToJSON)
         ]
+#endif
       ]
     , testGroup "toEncoding" [
         testProperty "NullaryString" $
@@ -110,7 +116,9 @@ genericTests =
       , testProperty "OneConstructorTagged" $
         gOneConstructorToJSONTagged `sameAs` gOneConstructorToEncodingTagged
 
+#if !MIN_VERSION_base(4,16,0)
       , testProperty "OptionField" $
         gOptionFieldToJSON `sameAs` gOptionFieldToEncoding
+#endif
       ]
     ]
