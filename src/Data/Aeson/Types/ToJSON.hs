@@ -82,7 +82,7 @@ import Data.List (intersperse)
 import Data.List.NonEmpty (NonEmpty(..))
 import Data.Proxy (Proxy(..))
 import Data.Ratio (Ratio, denominator, numerator)
-import Data.Scientific (Scientific)
+import Data.Scientific (Scientific, fromRationalRepetendLimited)
 import Data.Tagged (Tagged(..))
 import Data.Text (Text, pack)
 import Data.These (These (..))
@@ -1326,15 +1326,19 @@ instance ToJSON Float where
 instance ToJSONKey Float where
     toJSONKey = toJSONKeyTextEnc E.floatText
 
-
 instance (ToJSON a, Integral a) => ToJSON (Ratio a) where
-    toJSON r = object [ "numerator"   .= numerator   r
-                      , "denominator" .= denominator r
-                      ]
+    toJSON r = case fromRationalRepetendLimited 20 (toRational r) of
+        Right (s, Nothing) -> toJSON s
+        _                  -> object
+            [ "numerator"   .= numerator   r
+            , "denominator" .= denominator r
+            ]
 
-    toEncoding r = E.pairs $
-        "numerator" .= numerator r <>
-        "denominator" .= denominator r
+    toEncoding r = case fromRationalRepetendLimited 20 (toRational r) of
+        Right (s, Nothing) -> toEncoding s
+        _                  -> E.pairs $
+            "numerator" .= numerator r <>
+            "denominator" .= denominator r
 
 
 instance HasResolution a => ToJSON (Fixed a) where
