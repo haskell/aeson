@@ -1801,7 +1801,7 @@ instance (FromJSON1 f, FromJSON1 g, FromJSON a) => FromJSON (Product f g a) wher
 instance (FromJSON1 f, FromJSON1 g) => FromJSON1 (Sum f g) where
     liftParseJSON p pl (Object (H.toList -> [(key, value)]))
         | key == inl = InL <$> liftParseJSON p pl value <?> Key inl
-        | key == inr = InR <$> liftParseJSON p pl value <?> Key inl
+        | key == inr = InR <$> liftParseJSON p pl value <?> Key inr
       where
         inl, inr :: Text
         inl = "InL"
