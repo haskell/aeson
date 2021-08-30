@@ -1,4 +1,4 @@
-branches: master aeson-1.4
+branches: master aeson-1.5
 cabal-check: False
 
 -- GADT docs
