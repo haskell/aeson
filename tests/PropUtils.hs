@@ -12,6 +12,7 @@ import Data.Aeson.Internal (IResult(..), formatError, ifromJSON, iparse)
 import qualified Data.Aeson.Internal as I
 import Data.Aeson.Parser (value)
 import Data.Aeson.Types
+import qualified Data.Aeson.KeyMap as KM
 import Data.HashMap.Strict (HashMap)
 import Data.Hashable (Hashable)
 import Data.Int (Int8)
@@ -178,8 +179,8 @@ is2ElemArray (Array v) = V.length v == 2 && isString (V.head v)
 is2ElemArray _         = False
 
 isTaggedObjectValue :: Value -> Bool
-isTaggedObjectValue (Object obj) = "tag"      `H.member` obj &&
-                                   "contents" `H.member` obj
+isTaggedObjectValue (Object obj) = "tag"      `KM.member` obj &&
+                                   "contents" `KM.member` obj
 isTaggedObjectValue _            = False
 
 isNullaryTaggedObject :: Value -> Bool
@@ -189,11 +190,11 @@ isTaggedObject :: Value -> Property
 isTaggedObject = checkValue isTaggedObject'
 
 isTaggedObject' :: Value -> Bool
-isTaggedObject' (Object obj) = "tag" `H.member` obj
+isTaggedObject' (Object obj) = "tag" `KM.member` obj
 isTaggedObject' _            = False
 
 isObjectWithSingleField :: Value -> Bool
-isObjectWithSingleField (Object obj) = H.size obj == 1
+isObjectWithSingleField (Object obj) = KM.size obj == 1
 isObjectWithSingleField _            = False
 
 -- | is untaggedValue of EitherTextInt
