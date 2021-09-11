@@ -8,6 +8,9 @@ For the latest version of this document, please see [https://github.com/haskell/
 
   To get `fast` compilation effect cabal-install users may specify `optimization: False`.
 
+* Make map type used by Object abstract so the underlying implementation can
+  be modified.
+
 ### 1.5.6.0
 * Make `Show Value` instance print object keys in lexicographic order.
 

@@ -122,6 +122,7 @@ import Numeric.Natural (Natural)
 import Text.ParserCombinators.ReadP (readP_to_S)
 import Unsafe.Coerce (unsafeCoerce)
 import qualified Data.Aeson.Parser.Time as Time
+import qualified Data.Aeson.TextMap as TM
 import qualified Data.Attoparsec.ByteString.Char8 as A (endOfInput, parseOnly, scientific)
 import qualified Data.ByteString.Lazy as L
 import qualified Data.DList as DList
@@ -225,7 +226,7 @@ parseBoundedIntegralText name t =
 parseOptionalFieldWith :: (Value -> Parser (Maybe a))
                        -> Object -> Text -> Parser (Maybe a)
 parseOptionalFieldWith pj obj key =
-    case H.lookup key obj of
+    case TM.lookup key obj of
      Nothing -> pure Nothing
      Just v  -> pj v <?> Key key
 
@@ -821,19 +822,19 @@ parseFieldMaybe' = (.:!)
 --
 -- E.g. @'explicitParseField' 'parseJSON1' :: ('FromJSON1' f, 'FromJSON' a) -> 'Object' -> 'Text' -> 'Parser' (f a)@
 explicitParseField :: (Value -> Parser a) -> Object -> Text -> Parser a
-explicitParseField p obj key = case H.lookup key obj of
+explicitParseField p obj key = case TM.lookup key obj of
     Nothing -> fail $ "key " ++ show key ++ " not found"
     Just v  -> p v <?> Key key
 
 -- | Variant of '.:?' with explicit parser function.
 explicitParseFieldMaybe :: (Value -> Parser a) -> Object -> Text -> Parser (Maybe a)
-explicitParseFieldMaybe p obj key = case H.lookup key obj of
+explicitParseFieldMaybe p obj key = case TM.lookup key obj of
     Nothing -> pure Nothing
     Just v  -> liftParseJSON p (listParser p) v <?> Key key -- listParser isn't used by maybe instance.
 
 -- | Variant of '.:!' with explicit parser function.
 explicitParseFieldMaybe' :: (Value -> Parser a) -> Object -> Text -> Parser (Maybe a)
-explicitParseFieldMaybe' p obj key = case H.lookup key obj of
+explicitParseFieldMaybe' p obj key = case TM.lookup key obj of
     Nothing -> pure Nothing
     Just v  -> Just <$> p v <?> Key key
 
@@ -1104,12 +1105,12 @@ parseNonAllNullarySum p@(tname :* opts :* _) =
           cnames_ = unTagged2 (constructorTags (constructorTagModifier opts) :: Tagged2 f [String])
 
       ObjectWithSingleField ->
-          withObject tname $ \obj -> case H.toList obj of
+          withObject tname $ \obj -> case TM.toList obj of
               [(tag, v)] -> maybe (badTag tag) (<?> Key tag) $
                   parsePair (tag :* p) v
               _ -> contextType tname . fail $
                   "expected an Object with a single pair, but found " ++
-                  show (H.size obj) ++ " pairs"
+                  show (TM.size obj) ++ " pairs"
         where
           badTag tag = failWith_ $ \cnames ->
               "expected an Object with a single pair where the tag is one of " ++
@@ -1281,15 +1282,15 @@ instance ( FieldNames f
     recordParseJSON (fromTaggedSum :* p@(cname :* tname :* opts :* _)) =
         \obj -> checkUnknown obj >> recordParseJSON' p obj
         where
-            knownFields :: H.HashMap Text ()
-            knownFields = H.fromList $ map ((,()) . pack) $
+            knownFields :: TM.TextMap ()
+            knownFields = TM.fromList $ map ((,()) . pack) $
                 [tagFieldName (sumEncoding opts) | fromTaggedSum] <>
                 (fieldLabelModifier opts <$> fieldNames (undefined :: f a) [])
 
             checkUnknown =
                 if not (rejectUnknownFields opts)
                 then \_ -> return ()
-                else \obj -> case H.keys (H.difference obj knownFields) of
+                else \obj -> case TM.keys (TM.difference obj knownFields) of
                     [] -> return ()
                     unknownFields -> contextCons cname tname $
                         fail ("unknown fields: " ++ show unknownFields)
@@ -1482,7 +1483,7 @@ instance (FromJSON a) => FromJSON (Maybe a) where
 
 
 instance FromJSON2 Either where
-    liftParseJSON2 pA _ pB _ (Object (H.toList -> [(key, value)]))
+    liftParseJSON2 pA _ pB _ (Object (TM.toList -> [(key, value)]))
         | key == left  = Left  <$> pA value <?> Key left
         | key == right = Right <$> pB value <?> Key right
       where
@@ -1799,7 +1800,7 @@ instance (FromJSON1 f, FromJSON1 g, FromJSON a) => FromJSON (Product f g a) wher
 
 
 instance (FromJSON1 f, FromJSON1 g) => FromJSON1 (Sum f g) where
-    liftParseJSON p pl (Object (H.toList -> [(key, value)]))
+    liftParseJSON p pl (Object (TM.toList -> [(key, value)]))
         | key == inl = InL <$> liftParseJSON p pl value <?> Key inl
         | key == inr = InR <$> liftParseJSON p pl value <?> Key inl
       where
@@ -1849,11 +1850,11 @@ instance FromJSON a => FromJSON (IntMap.IntMap a) where
 instance (FromJSONKey k, Ord k) => FromJSON1 (M.Map k) where
     liftParseJSON p _ = case fromJSONKey of
         FromJSONKeyCoerce -> withObject "Map" $
-            fmap (H.foldrWithKey (M.insert . unsafeCoerce) M.empty) . H.traverseWithKey (\k v -> p v <?> Key k)
+            fmap (TM.foldrWithKey (M.insert . unsafeCoerce) M.empty) . TM.traverseWithKey (\k v -> p v <?> Key k)
         FromJSONKeyText f -> withObject "Map" $
-            fmap (H.foldrWithKey (M.insert . f) M.empty) . H.traverseWithKey (\k v -> p v <?> Key k)
+            fmap (TM.foldrWithKey (M.insert . f) M.empty) . TM.traverseWithKey (\k v -> p v <?> Key k)
         FromJSONKeyTextParser f -> withObject "Map" $
-            H.foldrWithKey (\k v m -> M.insert <$> f k <?> Key k <*> p v <?> Key k <*> m) (pure M.empty)
+            TM.foldrWithKey (\k v m -> M.insert <$> f k <?> Key k <*> p v <?> Key k <*> m) (pure M.empty)
         FromJSONKeyValue f -> withArray "Map" $ \arr ->
             fmap M.fromList . Tr.sequence .
                 zipWith (parseIndexedJSONPair f p) [0..] . V.toList $ arr
@@ -1920,11 +1921,13 @@ instance (Eq a, Hashable a, FromJSON a) => FromJSON (HashSet.HashSet a) where
 instance (FromJSONKey k, Eq k, Hashable k) => FromJSON1 (H.HashMap k) where
     liftParseJSON p _ = case fromJSONKey of
         FromJSONKeyCoerce -> withObject "HashMap ~Text" $
-            uc . H.traverseWithKey (\k v -> p v <?> Key k)
+            uc . H.traverseWithKey (\k v -> p v <?> Key k) . TM.toHashMap
         FromJSONKeyText f -> withObject "HashMap" $
-            fmap (mapKey f) . H.traverseWithKey (\k v -> p v <?> Key k)
+            fmap (mapKey f) . H.traverseWithKey (\k v -> p v <?> Key k) . TM.toHashMap
         FromJSONKeyTextParser f -> withObject "HashMap" $
-            H.foldrWithKey (\k v m -> H.insert <$> f k <?> Key k <*> p v <?> Key k <*> m) (pure H.empty)
+          H.foldrWithKey
+            (\k v m -> H.insert <$> f k <?> Key k <*> p v <?> Key k <*> m) (pure H.empty)
+            . TM.toHashMap
         FromJSONKeyValue f -> withArray "Map" $ \arr ->
             fmap H.fromList . Tr.sequence .
                 zipWith (parseIndexedJSONPair f p) [0..] . V.toList $ arr
@@ -2274,7 +2277,7 @@ instance FromJSONKey b => FromJSONKey (Tagged a b) where
 
 -- | @since 1.5.1.0
 instance (FromJSON a, FromJSON b) => FromJSON (These a b) where
-    parseJSON = withObject "These a b" (p . H.toList)
+    parseJSON = withObject "These a b" (p . TM.toList)
       where
         p [("This", a), ("That", b)] = These <$> parseJSON a <*> parseJSON b
         p [("That", b), ("This", a)] = These <$> parseJSON a <*> parseJSON b
@@ -2284,7 +2287,7 @@ instance (FromJSON a, FromJSON b) => FromJSON (These a b) where
 
 -- | @since 1.5.1.0
 instance FromJSON a => FromJSON1 (These a) where
-    liftParseJSON pb _ = withObject "These a b" (p . H.toList)
+    liftParseJSON pb _ = withObject "These a b" (p . TM.toList)
       where
         p [("This", a), ("That", b)] = These <$> parseJSON a <*> pb b
         p [("That", b), ("This", a)] = These <$> parseJSON a <*> pb b
@@ -2294,7 +2297,7 @@ instance FromJSON a => FromJSON1 (These a) where
 
 -- | @since 1.5.1.0
 instance FromJSON2 These where
-    liftParseJSON2 pa _ pb _ = withObject "These a b" (p . H.toList)
+    liftParseJSON2 pa _ pb _ = withObject "These a b" (p . TM.toList)
       where
         p [("This", a), ("That", b)] = These <$> pa a <*> pb b
         p [("That", b), ("This", a)] = These <$> pa a <*> pb b
@@ -2304,7 +2307,7 @@ instance FromJSON2 These where
 
 -- | @since 1.5.1.0
 instance (FromJSON1 f, FromJSON1 g) => FromJSON1 (These1 f g) where
-    liftParseJSON px pl = withObject "These1" (p . H.toList)
+    liftParseJSON px pl = withObject "These1" (p . TM.toList)
       where
         p [("This", a), ("That", b)] = These1 <$> liftParseJSON px pl a <*> liftParseJSON px pl b
         p [("That", b), ("This", a)] = These1 <$> liftParseJSON px pl a <*> liftParseJSON px pl b

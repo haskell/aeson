@@ -63,9 +63,10 @@ import Control.Applicative (Const(..))
 import Control.Monad.ST (ST)
 import Data.Aeson.Encoding (Encoding, Encoding', Series, dict, emptyArray_)
 import Data.Aeson.Encoding.Internal ((>*<))
-import Data.Aeson.Internal.Functions (mapHashKeyVal, mapKeyVal)
+import Data.Aeson.Internal.Functions (mapTextKeyVal, mapKeyVal)
 import Data.Aeson.Types.Generic (AllNullary, False, IsRecord, One, ProductSize, Tagged2(..), True, Zero, productSize)
 import Data.Aeson.Types.Internal
+import qualified Data.Aeson.TextMap as TM
 import Data.Attoparsec.Number (Number(..))
 import Data.Bits (unsafeShiftR)
 import Data.DList (DList)
@@ -335,11 +336,11 @@ instance KeyValue Pair where
     name .= value = (name, toJSON value)
     {-# INLINE (.=) #-}
 
--- | Constructs a singleton 'H.HashMap'. For calling functions that
+-- | Constructs a singleton 'TM.TextMap'. For calling functions that
 --   demand an 'Object' for constructing objects. To be used in
 --   conjunction with 'mconcat'. Prefer to use 'object' where possible.
 instance KeyValue Object where
-    name .= value = H.singleton name (toJSON value)
+    name .= value = TM.singleton name (toJSON value)
     {-# INLINE (.=) #-}
 
 -------------------------------------------------------------------------------
@@ -1254,8 +1255,8 @@ instance (ToJSON a) => ToJSON (Maybe a) where
 
 
 instance ToJSON2 Either where
-    liftToJSON2  toA _ _toB _ (Left a)  = Object $ H.singleton "Left"  (toA a)
-    liftToJSON2 _toA _  toB _ (Right b) = Object $ H.singleton "Right" (toB b)
+    liftToJSON2  toA _ _toB _ (Left a)  = Object $ TM.singleton "Left"  (toA a)
+    liftToJSON2 _toA _  toB _ (Right b) = Object $ TM.singleton "Right" (toB b)
 
     liftToEncoding2  toA _ _toB _ (Left a) = E.pairs $ E.pair "Left" $ toA a
     liftToEncoding2 _toA _ toB _ (Right b) = E.pairs $ E.pair "Right" $ toB b
@@ -1583,8 +1584,8 @@ instance (ToJSON1 f, ToJSON1 g, ToJSON a) => ToJSON (Product f g a) where
     toEncoding = toEncoding1
 
 instance (ToJSON1 f, ToJSON1 g) => ToJSON1 (Sum f g) where
-    liftToJSON tv tvl (InL x) = Object $ H.singleton "InL" (liftToJSON tv tvl x)
-    liftToJSON tv tvl (InR y) = Object $ H.singleton "InR" (liftToJSON tv tvl y)
+    liftToJSON tv tvl (InL x) = Object $ TM.singleton "InL" (liftToJSON tv tvl x)
+    liftToJSON tv tvl (InR y) = Object $ TM.singleton "InR" (liftToJSON tv tvl y)
 
     liftToEncoding te tel (InL x) = E.pairs $ E.pair "InL" $ liftToEncoding te tel x
     liftToEncoding te tel (InR y) = E.pairs $ E.pair "InR" $ liftToEncoding te tel y
@@ -1638,7 +1639,7 @@ instance ToJSON a => ToJSON (IntMap.IntMap a) where
 
 instance ToJSONKey k => ToJSON1 (M.Map k) where
     liftToJSON g _ = case toJSONKey of
-        ToJSONKeyText f _ -> Object . mapHashKeyVal f g
+        ToJSONKeyText f _ -> Object . mapTextKeyVal f g
         ToJSONKeyValue  f _ -> Array . V.fromList . map (toJSONPair f g) . M.toList
 
     liftToEncoding g _ = case toJSONKey of
@@ -1737,10 +1738,11 @@ instance (ToJSON a) => ToJSON (HashSet.HashSet a) where
 
 instance ToJSONKey k => ToJSON1 (H.HashMap k) where
     liftToJSON g _ = case toJSONKey of
-        ToJSONKeyText f _ -> Object . mapKeyVal f g
-        ToJSONKeyValue f _ -> Array . V.fromList . map (toJSONPair f g) . H.toList
+        ToJSONKeyText f _ -> Object . TM.fromHashMap . mapKeyVal f g
+        ToJSONKeyValue f _
+          -> Array . V.fromList . map (toJSONPair f g) . H.toList
 
-    -- liftToEncoding :: forall a. (a -> Encoding) -> ([a] -> Encoding) -> H.HashMap k a -> Encoding
+    -- liftToEncoding :: forall a. (a -> Encoding) -> ([a] -> Encoding) -> TM.HashMap k a -> Encoding
     liftToEncoding g _ = case toJSONKey of
         ToJSONKeyText _ f -> dict f g H.foldrWithKey
         ToJSONKeyValue _ f -> listEncoding (pairEncoding f) . H.toList
@@ -1748,6 +1750,20 @@ instance ToJSONKey k => ToJSON1 (H.HashMap k) where
         pairEncoding f (a, b) = E.list id [f a, g b]
 
 instance (ToJSON v, ToJSONKey k) => ToJSON (H.HashMap k v) where
+    toJSON = toJSON1
+    toEncoding = toEncoding1
+
+-------------------------------------------------------------------------------
+-- Data.Aeson.TextMap
+-------------------------------------------------------------------------------
+
+instance ToJSON1 TM.TextMap where
+    liftToJSON g _ = Object . fmap g
+
+    -- liftToEncoding :: forall a. (a -> Encoding) -> ([a] -> Encoding) -> TM.TextMap a -> Encoding
+    liftToEncoding g _ = dict E.text g TM.foldrWithKey
+
+instance (ToJSON v) => ToJSON (TM.TextMap v) where
     {-# SPECIALIZE instance ToJSON Object #-}
 
     toJSON = toJSON1

@@ -86,16 +86,13 @@ module Data.Aeson.Types.Internal
 import Prelude.Compat
 
 import Control.Applicative (Alternative(..))
-import Control.Arrow (first)
 import Control.DeepSeq (NFData(..))
 import Control.Monad (MonadPlus(..), ap)
 import Data.Char (isLower, isUpper, toLower, isAlpha, isAlphaNum)
 import Data.Data (Data)
 import Data.Foldable (foldl')
-import Data.HashMap.Strict (HashMap)
 import Data.Hashable (Hashable(..))
-import Data.List (intercalate, sortBy)
-import Data.Ord (comparing)
+import Data.List (intercalate)
 import Data.Scientific (Scientific)
 import Data.String (IsString(..))
 import Data.Text (Text, pack, unpack)
@@ -104,12 +101,13 @@ import Data.Time.Format (FormatTime)
 import Data.Typeable (Typeable)
 import Data.Vector (Vector)
 import GHC.Generics (Generic)
+import Data.Aeson.TextMap (TextMap)
 import qualified Control.Monad as Monad
 import qualified Control.Monad.Fail as Fail
-import qualified Data.HashMap.Strict as H
 import qualified Data.Scientific as S
 import qualified Data.Vector as V
 import qualified Language.Haskell.TH.Syntax as TH
+import qualified Data.Aeson.TextMap as TM
 
 -- | Elements of a JSON path used to describe the location of an
 -- error.
@@ -351,7 +349,7 @@ apP d e = do
 {-# INLINE apP #-}
 
 -- | A JSON \"object\" (key\/value map).
-type Object = HashMap Text Value
+type Object = TextMap Value
 
 -- | A JSON \"array\" (sequence).
 type Array = Vector Value
@@ -385,7 +383,7 @@ instance Show Value where
         $ showString "Array " . showsPrec 11 xs
     showsPrec d (Object xs) = showParen (d > 10)
         $ showString "Object (fromList "
-        . showsPrec 11 (sortBy (comparing fst) (H.toList xs))
+        . showsPrec 11 (TM.toAscList xs)
         . showChar ')'
 
 -- |
@@ -445,8 +443,7 @@ instance TH.Lift Value where
       where s = unpack t
     lift (Array a)  = [| Array (V.fromList a') |]
       where a' = V.toList a
-    lift (Object o) = [| Object (H.fromList . map (first pack) $ o') |]
-      where o' = map (first unpack) . H.toList $ o
+    lift (Object o) = [| Object o |]
 
 #if MIN_VERSION_template_haskell(2,17,0)
     liftTyped = TH.unsafeCodeCoerce . TH.lift
@@ -466,7 +463,7 @@ isEmptyArray _ = False
 
 -- | The empty object.
 emptyObject :: Value
-emptyObject = Object H.empty
+emptyObject = Object TM.empty
 
 -- | Run a 'Parser'.
 parse :: (a -> Parser b) -> a -> Result b
@@ -534,7 +531,7 @@ type Pair = (Text, Value)
 -- | Create a 'Value' from a list of name\/value 'Pair's.  If duplicate
 -- keys arise, later keys and their associated values win.
 object :: [Pair] -> Value
-object = Object . H.fromList
+object = Object . TM.fromList
 {-# INLINE object #-}
 
 -- | Add JSON Path context to a parser

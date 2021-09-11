@@ -68,6 +68,7 @@ library
     Data.Aeson.Internal
     Data.Aeson.Internal.Time
     Data.Aeson.Parser.Internal
+    Data.Aeson.TextMap
 
   -- Deprecated modules
   exposed-modules:

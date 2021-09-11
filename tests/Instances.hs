@@ -13,6 +13,7 @@ import Prelude.Compat
 import Control.Applicative (empty)
 import Control.Monad
 import Data.Aeson.Types
+import qualified Data.Aeson.TextMap as TM
 import Data.Function (on)
 import Data.Time (ZonedTime(..), TimeZone(..))
 import Data.Time.Clock (UTCTime(..))
@@ -22,6 +23,7 @@ import Types
 import qualified Data.DList as DList
 import qualified Data.Vector as V
 import qualified Data.HashMap.Strict as HM
+
 
 import Data.Orphans ()
 import Test.QuickCheck.Instances ()
@@ -185,7 +187,7 @@ instance Arbitrary Value where
 
         obj n = do
             pars <- arbPartition (n - 1)
-            fmap (Object . HM.fromList) (traverse pair pars)
+            fmap (Object . TM.fromList) (traverse pair pars)
 
         pair n = do
             k <- arbitrary

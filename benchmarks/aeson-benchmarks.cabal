@@ -83,6 +83,7 @@ library
     Data.Aeson.Parser.UnescapeFFI
     Data.Aeson.Parser.UnescapePure
     Data.Aeson.Text
+    Data.Aeson.TextMap
     Data.Aeson.TH
     Data.Aeson.Types
     Data.Aeson.Types.Class

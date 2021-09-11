@@ -38,6 +38,8 @@ import Data.Aeson.Types
   ( Options(..), Result(Success, Error), ToJSON(..)
   , Value(Array, Bool, Null, Number, Object, String), camelTo, camelTo2
   , defaultOptions, formatPath, formatRelativePath, omitNothingFields, parse)
+import qualified Data.Aeson.TextMap as TM
+import Data.Text (pack)
 import Data.Attoparsec.ByteString (Parser, parseOnly)
 import Data.Char (toUpper)
 import Data.Either.Compat (isLeft, isRight)
@@ -624,26 +626,26 @@ keyOrdering :: [TestTree]
 keyOrdering =
   [ testParser "json" json
       "{\"k\":true,\"k\":false}" $
-      Right (Object (HashMap.fromList [("k", Bool True)]))
+      Right (Object (TM.fromList [("k", Bool True)]))
   , testParser "jsonLast" jsonLast
       "{\"k\":true,\"k\":false}" $
-      Right (Object (HashMap.fromList [("k", Bool False)]))
+      Right (Object (TM.fromList [("k", Bool False)]))
   , testParser "jsonAccum" jsonAccum
       "{\"k\":true,\"k\":false}" $
-      Right (Object (HashMap.fromList [("k", Array (Vector.fromList [Bool True, Bool False]))]))
+      Right (Object (TM.fromList [("k", Array (Vector.fromList [Bool True, Bool False]))]))
   , testParser "jsonNoDup" jsonNoDup
       "{\"k\":true,\"k\":false}" $
       Left "Failed reading: found duplicate key: \"k\""
 
   , testParser "json'" json'
       "{\"k\":true,\"k\":false}" $
-      Right (Object (HashMap.fromList [("k", Bool True)]))
+      Right (Object (TM.fromList [("k", Bool True)]))
   , testParser "jsonLast'" jsonLast'
       "{\"k\":true,\"k\":false}" $
-      Right (Object (HashMap.fromList [("k", Bool False)]))
+      Right (Object (TM.fromList [("k", Bool False)]))
   , testParser "jsonAccum'" jsonAccum'
       "{\"k\":true,\"k\":false}" $
-      Right (Object (HashMap.fromList [("k", Array (Vector.fromList [Bool True, Bool False]))]))
+      Right (Object (TM.fromList [("k", Array (Vector.fromList [Bool True, Bool False]))]))
   , testParser "jsonNoDup'" jsonNoDup'
       "{\"k\":true,\"k\":false}" $
       Left "Failed reading: found duplicate key: \"k\""
