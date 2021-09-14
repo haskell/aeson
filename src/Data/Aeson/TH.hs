@@ -128,6 +128,7 @@ import Data.Aeson.Types (Options(..), Parser, SumEncoding(..), Value(..), defaul
 import Data.Aeson.Types.Internal ((<?>), JSONPathElement(Key))
 import Data.Aeson.Types.FromJSON (parseOptionalFieldWith)
 import Data.Aeson.Types.ToJSON (fromPairs, pair)
+import qualified Data.Aeson.KeyMap as KM
 import Control.Monad (liftM2, unless, when)
 import Data.Foldable (foldr')
 #if MIN_VERSION_template_haskell(2,8,0) && !MIN_VERSION_template_haskell(2,10,0)
@@ -147,7 +148,6 @@ import Language.Haskell.TH.Syntax (mkNameG_tc)
 import Text.Printf (printf)
 import qualified Data.Aeson.Encoding.Internal as E
 import qualified Data.Foldable as F (all)
-import qualified Data.HashMap.Strict as H (difference, fromList, keys, lookup, toList)
 import qualified Data.List.NonEmpty as NE (length, reverse)
 import qualified Data.Map as M (fromList, keys, lookup , singleton, size)
 #if !MIN_VERSION_base(4,16,0)
@@ -849,7 +849,7 @@ consFromJSON jc tName opts instTys cons = do
     parseObjectWithSingleField tvMap obj = do
       conKey <- newName "conKey"
       conVal <- newName "conVal"
-      caseE ([e|H.toList|] `appE` varE obj)
+      caseE ([e|KM.toList|] `appE` varE obj)
             [ match (listP [tupP [varP conKey, varP conVal]])
                     (normalB $ parseContents tvMap conKey (Right conVal) 'conNotFoundFailObjectSingleField)
                     []
@@ -947,11 +947,11 @@ parseRecord jc tvMap argTys opts tName conName fields obj inTaggedObject =
     where
       tagFieldNameAppender =
           if inTaggedObject then (tagFieldName (sumEncoding opts) :) else id
-      knownFields = appE [|H.fromList|] $ listE $
+      knownFields = appE [|KM.fromList|] $ listE $
           map (\knownName -> tupE [appE [|T.pack|] $ litE $ stringL knownName, [|()|]]) $
               tagFieldNameAppender $ map (fieldLabel opts) fields
       checkUnknownRecords =
-          caseE (appE [|H.keys|] $ infixApp (varE obj) [|H.difference|] knownFields)
+          caseE (appE [|KM.keys|] $ infixApp (varE obj) [|KM.difference|] knownFields)
               [ match (listP []) (normalB [|return ()|]) []
               , newName "unknownFields" >>=
                   \unknownFields -> match (varP unknownFields)
@@ -1149,7 +1149,7 @@ instance INCOHERENT_ LookupField (Semigroup.Option a) where
 lookupFieldWith :: (Value -> Parser a) -> String -> String
                 -> Object -> T.Text -> Parser a
 lookupFieldWith pj tName rec obj key =
-    case H.lookup key obj of
+    case KM.lookup key obj of
       Nothing -> unknownFieldFail tName rec (T.unpack key)
       Just v  -> pj v <?> Key key
 

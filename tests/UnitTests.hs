@@ -38,6 +38,7 @@ import Data.Aeson.Types
   ( Options(..), Result(Success, Error), ToJSON(..)
   , Value(Array, Bool, Null, Number, Object, String), camelTo, camelTo2
   , defaultOptions, formatPath, formatRelativePath, omitNothingFields, parse)
+import qualified Data.Aeson.KeyMap as KM
 import Data.Attoparsec.ByteString (Parser, parseOnly)
 import Data.Char (toUpper)
 import Data.Either.Compat (isLeft, isRight)
@@ -63,7 +64,6 @@ import qualified Data.ByteString as S
 import qualified Data.ByteString.Base16.Lazy as LBase16
 import qualified Data.ByteString.Lazy.Char8 as L
 import qualified Data.HashSet as HashSet
-import qualified Data.HashMap.Lazy as HashMap
 import qualified Data.Text.Lazy as LT
 import qualified Data.Text.Lazy.Builder as TLB
 import qualified Data.Text.Lazy.Encoding as LT
@@ -624,26 +624,26 @@ keyOrdering :: [TestTree]
 keyOrdering =
   [ testParser "json" json
       "{\"k\":true,\"k\":false}" $
-      Right (Object (HashMap.fromList [("k", Bool True)]))
+      Right (Object (KM.fromList [("k", Bool True)]))
   , testParser "jsonLast" jsonLast
       "{\"k\":true,\"k\":false}" $
-      Right (Object (HashMap.fromList [("k", Bool False)]))
+      Right (Object (KM.fromList [("k", Bool False)]))
   , testParser "jsonAccum" jsonAccum
       "{\"k\":true,\"k\":false}" $
-      Right (Object (HashMap.fromList [("k", Array (Vector.fromList [Bool True, Bool False]))]))
+      Right (Object (KM.fromList [("k", Array (Vector.fromList [Bool True, Bool False]))]))
   , testParser "jsonNoDup" jsonNoDup
       "{\"k\":true,\"k\":false}" $
       Left "Failed reading: found duplicate key: \"k\""
 
   , testParser "json'" json'
       "{\"k\":true,\"k\":false}" $
-      Right (Object (HashMap.fromList [("k", Bool True)]))
+      Right (Object (KM.fromList [("k", Bool True)]))
   , testParser "jsonLast'" jsonLast'
       "{\"k\":true,\"k\":false}" $
-      Right (Object (HashMap.fromList [("k", Bool False)]))
+      Right (Object (KM.fromList [("k", Bool False)]))
   , testParser "jsonAccum'" jsonAccum'
       "{\"k\":true,\"k\":false}" $
-      Right (Object (HashMap.fromList [("k", Array (Vector.fromList [Bool True, Bool False]))]))
+      Right (Object (KM.fromList [("k", Array (Vector.fromList [Bool True, Bool False]))]))
   , testParser "jsonNoDup'" jsonNoDup'
       "{\"k\":true,\"k\":false}" $
       Left "Failed reading: found duplicate key: \"k\""
