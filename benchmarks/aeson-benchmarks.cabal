@@ -32,9 +32,11 @@ library
     , dlist
     , ghc-prim
     , hashable
+    , indexed-traversable
     , mtl
     , primitive
     , scientific
+    , semialign
     , strict
     , syb
     , tagged
@@ -48,6 +50,9 @@ library
     , unordered-containers
     , uuid-types
     , vector
+
+  if impl(ghc >=8.0)
+    build-depends: witherable
 
   if !impl(ghc >=8.6)
     build-depends: contravariant
