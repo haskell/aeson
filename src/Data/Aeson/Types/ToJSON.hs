@@ -66,6 +66,7 @@ import Data.Aeson.Encoding.Internal ((>*<))
 import Data.Aeson.Internal.Functions (mapTextKeyVal, mapKeyVal)
 import Data.Aeson.Types.Generic (AllNullary, False, IsRecord, One, ProductSize, Tagged2(..), True, Zero, productSize)
 import Data.Aeson.Types.Internal
+import qualified Data.Aeson.Key as Key
 import qualified Data.Aeson.KeyMap as TM
 import Data.Attoparsec.Number (Number(..))
 import Data.Bits (unsafeShiftR)
@@ -103,7 +104,7 @@ import Foreign.C.Types (CTime (..))
 import GHC.Generics
 import Numeric.Natural (Natural)
 import qualified Data.Aeson.Encoding as E
-import qualified Data.Aeson.Encoding.Internal as E (InArray, comma, econcat, retagEncoding)
+import qualified Data.Aeson.Encoding.Internal as E (InArray, comma, econcat, retagEncoding, key)
 import qualified Data.ByteString.Lazy as L
 import qualified Data.DList as DList
 #if MIN_VERSION_dlist(1,0,0) && __GLASGOW_HASKELL__ >=800
@@ -325,7 +326,7 @@ class ToJSON a where
 
 -- | A key-value pair for encoding a JSON object.
 class KeyValue kv where
-    (.=) :: ToJSON v => Text -> v -> kv
+    (.=) :: ToJSON v => Key -> v -> kv
     infixr 8 .=
 
 instance KeyValue Series where
@@ -478,7 +479,7 @@ class ToJSONKey a where
     toJSONKeyList = ToJSONKeyValue toJSON toEncoding
 
 data ToJSONKeyFunction a
-    = ToJSONKeyText !(a -> Text) !(a -> Encoding' Text)
+    = ToJSONKeyText !(a -> Key) !(a -> Encoding' Key)
       -- ^ key is encoded to string, produces object
     | ToJSONKeyValue !(a -> Value) !(a -> Encoding)
       -- ^ key is encoded to value, produces array
@@ -491,15 +492,16 @@ data ToJSONKeyFunction a
 --       where
 --         myKeyToText = Text.pack . show -- or showt from text-show
 -- @
-toJSONKeyText :: (a -> Text) -> ToJSONKeyFunction a
-toJSONKeyText f = ToJSONKeyText f (E.text . f)
+toJSONKeyText :: (a -> Key) -> ToJSONKeyFunction a
+toJSONKeyText f = ToJSONKeyText f (E.key . f)
 
 -- | TODO: should this be exported?
-toJSONKeyTextEnc :: (a -> Encoding' Text) -> ToJSONKeyFunction a
+toJSONKeyTextEnc :: (a -> Encoding' Key) -> ToJSONKeyFunction a
 toJSONKeyTextEnc e = ToJSONKeyText tot e
  where
     -- TODO: dropAround is also used in stringEncoding, which is unfortunate atm
-    tot = T.dropAround (== '"')
+    tot = Key.fromText
+        . T.dropAround (== '"')
         . T.decodeLatin1
         . L.toStrict
         . E.encodingToLazyByteString
@@ -532,7 +534,7 @@ contramapToJSONKeyFunction h x = case x of
 -- @
 genericToJSONKey :: (Generic a, GToJSONKey (Rep a))
            => JSONKeyOptions -> ToJSONKeyFunction a
-genericToJSONKey opts = toJSONKeyText (pack . keyModifier opts . getConName . from)
+genericToJSONKey opts = toJSONKeyText (Key.fromString . keyModifier opts . getConName . from)
 
 class    GetConName f => GToJSONKey f
 instance GetConName f => GToJSONKey f
@@ -873,7 +875,7 @@ nonAllNullarySumToJSON opts targs =
     case sumEncoding opts of
 
       TaggedObject{..}      ->
-        taggedObject opts targs tagFieldName contentsFieldName
+        taggedObject opts targs (Key.fromString tagFieldName) (Key.fromString contentsFieldName)
 
       ObjectWithSingleField ->
         (unTagged :: Tagged ObjectWithSingleField enc -> enc)
@@ -903,7 +905,7 @@ instance FromString Value where
 
 class TaggedObject enc arity f where
     taggedObject :: Options -> ToArgs enc arity a
-                 -> String -> String
+                 -> Key -> Key
                  -> f a -> enc
 
 instance ( TaggedObject enc arity a
@@ -937,7 +939,7 @@ instance ( IsRecord                      a isRecord
 
 class TaggedObject' enc pairs arity f isRecord where
     taggedObject' :: Options -> ToArgs enc arity a
-                  -> String -> f a -> Tagged isRecord pairs
+                  -> Key -> f a -> Tagged isRecord pairs
 
 instance ( GToJSON' enc arity f
          , KeyValuePair enc pairs
@@ -1129,7 +1131,7 @@ fieldToPair :: (Selector s
             => Options -> ToArgs enc arity p
             -> S1 s a p -> pairs
 fieldToPair opts targs m1 =
-  let key   = fieldLabelModifier opts (selName m1)
+  let key   = Key.fromString $ fieldLabelModifier opts (selName m1)
       value = gToJSON opts targs (unM1 m1)
   in key `pair` value
 {-# INLINE fieldToPair #-}
@@ -1196,7 +1198,7 @@ instance ( GToJSON'   enc arity a
     sumToJSON' opts targs =
       Tagged . fromPairs . (typ `pair`) . gToJSON opts targs
         where
-          typ = constructorTagModifier opts $
+          typ = Key.fromString $ constructorTagModifier opts $
                          conName (undefined :: t c a p)
     {-# INLINE sumToJSON' #-}
 
@@ -1448,7 +1450,7 @@ instance ToJSON Text where
     toEncoding = E.text
 
 instance ToJSONKey Text where
-    toJSONKey = toJSONKeyText id
+    toJSONKey = toJSONKeyText Key.fromText
 
 
 instance ToJSON LT.Text where
@@ -1456,7 +1458,7 @@ instance ToJSON LT.Text where
     toEncoding = E.lazyText
 
 instance ToJSONKey LT.Text where
-    toJSONKey = toJSONKeyText LT.toStrict
+    toJSONKey = toJSONKeyText (Key.fromText . LT.toStrict)
 
 
 instance ToJSON Version where
@@ -1464,7 +1466,7 @@ instance ToJSON Version where
     toEncoding = toEncoding . showVersion
 
 instance ToJSONKey Version where
-    toJSONKey = toJSONKeyText (T.pack . showVersion)
+    toJSONKey = toJSONKeyText (Key.fromString . showVersion)
 
 -------------------------------------------------------------------------------
 -- semigroups NonEmpty
@@ -1620,7 +1622,6 @@ instance ToJSON IntSet.IntSet where
     toJSON = toJSON . IntSet.toList
     toEncoding = toEncoding . IntSet.toList
 
-
 instance ToJSON1 IntMap.IntMap where
     liftToJSON t tol = liftToJSON to' tol' . IntMap.toList
       where
@@ -1684,7 +1685,7 @@ instance ToJSON UUID.UUID where
     toEncoding = E.unsafeToEncoding . EB.quote . B.byteString . UUID.toASCIIBytes
 
 instance ToJSONKey UUID.UUID where
-    toJSONKey = ToJSONKeyText UUID.toText $
+    toJSONKey = ToJSONKeyText (Key.fromText . UUID.toText) $
         E.unsafeToEncoding . EB.quote . B.byteString . UUID.toASCIIBytes
 
 -------------------------------------------------------------------------------
@@ -1759,8 +1760,7 @@ instance (ToJSON v, ToJSONKey k) => ToJSON (H.HashMap k v) where
 
 instance ToJSON1 TM.KeyMap where
     liftToJSON g _ = Object . fmap g
-
-    liftToEncoding g _ = dict E.text g TM.foldrWithKey
+    liftToEncoding g _ = dict E.key g TM.foldrWithKey
 
 instance (ToJSON v) => ToJSON (TM.KeyMap v) where
     {-# SPECIALIZE instance ToJSON Object #-}
@@ -1771,6 +1771,13 @@ instance (ToJSON v) => ToJSON (TM.KeyMap v) where
 -------------------------------------------------------------------------------
 -- aeson
 -------------------------------------------------------------------------------
+
+instance ToJSON Key where
+    toJSON = toJSON . Key.toText
+    toEncoding = E.key
+
+instance ToJSONKey Key where
+    toJSONKey = ToJSONKeyText id E.key
 
 instance ToJSON Value where
     toJSON a = a
@@ -2194,8 +2201,8 @@ instance (ToJSON a, ToJSON b, ToJSON c) => ToJSONKey (a,b,c)
 instance (ToJSON a, ToJSON b, ToJSON c, ToJSON d) => ToJSONKey (a,b,c,d)
 
 instance ToJSONKey Char where
-    toJSONKey = ToJSONKeyText T.singleton (E.string . (:[]))
-    toJSONKeyList = toJSONKeyText T.pack
+    toJSONKey = ToJSONKeyText (Key.fromText . T.singleton) (E.key . Key.fromText . T.singleton)
+    toJSONKeyList = toJSONKeyText Key.fromString
 
 instance (ToJSONKey a, ToJSON a) => ToJSONKey [a] where
     toJSONKey = toJSONKeyList
@@ -2681,12 +2688,12 @@ instance FromPairs Value (DList Pair) where
 -- ('Value' or 'Encoding'), and the result actually represents lists of pairs
 -- so it can be readily concatenated.
 class Monoid kv => KeyValuePair v kv where
-    pair :: String -> v -> kv
+    pair :: Key -> v -> kv
 
 instance (v ~ Value) => KeyValuePair v (DList Pair) where
-    pair k v = DList.singleton (pack k .= v)
+    pair k v = DList.singleton (k .= v)
     {-# INLINE pair #-}
 
 instance (e ~ Encoding) => KeyValuePair e Series where
-    pair = E.pairStr
+    pair = E.pair
     {-# INLINE pair #-}

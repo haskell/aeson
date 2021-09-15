@@ -20,6 +20,7 @@ import Data.Time.Clock (UTCTime(..))
 import Functions
 import Test.QuickCheck (Arbitrary(..), elements,  oneof, sized, Gen, chooseInt, shuffle)
 import Types
+import qualified Data.Aeson.Key as Key
 import qualified Data.DList as DList
 import qualified Data.Vector as V
 import qualified Data.HashMap.Strict as HM
@@ -167,6 +168,9 @@ instance (ApproxEq a) => ApproxEq [a] where
 
 instance Arbitrary a => Arbitrary (DList.DList a) where
     arbitrary = DList.fromList <$> arbitrary
+
+instance Arbitrary Key where
+    arbitrary = Key.fromText <$> arbitrary
 
 instance Arbitrary Value where
     arbitrary = sized arb where

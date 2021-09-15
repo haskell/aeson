@@ -122,6 +122,7 @@ import Numeric.Natural (Natural)
 import Text.ParserCombinators.ReadP (readP_to_S)
 import Unsafe.Coerce (unsafeCoerce)
 import qualified Data.Aeson.Parser.Time as Time
+import qualified Data.Aeson.Key as Key
 import qualified Data.Aeson.KeyMap as KM
 import qualified Data.Attoparsec.ByteString.Char8 as A (endOfInput, parseOnly, scientific)
 import qualified Data.ByteString.Lazy as L
@@ -224,7 +225,7 @@ parseBoundedIntegralText name t =
         parseScientificText t >>= parseBoundedIntegralFromScientific
 
 parseOptionalFieldWith :: (Value -> Parser (Maybe a))
-                       -> Object -> Text -> Parser (Maybe a)
+                       -> Object -> Key -> Parser (Maybe a)
 parseOptionalFieldWith pj obj key =
     case KM.lookup key obj of
      Nothing -> pure Nothing
@@ -784,7 +785,7 @@ ifromJSON = iparse parseJSON
 -- This accessor is appropriate if the key and value /must/ be present
 -- in an object for it to be valid.  If the key and value are
 -- optional, use '.:?' instead.
-(.:) :: (FromJSON a) => Object -> Text -> Parser a
+(.:) :: (FromJSON a) => Object -> Key -> Parser a
 (.:) = explicitParseField parseJSON
 
 -- | Retrieve the value associated with the given key of an 'Object'. The
@@ -794,7 +795,7 @@ ifromJSON = iparse parseJSON
 -- This accessor is most useful if the key and value can be absent
 -- from an object without affecting its validity.  If the key and
 -- value are mandatory, use '.:' instead.
-(.:?) :: (FromJSON a) => Object -> Text -> Parser (Maybe a)
+(.:?) :: (FromJSON a) => Object -> Key -> Parser (Maybe a)
 (.:?) = explicitParseFieldMaybe parseJSON
 
 -- | Retrieve the value associated with the given key of an 'Object'.
@@ -803,37 +804,37 @@ ifromJSON = iparse parseJSON
 --
 -- This differs from '.:?' by attempting to parse 'Null' the same as any
 -- other JSON value, instead of interpreting it as 'Nothing'.
-(.:!) :: (FromJSON a) => Object -> Text -> Parser (Maybe a)
+(.:!) :: (FromJSON a) => Object -> Key -> Parser (Maybe a)
 (.:!) = explicitParseFieldMaybe' parseJSON
 
 -- | Function variant of '.:'.
-parseField :: (FromJSON a) => Object -> Text -> Parser a
+parseField :: (FromJSON a) => Object -> Key -> Parser a
 parseField = (.:)
 
 -- | Function variant of '.:?'.
-parseFieldMaybe :: (FromJSON a) => Object -> Text -> Parser (Maybe a)
+parseFieldMaybe :: (FromJSON a) => Object -> Key -> Parser (Maybe a)
 parseFieldMaybe = (.:?)
 
 -- | Function variant of '.:!'.
-parseFieldMaybe' :: (FromJSON a) => Object -> Text -> Parser (Maybe a)
+parseFieldMaybe' :: (FromJSON a) => Object -> Key -> Parser (Maybe a)
 parseFieldMaybe' = (.:!)
 
 -- | Variant of '.:' with explicit parser function.
 --
 -- E.g. @'explicitParseField' 'parseJSON1' :: ('FromJSON1' f, 'FromJSON' a) -> 'Object' -> 'Text' -> 'Parser' (f a)@
-explicitParseField :: (Value -> Parser a) -> Object -> Text -> Parser a
+explicitParseField :: (Value -> Parser a) -> Object -> Key -> Parser a
 explicitParseField p obj key = case KM.lookup key obj of
     Nothing -> fail $ "key " ++ show key ++ " not found"
     Just v  -> p v <?> Key key
 
 -- | Variant of '.:?' with explicit parser function.
-explicitParseFieldMaybe :: (Value -> Parser a) -> Object -> Text -> Parser (Maybe a)
+explicitParseFieldMaybe :: (Value -> Parser a) -> Object -> Key -> Parser (Maybe a)
 explicitParseFieldMaybe p obj key = case KM.lookup key obj of
     Nothing -> pure Nothing
     Just v  -> liftParseJSON p (listParser p) v <?> Key key -- listParser isn't used by maybe instance.
 
 -- | Variant of '.:!' with explicit parser function.
-explicitParseFieldMaybe' :: (Value -> Parser a) -> Object -> Text -> Parser (Maybe a)
+explicitParseFieldMaybe' :: (Value -> Parser a) -> Object -> Key -> Parser (Maybe a)
 explicitParseFieldMaybe' p obj key = case KM.lookup key obj of
     Nothing -> pure Nothing
     Just v  -> Just <$> p v <?> Key key
@@ -885,9 +886,9 @@ contextType = prependContext
 -- | Left "Error in $: parsing T failed, expected an object with keys "tag" and
 -- | "contents", where "tag" i-- |s associated to one of ["Foo", "Bar"],
 -- | The parser returned error was: could not find key "tag"
-contextTag :: Text -> [String] -> Parser a -> Parser a
+contextTag :: Key -> [String] -> Parser a -> Parser a
 contextTag tagKey cnames = prependFailure
-  ("expected Object with key \"" ++ unpack tagKey ++ "\"" ++
+  ("expected Object with key \"" ++ Key.toString tagKey ++ "\"" ++
   " containing one of " ++ show cnames ++ ", ")
 
 -- | Add the name of the constructor being parsed to a parser's error messages.
@@ -1098,7 +1099,7 @@ parseNonAllNullarySum p@(tname :* opts :* _) =
               fromMaybe (badTag tag <?> Key tagKey) $
                   parseFromTaggedObject (tag :* contentsFieldName :* p) obj
         where
-          tagKey = pack tagFieldName
+          tagKey = Key.fromString tagFieldName
           badTag tag = failWith_ $ \cnames ->
               "expected tag field to be one of " ++ show cnames ++
               ", but found tag " ++ show tag
@@ -1120,7 +1121,7 @@ parseNonAllNullarySum p@(tname :* opts :* _) =
           withArray tname $ \arr -> case V.length arr of
               2 | String tag <- V.unsafeIndex arr 0 ->
                   maybe (badTag tag <?> Index 0) (<?> Index 1) $
-                      parsePair (tag :* p) (V.unsafeIndex arr 1)
+                      parsePair (Key.fromText tag :* p) (V.unsafeIndex arr 1)
                 | otherwise ->
                   contextType tname $
                       fail "tag element is not a String" <?> Index 0
@@ -1187,7 +1188,7 @@ instance (ConsFromJSON arity f) => FromTaggedObject' arity f False where
         contents <- contextCons cname tname (obj .: key)
         consParseJSON p' contents <?> Key key
       where
-        key = pack contentsFieldName
+        key = Key.fromString contentsFieldName
         contentsFieldName :* p'@(cname :* tname :* _) = p
     {-# INLINE parseFromTaggedObject' #-}
 
@@ -1283,7 +1284,7 @@ instance ( FieldNames f
         \obj -> checkUnknown obj >> recordParseJSON' p obj
         where
             knownFields :: KM.KeyMap ()
-            knownFields = KM.fromList $ map ((,()) . pack) $
+            knownFields = KM.fromList $ map ((,()) . Key.fromString) $
                 [tagFieldName (sumEncoding opts) | fromTaggedSum] <>
                 (fieldLabelModifier opts <$> fieldNames (undefined :: f a) [])
 
@@ -1315,15 +1316,15 @@ instance OVERLAPPABLE_ (Selector s, GFromJSON arity a) =>
         fv <- contextCons cname tname (obj .: label)
         M1 <$> gParseJSON opts fargs fv <?> Key label
       where
-        label = pack $ fieldLabelModifier opts sname
+        label = Key.fromString $ fieldLabelModifier opts sname
         sname = selName (undefined :: M1 _i s _f _p)
     {-# INLINE recordParseJSON' #-}
 
 instance INCOHERENT_ (Selector s, FromJSON a) =>
          RecordFromJSON' arity (S1 s (K1 i (Maybe a))) where
-    recordParseJSON' (_ :* _ :* opts :* _) obj = M1 . K1 <$> obj .:? pack label
+    recordParseJSON' (_ :* _ :* opts :* _) obj = M1 . K1 <$> obj .:? label
       where
-        label = fieldLabelModifier opts sname
+        label = Key.fromString $ fieldLabelModifier opts sname
         sname = selName (undefined :: M1 _i s _f _p)
     {-# INLINE recordParseJSON' #-}
 
@@ -1385,7 +1386,7 @@ instance (GFromJSON arity a) => ProductFromJSON arity (S1 s a) where
 
 class FromPair arity f where
     -- The first component of the parameter tuple is the tag to match.
-    parsePair :: Text :* TypeName :* Options :* FromArgs arity a
+    parsePair :: Key :* TypeName :* Options :* FromArgs arity a
               -> Value
               -> Maybe (Parser (f a))
 
@@ -1404,7 +1405,7 @@ instance ( Constructor c
         | tag == tag' = Just $ M1 <$> consParseJSON (cname :* p) v
         | otherwise   = Nothing
       where
-        tag' = pack $ constructorTagModifier opts cname
+        tag' = Key.fromString $ constructorTagModifier opts cname
         cname = conName (undefined :: M1 _i c _a _p)
     {-# INLINE parsePair #-}
 
@@ -1487,7 +1488,7 @@ instance FromJSON2 Either where
         | key == left  = Left  <$> pA value <?> Key left
         | key == right = Right <$> pB value <?> Key right
       where
-        left, right :: Text
+        left, right :: Key
         left  = "Left"
         right = "Right"
 
@@ -1802,9 +1803,9 @@ instance (FromJSON1 f, FromJSON1 g, FromJSON a) => FromJSON (Product f g a) wher
 instance (FromJSON1 f, FromJSON1 g) => FromJSON1 (Sum f g) where
     liftParseJSON p pl (Object (KM.toList -> [(key, value)]))
         | key == inl = InL <$> liftParseJSON p pl value <?> Key inl
-        | key == inr = InR <$> liftParseJSON p pl value <?> Key inl
+        | key == inr = InR <$> liftParseJSON p pl value <?> Key inr
       where
-        inl, inr :: Text
+        inl, inr :: Key
         inl = "InL"
         inr = "InR"
 
@@ -1850,11 +1851,11 @@ instance FromJSON a => FromJSON (IntMap.IntMap a) where
 instance (FromJSONKey k, Ord k) => FromJSON1 (M.Map k) where
     liftParseJSON p _ = case fromJSONKey of
         FromJSONKeyCoerce -> withObject "Map" $
-            fmap (KM.foldrWithKey (M.insert . unsafeCoerce) M.empty) . KM.traverseWithKey (\k v -> p v <?> Key k)
+            fmap (KM.foldrWithKey (M.insert . coerce Key.toText) M.empty) . KM.traverseWithKey (\k v -> p v <?> Key k)
         FromJSONKeyText f -> withObject "Map" $
-            fmap (KM.foldrWithKey (M.insert . f) M.empty) . KM.traverseWithKey (\k v -> p v <?> Key k)
+            fmap (KM.foldrWithKey (M.insert . f . Key.toText) M.empty) . KM.traverseWithKey (\k v -> p v <?> Key k)
         FromJSONKeyTextParser f -> withObject "Map" $
-            KM.foldrWithKey (\k v m -> M.insert <$> f k <?> Key k <*> p v <?> Key k <*> m) (pure M.empty)
+            KM.foldrWithKey (\k v m -> M.insert <$> f (Key.toText k) <?> Key k <*> p v <?> Key k <*> m) (pure M.empty)
         FromJSONKeyValue f -> withArray "Map" $ \arr ->
             fmap M.fromList . Tr.sequence .
                 zipWith (parseIndexedJSONPair f p) [0..] . V.toList $ arr
@@ -1923,16 +1924,17 @@ instance (FromJSONKey k, Eq k, Hashable k) => FromJSON1 (H.HashMap k) where
         FromJSONKeyCoerce -> withObject "HashMap ~Text" $
             uc . H.traverseWithKey (\k v -> p v <?> Key k) . KM.toHashMap
         FromJSONKeyText f -> withObject "HashMap" $
-            fmap (mapKey f) . H.traverseWithKey (\k v -> p v <?> Key k) . KM.toHashMap
+            fmap (mapKey (f . Key.toText)) . H.traverseWithKey (\k v -> p v <?> Key k) . KM.toHashMap
         FromJSONKeyTextParser f -> withObject "HashMap" $
           H.foldrWithKey
-            (\k v m -> H.insert <$> f k <?> Key k <*> p v <?> Key k <*> m) (pure H.empty)
+            (\k v m -> H.insert <$> f (Key.toText k) <?> Key k <*> p v <?> Key k <*> m) (pure H.empty)
             . KM.toHashMap
         FromJSONKeyValue f -> withArray "Map" $ \arr ->
             fmap H.fromList . Tr.sequence .
                 zipWith (parseIndexedJSONPair f p) [0..] . V.toList $ arr
       where
-        uc :: Parser (H.HashMap Text v) -> Parser (H.HashMap k v)
+        -- TODO: this is unsafe
+        uc :: Parser (H.HashMap Key v) -> Parser (H.HashMap k v)
         uc = unsafeCoerce
 
 instance (FromJSON v, FromJSONKey k, Eq k, Hashable k) => FromJSON (H.HashMap k v) where
@@ -1941,6 +1943,13 @@ instance (FromJSON v, FromJSONKey k, Eq k, Hashable k) => FromJSON (H.HashMap k 
 -------------------------------------------------------------------------------
 -- aeson
 -------------------------------------------------------------------------------
+
+instance FromJSON Key where
+    parseJSON = withText "Key" (pure . Key.fromText)
+
+instance FromJSONKey Key where
+    -- TODO: make me more efficient.
+    fromJSONKey = FromJSONKeyText Key.fromText
 
 instance FromJSON Value where
     parseJSON = pure

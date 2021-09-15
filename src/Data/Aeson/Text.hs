@@ -31,6 +31,7 @@ import Data.Scientific (FPFormat(..), Scientific, base10Exponent)
 import Data.Text.Lazy.Builder
 import Data.Text.Lazy.Builder.Scientific (formatScientificBuilder)
 import Numeric (showHex)
+import qualified Data.Aeson.Key as Key
 import qualified Data.Text as T
 import qualified Data.Text.Lazy as LT
 import qualified Data.Text.Lazy.Encoding as LT
@@ -70,7 +71,7 @@ encodeToTextBuilder =
           (x:xs) -> singleton '{' <> one x <> foldr f (singleton '}') xs
           _      -> "{}"
       where f a z     = singleton ',' <> one a <> z
-            one (k,v) = string k <> singleton ':' <> go v
+            one (k,v) = string (Key.toText k) <> singleton ':' <> go v
 
 string :: T.Text -> Builder
 string s = {-# SCC "string" #-} singleton '"' <> quote s <> singleton '"'

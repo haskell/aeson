@@ -41,7 +41,8 @@ module Data.Aeson.Encoding.Builder
 import Prelude.Compat
 
 import Data.Aeson.Internal.Time
-import Data.Aeson.Types.Internal (Value (..))
+import Data.Aeson.Types.Internal (Value (..), Key)
+import qualified Data.Aeson.Key as Key
 import qualified Data.Aeson.KeyMap as KM
 import Data.ByteString.Builder as B
 import Data.ByteString.Builder.Prim as BP
@@ -96,7 +97,11 @@ object m = case KM.toList m of
     _      -> emptyObject_
   where
     withComma a z = B.char8 ',' <> one a <> z
-    one (k,v)     = text k <> B.char8 ':' <> encodeToBuilder v
+    one (k,v)     = key k <> B.char8 ':' <> encodeToBuilder v
+
+-- | Encode a JSON key.
+key :: Key -> Builder
+key = text . Key.toText
 
 -- | Encode a JSON string.
 text :: T.Text -> Builder

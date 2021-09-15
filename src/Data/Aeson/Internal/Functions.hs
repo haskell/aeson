@@ -17,13 +17,13 @@ module Data.Aeson.Internal.Functions
 import Prelude.Compat
 
 import Data.Hashable (Hashable)
+import Data.Aeson.Key (Key)
 import qualified Data.Aeson.KeyMap as KM
 import qualified Data.HashMap.Strict as H
 import qualified Data.Map as M
-import qualified Data.Text as T
 
 -- | Transform a 'M.Map' into a 'KM.KeyMap' while transforming the keys.
-mapTextKeyVal :: (k -> T.Text) -> (v1 -> v2)
+mapTextKeyVal :: (k -> Key) -> (v1 -> v2)
               -> M.Map k v1 -> KM.KeyMap v2
 mapTextKeyVal fk kv = M.foldrWithKey (\k v -> KM.insert (fk k) (kv v)) KM.empty
 {-# INLINE mapTextKeyVal #-}

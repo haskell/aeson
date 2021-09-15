@@ -12,6 +12,7 @@ import Data.Aeson.Internal (IResult(..), formatError, ifromJSON, iparse)
 import qualified Data.Aeson.Internal as I
 import Data.Aeson.Parser (value)
 import Data.Aeson.Types
+import qualified Data.Aeson.Key as Key
 import qualified Data.Aeson.KeyMap as KM
 import Data.HashMap.Strict (HashMap)
 import Data.Hashable (Hashable)
@@ -124,7 +125,7 @@ parserCatchErrorProp path msg =
     result :: Result (I.JSONPath, String)
     result = parse (const parser) ()
 
-    jsonPath = map (I.Key . T.pack) path
+    jsonPath = map (I.Key . Key.fromString) path
 
 -- | Perform a structural comparison of the results of two encoding
 -- methods. Compares decoded values to account for HashMap-driven

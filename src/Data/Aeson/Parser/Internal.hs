@@ -51,8 +51,9 @@ import Prelude.Compat
 
 import Control.Applicative ((<|>))
 import Control.Monad (void, when)
-import Data.Aeson.Types.Internal (IResult(..), JSONPath, Object, Result(..), Value(..))
+import Data.Aeson.Types.Internal (IResult(..), JSONPath, Object, Result(..), Value(..), Key)
 import qualified Data.Aeson.KeyMap as KM
+import qualified Data.Aeson.Key as Key
 import Data.Attoparsec.ByteString.Char8 (Parser, char, decimal, endOfInput, isDigit_w8, signed, string)
 import Data.Function (fix)
 import Data.Functor.Compat (($>))
@@ -131,22 +132,22 @@ json' = value'
 -- toplevel Value parser to be called recursively, to keep the parameter
 -- mkObject outside of the recursive loop for proper inlining.
 
-object_ :: ([(Text, Value)] -> Either String Object) -> Parser Value -> Parser Value
-object_ mkObject val = {-# SCC "object_" #-} Object <$> objectValues mkObject jstring val
+object_ :: ([(Key, Value)] -> Either String Object) -> Parser Value -> Parser Value
+object_ mkObject val = {-# SCC "object_" #-} Object <$> objectValues mkObject key val
 {-# INLINE object_ #-}
 
-object_' :: ([(Text, Value)] -> Either String Object) -> Parser Value -> Parser Value
+object_' :: ([(Key, Value)] -> Either String Object) -> Parser Value -> Parser Value
 object_' mkObject val' = {-# SCC "object_'" #-} do
-  !vals <- objectValues mkObject jstring' val'
+  !vals <- objectValues mkObject key' val'
   return (Object vals)
  where
-  jstring' = do
-    !s <- jstring
+  key' = do
+    !s <- key
     return s
 {-# INLINE object_' #-}
 
-objectValues :: ([(Text, Value)] -> Either String Object)
-             -> Parser Text -> Parser Value -> Parser (KM.KeyMap Value)
+objectValues :: ([(Key, Value)] -> Either String Object)
+             -> Parser Key -> Parser Value -> Parser (KM.KeyMap Value)
 objectValues mkObject str val = do
   skipSpace
   w <- A.peekWord8'
@@ -233,7 +234,7 @@ value = jsonWith (pure . KM.fromList)
 -- @
 -- 'jsonNoDup' = 'jsonWith' 'parseListNoDup'
 -- @
-jsonWith :: ([(Text, Value)] -> Either String Object) -> Parser Value
+jsonWith :: ([(Key, Value)] -> Either String Object) -> Parser Value
 jsonWith mkObject = fix $ \value_ -> do
   skipSpace
   w <- A.peekWord8'
@@ -267,12 +268,12 @@ jsonNoDup = jsonWith parseListNoDup
 --
 -- >>> fromListAccum [("apple", Bool True), ("apple", Bool False), ("orange", Bool False)]
 -- fromList [("apple",Array [Bool False,Bool True]),("orange",Array [Bool False])]
-fromListAccum :: [(Text, Value)] -> Object
+fromListAccum :: [(Key, Value)] -> Object
 fromListAccum =
   fmap (Array . Vector.fromList . ($ [])) . KM.fromListWith (.) . (fmap . fmap) (:)
 
 -- | @'fromListNoDup' kvs@ fails if @kvs@ contains duplicate keys.
-parseListNoDup :: [(Text, Value)] -> Either String Object
+parseListNoDup :: [(Key, Value)] -> Either String Object
 parseListNoDup =
   KM.traverseWithKey unwrap . KM.fromListWith (\_ _ -> Nothing) . (fmap . fmap) Just
   where
@@ -285,7 +286,7 @@ value' :: Parser Value
 value' = jsonWith' (pure . KM.fromList)
 
 -- | Strict version of 'jsonWith'.
-jsonWith' :: ([(Text, Value)] -> Either String Object) -> Parser Value
+jsonWith' :: ([(Key, Value)] -> Either String Object) -> Parser Value
 jsonWith' mkObject = fix $ \value_ -> do
   skipSpace
   w <- A.peekWord8'
@@ -321,6 +322,10 @@ jsonNoDup' = jsonWith' parseListNoDup
 -- | Parse a quoted JSON string.
 jstring :: Parser Text
 jstring = A.word8 DOUBLE_QUOTE *> jstring_
+
+-- | Parse a JSON Key
+key :: Parser Key
+key = Key.fromText <$> jstring
 
 -- | Parse a string without a leading quote.
 jstring_ :: Parser Text

@@ -128,6 +128,8 @@ import Data.Aeson.Types (Options(..), Parser, SumEncoding(..), Value(..), defaul
 import Data.Aeson.Types.Internal ((<?>), JSONPathElement(Key))
 import Data.Aeson.Types.FromJSON (parseOptionalFieldWith)
 import Data.Aeson.Types.ToJSON (fromPairs, pair)
+import Data.Aeson.Key (Key)
+import qualified Data.Aeson.Key as Key
 import qualified Data.Aeson.KeyMap as KM
 import Control.Monad (liftM2, unless, when)
 import Data.Foldable (foldr')
@@ -154,7 +156,7 @@ import qualified Data.Map as M (fromList, keys, lookup , singleton, size)
 import qualified Data.Semigroup as Semigroup (Option(..))
 #endif
 import qualified Data.Set as Set (empty, insert, member)
-import qualified Data.Text as T (Text, pack, unpack)
+import qualified Data.Text as T (pack, unpack)
 import qualified Data.Vector as V (unsafeIndex, null, length, create, empty)
 import qualified Data.Vector.Mutable as VM (unsafeNew, unsafeWrite)
 
@@ -583,7 +585,7 @@ fromPairsE = ([|fromPairs|] `appE`)
 --
 -- > pairE "k" [|v|] = [|pair "k" v|]
 pairE :: String -> ExpQ -> ExpQ
-pairE k v = [|pair k|] `appE` v
+pairE k v = [|pair (Key.fromString k)|] `appE` v
 
 --------------------------------------------------------------------------------
 -- FromJSON
@@ -704,7 +706,7 @@ consFromJSON jc tName opts instTys cons = do
                    else mixedMatches tvMap
 
     allNullaryMatches =
-      [ do txt <- newName "txt"
+      [ do txt <- newName "txtX"
            match (conP 'String [varP txt])
                  (guardedB $
                   [ liftM2 (,) (normalG $
@@ -781,12 +783,12 @@ consFromJSON jc tName opts instTys cons = do
         ]
 
     parseTaggedObject tvMap typFieldName valFieldName obj = do
-      conKey <- newName "conKey"
+      conKey <- newName "conKeyX"
       doE [ bindS (varP conKey)
                   (infixApp (varE obj)
                             [|(.:)|]
-                            ([|T.pack|] `appE` stringE typFieldName))
-          , noBindS $ parseContents tvMap conKey (Left (valFieldName, obj)) 'conNotFoundFailTaggedObject
+                            ([|Key.fromString|] `appE` stringE typFieldName))
+          , noBindS $ parseContents tvMap conKey (Left (valFieldName, obj)) 'conNotFoundFailTaggedObject [|Key.fromString|] [|Key.toString|]
           ]
 
     parseUntaggedValue tvMap cons' conVal =
@@ -815,8 +817,8 @@ consFromJSON jc tName opts instTys cons = do
 
 
     parse2ElemArray tvMap arr = do
-      conKey <- newName "conKey"
-      conVal <- newName "conVal"
+      conKey <- newName "conKeyY"
+      conVal <- newName "conValY"
       let letIx n ix =
               valD (varP n)
                    (normalB ([|V.unsafeIndex|] `appE`
@@ -827,12 +829,13 @@ consFromJSON jc tName opts instTys cons = do
            , letIx conVal 1
            ]
            (caseE (varE conKey)
-                  [ do txt <- newName "txt"
+                  [ do txt <- newName "txtY"
                        match (conP 'String [varP txt])
                              (normalB $ parseContents tvMap
                                                       txt
                                                       (Right conVal)
                                                       'conNotFoundFail2ElemArray
+                                                      [|T.pack|] [|T.unpack|]
                              )
                              []
                   , do other <- newName "other"
@@ -847,11 +850,11 @@ consFromJSON jc tName opts instTys cons = do
            )
 
     parseObjectWithSingleField tvMap obj = do
-      conKey <- newName "conKey"
-      conVal <- newName "conVal"
+      conKey <- newName "conKeyZ"
+      conVal <- newName "conValZ"
       caseE ([e|KM.toList|] `appE` varE obj)
             [ match (listP [tupP [varP conKey, varP conVal]])
-                    (normalB $ parseContents tvMap conKey (Right conVal) 'conNotFoundFailObjectSingleField)
+                    (normalB $ parseContents tvMap conKey (Right conVal) 'conNotFoundFailObjectSingleField [|Key.fromString|] [|Key.toString|])
                     []
             , do other <- newName "other"
                  match (varP other)
@@ -862,13 +865,13 @@ consFromJSON jc tName opts instTys cons = do
                        []
             ]
 
-    parseContents tvMap conKey contents errorFun =
+    parseContents tvMap conKey contents errorFun pack unpack=
         caseE (varE conKey)
               [ match wildP
                       ( guardedB $
                         [ do g <- normalG $ infixApp (varE conKey)
                                                      [|(==)|]
-                                                     ([|T.pack|] `appE`
+                                                     (pack `appE`
                                                         conNameExp opts con)
                              e <- checkExi tvMap con $
                                   parseArgs jc tvMap tName opts con contents
@@ -887,7 +890,7 @@ consFromJSON jc tName opts instTys cons = do
                                                      . constructorName
                                                      ) cons
                                                 )
-                                   `appE` ([|T.unpack|] `appE` varE conKey)
+                                   `appE` (unpack `appE` varE conKey)
                                  )
                         ]
                       )
@@ -948,7 +951,7 @@ parseRecord jc tvMap argTys opts tName conName fields obj inTaggedObject =
       tagFieldNameAppender =
           if inTaggedObject then (tagFieldName (sumEncoding opts) :) else id
       knownFields = appE [|KM.fromList|] $ listE $
-          map (\knownName -> tupE [appE [|T.pack|] $ litE $ stringL knownName, [|()|]]) $
+          map (\knownName -> tupE [appE [|Key.fromString|] $ litE $ stringL knownName, [|()|]]) $
               tagFieldNameAppender $ map (fieldLabel opts) fields
       checkUnknownRecords =
           caseE (appE [|KM.keys|] $ infixApp (varE obj) [|KM.difference|] knownFields)
@@ -966,7 +969,7 @@ parseRecord jc tvMap argTys opts tName conName fields obj inTaggedObject =
                `appE` litE (stringL $ show tName)
                `appE` litE (stringL $ constructorTagModifier opts $ nameBase conName)
                `appE` varE obj
-               `appE` ( [|T.pack|] `appE` stringE (fieldLabel opts field)
+               `appE` ( [|Key.fromString|] `appE` stringE (fieldLabel opts field)
                       )
              | (field, argTy) <- zip fields argTys
              ]
@@ -976,7 +979,7 @@ getValField obj valFieldName matches = do
   val <- newName "val"
   doE [ bindS (varP val) $ infixApp (varE obj)
                                     [|(.:)|]
-                                    ([|T.pack|] `appE`
+                                    ([|Key.fromString|] `appE`
                                        litE (stringL valFieldName))
       , noBindS $ caseE (varE val) matches
       ]
@@ -1131,7 +1134,7 @@ parseTypeMismatch tName conName expected actual =
 
 class LookupField a where
     lookupField :: (Value -> Parser a) -> String -> String
-                -> Object -> T.Text -> Parser a
+                -> Object -> Key -> Parser a
 
 instance OVERLAPPABLE_ LookupField a where
     lookupField = lookupFieldWith
@@ -1147,10 +1150,10 @@ instance INCOHERENT_ LookupField (Semigroup.Option a) where
 #endif
 
 lookupFieldWith :: (Value -> Parser a) -> String -> String
-                -> Object -> T.Text -> Parser a
+                -> Object -> Key -> Parser a
 lookupFieldWith pj tName rec obj key =
     case KM.lookup key obj of
-      Nothing -> unknownFieldFail tName rec (T.unpack key)
+      Nothing -> unknownFieldFail tName rec (Key.toString key)
       Just v  -> pj v <?> Key key
 
 unknownFieldFail :: String -> String -> String -> Parser fail
