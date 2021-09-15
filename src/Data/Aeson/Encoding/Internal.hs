@@ -26,6 +26,7 @@ module Data.Aeson.Encoding.Internal
     , wrapArray
     , null_
     , bool
+    , key
     , text
     , lazyText
     , string
@@ -61,8 +62,9 @@ module Data.Aeson.Encoding.Internal
 
 import Prelude.Compat
 
-import Data.Aeson.Types.Internal (Value)
+import Data.Aeson.Types.Internal (Value, Key)
 import Data.ByteString.Builder (Builder, char7, toLazyByteString)
+import qualified Data.Aeson.Key as Key
 import Data.Int
 import Data.Scientific (Scientific)
 import Data.Text (Text)
@@ -127,15 +129,15 @@ data Series = Empty
             | Value (Encoding' Series)
             deriving (Typeable)
 
-pair :: Text -> Encoding -> Series
-pair name val = pair' (text name) val
+pair :: Key -> Encoding -> Series
+pair name val = pair' (key name) val
 {-# INLINE pair #-}
 
 pairStr :: String -> Encoding -> Series
 pairStr name val = pair' (string name) val
 {-# INLINE pairStr #-}
 
-pair' :: Encoding' Text -> Encoding -> Series
+pair' :: Encoding' Key -> Encoding -> Series
 pair' name val = Value $ retagEncoding $ retagEncoding name >< colon >< val
 
 instance Semigroup Series where
@@ -184,7 +186,7 @@ list to' (x:xs) = openBracket >< to' x >< commas xs >< closeBracket
 
 -- | Encode as JSON object
 dict
-    :: (k -> Encoding' Text)                     -- ^ key encoding
+    :: (k -> Encoding' Key)                           -- ^ key encoding
     -> (v -> Encoding)                                -- ^ value encoding
     -> (forall a. (k -> v -> a -> a) -> a -> m -> a)  -- ^ @foldrWithKey@ - indexed fold
     -> m                                              -- ^ container
@@ -225,6 +227,9 @@ Encoding a >< Encoding b = Encoding (a <> b)
 tuple :: Encoding' InArray -> Encoding
 tuple b = retagEncoding $ openBracket >< b >< closeBracket
 {-# INLINE tuple #-}
+
+key :: Key -> Encoding' a
+key = text . Key.toText
 
 text :: Text -> Encoding' a
 text = Encoding . EB.text

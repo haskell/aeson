@@ -86,11 +86,11 @@ import Prelude (Show, showsPrec, showParen, shows, showString)
 
 import Control.Applicative (Applicative)
 import Control.DeepSeq (NFData(..))
+import Data.Aeson.Key (Key)
 import Data.Data (Data)
 import Data.Hashable (Hashable(..))
 import Data.Monoid (Monoid(mempty, mappend))
 import Data.Semigroup (Semigroup((<>)))
-import Data.Text (Text, unpack, pack)
 import Data.These (These (..))
 import Data.Typeable (Typeable)
 import Text.Read (Read (..), Lexeme(..), readListPrecDefault, prec, lexP, parens)
@@ -113,12 +113,11 @@ import qualified Witherable as W
 import Data.HashMap.Strict (HashMap)
 import Data.List (sortBy)
 import Data.Ord (comparing)
-import Control.Arrow (first)
 
 import qualified Data.HashMap.Strict as H
 
 -- | A map from JSON key type 'Key' to 'v'.
-newtype KeyMap v = KeyMap { unKeyMap :: HashMap Text v }
+newtype KeyMap v = KeyMap { unKeyMap :: HashMap Key v }
   deriving (Eq, Ord, Typeable, Data, Functor)
 
 -- | Construct an empty map.
@@ -134,22 +133,22 @@ size :: KeyMap v -> Int
 size = H.size . unKeyMap
 
 -- | Construct a map with a single element.
-singleton :: Text -> v -> KeyMap v
+singleton :: Key -> v -> KeyMap v
 singleton k v = KeyMap (H.singleton k v)
 
 -- | Is the key a member of the map?
-member :: Text -> KeyMap a -> Bool
+member :: Key -> KeyMap a -> Bool
 member t (KeyMap m) = H.member t m
 
 -- | Return the value to which the specified key is mapped,
 -- or Nothing if this map contains no mapping for the key.
-lookup :: Text -> KeyMap v -> Maybe v
+lookup :: Key -> KeyMap v -> Maybe v
 lookup t tm = H.lookup t (unKeyMap tm)
 
 -- | Associate the specified value with the specified key
 -- in this map. If this map previously contained a mapping
 -- for the key, the old value is replaced.
-insert :: Text -> v -> KeyMap v -> KeyMap v
+insert :: Key -> v -> KeyMap v -> KeyMap v
 insert k v tm = KeyMap (H.insert k v (unKeyMap tm))
 
 -- | Map a function over all values in the map.
@@ -157,10 +156,10 @@ map :: (a -> b) -> KeyMap a -> KeyMap b
 map = fmap
 
 -- | Map a function over all values in the map.
-mapWithKey :: (Text -> a -> b) -> KeyMap a -> KeyMap b
+mapWithKey :: (Key -> a -> b) -> KeyMap a -> KeyMap b
 mapWithKey f (KeyMap m) = KeyMap (H.mapWithKey f m)
 
-foldMapWithKey :: Monoid m => (Text -> a -> m) -> KeyMap a -> m
+foldMapWithKey :: Monoid m => (Key -> a -> m) -> KeyMap a -> m
 foldMapWithKey f (KeyMap m) = H.foldMapWithKey f m
 
 foldr :: (a -> b -> b) -> b -> KeyMap a -> b
@@ -178,7 +177,7 @@ foldl' f z (KeyMap m) = H.foldl' f z m
 -- | Reduce this map by applying a binary operator to all
 -- elements, using the given starting value (typically the
 -- right-identity of the operator).
-foldrWithKey :: (Text -> v -> a -> a) -> a -> KeyMap v -> a
+foldrWithKey :: (Key -> v -> a -> a) -> a -> KeyMap v -> a
 foldrWithKey f a = H.foldrWithKey f a . unKeyMap
 
 -- | Perform an Applicative action for each key-value pair
@@ -188,30 +187,30 @@ traverse f = fmap KeyMap . T.traverse f . unKeyMap
 
 -- | Perform an Applicative action for each key-value pair
 -- in a 'KeyMap' and produce a 'KeyMap' of all the results.
-traverseWithKey :: Applicative f => (Text -> v1 -> f v2) -> KeyMap v1 -> f (KeyMap v2)
+traverseWithKey :: Applicative f => (Key -> v1 -> f v2) -> KeyMap v1 -> f (KeyMap v2)
 traverseWithKey f = fmap KeyMap . H.traverseWithKey f  . unKeyMap
 
 -- | Construct a map from a list of elements. Uses the
 -- provided function, f, to merge duplicate entries with
 -- (f newVal oldVal).
-fromListWith :: (v -> v -> v) ->  [(Text, v)] -> KeyMap v
+fromListWith :: (v -> v -> v) ->  [(Key, v)] -> KeyMap v
 fromListWith op = KeyMap . H.fromListWith op
 
 -- |  Construct a map with the supplied mappings. If the
 -- list contains duplicate mappings, the later mappings take
 -- precedence.
-fromList :: [(Text, v)] -> KeyMap v
+fromList :: [(Key, v)] -> KeyMap v
 fromList = KeyMap . H.fromList
 
 -- | Return a list of this map's elements.
 --
 -- The order is not stable. Use 'toAscList' for stable ordering.
-toList :: KeyMap v -> [(Text, v)]
+toList :: KeyMap v -> [(Key, v)]
 toList = H.toList . unKeyMap
 
 -- | Return a list of this map's elements in ascending order
 -- based of the textual key.
-toAscList :: KeyMap v -> [(Text, v)]
+toAscList :: KeyMap v -> [(Key, v)]
 toAscList = sortBy (comparing fst) . toList
 
 -- | Difference of two maps. Return elements of the first
@@ -229,7 +228,7 @@ unionWith :: (v -> v -> v) -> KeyMap v -> KeyMap v -> KeyMap v
 unionWith f (KeyMap x) (KeyMap y) = KeyMap (H.unionWith f x y)
 
 -- | The union with a combining function.
-unionWithKey :: (Text -> v -> v -> v) -> KeyMap v -> KeyMap v -> KeyMap v
+unionWithKey :: (Key -> v -> v -> v) -> KeyMap v -> KeyMap v -> KeyMap v
 unionWithKey f (KeyMap x) (KeyMap y) = KeyMap (H.unionWithKey f x y)
 
 -- | The (left-biased) intersection of two maps (based on keys).
@@ -241,23 +240,23 @@ intersectionWith :: (a -> b -> c) -> KeyMap a -> KeyMap b -> KeyMap c
 intersectionWith f (KeyMap x) (KeyMap y) = KeyMap (H.intersectionWith f x y)
 
 -- | The intersection with a combining function.
-intersectionWithKey :: (Text -> a -> b -> c) -> KeyMap a -> KeyMap b -> KeyMap c
+intersectionWithKey :: (Key -> a -> b -> c) -> KeyMap a -> KeyMap b -> KeyMap c
 intersectionWithKey f (KeyMap x) (KeyMap y) = KeyMap (H.intersectionWithKey f x y)
 
 -- | Return a list of this map's keys.
-keys :: KeyMap v -> [Text]
+keys :: KeyMap v -> [Key]
 keys = H.keys . unKeyMap
 
 -- | Convert a 'KeyMap' to a 'HashMap'.
-toHashMap :: KeyMap v -> HashMap Text v
+toHashMap :: KeyMap v -> HashMap Key v
 toHashMap = unKeyMap
 
 -- | Convert a 'HashMap' to a 'KeyMap'.
-fromHashMap :: HashMap Text v -> KeyMap v
+fromHashMap :: HashMap Key v -> KeyMap v
 fromHashMap = KeyMap
 
 -- | Transform the keys and values of a 'KeyMap'.
-mapKeyVal :: (Text -> Text) -> (v1 -> v2)
+mapKeyVal :: (Key -> Key) -> (v1 -> v2)
           -> KeyMap v1 -> KeyMap v2
 mapKeyVal fk kv = foldrWithKey (\k v -> insert (fk k) (kv v)) empty
 {-# INLINE mapKeyVal #-}
@@ -267,7 +266,7 @@ filter :: (v -> Bool) -> KeyMap v -> KeyMap v
 filter f (KeyMap m) = KeyMap (H.filter f m)
 
 -- | Filter all keys/values that satisfy some predicate.
-filterWithKey :: (Text -> v -> Bool) -> KeyMap v -> KeyMap v
+filterWithKey :: (Key -> v -> Bool) -> KeyMap v -> KeyMap v
 filterWithKey f (KeyMap m) = KeyMap (H.filterWithKey f m)
 
 -- | Map values and collect the Just results.
@@ -275,7 +274,7 @@ mapMaybe :: (a -> Maybe b) -> KeyMap a -> KeyMap b
 mapMaybe f (KeyMap m) = KeyMap (H.mapMaybe f m)
 
 -- | Map values and collect the Just results.
-mapMaybeWithKey :: (Text -> v -> Maybe u) -> KeyMap v -> KeyMap u
+mapMaybeWithKey :: (Key -> v -> Maybe u) -> KeyMap v -> KeyMap u
 mapMaybeWithKey f (KeyMap m) = KeyMap (H.mapMaybeWithKey f m)
 
 #endif
@@ -289,7 +288,7 @@ alignWith :: (These a b -> c) -> KeyMap a -> KeyMap b -> KeyMap c
 alignWith f (KeyMap x) (KeyMap y) = KeyMap (SA.alignWith f x y)
 
 -- | Generalized union with combining function.
-alignWithKey :: (Text -> These a b -> c) -> KeyMap a -> KeyMap b -> KeyMap c
+alignWithKey :: (Key -> These a b -> c) -> KeyMap a -> KeyMap b -> KeyMap c
 alignWithKey f (KeyMap x) (KeyMap y) = KeyMap (SAI.ialignWith f x y)
 
 -------------------------------------------------------------------------------
@@ -341,9 +340,7 @@ instance Monoid (KeyMap v) where
 -------------------------------------------------------------------------------
 
 instance TH.Lift v => TH.Lift (KeyMap v) where
-    lift m = [| fromList (L.map (first pack) m') |]
-        where
-          m' = L.map (first unpack) . toList $ m
+    lift m = [| fromList m' |] where m' = toList m
 
 #if MIN_VERSION_template_haskell(2,17,0)
     liftTyped = TH.unsafeCodeCoerce . TH.lift
@@ -369,13 +366,13 @@ instance NFData v => NFData (KeyMap v) where
 -- indexed-traversable
 -------------------------------------------------------------------------------
 
-instance WI.FunctorWithIndex Text KeyMap where
+instance WI.FunctorWithIndex Key KeyMap where
     imap = mapWithKey
 
-instance WI.FoldableWithIndex Text KeyMap where
+instance WI.FoldableWithIndex Key KeyMap where
     ifoldr   = foldrWithKey
 
-instance WI.TraversableWithIndex Text KeyMap where
+instance WI.TraversableWithIndex Key KeyMap where
     itraverse = traverseWithKey
 
 -------------------------------------------------------------------------------
@@ -385,13 +382,13 @@ instance WI.TraversableWithIndex Text KeyMap where
 instance SA.Zip KeyMap where
     zipWith = intersectionWith
 
-instance SAI.ZipWithIndex Text KeyMap where
+instance SAI.ZipWithIndex Key KeyMap where
     izipWith = intersectionWithKey
 
 instance SA.Semialign KeyMap where
     alignWith = alignWith
 
-instance SAI.SemialignWithIndex Text KeyMap where
+instance SAI.SemialignWithIndex Key KeyMap where
     ialignWith = alignWithKey
 
 instance SA.Align KeyMap where
@@ -408,9 +405,9 @@ instance W.Filterable KeyMap where
 
 instance W.Witherable KeyMap where
 
-instance W.FilterableWithIndex Text KeyMap where
+instance W.FilterableWithIndex Key KeyMap where
     ifilter = filterWithKey
     imapMaybe = mapMaybeWithKey
 
-instance W.WitherableWithIndex Text KeyMap where
+instance W.WitherableWithIndex Key KeyMap where
 #endif

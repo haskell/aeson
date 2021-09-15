@@ -29,6 +29,7 @@ module Data.Aeson.Types.Internal
     (
     -- * Core JSON types
       Value(..)
+    , Key
     , Array
     , emptyArray, isEmptyArray
     , Pair
@@ -89,6 +90,7 @@ import Control.Applicative (Alternative(..))
 import Control.DeepSeq (NFData(..))
 import Control.Monad (MonadPlus(..), ap)
 import Data.Char (isLower, isUpper, toLower, isAlpha, isAlphaNum)
+import Data.Aeson.Key (Key)
 import Data.Data (Data)
 import Data.Foldable (foldl')
 import Data.Hashable (Hashable(..))
@@ -104,14 +106,14 @@ import GHC.Generics (Generic)
 import Data.Aeson.KeyMap (KeyMap)
 import qualified Control.Monad as Monad
 import qualified Control.Monad.Fail as Fail
-import qualified Data.Scientific as S
 import qualified Data.Vector as V
 import qualified Language.Haskell.TH.Syntax as TH
+import qualified Data.Aeson.Key as Key
 import qualified Data.Aeson.KeyMap as KM
 
 -- | Elements of a JSON path used to describe the location of an
 -- error.
-data JSONPathElement = Key Text
+data JSONPathElement = Key Key
                        -- ^ JSON path element of a key into an object,
                        -- \"object.key\".
                      | Index {-# UNPACK #-} !Int
@@ -507,11 +509,11 @@ formatRelativePath path = format "" path
     format pfx (Index idx:parts) = format (pfx ++ "[" ++ show idx ++ "]") parts
     format pfx (Key key:parts)   = format (pfx ++ formatKey key) parts
 
-    formatKey :: Text -> String
+    formatKey :: Key -> String
     formatKey key
        | isIdentifierKey strKey = "." ++ strKey
        | otherwise              = "['" ++ escapeKey strKey ++ "']"
-      where strKey = unpack key
+      where strKey = Key.toString key
 
     isIdentifierKey :: String -> Bool
     isIdentifierKey []     = False
@@ -526,7 +528,7 @@ formatRelativePath path = format "" path
     escapeChar c    = [c]
 
 -- | A key\/value pair for an 'Object'.
-type Pair = (Text, Value)
+type Pair = (Key, Value)
 
 -- | Create a 'Value' from a list of name\/value 'Pair's.  If duplicate
 -- keys arise, later keys and their associated values win.
