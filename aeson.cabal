@@ -48,11 +48,6 @@ extra-source-files:
   tests/JSONTestSuite/test_parsing/*.json
   tests/JSONTestSuite/test_transform/*.json
 
-flag developer
-  description: operate in developer mode
-  default:     False
-  manual:      True
-
 flag bytestring-builder
   description:
     Depend on the bytestring-builder package for backwards compatibility.
@@ -158,11 +153,6 @@ library
     build-depends: witherable >=0.4.1 && <0.5
 
   ghc-options:      -Wall
-
-  if flag(developer)
-    ghc-options:      -Werror
-    ghc-prof-options: -auto-all
-
   include-dirs:     include
 
   if (impl(ghcjs) || !flag(cffi))
