@@ -60,7 +60,7 @@ import Control.Applicative (Const(..))
 import Control.Monad.ST (ST)
 import Data.Aeson.Encoding (Encoding, Encoding', Series, dict, emptyArray_)
 import Data.Aeson.Encoding.Internal ((>*<))
-import Data.Aeson.Internal.Functions (mapTextKeyVal, mapKeyVal)
+import Data.Aeson.Internal.Functions (mapKeyVal, mapKeyValO)
 import Data.Aeson.Types.Generic (AllNullary, False, IsRecord, One, ProductSize, Tagged2(..), True, Zero, productSize)
 import Data.Aeson.Types.Internal
 import qualified Data.Aeson.Key as Key
@@ -1637,7 +1637,7 @@ instance ToJSON a => ToJSON (IntMap.IntMap a) where
 
 instance ToJSONKey k => ToJSON1 (M.Map k) where
     liftToJSON g _ = case toJSONKey of
-        ToJSONKeyText f _ -> Object . mapTextKeyVal f g
+        ToJSONKeyText f _ -> Object . TM.fromMap . mapKeyValO f g
         ToJSONKeyValue  f _ -> Array . V.fromList . map (toJSONPair f g) . M.toList
 
     liftToEncoding g _ = case toJSONKey of

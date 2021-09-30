@@ -1,6 +1,7 @@
 {-# LANGUAGE CPP #-}
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE DefaultSignatures #-}
+{-# LANGUAGE InstanceSigs #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE GADTs #-}
@@ -79,7 +80,7 @@ import Prelude.Compat
 
 import Control.Applicative ((<|>), Const(..), liftA2)
 import Control.Monad (zipWithM)
-import Data.Aeson.Internal.Functions (mapKey)
+import Data.Aeson.Internal.Functions (mapKey, mapKeyO)
 import Data.Aeson.Parser.Internal (eitherDecodeWith, jsonEOF)
 import Data.Aeson.Types.Generic
 import Data.Aeson.Types.Internal
@@ -108,6 +109,7 @@ import Data.Time.LocalTime.Compat (CalendarDiffTime (..))
 import Data.Time.Clock.System.Compat (SystemTime (..))
 import Data.Time.Format.Compat (parseTimeM, defaultTimeLocale)
 import Data.Traversable as Tr (sequence)
+import Data.Type.Coercion (Coercion (..))
 import Data.Vector (Vector)
 import Data.Version (Version, parseVersion)
 import Data.Void (Void)
@@ -419,7 +421,7 @@ class FromJSONKey a where
 --   For performance reasons, these exist as three options instead of one.
 data FromJSONKeyFunction a where
     FromJSONKeyCoerce :: Coercible Text a => FromJSONKeyFunction a
-      -- ^ uses 'coerce'
+      -- ^ uses 'coerce', we expect that 'Hashable' and 'Ord' instance are compatible.
     FromJSONKeyText :: !(Text -> a) -> FromJSONKeyFunction a
       -- ^ conversion from 'Text' that always succeeds
     FromJSONKeyTextParser :: !(Text -> Parser a) -> FromJSONKeyFunction a
@@ -1846,16 +1848,30 @@ instance FromJSON a => FromJSON (IntMap.IntMap a) where
 
 
 instance (FromJSONKey k, Ord k) => FromJSON1 (M.Map k) where
+    liftParseJSON :: forall a. (Value -> Parser a) -> (Value -> Parser [a]) -> Value -> Parser (M.Map k a)
     liftParseJSON p _ = case fromJSONKey of
-        FromJSONKeyCoerce -> withObject "Map" $
-            fmap (KM.foldrWithKey (M.insert . coerce Key.toText) M.empty) . KM.traverseWithKey (\k v -> p v <?> Key k)
-        FromJSONKeyText f -> withObject "Map" $
-            fmap (KM.foldrWithKey (M.insert . f . Key.toText) M.empty) . KM.traverseWithKey (\k v -> p v <?> Key k)
+        FromJSONKeyCoerce -> withObject "Map ~Text" $ case Key.coercionToText of
+            Nothing       -> text coerce
+            Just Coercion -> case KM.coercionToMap of
+                Nothing       -> text coerce
+                Just Coercion -> uc . M.traverseWithKey (\k v -> p v <?> Key k) . KM.toMap
+        FromJSONKeyText f -> withObject "Map" (text f)
         FromJSONKeyTextParser f -> withObject "Map" $
             KM.foldrWithKey (\k v m -> M.insert <$> f (Key.toText k) <?> Key k <*> p v <?> Key k <*> m) (pure M.empty)
         FromJSONKeyValue f -> withArray "Map" $ \arr ->
             fmap M.fromList . Tr.sequence .
                 zipWith (parseIndexedJSONPair f p) [0..] . V.toList $ arr
+      where
+        uc :: Coercible Key k => Parser (M.Map Key a) -> Parser (M.Map k a)
+        uc = unsafeCoerce
+
+        text f = case KM.coercionToMap of
+            Nothing       -> basic f
+            Just Coercion -> fmap (mapKeyO (f . Key.toText)) . M.traverseWithKey (\k v -> p v <?> Key k) . KM.toMap
+        {-# INLINE text #-}
+
+        basic f = fmap (KM.foldrWithKey (M.insert . f . Key.toText) M.empty) . KM.traverseWithKey (\k v -> p v <?> Key k)
+        {-# INLINE basic #-}
 
 instance (FromJSONKey k, Ord k, FromJSON v) => FromJSON (M.Map k v) where
     parseJSON = parseJSON1
@@ -1917,11 +1933,14 @@ instance (Eq a, Hashable a, FromJSON a) => FromJSON (HashSet.HashSet a) where
 
 
 instance (FromJSONKey k, Eq k, Hashable k) => FromJSON1 (H.HashMap k) where
+    liftParseJSON :: forall a. (Value -> Parser a) -> (Value -> Parser [a]) -> Value -> Parser (H.HashMap k a)
     liftParseJSON p _ = case fromJSONKey of
-        FromJSONKeyCoerce -> withObject "HashMap ~Text" $
-            uc . H.traverseWithKey (\k v -> p v <?> Key k) . KM.toHashMap
-        FromJSONKeyText f -> withObject "HashMap" $
-            fmap (mapKey (f . Key.toText)) . H.traverseWithKey (\k v -> p v <?> Key k) . KM.toHashMap
+        FromJSONKeyCoerce -> withObject "HashMap ~Text" $ case Key.coercionToText of
+            Nothing       -> text coerce
+            Just Coercion -> case KM.coercionToHashMap of
+                Nothing       -> text coerce
+                Just Coercion -> uc . H.traverseWithKey (\k v -> p v <?> Key k) . KM.toHashMap
+        FromJSONKeyText f -> withObject "HashMap" (text f)
         FromJSONKeyTextParser f -> withObject "HashMap" $
           H.foldrWithKey
             (\k v m -> H.insert <$> f (Key.toText k) <?> Key k <*> p v <?> Key k <*> m) (pure H.empty)
@@ -1930,9 +1949,16 @@ instance (FromJSONKey k, Eq k, Hashable k) => FromJSON1 (H.HashMap k) where
             fmap H.fromList . Tr.sequence .
                 zipWith (parseIndexedJSONPair f p) [0..] . V.toList $ arr
       where
-        -- TODO: this is unsafe
-        uc :: Parser (H.HashMap Key v) -> Parser (H.HashMap k v)
+        uc :: Coercible Key k => Parser (H.HashMap Key a) -> Parser (H.HashMap k a)
         uc = unsafeCoerce
+
+        text f = case KM.coercionToHashMap of
+            Nothing       -> basic f
+            Just Coercion -> fmap (mapKey (f . Key.toText)) . H.traverseWithKey (\k v -> p v <?> Key k) . KM.toHashMap
+        {-# INLINE text #-}
+
+        basic f = fmap (KM.foldrWithKey (H.insert . f . Key.toText) H.empty) . KM.traverseWithKey (\k v -> p v <?> Key k)
+        {-# INLINE basic #-}
 
 instance (FromJSON v, FromJSONKey k, Eq k, Hashable k) => FromJSON (H.HashMap k v) where
     parseJSON = parseJSON1

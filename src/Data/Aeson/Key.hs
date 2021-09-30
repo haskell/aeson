@@ -1,5 +1,6 @@
 {-# LANGUAGE CPP #-}
 {-# LANGUAGE DeriveDataTypeable #-}
+{-# LANGUAGE GADTs #-}
 {-# LANGUAGE TemplateHaskellQuotes #-}
 
 module Data.Aeson.Key (
@@ -8,9 +9,10 @@ module Data.Aeson.Key (
     toString,
     toText,
     fromText,
+    coercionToText,
 ) where
 
-import Prelude (Eq, Ord, (.), Show (..), String)
+import Prelude (Eq, Ord, (.), Show (..), String, Maybe (..))
 
 import Control.Applicative ((<$>))
 import Control.DeepSeq (NFData(..))
@@ -19,6 +21,7 @@ import Data.Hashable (Hashable(..))
 import Data.Monoid (Monoid(mempty, mappend))
 import Data.Semigroup (Semigroup((<>)))
 import Data.Text (Text)
+import Data.Type.Coercion (Coercion (..))
 import Data.Typeable (Typeable)
 import Text.Read (Read (..))
 
@@ -40,6 +43,16 @@ fromText = Key
 
 toText :: Key -> Text
 toText = unKey
+
+-- | @'coercing r1 r2'@ will evaluate to @r1@ if 'Key' is 'Coercible' to  'Text',
+-- and to @r2@ otherwise.
+--
+-- Using 'coercing' we can make more efficient implementations
+-- when 'Key' is backed up by 'Text' without exposing internals.
+-- 
+coercionToText :: Maybe (Coercion Key Text)
+coercionToText = Just Coercion
+{-# INLINE coercionToText #-}
 
 -------------------------------------------------------------------------------
 -- instances

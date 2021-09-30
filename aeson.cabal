@@ -59,6 +59,13 @@ flag cffi
   default:     False
   manual:      True
 
+flag ordered-keymap
+  description:
+    Use ordered @Data.Map.Strict@ for KeyMap implementation.
+
+  default:     False
+  manual:      True
+
 library
   default-language: Haskell2010
   hs-source-dirs:   src attoparsec-iso8601/src
@@ -139,6 +146,9 @@ library
     cpp-options:    -DCFFI
     hs-source-dirs: src-ffi
     other-modules:  Data.Aeson.Parser.UnescapeFFI
+
+  if flag(ordered-keymap)
+    cpp-options: -DUSE_ORDEREDMAP=1
 
 test-suite aeson-tests
   default-language: Haskell2010

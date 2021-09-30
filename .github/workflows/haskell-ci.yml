@@ -223,6 +223,11 @@ jobs:
       - name: prepare for constraint sets
         run: |
           rm -f cabal.project.local
+      - name: constraint set ordered-keymap
+        run: |
+          $CABAL v2-build $ARG_COMPILER --enable-tests --disable-benchmarks --constraint='aeson +ordered-keymap' --dependencies-only -j2 all
+          $CABAL v2-build $ARG_COMPILER --enable-tests --disable-benchmarks --constraint='aeson +ordered-keymap' all
+          $CABAL v2-test $ARG_COMPILER --enable-tests --disable-benchmarks --constraint='aeson +ordered-keymap' all
       - name: constraint set cffi
         run: |
           $CABAL v2-build $ARG_COMPILER --enable-tests --disable-benchmarks --constraint='aeson +cffi' --dependencies-only -j2 all
