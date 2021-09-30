@@ -4,17 +4,7 @@
 {-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE NoImplicitPrelude #-}
 {-# LANGUAGE UndecidableInstances #-}
-#if __GLASGOW_HASKELL__ >= 800
--- a) THQ works on cross-compilers and unregisterised GHCs
--- b) may make compilation faster as no dynamic loading is ever needed (not sure about this)
--- c) removes one hindrance to have code inferred as SafeHaskell safe
 {-# LANGUAGE TemplateHaskellQuotes #-}
-#else
-{-# LANGUAGE TemplateHaskell #-}
-#endif
-
-#include "incoherent-compat.h"
-#include "overlapping-compat.h"
 
 {-|
 Module:      Data.Aeson.TH
@@ -1136,14 +1126,14 @@ class LookupField a where
     lookupField :: (Value -> Parser a) -> String -> String
                 -> Object -> Key -> Parser a
 
-instance OVERLAPPABLE_ LookupField a where
+instance {-# OVERLAPPABLE #-} LookupField a where
     lookupField = lookupFieldWith
 
-instance INCOHERENT_ LookupField (Maybe a) where
+instance {-# INCOHERENT #-} LookupField (Maybe a) where
     lookupField pj _ _ = parseOptionalFieldWith pj
  
 #if !MIN_VERSION_base(4,16,0)
-instance INCOHERENT_ LookupField (Semigroup.Option a) where
+instance {-# INCOHERENT #-} LookupField (Semigroup.Option a) where
     lookupField pj tName rec obj key =
         fmap Semigroup.Option
              (lookupField (fmap Semigroup.getOption . pj) tName rec obj key)

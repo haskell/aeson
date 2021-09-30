@@ -2,15 +2,7 @@
 {-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE DeriveFunctor #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
-
-#if __GLASGOW_HASKELL__ >= 800
--- a) THQ works on cross-compilers and unregisterised GHCs
--- b) may make compilation faster as no dynamic loading is ever needed (not sure about this)
--- c) removes one hindrance to have code inferred as SafeHaskell safe
 {-# LANGUAGE TemplateHaskellQuotes #-}
-#else
-{-# LANGUAGE TemplateHaskell #-}
-#endif
 
 -- |
 -- An abstract interface for maps from JSON keys to values.
@@ -104,10 +96,7 @@ import qualified Data.Functor.WithIndex     as WI (FunctorWithIndex (..))
 import qualified Data.Traversable.WithIndex as WI (TraversableWithIndex (..))
 import qualified Data.Semialign as SA
 import qualified Data.Semialign.Indexed as SAI
-
-#ifdef MIN_VERSION_witherable
 import qualified Witherable as W
-#endif
 
 #if 1
 import Data.HashMap.Strict (HashMap)
@@ -316,10 +305,8 @@ instance F.Foldable KeyMap where
     foldr' = foldr'
     foldl = foldl
     foldl' = foldl'
-#if MIN_VERSION_base(4,8,0)
     null = null
     length = size
-#endif
 
 instance T.Traversable KeyMap where
     traverse = traverse
@@ -329,11 +316,7 @@ instance Semigroup (KeyMap v) where
 
 instance Monoid (KeyMap v) where
     mempty = empty
-#if __GLASGOW_HASKELL__ >= 711
     mappend = (<>)
-#else
-    mappend = union
-#endif
 
 -------------------------------------------------------------------------------
 -- template-haskell
@@ -398,7 +381,6 @@ instance SA.Align KeyMap where
 -- witherable
 -------------------------------------------------------------------------------
 
-#ifdef MIN_VERSION_witherable
 instance W.Filterable KeyMap where
     filter = filter
     mapMaybe = mapMaybe
@@ -410,4 +392,3 @@ instance W.FilterableWithIndex Key KeyMap where
     imapMaybe = mapMaybeWithKey
 
 instance W.WitherableWithIndex Key KeyMap where
-#endif

@@ -14,9 +14,6 @@
 {-# LANGUAGE TypeOperators #-}
 {-# LANGUAGE UndecidableInstances #-}
 
-#include "overlapping-compat.h"
-#include "incoherent-compat.h"
-
 -- TODO: Drop this when we remove support for Data.Attoparsec.Number
 {-# OPTIONS_GHC -fno-warn-deprecations #-}
 
@@ -107,7 +104,7 @@ import qualified Data.Aeson.Encoding as E
 import qualified Data.Aeson.Encoding.Internal as E (InArray, comma, econcat, retagEncoding, key)
 import qualified Data.ByteString.Lazy as L
 import qualified Data.DList as DList
-#if MIN_VERSION_dlist(1,0,0) && __GLASGOW_HASKELL__ >=800
+#if MIN_VERSION_dlist(1,0,0)
 import qualified Data.DList.DNonEmpty as DNE
 #endif
 import qualified Data.Fix as F
@@ -696,7 +693,7 @@ instance (ToJSON a) => ToJSON [a] where
 -- Generic toJSON / toEncoding
 -------------------------------------------------------------------------------
 
-instance OVERLAPPABLE_ (GToJSON' enc arity a) => GToJSON' enc arity (M1 i c a) where
+instance {-# OVERLAPPABLE #-} (GToJSON' enc arity a) => GToJSON' enc arity (M1 i c a) where
     -- Meta-information, which is not handled elsewhere, is ignored:
     gToJSON opts targs = gToJSON opts targs . unM1
     {-# INLINE gToJSON #-}
@@ -949,7 +946,7 @@ instance ( GToJSON' enc arity f
         Tagged . (contentsFieldName `pair`) . gToJSON opts targs
     {-# INLINE taggedObject' #-}
 
-instance OVERLAPPING_ Monoid pairs => TaggedObject' enc pairs arity U1 False where
+instance {-# OVERLAPPING #-} Monoid pairs => TaggedObject' enc pairs arity U1 False where
     taggedObject' _ _ _ _ = Tagged mempty
     {-# INLINE taggedObject' #-}
 
@@ -1047,7 +1044,7 @@ instance ( IsRecord                f isRecord
       . consToJSON' opts targs
     {-# INLINE consToJSON #-}
 
-instance OVERLAPPING_
+instance {-# OVERLAPPING #-}
          ( RecordToPairs enc pairs arity (S1 s f)
          , FromPairs enc pairs
          , GToJSON' enc arity f
@@ -1098,7 +1095,7 @@ instance ( Selector s
     recordToPairs = fieldToPair
     {-# INLINE recordToPairs #-}
 
-instance INCOHERENT_
+instance {-# INCOHERENT #-}
     ( Selector s
     , GToJSON' enc arity (K1 i (Maybe a))
     , KeyValuePair enc pairs
@@ -1111,7 +1108,7 @@ instance INCOHERENT_
     {-# INLINE recordToPairs #-}
 
 #if !MIN_VERSION_base(4,16,0)
-instance INCOHERENT_
+instance {-# INCOHERENT #-}
     ( Selector s
     , GToJSON' enc arity (K1 i (Maybe a))
     , KeyValuePair enc pairs
@@ -1159,7 +1156,7 @@ instance ( WriteProduct arity a
           ixR  = ix  + lenL
     {-# INLINE writeProduct #-}
 
-instance OVERLAPPABLE_ (GToJSON' Value arity a) => WriteProduct arity a where
+instance {-# OVERLAPPABLE #-} (GToJSON' Value arity a) => WriteProduct arity a where
     writeProduct opts targs mv ix _ =
       VM.unsafeWrite mv ix . gToJSON opts targs
     {-# INLINE writeProduct #-}
@@ -1182,7 +1179,7 @@ instance ( EncodeProduct    arity a
       encodeProduct opts targs b
     {-# INLINE encodeProduct #-}
 
-instance OVERLAPPABLE_ (GToJSON' Encoding arity a) => EncodeProduct arity a where
+instance {-# OVERLAPPABLE #-} (GToJSON' Encoding arity a) => EncodeProduct arity a where
     encodeProduct opts targs a = E.retagEncoding $ gToJSON opts targs a
     {-# INLINE encodeProduct #-}
 
@@ -1204,14 +1201,14 @@ instance ( GToJSON'   enc arity a
 
 --------------------------------------------------------------------------------
 
-instance OVERLAPPABLE_
+instance {-# OVERLAPPABLE #-}
     ( ConsToJSON enc arity a
     ) => SumToJSON' UntaggedValue enc arity (C1 c a)
   where
     sumToJSON' opts targs = Tagged . gToJSON opts targs
     {-# INLINE sumToJSON' #-}
 
-instance OVERLAPPING_
+instance {-# OVERLAPPING #-}
     ( Constructor c
     , FromString enc
     ) => SumToJSON' UntaggedValue enc arity (C1 c U1)
@@ -1503,7 +1500,7 @@ instance (ToJSON a) => ToJSON (DList.DList a) where
     toJSON = toJSON1
     toEncoding = toEncoding1
 
-#if MIN_VERSION_dlist(1,0,0) && __GLASGOW_HASKELL__ >=800
+#if MIN_VERSION_dlist(1,0,0)
 -- | @since 1.5.3.0
 instance ToJSON1 DNE.DNonEmpty where
     liftToJSON t _ = listValue t . DNE.toList

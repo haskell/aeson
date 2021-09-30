@@ -11,6 +11,10 @@ For the latest version of this document, please see [https://github.com/haskell/
 * Make map type used by Object abstract so the underlying implementation can
   be modified, thanks to Callan McGill
 
+* Drop GHC-7 support
+
+* Remove Data.Aeson.Encode module
+
 ### 1.5.6.0
 * Make `Show Value` instance print object keys in lexicographic order.
 
