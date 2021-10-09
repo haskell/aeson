@@ -48,6 +48,7 @@ module Data.Aeson.Types
     , ToJSONKey(..)
     , ToJSONKeyFunction(..)
     , toJSONKeyText
+    , toJSONKeyKey
     , contramapToJSONKeyFunction
     , FromJSONKey(..)
     , FromJSONKeyFunction(..)
