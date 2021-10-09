@@ -334,14 +334,14 @@ instance KeyValue Series where
     name .= value = E.pair name (toEncoding value)
     {-# INLINE (.=) #-}
 
-instance KeyValue Pair where
+instance (key ~ Key, value ~ Value) => KeyValue (key, value) where
     name .= value = (name, toJSON value)
     {-# INLINE (.=) #-}
 
 -- | Constructs a singleton 'KM.KeyMap'. For calling functions that
 --   demand an 'Object' for constructing objects. To be used in
 --   conjunction with 'mconcat'. Prefer to use 'object' where possible.
-instance KeyValue Object where
+instance value ~ Value => KeyValue (KM.KeyMap value) where
     name .= value = KM.singleton name (toJSON value)
     {-# INLINE (.=) #-}
 
