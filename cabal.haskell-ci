@@ -13,7 +13,12 @@ constraint-set cffi
   tests:       True
   run-tests:   True
 
-constraint-set ordered-keymap
+constraint-set ordered-keymap-on
   constraints: aeson +ordered-keymap
+  tests:       True
+  run-tests:   True
+
+constraint-set ordered-keymap-off
+  constraints: aeson -ordered-keymap
   tests:       True
   run-tests:   True

@@ -1,5 +1,5 @@
 name:               aeson
-version:            2.0.0.0
+version:            2.0.1.0
 license:            BSD3
 license-file:       LICENSE
 category:           Text, Web, JSON
@@ -63,7 +63,7 @@ flag ordered-keymap
   description:
     Use ordered @Data.Map.Strict@ for KeyMap implementation.
 
-  default:     False
+  default:     True
   manual:      True
 
 library

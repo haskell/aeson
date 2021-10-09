@@ -1,5 +1,10 @@
 For the latest version of this document, please see [https://github.com/haskell/aeson/blob/master/changelog.md](https://github.com/haskell/aeson/blob/master/changelog.md).
 
+### 2.0.1.0
+
+* Add FromJSON KeyMap instances
+* Make `ordered-keymap` on by default.
+
 ### 2.0.0.0
 
 * Remove forced `-O2` and then unneeded `fast` flag.
@@ -11,6 +16,8 @@ For the latest version of this document, please see [https://github.com/haskell/
 * Make map type used by Object abstract so the underlying implementation can
   be modified, thanks to Callan McGill
 
+* Add `ordered-keymap` flag allowing to change the underlying implementation of object `KeyMap`.
+
 * Drop GHC-7 support
 
 * Remove Data.Aeson.Encode module
@@ -19,6 +26,7 @@ For the latest version of this document, please see [https://github.com/haskell/
   Change `To/FromJSONKey` instances to use `"+inf"` and `"-inf"` too.
 
 * `FromJSON ()` and `FromJSON (Proxy tag)` accept any JSON value.
+
 
 ### 1.5.6.0
 * Make `Show Value` instance print object keys in lexicographic order.

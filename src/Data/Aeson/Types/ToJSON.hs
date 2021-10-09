@@ -65,7 +65,7 @@ import Data.Aeson.Internal.Functions (mapKeyVal, mapKeyValO)
 import Data.Aeson.Types.Generic (AllNullary, False, IsRecord, One, ProductSize, Tagged2(..), True, Zero, productSize)
 import Data.Aeson.Types.Internal
 import qualified Data.Aeson.Key as Key
-import qualified Data.Aeson.KeyMap as TM
+import qualified Data.Aeson.KeyMap as KM
 import Data.Attoparsec.Number (Number(..))
 import Data.Bits (unsafeShiftR)
 import Data.DList (DList)
@@ -336,11 +336,11 @@ instance KeyValue Pair where
     name .= value = (name, toJSON value)
     {-# INLINE (.=) #-}
 
--- | Constructs a singleton 'TM.KeyMap'. For calling functions that
+-- | Constructs a singleton 'KM.KeyMap'. For calling functions that
 --   demand an 'Object' for constructing objects. To be used in
 --   conjunction with 'mconcat'. Prefer to use 'object' where possible.
 instance KeyValue Object where
-    name .= value = TM.singleton name (toJSON value)
+    name .= value = KM.singleton name (toJSON value)
     {-# INLINE (.=) #-}
 
 -------------------------------------------------------------------------------
@@ -1262,8 +1262,8 @@ instance (ToJSON a) => ToJSON (Maybe a) where
 
 
 instance ToJSON2 Either where
-    liftToJSON2  toA _ _toB _ (Left a)  = Object $ TM.singleton "Left"  (toA a)
-    liftToJSON2 _toA _  toB _ (Right b) = Object $ TM.singleton "Right" (toB b)
+    liftToJSON2  toA _ _toB _ (Left a)  = Object $ KM.singleton "Left"  (toA a)
+    liftToJSON2 _toA _  toB _ (Right b) = Object $ KM.singleton "Right" (toB b)
 
     liftToEncoding2  toA _ _toB _ (Left a) = E.pairs $ E.pair "Left" $ toA a
     liftToEncoding2 _toA _ toB _ (Right b) = E.pairs $ E.pair "Right" $ toB b
@@ -1591,8 +1591,8 @@ instance (ToJSON1 f, ToJSON1 g, ToJSON a) => ToJSON (Product f g a) where
     toEncoding = toEncoding1
 
 instance (ToJSON1 f, ToJSON1 g) => ToJSON1 (Sum f g) where
-    liftToJSON tv tvl (InL x) = Object $ TM.singleton "InL" (liftToJSON tv tvl x)
-    liftToJSON tv tvl (InR y) = Object $ TM.singleton "InR" (liftToJSON tv tvl y)
+    liftToJSON tv tvl (InL x) = Object $ KM.singleton "InL" (liftToJSON tv tvl x)
+    liftToJSON tv tvl (InR y) = Object $ KM.singleton "InR" (liftToJSON tv tvl y)
 
     liftToEncoding te tel (InL x) = E.pairs $ E.pair "InL" $ liftToEncoding te tel x
     liftToEncoding te tel (InR y) = E.pairs $ E.pair "InR" $ liftToEncoding te tel y
@@ -1645,7 +1645,7 @@ instance ToJSON a => ToJSON (IntMap.IntMap a) where
 
 instance ToJSONKey k => ToJSON1 (M.Map k) where
     liftToJSON g _ = case toJSONKey of
-        ToJSONKeyText f _ -> Object . TM.fromMap . mapKeyValO f g
+        ToJSONKeyText f _ -> Object . KM.fromMap . mapKeyValO f g
         ToJSONKeyValue  f _ -> Array . V.fromList . map (toJSONPair f g) . M.toList
 
     liftToEncoding g _ = case toJSONKey of
@@ -1744,11 +1744,11 @@ instance (ToJSON a) => ToJSON (HashSet.HashSet a) where
 
 instance ToJSONKey k => ToJSON1 (H.HashMap k) where
     liftToJSON g _ = case toJSONKey of
-        ToJSONKeyText f _ -> Object . TM.fromHashMap . mapKeyVal f g
+        ToJSONKeyText f _ -> Object . KM.fromHashMap . mapKeyVal f g
         ToJSONKeyValue f _
           -> Array . V.fromList . map (toJSONPair f g) . H.toList
 
-    -- liftToEncoding :: forall a. (a -> Encoding) -> ([a] -> Encoding) -> TM.HashMap k a -> Encoding
+    -- liftToEncoding :: forall a. (a -> Encoding) -> ([a] -> Encoding) -> KM.HashMap k a -> Encoding
     liftToEncoding g _ = case toJSONKey of
         ToJSONKeyText _ f -> dict f g H.foldrWithKey
         ToJSONKeyValue _ f -> listEncoding (pairEncoding f) . H.toList
@@ -1763,11 +1763,11 @@ instance (ToJSON v, ToJSONKey k) => ToJSON (H.HashMap k v) where
 -- Data.Aeson.KeyMap
 -------------------------------------------------------------------------------
 
-instance ToJSON1 TM.KeyMap where
+instance ToJSON1 KM.KeyMap where
     liftToJSON g _ = Object . fmap g
-    liftToEncoding g _ = dict E.key g TM.foldrWithKey
+    liftToEncoding g _ = dict E.key g KM.foldrWithKey
 
-instance (ToJSON v) => ToJSON (TM.KeyMap v) where
+instance (ToJSON v) => ToJSON (KM.KeyMap v) where
     {-# SPECIALIZE instance ToJSON Object #-}
 
     toJSON = toJSON1

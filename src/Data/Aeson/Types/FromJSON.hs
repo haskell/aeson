@@ -160,6 +160,10 @@ import qualified Data.Primitive.PrimArray as PM
 
 import Data.Coerce (Coercible, coerce)
 
+#if __GLASGOW_HASKELL__ < 804
+import qualified Data.Type.Coercion
+#endif
+
 parseIndexedJSON :: (Value -> Parser a) -> Int -> Value -> Parser a
 parseIndexedJSON p idx value = p value <?> Index idx
 
@@ -1970,8 +1974,25 @@ instance FromJSON Key where
     parseJSON = withText "Key" (pure . Key.fromText)
 
 instance FromJSONKey Key where
-    -- TODO: make me more efficient.
-    fromJSONKey = FromJSONKeyText Key.fromText
+    fromJSONKey = case oldGHC Key.coercionToText of
+        Just Coercion -> FromJSONKeyCoerce
+        Nothing       -> FromJSONKeyText Key.fromText
+      where
+#if __GLASGOW_HASKELL__ < 804
+        -- for some reason GHC-8.0 and 8.2 cannot apply the sym without help
+        oldGHC = fmap Data.Type.Coercion.sym
+#else
+        oldGHC = id
+#endif
+
+-- | @since 2.0.1.0
+instance FromJSON1 KM.KeyMap where
+    liftParseJSON p _ = withObject "KeyMap" $ \obj ->
+        traverse p obj
+
+-- | @since 2.0.1.0
+instance FromJSON v => FromJSON (KM.KeyMap v) where
+    parseJSON = parseJSON1
 
 instance FromJSON Value where
     parseJSON = pure
