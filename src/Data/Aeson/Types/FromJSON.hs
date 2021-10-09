@@ -2285,10 +2285,6 @@ instance FromJSON1 Proxy where
 instance FromJSON (Proxy a) where
     parseJSON _ = pure Proxy
 
-fromNull :: String -> a -> Value -> Parser a
-fromNull _ a Null = pure a
-fromNull c _ v    = prependContext c (typeMismatch "Null" v)
-
 instance FromJSON2 Tagged where
     liftParseJSON2 _ _ p _ = fmap Tagged . p
 

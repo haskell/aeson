@@ -39,6 +39,7 @@ module Data.Aeson.Types.ToJSON
     , ToJSONKey(..)
     , ToJSONKeyFunction(..)
     , toJSONKeyText
+    , toJSONKeyKey
     , contramapToJSONKeyFunction
 
     , GToJSONKey()
@@ -490,8 +491,14 @@ data ToJSONKeyFunction a
 --       where
 --         myKeyToText = Text.pack . show -- or showt from text-show
 -- @
-toJSONKeyText :: (a -> Key) -> ToJSONKeyFunction a
-toJSONKeyText f = ToJSONKeyText f (E.key . f)
+toJSONKeyText :: (a -> Text) -> ToJSONKeyFunction a
+toJSONKeyText f = toJSONKeyKey (Key.fromText . f)
+
+-- |
+--
+-- @since 2.0.0.0
+toJSONKeyKey :: (a -> Key) -> ToJSONKeyFunction a
+toJSONKeyKey f = ToJSONKeyText f (E.key . f)
 
 -- | TODO: should this be exported?
 toJSONKeyTextEnc :: (a -> Encoding' Key) -> ToJSONKeyFunction a
@@ -532,7 +539,7 @@ contramapToJSONKeyFunction h x = case x of
 -- @
 genericToJSONKey :: (Generic a, GToJSONKey (Rep a))
            => JSONKeyOptions -> ToJSONKeyFunction a
-genericToJSONKey opts = toJSONKeyText (Key.fromString . keyModifier opts . getConName . from)
+genericToJSONKey opts = toJSONKeyKey (Key.fromString . keyModifier opts . getConName . from)
 
 class    GetConName f => GToJSONKey f
 instance GetConName f => GToJSONKey f
@@ -1448,7 +1455,7 @@ instance ToJSON Text where
     toEncoding = E.text
 
 instance ToJSONKey Text where
-    toJSONKey = toJSONKeyText Key.fromText
+    toJSONKey = toJSONKeyText id
 
 
 instance ToJSON LT.Text where
@@ -1456,7 +1463,7 @@ instance ToJSON LT.Text where
     toEncoding = E.lazyText
 
 instance ToJSONKey LT.Text where
-    toJSONKey = toJSONKeyText (Key.fromText . LT.toStrict)
+    toJSONKey = toJSONKeyText (LT.toStrict)
 
 
 instance ToJSON Version where
@@ -1464,7 +1471,7 @@ instance ToJSON Version where
     toEncoding = toEncoding . showVersion
 
 instance ToJSONKey Version where
-    toJSONKey = toJSONKeyText (Key.fromString . showVersion)
+    toJSONKey = toJSONKeyKey (Key.fromString . showVersion)
 
 -------------------------------------------------------------------------------
 -- semigroups NonEmpty
@@ -2199,8 +2206,8 @@ instance (ToJSON a, ToJSON b, ToJSON c) => ToJSONKey (a,b,c)
 instance (ToJSON a, ToJSON b, ToJSON c, ToJSON d) => ToJSONKey (a,b,c,d)
 
 instance ToJSONKey Char where
-    toJSONKey = ToJSONKeyText (Key.fromText . T.singleton) (E.key . Key.fromText . T.singleton)
-    toJSONKeyList = toJSONKeyText Key.fromString
+    toJSONKey = toJSONKeyText T.singleton
+    toJSONKeyList = toJSONKeyText T.pack
 
 instance (ToJSONKey a, ToJSON a) => ToJSONKey [a] where
     toJSONKey = toJSONKeyList
