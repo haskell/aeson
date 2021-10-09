@@ -1527,10 +1527,7 @@ instance FromJSON Ordering where
                   " (expected \"LT\", \"EQ\", or \"GT\")"
 
 instance FromJSON () where
-    parseJSON = withArray "()" $ \v ->
-                  if V.null v
-                    then pure ()
-                    else prependContext "()" $ fail "expected an empty array"
+    parseJSON _ = pure ()
 
 instance FromJSON Char where
     parseJSON = withText "Char" parseChar
@@ -2283,10 +2280,10 @@ instance FromJSON1 S.Maybe where
 -------------------------------------------------------------------------------
 
 instance FromJSON1 Proxy where
-    liftParseJSON _ _ = fromNull "Proxy" Proxy
+    liftParseJSON _ _ _ = pure Proxy
 
 instance FromJSON (Proxy a) where
-    parseJSON = fromNull "Proxy" Proxy
+    parseJSON _ = pure Proxy
 
 fromNull :: String -> a -> Value -> Parser a
 fromNull _ a Null = pure a
