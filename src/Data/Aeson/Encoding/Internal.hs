@@ -294,6 +294,20 @@ integer = Encoding . B.integerDec
 float :: Float -> Encoding
 float = realFloatToEncoding $ Encoding . B.floatDec
 
+-- |
+--
+-- >>> double 42
+-- "42.0"
+--
+-- >>> double (0/0)
+-- "null"
+--
+-- >>> double (1/0)
+-- "\"+inf\""
+--
+-- >>> double (-23/0)
+-- "\"-inf\""
+--
 double :: Double -> Encoding
 double = realFloatToEncoding $ Encoding . B.doubleDec
 
@@ -302,8 +316,9 @@ scientific = Encoding . EB.scientific
 
 realFloatToEncoding :: RealFloat a => (a -> Encoding) -> a -> Encoding
 realFloatToEncoding e d
-    | isNaN d || isInfinite d = null_
-    | otherwise               = e d
+    | isNaN d      = null_
+    | isInfinite d = if d > 0 then Encoding "\"+inf\"" else Encoding "\"-inf\""
+    | otherwise    = e d
 {-# INLINE realFloatToEncoding #-}
 
 -------------------------------------------------------------------------------
@@ -344,10 +359,28 @@ integerText :: Integer -> Encoding' a
 integerText = Encoding . EB.quote . B.integerDec
 
 floatText :: Float -> Encoding' a
-floatText = Encoding . EB.quote . B.floatDec
+floatText d
+    | isInfinite d = if d > 0 then Encoding "\"+inf\"" else Encoding "\"-inf\""
+    | otherwise = Encoding . EB.quote . B.floatDec $ d
 
+-- |
+--
+-- >>> doubleText 42
+-- "\"42.0\""
+--
+-- >>> doubleText (0/0)
+-- "\"NaN\""
+--
+-- >>> doubleText (1/0)
+-- "\"+inf\""
+--
+-- >>> doubleText (-23/0)
+-- "\"-inf\""
+--
 doubleText :: Double -> Encoding' a
-doubleText = Encoding . EB.quote . B.doubleDec
+doubleText d
+    | isInfinite d = if d > 0 then Encoding "\"+inf\"" else Encoding "\"-inf\""
+    | otherwise = Encoding . EB.quote . B.doubleDec $ d
 
 scientificText :: Scientific -> Encoding' a
 scientificText = Encoding . EB.quote . EB.scientific
