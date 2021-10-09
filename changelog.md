@@ -18,6 +18,8 @@ For the latest version of this document, please see [https://github.com/haskell/
 * `Double` and `Float` infinities are encoded as `"+inf"` and `"-inf"`.
   Change `To/FromJSONKey` instances to use `"+inf"` and `"-inf"` too.
 
+* `FromJSON ()` and `FromJSON (Proxy tag)` accept any JSON value.
+
 ### 1.5.6.0
 * Make `Show Value` instance print object keys in lexicographic order.
 
