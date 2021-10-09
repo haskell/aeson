@@ -9,9 +9,7 @@ synopsis:      Aeson examples
 description:   Various aeson examples, also used in benchmarks
 maintainer:    Adam Bergmark <adam@bergmark.nl>
 tested-with:
-  GHC ==7.8.4
-   || ==7.10.3
-   || ==8.0.2
+  GHC ==8.0.2
    || ==8.2.2
    || ==8.4.4
    || ==8.6.5

@@ -15,9 +15,6 @@
 {-# LANGUAGE UndecidableInstances #-}
 {-# LANGUAGE ViewPatterns #-}
 
-#include "incoherent-compat.h"
-#include "overlapping-compat.h"
-
 -- TODO: Drop this when we remove support for Data.Attoparsec.Number
 {-# OPTIONS_GHC -fno-warn-deprecations #-}
 
@@ -127,7 +124,7 @@ import qualified Data.Aeson.KeyMap as KM
 import qualified Data.Attoparsec.ByteString.Char8 as A (endOfInput, parseOnly, scientific)
 import qualified Data.ByteString.Lazy as L
 import qualified Data.DList as DList
-#if MIN_VERSION_dlist(1,0,0) && __GLASGOW_HASKELL__ >=800
+#if MIN_VERSION_dlist(1,0,0)
 import qualified Data.DList.DNonEmpty as DNE
 #endif
 import qualified Data.Fix as F
@@ -866,7 +863,7 @@ instance GFromJSON arity V1 where
     {-# INLINE gParseJSON #-}
 
 
-instance OVERLAPPABLE_ (GFromJSON arity a) => GFromJSON arity (M1 i c a) where
+instance {-# OVERLAPPABLE #-} (GFromJSON arity a) => GFromJSON arity (M1 i c a) where
     -- Meta-information, which is not handled elsewhere, is just added to the
     -- parsed value:
     gParseJSON opts fargs = fmap M1 . gParseJSON opts fargs
@@ -1192,7 +1189,7 @@ instance (ConsFromJSON arity f) => FromTaggedObject' arity f False where
         contentsFieldName :* p'@(cname :* tname :* _) = p
     {-# INLINE parseFromTaggedObject' #-}
 
-instance OVERLAPPING_ FromTaggedObject' arity U1 False where
+instance {-# OVERLAPPING #-} FromTaggedObject' arity U1 False where
     -- Nullary constructors don't need a contents field
     parseFromTaggedObject' _ _ = Tagged (pure U1)
     {-# INLINE parseFromTaggedObject' #-}
@@ -1219,7 +1216,7 @@ instance ( IsRecord            f isRecord
           . consParseJSON' p
     {-# INLINE consParseJSON #-}
 
-instance OVERLAPPING_
+instance {-# OVERLAPPING #-}
          ( GFromJSON arity a, RecordFromJSON arity (S1 s a)
          ) => ConsFromJSON' arity (S1 s a) True where
     consParseJSON' p@(cname :* tname :* opts :* fargs)
@@ -1232,7 +1229,7 @@ instance RecordFromJSON arity f => ConsFromJSON' arity f True where
         Tagged . withObject (showCons cname tname) (recordParseJSON (False :* p))
     {-# INLINE consParseJSON' #-}
 
-instance OVERLAPPING_
+instance {-# OVERLAPPING #-}
          ConsFromJSON' arity U1 False where
     -- Empty constructors are expected to be encoded as an empty array:
     consParseJSON' (cname :* tname :* _) v =
@@ -1246,7 +1243,7 @@ instance OVERLAPPING_
             show (V.length a)
     {-# INLINE consParseJSON' #-}
 
-instance OVERLAPPING_
+instance {-# OVERLAPPING #-}
          GFromJSON arity f => ConsFromJSON' arity (S1 s f) False where
     consParseJSON' (_ :* _ :* opts :* fargs) =
         Tagged . fmap M1 . gParseJSON opts fargs
@@ -1310,7 +1307,7 @@ instance ( RecordFromJSON' arity a
               <*> recordParseJSON' p obj
     {-# INLINE recordParseJSON' #-}
 
-instance OVERLAPPABLE_ (Selector s, GFromJSON arity a) =>
+instance {-# OVERLAPPABLE #-} (Selector s, GFromJSON arity a) =>
          RecordFromJSON' arity (S1 s a) where
     recordParseJSON' (cname :* tname :* opts :* fargs) obj = do
         fv <- contextCons cname tname (obj .: label)
@@ -1320,7 +1317,7 @@ instance OVERLAPPABLE_ (Selector s, GFromJSON arity a) =>
         sname = selName (undefined :: M1 _i s _f _p)
     {-# INLINE recordParseJSON' #-}
 
-instance INCOHERENT_ (Selector s, FromJSON a) =>
+instance {-# INCOHERENT #-} (Selector s, FromJSON a) =>
          RecordFromJSON' arity (S1 s (K1 i (Maybe a))) where
     recordParseJSON' (_ :* _ :* opts :* _) obj = M1 . K1 <$> obj .:? label
       where
@@ -1330,7 +1327,7 @@ instance INCOHERENT_ (Selector s, FromJSON a) =>
 
 #if !MIN_VERSION_base(4,16,0)
 -- Parse an Option like a Maybe.
-instance INCOHERENT_ (Selector s, FromJSON a) =>
+instance {-# INCOHERENT #-} (Selector s, FromJSON a) =>
          RecordFromJSON' arity (S1 s (K1 i (Semigroup.Option a))) where
     recordParseJSON' p obj = wrap <$> recordParseJSON' p obj
       where
@@ -1426,7 +1423,7 @@ instance
         R1 <$> parseUntaggedValue p value
     {-# INLINE parseUntaggedValue #-}
 
-instance OVERLAPPABLE_
+instance {-# OVERLAPPABLE #-}
     ( ConsFromJSON arity a
     , Constructor c
     ) => FromUntaggedValue arity (C1 c a)
@@ -1436,7 +1433,7 @@ instance OVERLAPPABLE_
         cname = conName (undefined :: M1 _i c _f _p)
     {-# INLINE parseUntaggedValue #-}
 
-instance OVERLAPPING_
+instance {-# OVERLAPPING #-}
     ( Constructor c )
     => FromUntaggedValue arity (C1 c U1)
   where
@@ -1738,7 +1735,7 @@ instance FromJSON1 DList.DList where
 instance (FromJSON a) => FromJSON (DList.DList a) where
     parseJSON = parseJSON1
 
-#if MIN_VERSION_dlist(1,0,0) && __GLASGOW_HASKELL__ >=800
+#if MIN_VERSION_dlist(1,0,0)
 -- | @since 1.5.3.0
 instance FromJSON1 DNE.DNonEmpty where
     liftParseJSON p _ = withArray "DNonEmpty" $

@@ -3,9 +3,7 @@ name:               aeson-benchmarks
 version:            0
 build-type:         Simple
 tested-with:
-  GHC ==7.8.4
-   || ==7.10.3
-   || ==8.0.2
+  GHC ==8.0.2
    || ==8.2.2
    || ==8.4.4
    || ==8.6.5
@@ -15,7 +13,6 @@ tested-with:
 
 extra-source-files:
   cbits/*.c
-  include/*.h
 
 library
   default-language: Haskell2010
@@ -50,27 +47,11 @@ library
     , unordered-containers
     , uuid-types
     , vector
-
-  if impl(ghc >=8.0)
-    build-depends: witherable
+    , witherable
 
   if !impl(ghc >=8.6)
     build-depends: contravariant
 
-  if !impl(ghc >=8.0)
-    -- `Data.Semigroup` is available in base only since GHC 8.0 / base 4.9
-    build-depends:
-        fail
-      , semigroups
-      , transformers-compat
-
-  if !impl(ghc >=7.10)
-    -- `Numeric.Natural` is available in base only since GHC 7.10 / base 4.8
-    build-depends:
-        nats
-      , void
-
-  include-dirs:     include
   ghc-options:      -Wall
   cpp-options:      -DGENERICS
   exposed-modules:
