@@ -1,9 +1,10 @@
 {-# LANGUAGE CPP #-}
 {-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE DeriveFunctor #-}
-{-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE GADTs #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE TemplateHaskellQuotes #-}
+{-# LANGUAGE TypeFamilies #-}
 
 -- |
 -- An abstract interface for maps from JSON keys to values.
@@ -117,6 +118,7 @@ import qualified Data.Functor.WithIndex     as WI (FunctorWithIndex (..))
 import qualified Data.Traversable.WithIndex as WI (TraversableWithIndex (..))
 import qualified Data.Semialign as SA
 import qualified Data.Semialign.Indexed as SAI
+import qualified GHC.Exts
 import qualified Witherable as W
 
 #ifdef USE_ORDEREDMAP
@@ -576,6 +578,12 @@ instance Semigroup (KeyMap v) where
 instance Monoid (KeyMap v) where
     mempty = empty
     mappend = (<>)
+
+-- | @since 2.0.2.0
+instance GHC.Exts.IsList (KeyMap v) where
+    type Item (KeyMap v) = (Key, v)
+    fromList = fromList
+    toList   = toAscList
 
 -------------------------------------------------------------------------------
 -- template-haskell
