@@ -1,8 +1,12 @@
 For the latest version of this document, please see [https://github.com/haskell/aeson/blob/master/changelog.md](https://github.com/haskell/aeson/blob/master/changelog.md).
 
+### 2.0.2.0
+
+* Add `IsList (KeyMap v)` instance.
+
 ### 2.0.1.0
 
-* Add FromJSON KeyMap instances
+* Add `FromJSON KeyMap` instance.
 * Make `ordered-keymap` on by default.
 
 ### 2.0.0.0
