@@ -159,10 +159,14 @@ benchDecodeMap
     -> LBS.ByteString
     -> Benchmark
 benchDecodeMap name val = bgroup name
-    [  bench "Text"           $ nf (decodeMap proxyText) val
-    ,  bench "Identity"       $ nf (decodeMap proxyT1)   val
-    ,  bench "Coerce"         $ nf (decodeMap proxyT2)   val
-    ,  bench "Parser"         $ nf (decodeMap proxyT3)   val
+    [  bench "Text"            $ nf (decodeMap proxyText) val
+    ,  bench "Identity"        $ nf (decodeMap proxyT1)   val
+    ,  bench "Coerce"          $ nf (decodeMap proxyT2)   val
+    ,  bench "Parser"          $ nf (decodeMap proxyT3)   val
+    ,  bench "Tagged Text"     $ nf (decodeMap $ proxyTagged proxyText) val
+    ,  bench "Tagged Identity" $ nf (decodeMap $ proxyTagged proxyT1)   val
+    ,  bench "Tagged Coerce"   $ nf (decodeMap $ proxyTagged proxyT2)   val
+    ,  bench "Tagged Parser"   $ nf (decodeMap $ proxyTagged proxyT3)   val
     ]
 
 benchEncodeHM

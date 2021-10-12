@@ -1860,7 +1860,9 @@ instance (FromJSONKey k, Ord k) => FromJSON1 (M.Map k) where
                 Just Coercion -> uc . M.traverseWithKey (\k v -> p v <?> Key k) . KM.toMap
         FromJSONKeyText f -> withObject "Map" (text f)
         FromJSONKeyTextParser f -> withObject "Map" $
-            KM.foldrWithKey (\k v m -> M.insert <$> f (Key.toText k) <?> Key k <*> p v <?> Key k <*> m) (pure M.empty)
+            KM.foldrWithKey
+                (\k v m -> M.insert <$> f (Key.toText k) <?> Key k <*> p v <?> Key k <*> m)
+                (pure M.empty)
         FromJSONKeyValue f -> withArray "Map" $ \arr ->
             fmap M.fromList . Tr.sequence .
                 zipWith (parseIndexedJSONPair f p) [0..] . V.toList $ arr
@@ -1945,9 +1947,9 @@ instance (FromJSONKey k, Eq k, Hashable k) => FromJSON1 (H.HashMap k) where
                 Just Coercion -> uc . H.traverseWithKey (\k v -> p v <?> Key k) . KM.toHashMap
         FromJSONKeyText f -> withObject "HashMap" (text f)
         FromJSONKeyTextParser f -> withObject "HashMap" $
-          H.foldrWithKey
-            (\k v m -> H.insert <$> f (Key.toText k) <?> Key k <*> p v <?> Key k <*> m) (pure H.empty)
-            . KM.toHashMap
+            KM.foldrWithKey
+                (\k v m -> H.insert <$> f (Key.toText k) <?> Key k <*> p v <?> Key k <*> m)
+                (pure H.empty)
         FromJSONKeyValue f -> withArray "Map" $ \arr ->
             fmap H.fromList . Tr.sequence .
                 zipWith (parseIndexedJSONPair f p) [0..] . V.toList $ arr
