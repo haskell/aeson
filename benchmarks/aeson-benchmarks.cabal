@@ -52,6 +52,8 @@ library
   if !impl(ghc >=8.6)
     build-depends: contravariant
 
+  cpp-options: -DUSE_ORDEREDMAP=1
+
   ghc-options:      -Wall
   cpp-options:      -DGENERICS
   exposed-modules:
