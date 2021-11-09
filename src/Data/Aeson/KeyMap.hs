@@ -52,12 +52,14 @@ module Data.Aeson.KeyMap (
     -- * Maps
     fromHashMap,
     toHashMap,
+    fromHashMapText,
+    toHashMapText,
     coercionToHashMap,
     fromMap,
     toMap,
+    fromMapText,
+    toMapText,
     coercionToMap,
-    fromHashMapText,
-    toHashMapText,
 
     -- * Traversal
     -- ** Map
@@ -483,7 +485,7 @@ fromHashMap = KeyMap
 
 -- | Convert a 'KeyMap' to a 'Map'.
 toMap :: KeyMap v -> Map Key v
-toMap = M.fromList . toList 
+toMap = M.fromList . toList
 
 -- | Convert a 'HashMap' to a 'Map'.
 fromMap :: Map Key v -> KeyMap v
@@ -540,6 +542,14 @@ toHashMapText = H.fromList . L.map (first Key.toText) . toList
 -- | Convert a @'HashMap' 'Text'@to a 'KeyMap'.
 fromHashMapText :: HashMap Text v -> KeyMap v
 fromHashMapText = fromList . L.map (first Key.fromText) . H.toList
+
+-- | Convert a 'KeyMap' to a @'Map' 'Text'@.
+toMapText :: KeyMap v -> Map Text v
+toMapText = M.fromList . L.map (first Key.toText) . toList
+
+-- | Convert a @'Map' 'Text'@to a 'KeyMap'.
+fromMapText :: Map Text v -> KeyMap v
+fromMapText = fromList . L.map (first Key.fromText) . M.toList
 
 -------------------------------------------------------------------------------
 -- Instances
