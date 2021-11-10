@@ -3,6 +3,7 @@ For the latest version of this document, please see [https://github.com/haskell/
 ### 2.0.2.0
 
 * Add `IsList (KeyMap v)` instance.
+* Add `toMapText` and `fromMapText` to `Data.Aeson.KeyMap`.
 
 ### 2.0.1.0
 
