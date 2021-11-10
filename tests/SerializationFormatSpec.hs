@@ -214,8 +214,10 @@ jsonExamples =
   , example "Semigroup.First Int" "2" (pure 2 :: Semigroup.First Int)
   , example "Semigroup.Last Int" "2" (pure 2 :: Semigroup.Last Int)
   , example "Semigroup.WrappedMonoid Int" "2" (Semigroup.WrapMonoid 2 :: Semigroup.WrappedMonoid Int)
+#if !MIN_VERSION_base(4,16,0)
   , example "Semigroup.Option Just" "2" (pure 2 :: Semigroup.Option Int)
   , example "Semigroup.Option Nothing" "null" (Semigroup.Option (Nothing :: Maybe Bool))
+#endif
 
   -- time 1.9
   , example "SystemTime" "123.123456789" (MkSystemTime 123 123456789)
