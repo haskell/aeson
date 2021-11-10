@@ -544,10 +544,14 @@ fromHashMapText :: HashMap Text v -> KeyMap v
 fromHashMapText = fromList . L.map (first Key.fromText) . H.toList
 
 -- | Convert a 'KeyMap' to a @'Map' 'Text'@.
+--
+-- @since 2.0.2.0
 toMapText :: KeyMap v -> Map Text v
 toMapText = M.fromList . L.map (first Key.toText) . toList
 
 -- | Convert a @'Map' 'Text'@to a 'KeyMap'.
+--
+-- @since 2.0.2.0
 fromMapText :: Map Text v -> KeyMap v
 fromMapText = fromList . L.map (first Key.fromText) . M.toList
 
