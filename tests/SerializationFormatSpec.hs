@@ -29,6 +29,7 @@ import Data.List.NonEmpty (NonEmpty(..))
 import Data.Proxy (Proxy(..))
 import Data.Scientific (Scientific)
 import Data.Tagged (Tagged(..))
+import Data.Text (Text)
 import Data.These (These (..))
 import Data.Time (fromGregorian)
 import Data.Time.Calendar.Month.Compat (fromYearMonth)
@@ -36,6 +37,7 @@ import Data.Time.Calendar.Quarter.Compat (fromYearQuarter, QuarterOfYear (..))
 import Data.Time.Calendar.Compat (CalendarDiffDays (..), DayOfWeek (..))
 import Data.Time.LocalTime.Compat (CalendarDiffTime (..))
 import Data.Time.Clock.System.Compat (SystemTime (..))
+import Data.Tuple.Solo (Solo (..))
 import Data.Word (Word8)
 import GHC.Generics (Generic)
 import Instances ()
@@ -58,6 +60,8 @@ import qualified Data.UUID.Types as UUID
 import qualified Data.Vector as Vector
 import qualified Data.Fix as F
 import qualified Data.Strict as S
+import qualified Data.Text.Lazy as LT
+import qualified Data.Text.Short as ST
 
 tests :: [TestTree]
 tests =
@@ -88,6 +92,10 @@ jsonExamples =
   , example "Seq" "[1,2,3]"  (Seq.fromList [1, 2, 3] ::  Seq.Seq Int)
   , example "DList" "[1,2,3]"  (DList.fromList [1, 2, 3] :: DList.DList Int)
   , example "()" "[]"  ()
+
+  , example "Text" "\"foo\"" ("foo" :: Text)
+  , example "Lazy Text" "\"foo\"" ("foo" :: LT.Text)
+  , example "ShortText" "\"foo\"" ("foo" :: ST.ShortText)
 
   , ndExample "HashMap Int Int"
         [ "{\"0\":1,\"2\":3}", "{\"2\":3,\"0\":1}"]
@@ -137,10 +145,15 @@ jsonExamples =
 
   -- Functors
   , example "Identity Int" "1"  (pure 1 :: Identity Int)
+  , example "Solo Int" "1"      (pure 1 :: Solo Int)
 
   , example "Identity Char" "\"x\""      (pure 'x' :: Identity Char)
   , example "Identity String" "\"foo\""  (pure "foo" :: Identity String)
   , example "[Identity Char]" "\"xy\""   ([pure 'x', pure 'y'] :: [Identity Char])
+
+  , example "Solo Char" "\"x\""      (pure 'x' :: Solo Char)
+  , example "Solo String" "\"foo\""  (pure "foo" :: Solo String)
+  , example "[Solo Char]" "\"xy\""   ([pure 'x', pure 'y'] :: [Solo Char])
 
   , example "Maybe Char" "\"x\""              (pure 'x' :: Maybe Char)
   , example "Maybe String" "\"foo\""          (pure "foo" :: Maybe String)

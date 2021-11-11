@@ -4,6 +4,8 @@ For the latest version of this document, please see [https://github.com/haskell/
 
 * Add `IsList (KeyMap v)` instance.
 * Add `toMapText` and `fromMapText` to `Data.Aeson.KeyMap`.
+* Add `ShortText` instances
+* Add `Solo` instances
 
 ### 2.0.1.0
 

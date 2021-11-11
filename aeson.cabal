@@ -1,5 +1,5 @@
 name:               aeson
-version:            2.0.1.0
+version:            2.0.2.0
 license:            BSD3
 license-file:       LICENSE
 category:           Text, Web, JSON
@@ -60,9 +60,7 @@ flag cffi
   manual:      True
 
 flag ordered-keymap
-  description:
-    Use ordered @Data.Map.Strict@ for KeyMap implementation.
-
+  description: Use ordered @Data.Map.Strict@ for KeyMap implementation.
   default:     True
   manual:      True
 
@@ -123,11 +121,13 @@ library
     , dlist                 >=0.8.0.4  && <1.1
     , hashable              >=1.2.7.0  && <1.5
     , indexed-traversable   >=0.1.1    && <0.2
+    , OneTuple              >=0.3.1    && <0.4
     , primitive             >=0.7.0.1  && <0.8
     , scientific            >=0.3.7.0  && <0.4
     , semialign             >=1.2      && <1.3
     , strict                >=0.4      && <0.5
     , tagged                >=0.8.6    && <0.9
+    , text-short            >=0.1.4    && <0.2
     , th-abstraction        >=0.2.8.0  && <0.5
     , these                 >=1.1      && <1.2
     , unordered-containers  >=0.2.10.0 && <0.3
@@ -198,8 +198,9 @@ test-suite aeson-tests
     , ghc-prim              >=0.2
     , hashable
     , integer-logarithms    >=1        && <1.1
+    , OneTuple
     , QuickCheck            >=2.14.2   && <2.15
-    , quickcheck-instances  >=0.3.25.2 && <0.4
+    , quickcheck-instances  >=0.3.26.1 && <0.4
     , scientific
     , strict
     , tagged
@@ -209,6 +210,7 @@ test-suite aeson-tests
     , tasty-quickcheck
     , template-haskell
     , text
+    , text-short
     , these
     , time
     , time-compat

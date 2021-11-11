@@ -10,6 +10,8 @@ module Data.Aeson.Key (
     toText,
     fromText,
     coercionToText,
+    toShortText,
+    fromShortText,
 ) where
 
 import Prelude (Eq, Ord, (.), Show (..), String, Maybe (..))
@@ -27,6 +29,7 @@ import Text.Read (Read (..))
 
 import qualified Data.String
 import qualified Data.Text as T
+import qualified Data.Text.Short as ST
 import qualified Language.Haskell.TH.Syntax as TH
 
 newtype Key = Key { unKey :: Text }
@@ -53,6 +56,14 @@ toText = unKey
 coercionToText :: Maybe (Coercion Key Text)
 coercionToText = Just Coercion
 {-# INLINE coercionToText #-}
+
+-- | @since 2.0.2.0
+toShortText :: Key -> ST.ShortText
+toShortText = ST.fromText . unKey
+
+-- | @since 2.0.2.0
+fromShortText :: ST.ShortText -> Key
+fromShortText = Key . ST.toText
 
 -------------------------------------------------------------------------------
 -- instances

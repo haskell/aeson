@@ -109,6 +109,7 @@ import Data.Time.LocalTime.Compat (CalendarDiffTime (..))
 import Data.Time.Clock.System.Compat (SystemTime (..))
 import Data.Time.Format.Compat (parseTimeM, defaultTimeLocale)
 import Data.Traversable as Tr (sequence)
+import Data.Tuple.Solo (Solo (..))
 import Data.Type.Coercion (Coercion (..))
 import Data.Vector (Vector)
 import Data.Version (Version, parseVersion)
@@ -144,6 +145,7 @@ import qualified Data.Strict as S
 import qualified Data.Text as T
 import qualified Data.Text.Encoding as T
 import qualified Data.Text.Lazy as LT
+import qualified Data.Text.Short as ST
 import qualified Data.Tree as Tree
 import qualified Data.UUID.Types as UUID
 import qualified Data.Vector as V
@@ -1693,6 +1695,14 @@ instance FromJSON LT.Text where
 instance FromJSONKey LT.Text where
     fromJSONKey = FromJSONKeyText LT.fromStrict
 
+-- | @since 2.0.2.0
+instance FromJSON ST.ShortText where
+    parseJSON = withText "Lazy Text" $ pure . ST.fromText
+
+-- | @since 2.0.2.0
+instance FromJSONKey ST.ShortText where
+    fromJSONKey = FromJSONKeyText ST.fromText
+
 
 instance FromJSON Version where
     parseJSON = withText "Version" parseVersionText
@@ -1753,6 +1763,25 @@ instance FromJSON1 DNE.DNonEmpty where
 instance (FromJSON a) => FromJSON (DNE.DNonEmpty a) where
     parseJSON = parseJSON1
 #endif
+
+-------------------------------------------------------------------------------
+-- OneTuple
+-------------------------------------------------------------------------------
+
+-- | @since 2.0.2.0
+instance FromJSON1 Solo where
+    liftParseJSON p _ a = Solo <$> p a
+    liftParseJSONList _ p a = fmap Solo <$> p a
+
+-- | @since 2.0.2.0
+instance (FromJSON a) => FromJSON (Solo a) where
+    parseJSON = parseJSON1
+    parseJSONList = liftParseJSONList parseJSON parseJSONList
+
+-- | @since 2.0.2.0
+instance (FromJSONKey a) => FromJSONKey (Solo a) where
+    fromJSONKey     = fmap Solo fromJSONKey
+    fromJSONKeyList = fmap (map Solo) fromJSONKeyList
 
 -------------------------------------------------------------------------------
 -- transformers - Functors

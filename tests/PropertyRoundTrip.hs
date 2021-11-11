@@ -20,19 +20,21 @@ import Data.Version (Version)
 import Data.Time.Calendar.Compat (CalendarDiffDays, DayOfWeek)
 import Data.Time.LocalTime.Compat (CalendarDiffTime)
 import Data.Time.Clock.System.Compat (SystemTime)
-import Instances ()
+import Data.Tuple.Solo (Solo)
 import Numeric.Natural (Natural)
 import Test.Tasty (TestTree, testGroup)
 import Test.Tasty.QuickCheck (testProperty)
 import Types
 import qualified Data.Text as T
 import qualified Data.Text.Lazy as LT
+import qualified Data.Text.Short as ST
 import qualified Data.UUID.Types as UUID
 import qualified Data.Strict as S
 import qualified Data.Fix as F
 import PropUtils
 import PropertyRTFunctors
 
+import Instances ()
 
 roundTripTests :: TestTree
 roundTripTests =
@@ -81,6 +83,8 @@ roundTripTests =
     , testProperty "Strict Either" $ roundTripEq (undefined :: S.Either Int Char)
     , testProperty "Strict These" $ roundTripEq (undefined :: S.These Int Char)
     , testProperty "Strict Maybe" $ roundTripEq (undefined :: S.Maybe Int)
+    , testProperty "Solo Int" $ roundTripEq (undefined :: Solo Int)
+    , testProperty "ShortText" $ roundTripEq (undefined :: ST.ShortText)
     , roundTripFunctorsTests
     , testGroup "ghcGenerics" [
         testProperty "OneConstructor" $ roundTripEq OneConstructor
