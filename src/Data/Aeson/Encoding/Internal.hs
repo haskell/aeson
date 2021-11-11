@@ -29,6 +29,7 @@ module Data.Aeson.Encoding.Internal
     , key
     , text
     , lazyText
+    , shortText
     , string
     , list
     , dict
@@ -77,6 +78,7 @@ import qualified Data.Aeson.Encoding.Builder as EB
 import qualified Data.ByteString.Builder as B
 import qualified Data.ByteString.Lazy as BSL
 import qualified Data.Text.Lazy as LT
+import qualified Data.Text.Short as ST
 
 -- | An encoding of a JSON value.
 --
@@ -238,6 +240,14 @@ lazyText :: LT.Text -> Encoding' a
 lazyText t = Encoding $
     B.char7 '"' <>
     LT.foldrChunks (\x xs -> EB.unquoted x <> xs) (B.char7 '"') t
+
+-- | @since 2.0.2.0
+shortText :: ST.ShortText -> Encoding' a
+shortText t = Encoding $
+    B.char7 '"' <>
+    -- TODO: if we can determine whether all characters are >=0x20 && <0x80
+    -- we could use underlying ShortByteString directly.
+    EB.unquoted (ST.toText t) <> B.char7 '"'
 
 string :: String -> Encoding' a
 string = Encoding . EB.string

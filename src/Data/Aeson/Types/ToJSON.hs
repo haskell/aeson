@@ -93,6 +93,7 @@ import Data.Time.Calendar.Compat (CalendarDiffDays (..), DayOfWeek (..))
 import Data.Time.LocalTime.Compat (CalendarDiffTime (..))
 import Data.Time.Clock.System.Compat (SystemTime (..))
 import Data.Time.Format.Compat (FormatTime, formatTime, defaultTimeLocale)
+import Data.Tuple.Solo (Solo (..), getSolo)
 import Data.Vector (Vector)
 import Data.Version (Version, showVersion)
 import Data.Void (Void, absurd)
@@ -124,6 +125,7 @@ import qualified Data.Strict as S
 import qualified Data.Text as T
 import qualified Data.Text.Encoding as T
 import qualified Data.Text.Lazy as LT
+import qualified Data.Text.Short as ST
 import qualified Data.Tree as Tree
 import qualified Data.UUID.Types as UUID
 import qualified Data.Vector as V
@@ -1457,13 +1459,21 @@ instance ToJSON Text where
 instance ToJSONKey Text where
     toJSONKey = toJSONKeyText id
 
-
 instance ToJSON LT.Text where
     toJSON = String . LT.toStrict
     toEncoding = E.lazyText
 
 instance ToJSONKey LT.Text where
     toJSONKey = toJSONKeyText (LT.toStrict)
+
+-- | @since 2.0.2.0
+instance ToJSON ST.ShortText where
+    toJSON = String . ST.toText
+    toEncoding = E.shortText
+
+-- | @since 2.0.2.0
+instance ToJSONKey ST.ShortText where
+    toJSONKey = ToJSONKeyText Key.fromShortText E.shortText
 
 
 instance ToJSON Version where
@@ -1519,6 +1529,31 @@ instance (ToJSON a) => ToJSON (DNE.DNonEmpty a) where
     toJSON = toJSON1
     toEncoding = toEncoding1
 #endif
+
+-------------------------------------------------------------------------------
+-- OneTuple
+-------------------------------------------------------------------------------
+
+-- | @since 2.0.2.0
+instance ToJSON1 Solo where
+    liftToJSON t _ (Solo a) = t a
+    liftToJSONList _ tl xs = tl (map getSolo xs)
+
+    liftToEncoding t _ (Solo a) = t a
+    liftToEncodingList _ tl xs = tl (map getSolo xs)
+
+-- | @since 2.0.2.0
+instance (ToJSON a) => ToJSON (Solo a) where
+    toJSON = toJSON1
+    toJSONList = liftToJSONList toJSON toJSONList
+
+    toEncoding = toEncoding1
+    toEncodingList = liftToEncodingList toEncoding toEncodingList
+
+-- | @since 2.0.2.0
+instance (ToJSONKey a) => ToJSONKey (Solo a) where
+    toJSONKey = contramapToJSONKeyFunction getSolo toJSONKey
+    toJSONKeyList = contramapToJSONKeyFunction (map getSolo) toJSONKeyList
 
 -------------------------------------------------------------------------------
 -- transformers - Functors

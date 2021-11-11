@@ -25,6 +25,7 @@ module Data.Aeson.Encoding
     , emptyObject_
     , text
     , lazyText
+    , shortText
     , string
     , list
     , dict
