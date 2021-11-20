@@ -5,6 +5,9 @@
 
 -- The security check at the end (pos > length) only works if pos grows
 -- monotonously, if this condition does not hold, the check is flawed.
+
+{-# LANGUAGE CPP #-}
+
 module Data.Aeson.Parser.UnescapePure
     (
       unescapeText
@@ -13,7 +16,6 @@ module Data.Aeson.Parser.UnescapePure
 import Control.Exception (evaluate, throw, try)
 import Control.Monad (when)
 import Data.ByteString as B
-import Data.Bits (Bits, shiftL, shiftR, (.&.), (.|.))
 import Data.Text (Text)
 import qualified Data.Text.Array as A
 import Data.Text.Encoding.Error (UnicodeException (..))
@@ -21,6 +23,14 @@ import Data.Text.Internal.Private (runText)
 import Data.Text.Unsafe (unsafeDupablePerformIO)
 import Data.Word (Word8, Word16, Word32)
 import GHC.ST (ST)
+
+#if MIN_VERSION_text(2,0,0)
+import Data.Bits (Bits, shiftL, (.&.), (.|.))
+import Data.Text.Internal.Encoding.Utf16 (chr2)
+import Data.Text.Internal.Unsafe.Char (unsafeChr16, unsafeChr32, unsafeWrite)
+#else
+import Data.Bits (Bits, shiftL, shiftR, (.&.), (.|.))
+#endif
 
 -- Different UTF states.
 data Utf =
@@ -144,11 +154,17 @@ unescapeText' bs = runText $ \done -> do
       runUtf dest pos st point c = case decode st point c of
         (UtfGround, 92) -> -- Backslash
             return (pos, StateBackslash)
+#if MIN_VERSION_text(2,0,0)
+        (UtfGround, w) -> do
+            d <- unsafeWrite dest pos (unsafeChr32 w)
+            return (pos + d, StateNone)
+#else
         (UtfGround, w) | w <= 0xffff ->
             writeAndReturn dest pos (fromIntegral w) StateNone
         (UtfGround, w) -> do
             A.unsafeWrite dest pos (0xd7c0 + fromIntegral (w `shiftR` 10))
             writeAndReturn dest (pos + 1) (0xdc00 + fromIntegral (w .&. 0x3ff)) StateNone
+#endif
         (st', p) ->
             return (pos, StateUtf st' p)
 
@@ -200,7 +216,12 @@ unescapeText' bs = runText $ \done -> do
         else if u >= 0xdc00 && u <= 0xdfff then -- Low surrogate.
           throwDecodeError
         else do
+#if MIN_VERSION_text(2,0,0)
+          d <- unsafeWrite dest pos (unsafeChr16 u)
+          return (pos + d, StateNone)
+#else
           writeAndReturn dest pos u StateNone
+#endif
 
       -- Handle surrogates.
       f _ (pos, StateS0 hi) 92 = return (pos, StateS1 hi) -- Backslash
@@ -229,10 +250,19 @@ unescapeText' bs = runText $ \done -> do
         if u < 0xdc00 || u > 0xdfff then
           throwDecodeError
         else do
+#if MIN_VERSION_text(2,0,0)
+          d <- unsafeWrite dest pos (chr2 hi u)
+          return (pos + d, StateNone)
+#else
           A.unsafeWrite dest pos hi
           writeAndReturn dest (pos + 1) u StateNone
+#endif
 
+#if MIN_VERSION_text(2,0,0)
+writeAndReturn :: A.MArray s -> Int -> Word8 -> t -> ST s (Int, t)
+#else
 writeAndReturn :: A.MArray s -> Int -> Word16 -> t -> ST s (Int, t)
+#endif
 writeAndReturn dest pos char res = do
     A.unsafeWrite dest pos char
     return (pos + 1, res)

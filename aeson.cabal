@@ -103,7 +103,7 @@ library
     , deepseq           >=1.4.2.0  && <1.5
     , ghc-prim          >=0.5.0.0  && <0.9
     , template-haskell  >=2.11.0.0 && <2.19
-    , text              >=1.2.3.0  && <1.3
+    , text              >=1.2.3.0  && <1.3 || >=2.0 && <2.1
     , time              >=1.6.0.1  && <1.13
 
   -- Compat
@@ -146,6 +146,7 @@ library
     cpp-options:    -DCFFI
     hs-source-dirs: src-ffi
     other-modules:  Data.Aeson.Parser.UnescapeFFI
+    build-depends:  text < 2.0
 
   if flag(ordered-keymap)
     cpp-options: -DUSE_ORDEREDMAP=1
@@ -153,13 +154,11 @@ library
 test-suite aeson-tests
   default-language: Haskell2010
   type:             exitcode-stdio-1.0
-  hs-source-dirs:   tests src-ffi src-pure
+  hs-source-dirs:   tests
   main-is:          Tests.hs
-  c-sources:        cbits/unescape_string.c
   ghc-options:      -Wall -threaded -rtsopts
+
   other-modules:
-    Data.Aeson.Parser.UnescapeFFI
-    Data.Aeson.Parser.UnescapePure
     DataFamilies.Encoders
     DataFamilies.Instances
     DataFamilies.Properties
