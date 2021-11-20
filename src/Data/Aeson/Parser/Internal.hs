@@ -342,11 +342,16 @@ jstring_ = do
     Just w | w < 0x20 -> fail "unescaped control character"
     _                 -> jstringSlow s
 
+#if MIN_VERSION_text(2,0,0)
+unsafeDecodeASCII :: B.ByteString -> Text
+unsafeDecodeASCII = TE.decodeASCII
+#else
 -- | The input is assumed to contain only 7bit ASCII characters (i.e. @< 0x80@).
 --   We use TE.decodeLatin1 here because TE.decodeASCII is currently (text-1.2.4.0)
 --   deprecated and equal to TE.decodeUtf8, which is slower than TE.decodeLatin1.
 unsafeDecodeASCII :: B.ByteString -> Text
 unsafeDecodeASCII = TE.decodeLatin1
+#endif
 
 jstringSlow :: B.ByteString -> Parser Text
 {-# INLINE jstringSlow #-}
