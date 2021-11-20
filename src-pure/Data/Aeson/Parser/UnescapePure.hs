@@ -42,12 +42,12 @@ data State =
     | StateU1 !Word16
     | StateU2 !Word16
     | StateU3 !Word16
-    | StateS0
-    | StateS1
-    | StateSU0
-    | StateSU1 !Word16
-    | StateSU2 !Word16
-    | StateSU3 !Word16
+    | StateS0 !Word16
+    | StateS1 !Word16
+    | StateSU0 !Word16
+    | StateSU1 !Word16 !Word16
+    | StateSU2 !Word16 !Word16
+    | StateSU3 !Word16 !Word16
     deriving (Eq)
 
 -- References:
@@ -147,7 +147,7 @@ unescapeText' bs = runText $ \done -> do
         (UtfGround, w) | w <= 0xffff ->
             writeAndReturn dest pos (fromIntegral w) StateNone
         (UtfGround, w) -> do
-            write dest pos (0xd7c0 + fromIntegral (w `shiftR` 10))
+            A.unsafeWrite dest pos (0xd7c0 + fromIntegral (w `shiftR` 10))
             writeAndReturn dest (pos + 1) (0xdc00 + fromIntegral (w .&. 0x3ff)) StateNone
         (st', p) ->
             return (pos, StateUtf st' p)
@@ -195,53 +195,46 @@ unescapeText' bs = runText $ \done -> do
         let u = w' .|. w in
 
         -- Get next state based on surrogates.
-        let st
-              | u >= 0xd800 && u <= 0xdbff = -- High surrogate.
-                StateS0
-              | u >= 0xdc00 && u <= 0xdfff = -- Low surrogate.
-                throwDecodeError
-              | otherwise =
-                StateNone
-        in
-        writeAndReturn dest pos u st
+        if u >= 0xd800 && u <= 0xdbff then -- High surrogate.
+          return (pos, StateS0 u)
+        else if u >= 0xdc00 && u <= 0xdfff then -- Low surrogate.
+          throwDecodeError
+        else do
+          writeAndReturn dest pos u StateNone
 
       -- Handle surrogates.
-      f _ (pos, StateS0) 92 = return (pos, StateS1) -- Backslash
-      f _ (  _, StateS0)  _ = throwDecodeError
+      f _ (pos, StateS0 hi) 92 = return (pos, StateS1 hi) -- Backslash
+      f _ (  _, StateS0{})  _ = throwDecodeError
 
-      f _ (pos, StateS1) 117 = return (pos, StateSU0) -- u
-      f _ (  _, StateS1)   _ = throwDecodeError
+      f _ (pos, StateS1 hi) 117 = return (pos, StateSU0 hi) -- u
+      f _ (  _, StateS1{})   _ = throwDecodeError
 
-      f _ (pos, StateSU0) c =
+      f _ (pos, StateSU0 hi) c =
         let w = decodeHex c in
-        return (pos, StateSU1 (w `shiftL` 12))
+        return (pos, StateSU1 hi (w `shiftL` 12))
 
-      f _ (pos, StateSU1 w') c =
+      f _ (pos, StateSU1 hi w') c =
         let w = decodeHex c in
-        return (pos, StateSU2 (w' .|. (w `shiftL` 8)))
+        return (pos, StateSU2 hi (w' .|. (w `shiftL` 8)))
 
-      f _ (pos, StateSU2 w') c =
+      f _ (pos, StateSU2 hi w') c =
         let w = decodeHex c in
-        return (pos, StateSU3 (w' .|. (w `shiftL` 4)))
+        return (pos, StateSU3 hi (w' .|. (w `shiftL` 4)))
 
-      f dest (pos, StateSU3 w') c =
+      f dest (pos, StateSU3 hi w') c =
         let w = decodeHex c in
         let u = w' .|. w in
 
         -- Check if not low surrogate.
         if u < 0xdc00 || u > 0xdfff then
           throwDecodeError
-        else
-          writeAndReturn dest pos u StateNone
-
-write :: A.MArray s -> Int -> Word16 -> ST s ()
-write dest pos char =
-    A.unsafeWrite dest pos char
-{-# INLINE write #-}
+        else do
+          A.unsafeWrite dest pos hi
+          writeAndReturn dest (pos + 1) u StateNone
 
 writeAndReturn :: A.MArray s -> Int -> Word16 -> t -> ST s (Int, t)
 writeAndReturn dest pos char res = do
-    write dest pos char
+    A.unsafeWrite dest pos char
     return (pos + 1, res)
 {-# INLINE writeAndReturn #-}
 
