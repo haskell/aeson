@@ -27,11 +27,13 @@ genericTests =
             testProperty "string" (isString . gNullaryToJSONString)
           , testProperty "2ElemArray" (is2ElemArray . gNullaryToJSON2ElemArray)
           , testProperty "TaggedObject" (isNullaryTaggedObject . gNullaryToJSONTaggedObject)
+          , testProperty "TaggedFlatObject" (isNullaryTaggedObject . gNullaryToJSONTaggedFlatObject)
           , testProperty "ObjectWithSingleField" (isObjectWithSingleField . gNullaryToJSONObjectWithSingleField)
           , testGroup "roundTrip" [
               testProperty "string" (toParseJSON gNullaryParseJSONString gNullaryToJSONString)
             , testProperty "2ElemArray" (toParseJSON gNullaryParseJSON2ElemArray gNullaryToJSON2ElemArray)
             , testProperty "TaggedObject" (toParseJSON gNullaryParseJSONTaggedObject gNullaryToJSONTaggedObject)
+            , testProperty "TaggedFlatObject" (toParseJSON gNullaryParseJSONTaggedFlatObject gNullaryToJSONTaggedFlatObject)
             , testProperty "ObjectWithSingleField" (toParseJSON gNullaryParseJSONObjectWithSingleField gNullaryToJSONObjectWithSingleField)
             ]
         ]
@@ -42,14 +44,17 @@ genericTests =
       , testGroup "SomeType" [
           testProperty "2ElemArray" (is2ElemArray . gSomeTypeToJSON2ElemArray)
         , testProperty "TaggedObject" (isTaggedObject . gSomeTypeToJSONTaggedObject)
+        , testProperty "TaggedFlatObject" (isTaggedObject . gSomeTypeToJSONTaggedFlatObject)
         , testProperty "ObjectWithSingleField" (isObjectWithSingleField . gSomeTypeToJSONObjectWithSingleField)
         , testGroup "roundTrip" [
             testProperty "2ElemArray" (toParseJSON gSomeTypeParseJSON2ElemArray gSomeTypeToJSON2ElemArray)
           , testProperty "TaggedObject" (toParseJSON gSomeTypeParseJSONTaggedObject gSomeTypeToJSONTaggedObject)
+          , testProperty "TaggedFlatObject" (toParseJSON gSomeTypeParseJSONTaggedFlatObject gSomeTypeToJSONTaggedFlatObject)
           , testProperty "ObjectWithSingleField" (toParseJSON gSomeTypeParseJSONObjectWithSingleField gSomeTypeToJSONObjectWithSingleField)
 
           , testProperty "2ElemArray unary" (toParseJSON1 gSomeTypeLiftParseJSON2ElemArray gSomeTypeLiftToJSON2ElemArray)
           , testProperty "TaggedObject unary" (toParseJSON1 gSomeTypeLiftParseJSONTaggedObject gSomeTypeLiftToJSONTaggedObject)
+          , testProperty "TaggedFlatObject unary" (toParseJSON1 gSomeTypeLiftParseJSONTaggedFlatObject gSomeTypeLiftToJSONTaggedFlatObject)
           , testProperty "ObjectWithSingleField unary" (toParseJSON1 gSomeTypeLiftParseJSONObjectWithSingleField gSomeTypeLiftToJSONObjectWithSingleField)
           ]
         ]
@@ -76,6 +81,8 @@ genericTests =
         gNullaryToJSON2ElemArray `sameAs` gNullaryToEncoding2ElemArray
       , testProperty "NullaryTaggedObject" $
         gNullaryToJSONTaggedObject `sameAs` gNullaryToEncodingTaggedObject
+      , testProperty "NullaryTaggedFlatObject" $
+        gNullaryToJSONTaggedFlatObject `sameAs` gNullaryToEncodingTaggedFlatObject
       , testProperty "NullaryObjectWithSingleField" $
         gNullaryToJSONObjectWithSingleField `sameAs`
         gNullaryToEncodingObjectWithSingleField
@@ -100,6 +107,13 @@ genericTests =
         gSomeTypeLiftToJSONTaggedObject `sameAs1` gSomeTypeLiftToEncodingTaggedObject
       , testProperty "SomeTypeTaggedObject unary agree" $
         gSomeTypeToEncodingTaggedObject `sameAs1Agree` gSomeTypeLiftToEncodingTaggedObject
+      
+      , testProperty "SomeTyptTaggedFlatObject" $
+         gSomeTypeToJSONTaggedFlatObject `sameAs` gSomeTypeToEncodingTaggedFlatObject
+      , testProperty "SomeTyptTaggedFlatObject unary" $
+         gSomeTypeLiftToJSONTaggedFlatObject `sameAs1` gSomeTypeLiftToEncodingTaggedFlatObject
+      , testProperty "SomeTyptTaggedFlatObject unary agree" $
+         gSomeTypeToEncodingTaggedFlatObject `sameAs1Agree` gSomeTypeLiftToEncodingTaggedFlatObject
 
       , testProperty "SomeTypeObjectWithSingleField" $
         gSomeTypeToJSONObjectWithSingleField `sameAs` gSomeTypeToEncodingObjectWithSingleField

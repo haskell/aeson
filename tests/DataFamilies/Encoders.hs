@@ -46,6 +46,16 @@ thNullaryParseJSONTaggedObject :: Value -> Parser (Nullary Int)
 thNullaryParseJSONTaggedObject = $(mkParseJSON optsTaggedObject 'C3)
 
 
+thNullaryToJSONTaggedFlatObject :: Nullary Int -> Value
+thNullaryToJSONTaggedFlatObject = $(mkToJSON optsTaggedFlatObject 'C1)
+
+thNullaryToEncodingTaggedFlatObject :: Nullary Int -> Encoding
+thNullaryToEncodingTaggedFlatObject = $(mkToEncoding optsTaggedFlatObject 'C2)
+
+thNullaryParseJSONTaggedFlatObject :: Value -> Parser (Nullary Int)
+thNullaryParseJSONTaggedFlatObject = $(mkParseJSON optsTaggedFlatObject 'C3)
+
+
 thNullaryToJSONObjectWithSingleField :: Nullary Int -> Value
 thNullaryToJSONObjectWithSingleField =
   $(mkToJSON optsObjectWithSingleField 'C1)
@@ -80,6 +90,16 @@ thSomeTypeToEncodingTaggedObject = $(mkToEncoding optsTaggedObject 'Nullary)
 
 thSomeTypeParseJSONTaggedObject :: Value -> Parser (SomeType c () Int)
 thSomeTypeParseJSONTaggedObject = $(mkParseJSON optsTaggedObject 'Unary)
+
+
+thSomeTypeToJSONTaggedFlatObject :: SomeType c () Int -> Value
+thSomeTypeToJSONTaggedFlatObject = $(mkToJSON optsTaggedFlatObject 'Record)
+
+thSomeTypeToEncodingTaggedFlatObject :: SomeType c () Int -> Encoding
+thSomeTypeToEncodingTaggedFlatObject = $(mkToEncoding optsTaggedFlatObject 'Nullary)
+
+thSomeTypeParseJSONTaggedFlatObject :: Value -> Parser (SomeType c () Int)
+thSomeTypeParseJSONTaggedFlatObject = $(mkParseJSON optsTaggedFlatObject 'Unary)
 
 
 thSomeTypeToJSONObjectWithSingleField :: SomeType c () Int -> Value
@@ -177,6 +197,16 @@ gNullaryParseJSONTaggedObject :: Value -> Parser (Nullary Int)
 gNullaryParseJSONTaggedObject = genericParseJSON optsTaggedObject
 
 
+gNullaryToJSONTaggedFlatObject :: Nullary Int -> Value
+gNullaryToJSONTaggedFlatObject = genericToJSON optsTaggedFlatObject
+
+gNullaryToEncodingTaggedFlatObject :: Nullary Int -> Encoding
+gNullaryToEncodingTaggedFlatObject = genericToEncoding optsTaggedFlatObject
+
+gNullaryParseJSONTaggedFlatObject :: Value -> Parser (Nullary Int)
+gNullaryParseJSONTaggedFlatObject = genericParseJSON optsTaggedFlatObject
+
+
 gNullaryToJSONObjectWithSingleField :: Nullary Int -> Value
 gNullaryToJSONObjectWithSingleField = genericToJSON optsObjectWithSingleField
 
@@ -206,6 +236,16 @@ gSomeTypeToEncodingTaggedObject = genericToEncoding optsTaggedObject
 
 gSomeTypeParseJSONTaggedObject :: Value -> Parser (SomeType c () Int)
 gSomeTypeParseJSONTaggedObject = genericParseJSON optsTaggedObject
+
+
+gSomeTypeToJSONTaggedFlatObject :: SomeType c () Int -> Value
+gSomeTypeToJSONTaggedFlatObject = genericToJSON optsTaggedFlatObject
+
+gSomeTypeToEncodingTaggedFlatObject :: SomeType c () Int -> Encoding
+gSomeTypeToEncodingTaggedFlatObject = genericToEncoding optsTaggedFlatObject
+
+gSomeTypeParseJSONTaggedFlatObject :: Value -> Parser (SomeType c () Int)
+gSomeTypeParseJSONTaggedFlatObject = genericParseJSON optsTaggedFlatObject
 
 
 gSomeTypeToJSONObjectWithSingleField :: SomeType c () Int -> Value

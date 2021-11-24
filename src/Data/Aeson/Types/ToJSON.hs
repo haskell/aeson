@@ -1,3 +1,4 @@
+{-# LANGUAGE DataKinds #-}
 {-# LANGUAGE CPP #-}
 {-# LANGUAGE DefaultSignatures #-}
 {-# LANGUAGE EmptyDataDecls #-}
@@ -143,6 +144,7 @@ import qualified Data.Primitive.Array as PM
 import qualified Data.Primitive.SmallArray as PM
 import qualified Data.Primitive.Types as PM
 import qualified Data.Primitive.PrimArray as PM
+import GHC.TypeLits
 
 toJSONPair :: (a -> Value) -> (b -> Value) -> (a, b) -> Value
 toJSONPair a b = liftToJSON2 a (listValue a) b (listValue b)
@@ -852,6 +854,7 @@ class SumToJSON enc arity f allNullary where
 instance ( GetConName f
          , FromString enc
          , TaggedObject                     enc arity f
+         , TaggedFlatObject                 enc arity f
          , SumToJSON' ObjectWithSingleField enc arity f
          , SumToJSON' TwoElemArray          enc arity f
          , SumToJSON' UntaggedValue         enc arity f
@@ -864,6 +867,7 @@ instance ( GetConName f
     {-# INLINE sumToJSON #-}
 
 instance ( TaggedObject                     enc arity f
+         , TaggedFlatObject                 enc arity f
          , SumToJSON' ObjectWithSingleField enc arity f
          , SumToJSON' TwoElemArray          enc arity f
          , SumToJSON' UntaggedValue         enc arity f
@@ -873,6 +877,7 @@ instance ( TaggedObject                     enc arity f
     {-# INLINE sumToJSON #-}
 
 nonAllNullarySumToJSON :: ( TaggedObject                     enc arity f
+                          , TaggedFlatObject                 enc arity f
                           , SumToJSON' ObjectWithSingleField enc arity f
                           , SumToJSON' TwoElemArray          enc arity f
                           , SumToJSON' UntaggedValue         enc arity f
@@ -883,6 +888,9 @@ nonAllNullarySumToJSON opts targs =
 
       TaggedObject{..}      ->
         taggedObject opts targs (Key.fromString tagFieldName) (Key.fromString contentsFieldName)
+
+      TaggedFlatObject{..} ->
+        taggedFlatObject opts targs tagFieldName
 
       ObjectWithSingleField ->
         (unTagged :: Tagged ObjectWithSingleField enc -> enc)
@@ -907,6 +915,69 @@ instance FromString Encoding where
 
 instance FromString Value where
   fromString = String . pack
+
+--------------------------------------------------------------------------------
+
+class TaggedFlatObject enc arity f where
+    taggedFlatObject :: Options -> ToArgs enc arity a
+                     -> String -> f a -> enc
+
+instance (TaggedFlatObject enc arity a
+         , TaggedFlatObject enc arity b
+         ) => TaggedFlatObject enc arity (a :+: b)
+  where
+    taggedFlatObject opts targs tagFieldName (L1 x) =
+        taggedFlatObject opts targs tagFieldName x
+    taggedFlatObject opts targs tagFieldName (R1 x) =
+        taggedFlatObject opts targs tagFieldName x
+
+instance ( IsRecord a isRecord
+         , TaggedFlatObject' enc pairs arity a isRecord
+         , KeyValuePair enc pairs
+         , FromString enc
+         , Constructor c
+         , FromPairs enc pairs
+         ) => TaggedFlatObject enc arity (C1 c a) where
+    taggedFlatObject opts targs tagFieldName (M1 a) =
+      fromPairs (tag `mappend` contents)
+      where
+        tag :: pairs
+        tag = tagFieldName `pair`
+              (fromString (constructorTagModifier opts (conName (undefined :: t c a p)))
+            :: enc)
+        contents :: pairs
+        contents = (unTagged :: Tagged isRecord pairs -> pairs) $ taggedFlatObject' opts targs a
+
+class TaggedFlatObject' enc pairs arity f isRecord where
+    taggedFlatObject' :: Options -> ToArgs enc arity a
+                      -> f a -> Tagged isRecord pairs
+
+instance RecordToPairs pairs enc arity f => TaggedFlatObject' pairs enc arity f True where
+    taggedFlatObject' opts targs = Tagged . recordToPairs opts targs
+
+instance Monoid pairs => TaggedFlatObject' enc pairs arity U1 False where
+    taggedFlatObject' _ _ _ = Tagged mempty
+
+instance OVERLAPPABLE_ PositionToPairs 0 pairs enc arity f => TaggedFlatObject' enc pairs arity f False where
+    taggedFlatObject' opts targs a = Tagged $ positionToPairs (Proxy :: Proxy 0) opts targs a
+
+class KnownNat n => PositionToPairs n pairs enc arity f where
+    positionToPairs :: Proxy n -> Options -> ToArgs enc arity a -> f a -> pairs
+
+instance ( KeyValuePair enc pairs
+         , GToJSON' enc arity a
+         , KnownNat n
+         ) => PositionToPairs n pairs enc arity (S1 m a) where
+    positionToPairs p opts targs (M1 a) =
+        show (natVal p) `pair` gToJSON opts targs a
+
+instance ( Monoid pairs
+         , PositionToPairs n pairs enc arity f
+         , PositionToPairs (n+1) pairs enc arity g
+         ) => PositionToPairs n pairs enc arity (f :*: g) where
+    positionToPairs _ opts targs (f :*: g) =
+        positionToPairs (Proxy :: Proxy n) opts targs f
+         `mappend` positionToPairs (Proxy :: Proxy (n+1)) opts targs g
 
 --------------------------------------------------------------------------------
 

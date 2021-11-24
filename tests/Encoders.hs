@@ -47,6 +47,16 @@ thNullaryParseJSONTaggedObject :: Value -> Parser Nullary
 thNullaryParseJSONTaggedObject = $(mkParseJSON optsTaggedObject ''Nullary)
 
 
+thNullaryToJSONTaggedFlatObject :: Nullary -> Value
+thNullaryToJSONTaggedFlatObject = $(mkToJSON optsTaggedFlatObject ''Nullary)
+
+thNullaryToEncodingTaggedFlatObject :: Nullary -> Encoding
+thNullaryToEncodingTaggedFlatObject = $(mkToEncoding optsTaggedFlatObject ''Nullary)
+
+thNullaryParseJSONTaggedFlatObject :: Value -> Parser Nullary
+thNullaryParseJSONTaggedFlatObject = $(mkParseJSON optsTaggedFlatObject ''Nullary)
+
+
 thNullaryToJSONObjectWithSingleField :: Nullary -> Value
 thNullaryToJSONObjectWithSingleField =
   $(mkToJSON optsObjectWithSingleField ''Nullary)
@@ -86,6 +96,16 @@ gNullaryToEncodingTaggedObject = genericToEncoding optsTaggedObject
 
 gNullaryParseJSONTaggedObject :: Value -> Parser Nullary
 gNullaryParseJSONTaggedObject = genericParseJSON optsTaggedObject
+
+
+gNullaryToJSONTaggedFlatObject :: Nullary -> Value
+gNullaryToJSONTaggedFlatObject = genericToJSON optsTaggedFlatObject
+
+gNullaryToEncodingTaggedFlatObject :: Nullary -> Encoding
+gNullaryToEncodingTaggedFlatObject = genericToEncoding optsTaggedFlatObject
+
+gNullaryParseJSONTaggedFlatObject :: Value -> Parser Nullary
+gNullaryParseJSONTaggedFlatObject = genericParseJSON optsTaggedFlatObject
 
 
 gNullaryToJSONObjectWithSingleField :: Nullary -> Value
@@ -160,6 +180,25 @@ thSomeTypeLiftParseJSONTaggedObject :: LiftParseJSON SomeType a
 thSomeTypeLiftParseJSONTaggedObject = $(mkLiftParseJSON optsTaggedObject ''SomeType)
 
 
+thSomeTypeToJSONTaggedFlatObject :: SomeType Int -> Value
+thSomeTypeToJSONTaggedFlatObject = $(mkToJSON optsTaggedFlatObject ''SomeType)
+
+thSomeTypeToEncodingTaggedFlatObject :: SomeType Int -> Encoding
+thSomeTypeToEncodingTaggedFlatObject = $(mkToEncoding optsTaggedFlatObject ''SomeType)
+
+thSomeTypeLiftToJSONTaggedFlatObject :: LiftToJSON SomeType a
+thSomeTypeLiftToJSONTaggedFlatObject = $(mkLiftToJSON optsTaggedFlatObject ''SomeType)
+
+thSomeTypeLiftToEncodingTaggedFlatObject :: LiftToEncoding SomeType a
+thSomeTypeLiftToEncodingTaggedFlatObject = $(mkLiftToEncoding optsTaggedFlatObject ''SomeType)
+
+thSomeTypeParseJSONTaggedFlatObject :: Value -> Parser (SomeType Int)
+thSomeTypeParseJSONTaggedFlatObject = $(mkParseJSON optsTaggedFlatObject ''SomeType)
+
+thSomeTypeLiftParseJSONTaggedFlatObject :: LiftParseJSON SomeType a
+thSomeTypeLiftParseJSONTaggedFlatObject = $(mkLiftParseJSON optsTaggedFlatObject ''SomeType)
+
+
 thSomeTypeToJSONObjectWithSingleField :: SomeType Int -> Value
 thSomeTypeToJSONObjectWithSingleField = $(mkToJSON optsObjectWithSingleField ''SomeType)
 
@@ -215,6 +254,25 @@ gSomeTypeLiftToJSONTaggedObject = genericLiftToJSON optsTaggedObject
 
 gSomeTypeLiftParseJSONTaggedObject :: LiftParseJSON SomeType a
 gSomeTypeLiftParseJSONTaggedObject = genericLiftParseJSON optsTaggedObject
+
+
+gSomeTypeToJSONTaggedFlatObject :: SomeType Int -> Value
+gSomeTypeToJSONTaggedFlatObject = genericToJSON optsTaggedFlatObject
+
+gSomeTypeToEncodingTaggedFlatObject :: SomeType Int -> Encoding
+gSomeTypeToEncodingTaggedFlatObject = genericToEncoding optsTaggedFlatObject
+
+gSomeTypeParseJSONTaggedFlatObject :: Value -> Parser (SomeType Int)
+gSomeTypeParseJSONTaggedFlatObject = genericParseJSON optsTaggedFlatObject
+
+gSomeTypeLiftToEncodingTaggedFlatObject :: LiftToEncoding SomeType a
+gSomeTypeLiftToEncodingTaggedFlatObject = genericLiftToEncoding optsTaggedFlatObject
+
+gSomeTypeLiftToJSONTaggedFlatObject :: LiftToJSON SomeType a
+gSomeTypeLiftToJSONTaggedFlatObject = genericLiftToJSON optsTaggedFlatObject
+
+gSomeTypeLiftParseJSONTaggedFlatObject :: LiftParseJSON SomeType a
+gSomeTypeLiftParseJSONTaggedFlatObject = genericLiftParseJSON optsTaggedFlatObject
 
 
 gSomeTypeToJSONObjectWithSingleField :: SomeType Int -> Value

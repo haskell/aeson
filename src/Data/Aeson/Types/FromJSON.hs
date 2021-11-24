@@ -5,6 +5,7 @@
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE GADTs #-}
+{-# LANGUAGE InstanceSigs #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE NoImplicitPrelude #-}
 {-# LANGUAGE OverloadedStrings #-}
@@ -161,6 +162,7 @@ import qualified Data.Primitive.Types as PM
 import qualified Data.Primitive.PrimArray as PM
 
 import Data.Coerce (Coercible, coerce)
+import GHC.TypeLits
 
 #if __GLASGOW_HASKELL__ < 804
 import qualified Data.Type.Coercion
@@ -996,6 +998,7 @@ instance ( ConstructorNames        f
          , FromPair          arity f
          , FromTaggedObject  arity f
          , FromUntaggedValue arity f
+         , FromTaggedFlatObject arity f
          ) => ParseSum       arity f True where
     parseSum p@(tname :* opts :* _)
         | allNullaryToStringTag opts = Tagged . parseAllNullarySum tname opts
@@ -1006,6 +1009,7 @@ instance ( ConstructorNames        f
          , FromPair          arity f
          , FromTaggedObject  arity f
          , FromUntaggedValue arity f
+         , FromTaggedFlatObject arity f
          ) => ParseSum       arity f False where
     parseSum p = Tagged . parseNonAllNullarySum p
     {-# INLINE parseSum #-}
@@ -1095,6 +1099,7 @@ parseNonAllNullarySum :: forall f c arity.
                          ( FromPair          arity f
                          , FromTaggedObject  arity f
                          , FromUntaggedValue arity f
+                         , FromTaggedFlatObject arity f
                          , ConstructorNames        f
                          ) => TypeName :* Options :* FromArgs arity c
                            -> Value -> Parser (f c)
@@ -1111,6 +1116,17 @@ parseNonAllNullarySum p@(tname :* opts :* _) =
               "expected tag field to be one of " ++ show cnames ++
               ", but found tag " ++ show tag
           cnames_ = unTagged2 (constructorTags (constructorTagModifier opts) :: Tagged2 f [String])
+
+      TaggedFlatObject{..} ->
+          withObject tname $ \obj -> do
+              let tagKey = pack tagFieldName
+                  badTag tag = failWith_ $ \cnames ->
+                    "expected tag field to be one of " ++ show cnames ++
+                    ", but found tag " ++ show tag
+                  cnames_ = unTagged2 (constructorTags (constructorTagModifier opts) :: Tagged2 f [String])
+              tag <- contextType tname . contextTag tagKey cnames_ $ obj .: tagKey
+              fromMaybe (badTag tag <?> Key tagKey) $
+                parseTaggedFlatObject (tag :* p) obj
 
       ObjectWithSingleField ->
           withObject tname $ \obj -> case KM.toList obj of
@@ -1415,6 +1431,66 @@ instance ( Constructor c
         tag' = Key.fromString $ constructorTagModifier opts cname
         cname = conName (undefined :: M1 _i c _a _p)
     {-# INLINE parsePair #-}
+
+--------------------------------------------------------------------------------
+
+class FromTaggedFlatObject arity f where
+    parseTaggedFlatObject :: Text :* TypeName :* Options :* FromArgs arity a
+                          -> Object
+                          -> Maybe (Parser (f a))
+
+instance ( FromTaggedFlatObject arity f
+         , FromTaggedFlatObject arity g
+         ) => FromTaggedFlatObject arity (f :+: g) where
+    parseTaggedFlatObject p obj =
+        (fmap L1 <$> parseTaggedFlatObject p obj) <|>
+        (fmap R1 <$> parseTaggedFlatObject p obj)
+
+instance ( IsRecord f isRecord
+         , FromTaggedFlatObject' arity f isRecord
+         , Constructor c
+         ) => FromTaggedFlatObject arity (C1 c f) where
+    parseTaggedFlatObject :: Text :* TypeName :* Options :* FromArgs arity a
+                          -> Object
+                          -> Maybe (Parser (C1 c f a))
+    parseTaggedFlatObject (tag :* p@(_ :* opts :* _)) obj
+       | tag == tag' = Just $ fmap M1 $ (unTagged :: Tagged isRecord (Parser (f a)) -> Parser (f a)) $ parseTaggedFlatObject' (cname :* p) obj
+       | otherwise = Nothing
+     where
+        tag' = pack $ constructorTagModifier opts cname
+        cname = conName (undefined :: M1 i c f p)
+
+class FromTaggedFlatObject' arity f isRecord where
+    parseTaggedFlatObject' :: ConName :* TypeName :* Options :* FromArgs arity a
+                          -> Object
+                          -> Tagged isRecord (Parser (f a))
+
+instance (RecordFromJSON arity f, FieldNames f) => FromTaggedFlatObject' arity f True where
+    parseTaggedFlatObject' p = Tagged . recordParseJSON (True :* p)
+
+instance FromTaggedFlatObject' arity U1 False where
+    parseTaggedFlatObject' _ _ = Tagged (pure U1)
+
+instance OVERLAPPABLE_ PositionFromObject 0 arity f => FromTaggedFlatObject' arity f False where
+    parseTaggedFlatObject' (_ :* p) obj = Tagged (positionFromObject (Proxy :: Proxy 0) p obj)
+
+class KnownNat n => PositionFromObject n arity f where
+    positionFromObject :: Proxy n
+                       -> TypeName :* Options :* FromArgs arity a
+                       -> Object
+                       -> Parser (f a)
+
+instance (KnownNat n, GFromJSON arity a) => PositionFromObject n arity (S1 m a) where
+    positionFromObject _ (_ :* opts :* fargs) obj =
+       explicitParseField (gParseJSON opts fargs) obj $ pack $ show $ natVal (Proxy :: Proxy n)
+
+instance ( PositionFromObject n arity f
+         , PositionFromObject (n+1) arity g
+         ) => PositionFromObject n arity (f :*: g) where
+    positionFromObject _ p obj =
+      (:*:)
+        <$> positionFromObject (Proxy :: Proxy n) p obj
+        <*> positionFromObject (Proxy :: Proxy (n+1)) p obj
 
 --------------------------------------------------------------------------------
 

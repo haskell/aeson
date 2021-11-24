@@ -31,6 +31,8 @@ nullaryConstructors =
   , dec "[\"c1\",[]]"      @=? thNullaryToJSON2ElemArray C1
   , dec "{\"tag\":\"c1\"}" @=? thNullaryToJSONTaggedObject C1
   , dec "{\"tag\":\"c1\"}" @=? gNullaryToJSONTaggedObject C1
+  , dec "{\"tag\":\"c1\"}" @=? thNullaryToJSONTaggedFlatObject C1
+  , dec "{\"tag\":\"c1\"}" @=? gNullaryToJSONTaggedFlatObject C1
 
   , decE "\"C1\""           @=? enc (gNullaryToEncodingString C1)
   , decE "\"C1\""           @=? enc (thNullaryToEncodingString C1)
@@ -40,6 +42,8 @@ nullaryConstructors =
   , decE "{\"c1\":[]}"      @=? enc (gNullaryToEncodingObjectWithSingleField C1)
   , decE "{\"tag\":\"c1\"}" @=? enc (thNullaryToEncodingTaggedObject C1)
   , decE "{\"tag\":\"c1\"}" @=? enc (gNullaryToEncodingTaggedObject C1)
+  , decE "{\"tag\":\"c1\"}" @=? enc (thNullaryToEncodingTaggedFlatObject C1)
+  , decE "{\"tag\":\"c1\"}" @=? enc (gNullaryToEncodingTaggedFlatObject C1)
 
   , ISuccess C1 @=? parse thNullaryParseJSONTaggedObject          (dec "{\"tag\":\"c1\"}")
   , ISuccess C1 @=? parse gNullaryParseJSONTaggedObject           (dec "{\"tag\":\"c1\"}")
