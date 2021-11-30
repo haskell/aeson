@@ -830,8 +830,8 @@ camelTo c = lastWasCap True
 
 -- | Better version of 'camelTo'. Example where it works better:
 --
---   > camelTo '_' 'CamelAPICase' == "camel_apicase"
---   > camelTo2 '_' 'CamelAPICase' == "camel_api_case"
+--   > camelTo '_' "CamelAPICase" == "camel_apicase"
+--   > camelTo2 '_' "CamelAPICase" == "camel_api_case"
 camelTo2 :: Char -> String -> String
 camelTo2 c = map toLower . go2 . go1
     where go1 "" = ""
