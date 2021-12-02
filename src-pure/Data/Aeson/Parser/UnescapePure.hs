@@ -5,6 +5,9 @@
 
 -- The security check at the end (pos > length) only works if pos grows
 -- monotonously, if this condition does not hold, the check is flawed.
+
+{-# LANGUAGE CPP #-}
+
 module Data.Aeson.Parser.UnescapePure
     (
       unescapeText
@@ -13,7 +16,6 @@ module Data.Aeson.Parser.UnescapePure
 import Control.Exception (evaluate, throw, try)
 import Control.Monad (when)
 import Data.ByteString as B
-import Data.Bits (Bits, shiftL, shiftR, (.&.), (.|.))
 import Data.Text (Text)
 import qualified Data.Text.Array as A
 import Data.Text.Encoding.Error (UnicodeException (..))
@@ -21,6 +23,14 @@ import Data.Text.Internal.Private (runText)
 import Data.Text.Unsafe (unsafeDupablePerformIO)
 import Data.Word (Word8, Word16, Word32)
 import GHC.ST (ST)
+
+#if MIN_VERSION_text(2,0,0)
+import Data.Bits (Bits, shiftL, (.&.), (.|.))
+import Data.Text.Internal.Encoding.Utf16 (chr2)
+import Data.Text.Internal.Unsafe.Char (unsafeChr16, unsafeChr32, unsafeWrite)
+#else
+import Data.Bits (Bits, shiftL, shiftR, (.&.), (.|.))
+#endif
 
 -- Different UTF states.
 data Utf =
@@ -42,12 +52,12 @@ data State =
     | StateU1 !Word16
     | StateU2 !Word16
     | StateU3 !Word16
-    | StateS0
-    | StateS1
-    | StateSU0
-    | StateSU1 !Word16
-    | StateSU2 !Word16
-    | StateSU3 !Word16
+    | StateS0 !Word16
+    | StateS1 !Word16
+    | StateSU0 !Word16
+    | StateSU1 !Word16 !Word16
+    | StateSU2 !Word16 !Word16
+    | StateSU3 !Word16 !Word16
     deriving (Eq)
 
 -- References:
@@ -144,11 +154,17 @@ unescapeText' bs = runText $ \done -> do
       runUtf dest pos st point c = case decode st point c of
         (UtfGround, 92) -> -- Backslash
             return (pos, StateBackslash)
+#if MIN_VERSION_text(2,0,0)
+        (UtfGround, w) -> do
+            d <- unsafeWrite dest pos (unsafeChr32 w)
+            return (pos + d, StateNone)
+#else
         (UtfGround, w) | w <= 0xffff ->
             writeAndReturn dest pos (fromIntegral w) StateNone
         (UtfGround, w) -> do
-            write dest pos (0xd7c0 + fromIntegral (w `shiftR` 10))
+            A.unsafeWrite dest pos (0xd7c0 + fromIntegral (w `shiftR` 10))
             writeAndReturn dest (pos + 1) (0xdc00 + fromIntegral (w .&. 0x3ff)) StateNone
+#endif
         (st', p) ->
             return (pos, StateUtf st' p)
 
@@ -195,53 +211,60 @@ unescapeText' bs = runText $ \done -> do
         let u = w' .|. w in
 
         -- Get next state based on surrogates.
-        let st
-              | u >= 0xd800 && u <= 0xdbff = -- High surrogate.
-                StateS0
-              | u >= 0xdc00 && u <= 0xdfff = -- Low surrogate.
-                throwDecodeError
-              | otherwise =
-                StateNone
-        in
-        writeAndReturn dest pos u st
+        if u >= 0xd800 && u <= 0xdbff then -- High surrogate.
+          return (pos, StateS0 u)
+        else if u >= 0xdc00 && u <= 0xdfff then -- Low surrogate.
+          throwDecodeError
+        else do
+#if MIN_VERSION_text(2,0,0)
+          d <- unsafeWrite dest pos (unsafeChr16 u)
+          return (pos + d, StateNone)
+#else
+          writeAndReturn dest pos u StateNone
+#endif
 
       -- Handle surrogates.
-      f _ (pos, StateS0) 92 = return (pos, StateS1) -- Backslash
-      f _ (  _, StateS0)  _ = throwDecodeError
+      f _ (pos, StateS0 hi) 92 = return (pos, StateS1 hi) -- Backslash
+      f _ (  _, StateS0{})  _ = throwDecodeError
 
-      f _ (pos, StateS1) 117 = return (pos, StateSU0) -- u
-      f _ (  _, StateS1)   _ = throwDecodeError
+      f _ (pos, StateS1 hi) 117 = return (pos, StateSU0 hi) -- u
+      f _ (  _, StateS1{})   _ = throwDecodeError
 
-      f _ (pos, StateSU0) c =
+      f _ (pos, StateSU0 hi) c =
         let w = decodeHex c in
-        return (pos, StateSU1 (w `shiftL` 12))
+        return (pos, StateSU1 hi (w `shiftL` 12))
 
-      f _ (pos, StateSU1 w') c =
+      f _ (pos, StateSU1 hi w') c =
         let w = decodeHex c in
-        return (pos, StateSU2 (w' .|. (w `shiftL` 8)))
+        return (pos, StateSU2 hi (w' .|. (w `shiftL` 8)))
 
-      f _ (pos, StateSU2 w') c =
+      f _ (pos, StateSU2 hi w') c =
         let w = decodeHex c in
-        return (pos, StateSU3 (w' .|. (w `shiftL` 4)))
+        return (pos, StateSU3 hi (w' .|. (w `shiftL` 4)))
 
-      f dest (pos, StateSU3 w') c =
+      f dest (pos, StateSU3 hi w') c =
         let w = decodeHex c in
         let u = w' .|. w in
 
         -- Check if not low surrogate.
         if u < 0xdc00 || u > 0xdfff then
           throwDecodeError
-        else
-          writeAndReturn dest pos u StateNone
+        else do
+#if MIN_VERSION_text(2,0,0)
+          d <- unsafeWrite dest pos (chr2 hi u)
+          return (pos + d, StateNone)
+#else
+          A.unsafeWrite dest pos hi
+          writeAndReturn dest (pos + 1) u StateNone
+#endif
 
-write :: A.MArray s -> Int -> Word16 -> ST s ()
-write dest pos char =
-    A.unsafeWrite dest pos char
-{-# INLINE write #-}
-
+#if MIN_VERSION_text(2,0,0)
+writeAndReturn :: A.MArray s -> Int -> Word8 -> t -> ST s (Int, t)
+#else
 writeAndReturn :: A.MArray s -> Int -> Word16 -> t -> ST s (Int, t)
+#endif
 writeAndReturn dest pos char res = do
-    write dest pos char
+    A.unsafeWrite dest pos char
     return (pos + 1, res)
 {-# INLINE writeAndReturn #-}
 

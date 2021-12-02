@@ -13,6 +13,10 @@ tested-with:
 
 extra-source-files: cbits/*.c
 
+flag text2
+  manual:  False
+  default: False
+
 library
   default-language: Haskell2010
   hs-source-dirs:   src src-ffi src-pure attoparsec-iso8601/src
@@ -50,6 +54,12 @@ library
     , vector
     , witherable
 
+  if flag(text2)
+    build-depends: text >=2
+
+  else
+    build-depends: text <2
+
   if !impl(ghc >=8.6)
     build-depends: contravariant
 
@@ -70,7 +80,6 @@ library
     Data.Aeson.Parser.Internal
     Data.Aeson.Parser.Time
     Data.Aeson.Parser.Unescape
-    Data.Aeson.Parser.UnescapeFFI
     Data.Aeson.Parser.UnescapePure
     Data.Aeson.Text
     Data.Aeson.TH
@@ -82,6 +91,9 @@ library
     Data.Aeson.Types.ToJSON
     Data.Attoparsec.Time
     Data.Attoparsec.Time.Internal
+
+  if !flag(text2)
+    exposed-modules: Data.Aeson.Parser.UnescapeFFI
 
 -- Idea is to fold as many benchmarks into this as possible.
 executable aeson-benchmark-suite
@@ -96,7 +108,6 @@ executable aeson-benchmark-suite
     , base-compat-batteries
     , base16-bytestring
     , blaze-builder
-    , buffer-builder
     , bytestring
     , containers
     , criterion
@@ -111,7 +122,6 @@ executable aeson-benchmark-suite
     , time
     , unordered-containers
     , vector
-
   other-modules:
     AesonFoldable
     AesonMap
@@ -125,7 +135,6 @@ executable aeson-benchmark-suite
     Auto.T.D
     AutoCompare
     Compare
-    Compare.BufferBuilder
     Compare.JsonBench
     CompareWithJSON
     Dates
@@ -142,7 +151,6 @@ executable aeson-benchmark-suite
     Typed.Generic
     Typed.Manual
     Typed.TH
-    UnescapePureText1
     UnescapePureText2
     Utils
 
@@ -152,3 +160,12 @@ executable aeson-benchmark-suite
 
   if !impl(ghc >=8.0)
     build-depends: fail
+
+  if !flag(text2)
+    -- buffer-builder might work with text-2 sometime
+    build-depends: buffer-builder
+    other-modules: Compare.BufferBuilder
+
+    -- this module won't
+    other-modules:
+      UnescapePureText1
