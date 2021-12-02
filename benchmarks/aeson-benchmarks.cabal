@@ -141,6 +141,8 @@ executable aeson-benchmark-suite
     Typed.Generic
     Typed.Manual
     Typed.TH
+    UnescapePureText1
+    UnescapePureText2
     Utils
 
   if impl(ghc <8.4)

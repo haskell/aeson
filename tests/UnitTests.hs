@@ -25,7 +25,7 @@ module UnitTests
 import Prelude.Compat
 
 import Control.Applicative (Const)
-import Control.Monad (forM, forM_)
+import Control.Monad (forM, forM_, when)
 import Data.Aeson ((.=), (.:), (.:?), (.:!), FromJSON(..), FromJSONKeyFunction(..), FromJSONKey(..), ToJSON1(..), decode, eitherDecode, encode, fromJSON, genericParseJSON, genericToEncoding, genericToJSON, object, withObject, withEmbeddedJSON)
 import Data.Aeson.Internal (JSONPathElement(..), formatError)
 import Data.Aeson.QQ.Simple (aesonQQ)
@@ -40,7 +40,7 @@ import Data.Aeson.Types
   , defaultOptions, formatPath, formatRelativePath, omitNothingFields, parse)
 import qualified Data.Aeson.KeyMap as KM
 import Data.Attoparsec.ByteString (Parser, parseOnly)
-import Data.Char (toUpper)
+import Data.Char (toUpper, GeneralCategory(Control,Surrogate), generalCategory)
 import Data.Either.Compat (isLeft, isRight)
 import Data.Hashable (hash)
 import Data.HashMap.Strict (HashMap)
@@ -386,10 +386,14 @@ unescapeString = do
      (Right ("\" / \\ \b \f \n \r \t" :: String))
      (eitherDecode "\"\\\" \\/ \\\\ \\b \\f \\n \\r \\t\"")
 
-  forM_ [minBound .. maxBound :: Char] $ \ c ->
-    let s = LT.pack [c] in
-    assertEqual (printf "UTF-16 encoded '\\x%X'" c)
-      (Right s) (eitherDecode $ utf16Char s)
+  forM_ [minBound .. maxBound :: Char] $ \ c -> do
+    let s = LT.pack [c]
+
+    assertEqual (printf "UTF-16 encoded '\\x%X'" c) (Right s) (eitherDecode $ utf16Char s)
+
+    when (notEscapeControlOrSurrogate c) $
+        assertEqual (printf "UTF-8 encode '\\x%X'" c) (Right s) (eitherDecode $ utf8Char s)
+
   where
     utf16Char = formatString . LBase16.encode . LT.encodeUtf16BE
     formatString s
@@ -397,6 +401,15 @@ unescapeString = do
       | L.length s == 8 =
           L.concat ["\"\\u", L.take 4 s, "\\u", L.drop 4 s, "\""]
       | otherwise = error "unescapeString: can't happen"
+
+    utf8Char s = L.concat ["\"", LT.encodeUtf8 s, "\""]
+
+    notEscapeControlOrSurrogate '"'  = False
+    notEscapeControlOrSurrogate '\\' = False
+    notEscapeControlOrSurrogate c = case generalCategory c of
+      Control -> False
+      Surrogate -> False
+      _ -> True
 
 -- JSONTestSuite
 
