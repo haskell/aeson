@@ -32,6 +32,8 @@ import qualified GitHub
 import qualified Issue673
 import qualified Micro
 import qualified Typed
+import qualified UnescapePureText1 as Text1
+import qualified UnescapePureText2 as Text2
 
 import           Utils
 
@@ -77,8 +79,10 @@ escapeBench = bgroup "Escape"
   where
     example :: String -> BS.ByteString -> Benchmark
     example name input = bgroup name
-      [ bench "ffi"  $ whnf FFI.unescapeText input
-      , bench "pure" $ whnf Pure.unescapeText input
+      [ bench "ffi"   $ whnf FFI.unescapeText input
+      , bench "pure"  $ whnf Pure.unescapeText input
+      , bench "text1" $ whnf Text1.unescapeText input
+      , bench "text2" $ whnf Text2.unescapeText input
       ]
 
 -------------------------------------------------------------------------------
