@@ -1,3 +1,4 @@
+{-# LANGUAGE CPP                 #-}
 {-# LANGUAGE NoImplicitPrelude   #-}
 {-# LANGUAGE OverloadedStrings   #-}
 {-# LANGUAGE ScopedTypeVariables #-}
@@ -14,7 +15,6 @@ import           Data.Proxy                     (Proxy (..))
 import           Data.Vector                    (Vector)
 
 import qualified Data.Aeson.Encoding.Builder    as Aeson.EB
-import qualified Data.Aeson.Parser.UnescapeFFI  as FFI
 import qualified Data.Aeson.Parser.UnescapePure as Pure
 import qualified Data.ByteString                as BS
 import qualified Data.ByteString.Base16         as Base16
@@ -34,10 +34,14 @@ import qualified GitHub
 import qualified Issue673
 import qualified Micro
 import qualified Typed
-import qualified UnescapePureText1 as Text1
-import qualified UnescapePureText2 as Text2
+import qualified UnescapePureText2              as Text2
 
 import           Utils
+
+#if !MIN_VERSION_text(2,0,0)
+import qualified Data.Aeson.Parser.UnescapeFFI  as FFI
+import qualified UnescapePureText1              as Text1
+#endif
 
 -------------------------------------------------------------------------------
 -- Decode bench
@@ -92,9 +96,11 @@ escapeBench = bgroup "Escape"
   where
     example :: String -> BS.ByteString -> Benchmark
     example name input = bgroup name
-      [ bench "ffi"   $ whnf FFI.unescapeText input
-      , bench "pure"  $ whnf Pure.unescapeText input
+      [ bench "pure"  $ whnf Pure.unescapeText input
+#if !MIN_VERSION_text(2,0,0)
+      , bench "ffi"   $ whnf FFI.unescapeText input
       , bench "text1" $ whnf Text1.unescapeText input
+#endif
       , bench "text2" $ whnf Text2.unescapeText input
       ]
 

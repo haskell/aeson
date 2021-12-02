@@ -22,7 +22,10 @@ import Data.Text (Text)
 import Utils (readV)
 import qualified Control.Monad.Fail as Fail
 import qualified Data.Aeson as Aeson
+
+#ifdef MIN_VERSION_buffer_builder
 import qualified Data.BufferBuilder.Json as Json
+#endif
 
 #ifdef MIN_VERSION_json_builder
 import qualified Data.Json.Builder as JB
@@ -226,6 +229,7 @@ instance Aeson.ToJSON User where
 
 --- BufferBuilder instances ---
 
+#ifdef MIN_VERSION_buffer_builder
 instance Json.ToJson EyeColor where
     toJson ec = Json.toJson $ case ec of
         Green -> "green" :: Text
@@ -272,6 +276,7 @@ instance Json.ToJson User where
             <> "friends"# Json..=# uFriends
             <> "greeting"# Json..=# uGreeting
             <> "favoriteFruit"# Json..=# uFavouriteFruit
+#endif
 
 #ifdef MIN_VERSION_json_builder
 ---- json-builder instances ----
@@ -332,7 +337,9 @@ benchmarks = env (readV "buffer-builder.json") $
     \ ~(parsedUserList :: [User]) ->
     bgroup "CompareEncodeUserList" [
       bench "aeson" $ nf Aeson.encode parsedUserList
+#ifdef MIN_VERSION_buffer_builder
     , bench "buffer-builder" $ nf Json.encodeJson parsedUserList
+#endif
 #ifdef MIN_VERSION_json_builder
     , bench "json-builder" $ nf JB.toJsonLBS parsedUserList
 #endif
