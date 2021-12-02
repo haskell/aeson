@@ -336,109 +336,102 @@ unescapeTextIO bs = case bs of
           P.writePrimArray arr out w16
           state_start (out + 1) inp
 
-        writeCodePoint :: Int -> Ptr Word8 -> Word32 -> IO Text
-        writeCodePoint !out !inp !codepoint
-          | codepoint < 65536 = do
-            P.writePrimArray arr out (fromIntegral codepoint)
+        state_sudone :: Int -> Ptr Word8 -> Word32 -> IO Text
+        state_sudone !out !inp !lo
+          | 56320 <= lo, lo <= 57343 = do
+            P.writePrimArray arr out (fromIntegral lo)
             state_start (out + 1) (plusPtr inp 1)
-
-          | otherwise = do
-            let u = codepoint - 65536
-                hi = fromIntegral (55296 + shiftR u 10) :: Word16
-                lo = fromIntegral (56320 + (u .&. 1023)) :: Word16
-            P.writePrimArray arr out hi
-            writeLowSurrogate (out + 1) lo (plusPtr inp 1)
-
-        state_sudone :: Int -> Ptr Word8 -> Word32 -> Word32 -> IO Text
-        state_sudone !out !inp !hi !lo
-          | 56320 <= lo, lo <= 57343 =
-            writeCodePoint out inp (65536 + (shiftL (hi - 55296) 10 .|. (lo - 56320)))
 
           | otherwise =
             throwDecodeError
 
-        state_su4 :: Int -> Ptr Word8 -> Word32 -> Word32 -> IO Text
-        state_su4 !out !inp !hi !acc
+        state_su4 :: Int -> Ptr Word8 -> Word32 -> IO Text
+        state_su4 !out !inp !acc
           | inp == end = throwDecodeError
           | otherwise = do
             w8 <- peek inp
             if | 48 <= w8, w8 <= 57 ->
-                 state_sudone out inp hi (shiftL acc 4 .|. fromIntegral (w8 - 48))
+                 state_sudone out inp (shiftL acc 4 .|. fromIntegral (w8 - 48))
                | 65 <= w8, w8 <= 70 ->
-                 state_sudone out inp hi (shiftL acc 4 .|. fromIntegral (w8 - 55))
+                 state_sudone out inp (shiftL acc 4 .|. fromIntegral (w8 - 55))
                | 97 <= w8, w8 <= 102 ->
-                 state_sudone out inp hi (shiftL acc 4 .|. fromIntegral (w8 - 87))
+                 state_sudone out inp (shiftL acc 4 .|. fromIntegral (w8 - 87))
                | otherwise ->
                  throwDecodeError
 
-        state_su3 :: Int -> Ptr Word8 -> Word32 -> Word32 -> IO Text
-        state_su3 !out !inp !hi !acc
+        state_su3 :: Int -> Ptr Word8 -> Word32 -> IO Text
+        state_su3 !out !inp  !acc
           | inp == end = throwDecodeError
           | otherwise = do
             w8 <- peek inp
             if | 48 <= w8, w8 <= 57 ->
-                 state_su4 out (plusPtr inp 1) hi (shiftL acc 4 .|. fromIntegral (w8 - 48))
+                 state_su4 out (plusPtr inp 1) (shiftL acc 4 .|. fromIntegral (w8 - 48))
                | 65 <= w8, w8 <= 70 ->
-                 state_su4 out (plusPtr inp 1) hi (shiftL acc 4 .|. fromIntegral (w8 - 55))
+                 state_su4 out (plusPtr inp 1) (shiftL acc 4 .|. fromIntegral (w8 - 55))
                | 97 <= w8, w8 <= 102 ->
-                 state_su4 out (plusPtr inp 1) hi (shiftL acc 4 .|. fromIntegral (w8 - 87))
+                 state_su4 out (plusPtr inp 1) (shiftL acc 4 .|. fromIntegral (w8 - 87))
                | otherwise -> throwDecodeError
 
-        state_su2 :: Int -> Ptr Word8 -> Word32 -> Word32 -> IO Text
-        state_su2 !out !inp !hi !acc
+        state_su2 :: Int -> Ptr Word8 -> Word32 -> IO Text
+        state_su2 !out !inp !acc
           | inp == end = throwDecodeError
           | otherwise = do
             w8 <- peek inp
             if | 48 <= w8, w8 <= 57 ->
-                 state_su3 out (plusPtr inp 1) hi (shiftL acc 4 .|. fromIntegral (w8 - 48))
+                 state_su3 out (plusPtr inp 1) (shiftL acc 4 .|. fromIntegral (w8 - 48))
                | 65 <= w8, w8 <= 70 ->
-                 state_su3 out (plusPtr inp 1) hi (shiftL acc 4 .|. fromIntegral (w8 - 55))
+                 state_su3 out (plusPtr inp 1) (shiftL acc 4 .|. fromIntegral (w8 - 55))
                | 97 <= w8, w8 <= 102 ->
-                 state_su3 out (plusPtr inp 1) hi (shiftL acc 4 .|. fromIntegral (w8 - 87))
+                 state_su3 out (plusPtr inp 1) (shiftL acc 4 .|. fromIntegral (w8 - 87))
                | otherwise ->
                  throwDecodeError
 
-        state_su1 :: Int -> Ptr Word8 -> Word32 -> IO Text
-        state_su1 !out !inp !hi
+        state_su1 :: Int -> Ptr Word8 -> IO Text
+        state_su1 !out !inp
           | inp == end = throwDecodeError
           | otherwise = do
             w8 <- peek inp
             if | 48 <= w8, w8 <= 57 ->
-                 state_su2 out (plusPtr inp 1) hi (fromIntegral (w8 - 48))
+                 state_su2 out (plusPtr inp 1) (fromIntegral (w8 - 48))
                | 65 <= w8, w8 <= 70 ->
-                 state_su2 out (plusPtr inp 1) hi (fromIntegral (w8 - 55))
+                 state_su2 out (plusPtr inp 1) (fromIntegral (w8 - 55))
                | 97 <= w8, w8 <= 102 ->
-                 state_su2 out (plusPtr inp 1) hi (fromIntegral (w8 - 87))
+                 state_su2 out (plusPtr inp 1) (fromIntegral (w8 - 87))
                | otherwise ->
                  throwDecodeError
 
         -- high surrogate u
-        state_su :: Int -> Ptr Word8 -> Word32 -> IO Text
-        state_su !out !inp !hi
+        state_su :: Int -> Ptr Word8 -> IO Text
+        state_su !out !inp
           | inp == end = throwDecodeError
           | otherwise = do
             w8 <- peek inp
             case w8 of
-              117 -> state_su1 out (plusPtr inp 1) hi
+              117 -> state_su1 out (plusPtr inp 1)
               _   -> throwDecodeError
 
         -- high surrogate slash
-        state_ss :: Int -> Ptr Word8 -> Word32 -> IO Text
-        state_ss !out !inp !hi
+        state_ss :: Int -> Ptr Word8 -> IO Text
+        state_ss !out !inp
           | inp == end = throwDecodeError
           | otherwise = do
             w8 <- peek inp
             case w8 of
-              92 -> state_su out (plusPtr inp 1) hi
+              92 -> state_su out (plusPtr inp 1)
               _  -> throwDecodeError
 
         state_udone :: Int -> Ptr Word8 -> Word32 -> IO Text
         state_udone !out !inp !acc
-          | acc < 55296 || acc > 57343 =
-            writeCodePoint out inp acc
+          -- we know that codepoint in acc is in BMP
+          | acc < 55296 || acc > 57343 = do
+            P.writePrimArray arr out (fromIntegral acc)
+            state_start (out + 1) (plusPtr inp 1)
 
-          | acc < 56320 =
-            state_ss out (plusPtr inp 1) acc
+          -- hi surrogate,
+          -- we write it immediately (UTF16 as an output!)
+          | acc < 56320 = do
+            P.writePrimArray arr out (fromIntegral acc)
+            state_ss (out + 1) (plusPtr inp 1)
 
           | otherwise =
             throwDecodeError
