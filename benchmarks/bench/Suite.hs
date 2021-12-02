@@ -17,10 +17,12 @@ import qualified Data.Aeson.Encoding.Builder    as Aeson.EB
 import qualified Data.Aeson.Parser.UnescapeFFI  as FFI
 import qualified Data.Aeson.Parser.UnescapePure as Pure
 import qualified Data.ByteString                as BS
+import qualified Data.ByteString.Base16         as Base16
 import qualified Data.ByteString.Builder        as B
 import qualified Data.ByteString.Char8          as BS8
 import qualified Data.ByteString.Lazy           as LBS
 import qualified Data.Text                      as T
+import qualified Data.Text.Encoding             as TE
 
 import qualified AesonFoldable
 import qualified AesonMap
@@ -75,6 +77,17 @@ escapeBench = bgroup "Escape"
       , "U+, например, U+040F. Семейство кодировок определяет способы"
       , "преобразования кодов символов для передачи в потоке или в файле."
       ]
+    , example "hexEscapes" $
+        let chars = ['0'..'9'] ++ ['a'..'z'] ++ ['A'..'Z'] ++ ['\x10000' .. '\x100ff']
+            formatChar :: Char -> B.Builder
+            formatChar c = case BS.length bs of
+                4 -> "\\u" <> B.byteString bs
+                8 -> "\\u" <> B.byteString (BS.take 4 bs) <> "\\u" <> B.byteString (BS.drop 4 bs)
+                _ -> error "formatChar: ???"
+              where
+                bs = Base16.encode $ TE.encodeUtf16BE $ T.pack [c]
+
+        in LBS.toStrict $ B.toLazyByteString $ foldMap formatChar chars
     ]
   where
     example :: String -> BS.ByteString -> Benchmark

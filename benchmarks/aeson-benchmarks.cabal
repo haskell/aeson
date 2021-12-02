@@ -94,6 +94,7 @@ executable aeson-benchmark-suite
     , attoparsec
     , base
     , base-compat-batteries
+    , base16-bytestring
     , blaze-builder
     , buffer-builder
     , bytestring
