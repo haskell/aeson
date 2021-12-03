@@ -292,7 +292,7 @@ fromHashMap = fromList . H.toList
 toMap :: KeyMap v -> Map Key v
 toMap = unKeyMap
 
--- | Convert a 'HashMap' to a 'Map'.
+-- | Convert a 'Map' to a 'KeyMap'.
 fromMap :: Map Key v -> KeyMap v
 fromMap = KeyMap
 
@@ -487,7 +487,7 @@ fromHashMap = KeyMap
 toMap :: KeyMap v -> Map Key v
 toMap = M.fromList . toList
 
--- | Convert a 'HashMap' to a 'Map'.
+-- | Convert a 'Map' to a 'KeyMap'.
 fromMap :: Map Key v -> KeyMap v
 fromMap = fromList . M.toList
 
