@@ -1,14 +1,24 @@
 {-# LANGUAGE BangPatterns #-}
 {-# LANGUAGE CPP #-}
 {-# LANGUAGE MagicHash #-}
+{-# LANGUAGE TemplateHaskellQuotes #-}
 module Data.Aeson.Internal.ByteString (
     mkBS, 
     withBS,
+    liftSBS,
 ) where
 
 import Data.ByteString.Internal (ByteString (..))
 import Data.Word (Word8)
 import Foreign.ForeignPtr (ForeignPtr)
+import Data.ByteString.Short (ShortByteString, fromShort)
+import GHC.Exts (Addr#, Ptr (Ptr))
+import Data.ByteString.Internal (accursedUnutterablePerformIO)
+import Data.ByteString.Short.Internal (createFromPtr)
+
+import qualified Data.ByteString as BS
+import qualified Language.Haskell.TH.Lib as TH
+import qualified Language.Haskell.TH.Syntax as TH
 
 #if !MIN_VERSION_bytestring(0,11,0)
 #if MIN_VERSION_base(4,10,0)
@@ -56,3 +66,22 @@ plusForeignPtr (ForeignPtr addr guts) (I# offset) = ForeignPtr (plusAddr# addr o
  #-}
 #endif
 #endif
+
+liftSBS :: ShortByteString -> TH.ExpQ
+#if MIN_VERSION_template_haskell(2,16,0)
+liftSBS sbs = withBS bs $ \ptr len -> [| unsafePackLenLiteral |]
+    `TH.appE` TH.litE (TH.integerL (fromIntegral len))
+    `TH.appE` TH.litE (TH.BytesPrimL $ TH.Bytes ptr 0 (fromIntegral len))
+    where
+      bs = fromShort sbs
+#else
+liftSBS sbs = withBS bs $ \_ len -> [| unsafePackLenLiteral |]
+    `TH.appE` TH.litE (TH.integerL (fromIntegral len))
+    `TH.appE` TH.litE (TH.StringPrimL $ BS.unpack bs)
+    where
+      bs = fromShort sbs
+#endif
+
+unsafePackLenLiteral :: Int -> Addr# -> ShortByteString
+unsafePackLenLiteral len addr# =
+    accursedUnutterablePerformIO $ createFromPtr (Ptr addr#) len
