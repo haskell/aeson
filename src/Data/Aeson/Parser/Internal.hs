@@ -59,7 +59,6 @@ import Data.Function (fix)
 import Data.Functor.Compat (($>))
 import Data.Scientific (Scientific)
 import Data.Text (Text)
-import qualified Data.Text.Encoding as TE
 import Data.Vector (Vector)
 import qualified Data.Vector as Vector (empty, fromList, fromListN, reverse)
 import qualified Data.Attoparsec.ByteString as A
@@ -72,6 +71,7 @@ import qualified Data.ByteString.Lazy.Char8 as C
 import qualified Data.ByteString.Builder as B
 import qualified Data.Scientific as Sci
 import Data.Aeson.Parser.Unescape (unescapeText)
+import Data.Aeson.Internal.Text
 
 -- $setup
 -- >>> :set -XOverloadedStrings
@@ -341,17 +341,6 @@ jstring_ = do
     Just DOUBLE_QUOTE -> A.anyWord8 $> txt
     Just w | w < 0x20 -> fail "unescaped control character"
     _                 -> jstringSlow s
-
-#if MIN_VERSION_text(2,0,0)
-unsafeDecodeASCII :: B.ByteString -> Text
-unsafeDecodeASCII = TE.decodeASCII
-#else
--- | The input is assumed to contain only 7bit ASCII characters (i.e. @< 0x80@).
---   We use TE.decodeLatin1 here because TE.decodeASCII is currently (text-1.2.4.0)
---   deprecated and equal to TE.decodeUtf8, which is slower than TE.decodeLatin1.
-unsafeDecodeASCII :: B.ByteString -> Text
-unsafeDecodeASCII = TE.decodeLatin1
-#endif
 
 jstringSlow :: B.ByteString -> Parser Text
 {-# INLINE jstringSlow #-}

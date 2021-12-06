@@ -17,14 +17,16 @@ import           Foreign.ForeignPtr       (withForeignPtr)
 import           Foreign.Ptr              (Ptr, plusPtr)
 import           Foreign.Storable         (peek)
 
-import qualified Data.ByteString.Internal as BS
 import qualified Data.Primitive           as P
 import qualified Data.Text.Array          as T
 import qualified Data.Text.Internal       as T
 
+import Data.Aeson.Internal.ByteString
+
 #if !MIN_VERSION_text(2,0,0)
 import           Data.Word                (Word16)
 #endif
+
 
 unescapeText :: ByteString -> Either UnicodeException Text
 unescapeText = unsafeDupablePerformIO . try . unescapeTextIO
@@ -48,11 +50,10 @@ unescapeTextIO :: ByteString -> IO Text
 
 #if MIN_VERSION_text(2,0,0)
 
-unescapeTextIO bs = case bs of
-  BS.PS fptr off len -> withForeignPtr fptr $ \bsPtr -> do
-    let begin, end :: Ptr Word8
-        begin = plusPtr bsPtr off
-        end   = plusPtr begin len
+unescapeTextIO bs = withBS bs $ \fptr len ->
+  withForeignPtr fptr $ \begin -> do
+    let end :: Ptr Word8
+        end = plusPtr begin len
 
     arr <- P.newPrimArray len
 
@@ -397,11 +398,10 @@ unescapeTextIO bs = case bs of
     state_start (0 :: Int) begin
 #else
 
-unescapeTextIO bs = case bs of
-  BS.PS fptr off len -> withForeignPtr fptr $ \bsPtr -> do
-    let begin, end :: Ptr Word8
-        begin = plusPtr bsPtr off
-        end   = plusPtr begin len
+unescapeTextIO bs = withBS bs $ \fptr len ->
+  withForeignPtr fptr $ \begin -> do
+    let end :: Ptr Word8
+        end = plusPtr begin len
 
     arr <- P.newPrimArray len
 
