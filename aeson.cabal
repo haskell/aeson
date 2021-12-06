@@ -84,7 +84,9 @@ library
 
   other-modules:
     Data.Aeson.Encoding.Builder
+    Data.Aeson.Internal.ByteString
     Data.Aeson.Internal.Functions
+    Data.Aeson.Internal.Text
     Data.Aeson.Parser.Time
     Data.Aeson.Parser.Unescape
     Data.Aeson.Types.Class
@@ -146,7 +148,7 @@ library
     cpp-options:    -DCFFI
     hs-source-dirs: src-ffi
     other-modules:  Data.Aeson.Parser.UnescapeFFI
-    build-depends:  text < 2.0
+    build-depends:  text <2.0
 
   if flag(ordered-keymap)
     cpp-options: -DUSE_ORDEREDMAP=1
@@ -157,7 +159,6 @@ test-suite aeson-tests
   hs-source-dirs:   tests
   main-is:          Tests.hs
   ghc-options:      -Wall -threaded -rtsopts
-
   other-modules:
     DataFamilies.Encoders
     DataFamilies.Instances
