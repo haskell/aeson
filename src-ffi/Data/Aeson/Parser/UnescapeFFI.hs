@@ -40,7 +40,12 @@ unescapeText' (PS fp off len) = runText $ \done -> do
         with (0::CSize) $ \destOffPtr -> do
           let end = ptr `plusPtr` (off + len)
               loop curPtr = do
-                res <- c_js_decode (A.maBA dest) destOffPtr curPtr end
+#if MIN_VERSION_text(2,0,0)
+                let A.TextArray destArr = dest
+#else
+                let destArr = A.maBA dest
+#endif
+                res <- c_js_decode destArr destOffPtr curPtr end
                 case res of
                   0 -> do
                     n <- peek destOffPtr
