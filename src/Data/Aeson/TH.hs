@@ -113,6 +113,7 @@ import Prelude.Compat hiding (fail)
 import Prelude (fail)
 
 import Control.Applicative ((<|>))
+import Data.Char (ord)
 import Data.Aeson (Object, (.:), FromJSON(..), FromJSON1(..), FromJSON2(..), ToJSON(..), ToJSON1(..), ToJSON2(..))
 import Data.Aeson.Types (Options(..), Parser, SumEncoding(..), Value(..), defaultOptions, defaultTaggedObject)
 import Data.Aeson.Types.Internal ((<?>), JSONPathElement(Key))
@@ -149,6 +150,10 @@ import qualified Data.Set as Set (empty, insert, member)
 import qualified Data.Text as T (pack, unpack)
 import qualified Data.Vector as V (unsafeIndex, null, length, create, empty)
 import qualified Data.Vector.Mutable as VM (unsafeNew, unsafeWrite)
+import qualified Data.Text.Short as ST
+import Data.ByteString.Short (ShortByteString)
+import Data.Aeson.Internal.ByteString
+import Data.Aeson.Internal.TH
 
 --------------------------------------------------------------------------------
 -- Convenience
@@ -305,6 +310,8 @@ mkToEncodingCommon :: JSONClass -- ^ Which class's method is being derived.
                    -> Q Exp
 mkToEncodingCommon = mkFunCommon (\jc _ -> consToValue Encoding jc)
 
+type LetInsert = ShortByteString -> ExpQ
+
 -- | Helper function used by both 'deriveToJSON' and 'mkToJSON'. Generates
 -- code to generate a 'Value' or 'Encoding' of a number of constructors. All
 -- constructors must be from the same type.
@@ -323,7 +330,7 @@ consToValue :: ToJSONFun
 consToValue _ _ _ _ [] = error $ "Data.Aeson.TH.consToValue: "
                              ++ "Not a single constructor given!"
 
-consToValue target jc opts instTys cons = do
+consToValue target jc opts instTys cons = autoletE liftSBS $ \letInsert -> do
     value <- newName "value"
     tjs   <- newNameList "_tj"  $ arityInt jc
     tjls  <- newNameList "_tjl" $ arityInt jc
@@ -332,18 +339,18 @@ consToValue target jc opts instTys cons = do
         lastTyVars     = map varTToName $ drop (length instTys - arityInt jc) instTys
         tvMap          = M.fromList $ zip lastTyVars zippedTJs
     lamE (map varP $ interleavedTJs ++ [value]) $
-        caseE (varE value) (matches tvMap)
+        caseE (varE value) (matches letInsert tvMap)
   where
-    matches tvMap = case cons of
+    matches letInsert tvMap = case cons of
       -- A single constructor is directly encoded. The constructor itself may be
       -- forgotten.
-      [con] | not (tagSingleConstructors opts) -> [argsToValue target jc tvMap opts False con]
+      [con] | not (tagSingleConstructors opts) -> [argsToValue letInsert target jc tvMap opts False con]
       _ | allNullaryToStringTag opts && all isNullary cons ->
               [ match (conP conName []) (normalB $ conStr target opts conName) []
               | con <- cons
               , let conName = constructorName con
               ]
-        | otherwise -> [argsToValue target jc tvMap opts True con | con <- cons]
+        | otherwise -> [argsToValue letInsert target jc tvMap opts True con | con <- cons]
 
 -- | Name of the constructor as a quoted 'Value' or 'Encoding'.
 conStr :: ToJSONFun -> Options -> Name -> Q Exp
@@ -365,24 +372,26 @@ isNullary ConstructorInfo { constructorVariant = NormalConstructor
 isNullary _ = False
 
 -- | Wrap fields of a non-record constructor. See 'sumToValue'.
-opaqueSumToValue :: ToJSONFun -> Options -> Bool -> Bool -> Name -> ExpQ -> ExpQ
-opaqueSumToValue target opts multiCons nullary conName value =
-  sumToValue target opts multiCons nullary conName
+opaqueSumToValue :: LetInsert -> ToJSONFun -> Options -> Bool -> Bool -> Name -> ExpQ -> ExpQ
+opaqueSumToValue letInsert target opts multiCons nullary conName value =
+  sumToValue letInsert target opts multiCons nullary conName
     value
     pairs
   where
-    pairs contentsFieldName = pairE contentsFieldName value
+    pairs contentsFieldName = pairE letInsert target contentsFieldName value
 
 -- | Wrap fields of a record constructor. See 'sumToValue'.
-recordSumToValue :: ToJSONFun -> Options -> Bool -> Bool -> Name -> ExpQ -> ExpQ
-recordSumToValue target opts multiCons nullary conName pairs =
-  sumToValue target opts multiCons nullary conName
-    (fromPairsE pairs)
+recordSumToValue :: LetInsert -> ToJSONFun -> Options -> Bool -> Bool -> Name -> ExpQ -> ExpQ
+recordSumToValue letInsert target opts multiCons nullary conName pairs =
+  sumToValue letInsert target opts multiCons nullary conName
+    (fromPairsE target pairs)
     (const pairs)
 
 -- | Wrap fields of a constructor.
 sumToValue
-  :: ToJSONFun
+  :: LetInsert
+  -- ^ Let insertion
+  -> ToJSONFun
   -- ^ The method being derived.
   -> Options
   -- ^ Deriving options.
@@ -404,7 +413,7 @@ sumToValue
   -- - For records, produces the list of pairs corresponding to fields of the
   --   encoded value (ignores the argument). See 'recordSumToValue'.
   -> ExpQ
-sumToValue target opts multiCons nullary conName value pairs
+sumToValue letInsert target opts multiCons nullary conName value pairs
     | multiCons =
         case sumEncoding opts of
           TwoElemArray ->
@@ -412,21 +421,21 @@ sumToValue target opts multiCons nullary conName value pairs
           TaggedObject{tagFieldName, contentsFieldName} ->
             -- TODO: Maybe throw an error in case
             -- tagFieldName overwrites a field in pairs.
-            let tag = pairE tagFieldName (conStr target opts conName)
+            let tag = pairE letInsert target tagFieldName (conStr target opts conName)
                 content = pairs contentsFieldName
-            in fromPairsE $
+            in fromPairsE target $
               if nullary then tag else infixApp tag [|(Monoid.<>)|] content
           ObjectWithSingleField ->
-            objectE [(conString opts conName, value)]
+            objectE letInsert target [(conString opts conName, value)]
           UntaggedValue | nullary -> conStr target opts conName
           UntaggedValue -> value
     | otherwise = value
 
 -- | Generates code to generate the JSON encoding of a single constructor.
-argsToValue :: ToJSONFun -> JSONClass -> TyVarMap -> Options -> Bool -> ConstructorInfo -> Q Match
+argsToValue :: LetInsert -> ToJSONFun -> JSONClass -> TyVarMap -> Options -> Bool -> ConstructorInfo -> Q Match
 
 -- Polyadic constructors with special case for unary constructors.
-argsToValue target jc tvMap opts multiCons
+argsToValue letInsert target jc tvMap opts multiCons
   ConstructorInfo { constructorName    = conName
                   , constructorVariant = NormalConstructor
                   , constructorFields  = argTys } = do
@@ -443,16 +452,16 @@ argsToValue target jc tvMap opts multiCons
                es -> array target es
 
     match (conP conName $ map varP args)
-          (normalB $ opaqueSumToValue target opts multiCons (null argTys') conName js)
+          (normalB $ opaqueSumToValue letInsert target opts multiCons (null argTys') conName js)
           []
 
 -- Records.
-argsToValue target jc tvMap opts multiCons
+argsToValue letInsert target jc tvMap opts multiCons
   info@ConstructorInfo { constructorName    = conName
                        , constructorVariant = RecordConstructor fields
                        , constructorFields  = argTys } =
     case (unwrapUnaryRecords opts, not multiCons, argTys) of
-      (True,True,[_]) -> argsToValue target jc tvMap opts multiCons
+      (True,True,[_]) -> argsToValue letInsert target jc tvMap opts multiCons
                                      (info{constructorVariant = NormalConstructor})
       _ -> do
         argTys' <- mapM resolveTypeSynonyms argTys
@@ -483,7 +492,7 @@ argsToValue target jc tvMap opts multiCons
             toPairLifted lifted (arg, argTy, field) =
               let toValue = dispatchToJSON target jc conName tvMap argTy
                   fieldName = fieldLabel opts field
-                  e arg' = pairE fieldName (toValue `appE` arg')
+                  e arg' = pairE letInsert target fieldName (toValue `appE` arg')
               in if lifted
                 then do
                   x <- newName "x"
@@ -491,11 +500,11 @@ argsToValue target jc tvMap opts multiCons
                 else e arg
 
         match (conP conName $ map varP args)
-              (normalB $ recordSumToValue target opts multiCons (null argTys) conName pairs)
+              (normalB $ recordSumToValue letInsert target opts multiCons (null argTys) conName pairs)
               []
 
 -- Infix constructors.
-argsToValue target jc tvMap opts multiCons
+argsToValue letInsert target jc tvMap opts multiCons
   ConstructorInfo { constructorName    = conName
                   , constructorVariant = InfixConstructor
                   , constructorFields  = argTys } = do
@@ -504,7 +513,7 @@ argsToValue target jc tvMap opts multiCons
     ar <- newName "argR"
     match (infixP (varP al) conName (varP ar))
           ( normalB
-          $ opaqueSumToValue target opts multiCons False conName
+          $ opaqueSumToValue letInsert target opts multiCons False conName
           $ array target
               [ dispatchToJSON target jc conName tvMap aTy
                   `appE` varE a
@@ -557,8 +566,8 @@ array Value es = do
                doE (newMV:stmts++[ret]))
 
 -- | Wrap an associative list of keys and quoted values in a quoted 'Object'.
-objectE :: [(String, ExpQ)] -> ExpQ
-objectE = fromPairsE . mconcatE . fmap (uncurry pairE)
+objectE :: LetInsert -> ToJSONFun -> [(String, ExpQ)] -> ExpQ
+objectE letInsert target = fromPairsE target . mconcatE . fmap (uncurry (pairE letInsert target))
 
 -- | 'mconcat' a list of fixed length.
 --
@@ -568,14 +577,28 @@ mconcatE [] = [|Monoid.mempty|]
 mconcatE [x] = x
 mconcatE (x : xs) = infixApp x [|(Monoid.<>)|] (mconcatE xs)
 
-fromPairsE :: ExpQ -> ExpQ
-fromPairsE = ([|fromPairs|] `appE`)
+fromPairsE :: ToJSONFun -> ExpQ -> ExpQ
+fromPairsE _ = ([|fromPairs|] `appE`)
 
 -- | Create (an encoding of) a key-value pair.
 --
--- > pairE "k" [|v|] = [|pair "k" v|]
-pairE :: String -> ExpQ -> ExpQ
-pairE k v = [|pair (Key.fromString k)|] `appE` v
+-- > pairE "k" [|v|] = [| pair "k" v |]
+--
+pairE :: LetInsert -> ToJSONFun -> String -> ExpQ -> ExpQ
+pairE letInsert Encoding k v = [| E.unsafePairSBS |] `appE` letInsert k' `appE` v
+  where
+    k' = ST.toShortByteString $ ST.pack $ "\"" ++ concatMap escapeAscii k ++ "\":"
+
+    escapeAscii '\\' = "\\\\"
+    escapeAscii '\"' = "\\\""
+    escapeAscii '\n' = "\\n"
+    escapeAscii '\r' = "\\r"
+    escapeAscii '\t' = "\\t"
+    escapeAscii c
+      | ord c < 0x20 = "\\u" ++ printf "%04x" (ord c)
+    escapeAscii c    = [c]
+
+pairE _letInsert Value    k v = [| pair (Key.fromString k) |] `appE` v
 
 --------------------------------------------------------------------------------
 -- FromJSON

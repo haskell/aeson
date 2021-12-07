@@ -16,6 +16,7 @@ module Data.Aeson.Encoding.Internal
     , pairs
     , pair
     , pairStr
+    , unsafePairSBS
     , pair'
     -- * Predicates
     , nullEncoding
@@ -65,6 +66,7 @@ import Prelude.Compat
 
 import Data.Aeson.Types.Internal (Value, Key)
 import Data.ByteString.Builder (Builder, char7, toLazyByteString)
+import Data.ByteString.Short (ShortByteString)
 import qualified Data.Aeson.Key as Key
 import Data.Int
 import Data.Scientific (Scientific)
@@ -141,6 +143,19 @@ pairStr name val = pair' (string name) val
 
 pair' :: Encoding' Key -> Encoding -> Series
 pair' name val = Value $ retagEncoding $ retagEncoding name >< colon >< val
+
+-- | A variant of a 'pair' where key is already encoded
+-- including the quotes and colon.
+--
+-- @
+-- 'pair' "foo" v = 'unsafePair' "\\"foo\\":" v
+-- @
+--
+-- @since 2.0.3.0
+--
+unsafePairSBS :: ShortByteString -> Encoding -> Series
+unsafePairSBS k v = Value $ retagEncoding $ Encoding (B.shortByteString k) >< v
+{-# INLINE unsafePairSBS #-}
 
 instance Semigroup Series where
     Empty   <> a       = a

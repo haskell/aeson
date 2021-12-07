@@ -75,6 +75,7 @@ library
     Data.Aeson.Internal.ByteString
     Data.Aeson.Internal.Functions
     Data.Aeson.Internal.Text
+    Data.Aeson.Internal.TH
     Data.Aeson.Internal.Time
     Data.Aeson.Key
     Data.Aeson.KeyMap
