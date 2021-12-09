@@ -92,6 +92,8 @@ escapeBench = bgroup "Escape"
                 bs = Base16.encode $ TE.encodeUtf16BE $ T.pack [c]
 
         in LBS.toStrict $ B.toLazyByteString $ foldMap formatChar chars
+    , example "charEscapes" $
+        BS.concat $ replicate 10000 $ BS8.pack "\\\""
     ]
   where
     example :: String -> BS.ByteString -> Benchmark
