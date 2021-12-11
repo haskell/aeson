@@ -22,3 +22,6 @@ constraint-set ordered-keymap-off
   constraints: aeson -ordered-keymap
   tests:       True
   run-tests:   True
+
+constraint-set bytestring-0.11.2.0
+  constraints: bytestring >= 0.11.2.0
