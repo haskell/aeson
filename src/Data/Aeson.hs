@@ -49,6 +49,7 @@ module Data.Aeson
     , eitherDecodeFileStrict
     , eitherDecodeStrict'
     , eitherDecodeFileStrict'
+    , encodeStrict
     -- * Core JSON types
     , Value(..)
     , Encoding
@@ -161,6 +162,12 @@ import qualified Data.ByteString.Lazy as L
 -- This is implemented in terms of the 'ToJSON' class's 'toEncoding' method.
 encode :: (ToJSON a) => a -> L.ByteString
 encode = encodingToLazyByteString . toEncoding
+
+-- | Efficiently serialize a JSON value as a strict 'B.ByteString'.
+--
+-- This is implemented in terms of the 'encode' method.
+encodeStrict :: (ToJSON a) => a -> B.ByteString
+encodeStrict = L.toStrict . encodingToLazyByteString . toEncoding
 
 -- | Efficiently serialize a JSON value as a lazy 'L.ByteString' and write it to a file.
 encodeFile :: (ToJSON a) => FilePath -> a -> IO ()
