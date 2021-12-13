@@ -44,7 +44,7 @@ import Data.Aeson.Internal.Time
 import Data.Aeson.Types.Internal (Value (..), Key)
 import qualified Data.Aeson.Key as Key
 import qualified Data.Aeson.KeyMap as KM
-import Data.ByteString.Builder as B
+import qualified Data.ByteString.Builder as B
 import Data.ByteString.Builder.Prim as BP
 import Data.ByteString.Builder.Scientific (scientificBuilder)
 import Data.Char (chr, ord)
@@ -63,7 +63,7 @@ import qualified Data.Vector as V
 --
 -- Use this function if you are encoding over the wire, or need to
 -- prepend or append further bytes to the encoded JSON value.
-encodeToBuilder :: Value -> Builder
+encodeToBuilder :: Value -> B.Builder
 encodeToBuilder Null       = null_
 encodeToBuilder (Bool b)   = bool b
 encodeToBuilder (Number n) = scientific n
@@ -72,16 +72,16 @@ encodeToBuilder (Array v)  = array v
 encodeToBuilder (Object m) = object m
 
 -- | Encode a JSON null.
-null_ :: Builder
+null_ :: B.Builder
 null_ = BP.primBounded (ascii4 ('n',('u',('l','l')))) ()
 
 -- | Encode a JSON boolean.
-bool :: Bool -> Builder
+bool :: Bool -> B.Builder
 bool = BP.primBounded (BP.condB id (ascii4 ('t',('r',('u','e'))))
                                    (ascii5 ('f',('a',('l',('s','e'))))))
 
 -- | Encode a JSON array.
-array :: V.Vector Value -> Builder
+array :: V.Vector Value -> B.Builder
 array v
   | V.null v  = emptyArray_
   | otherwise = B.char8 '[' <>
@@ -91,7 +91,7 @@ array v
     withComma a z = B.char8 ',' <> encodeToBuilder a <> z
 
 -- Encode a JSON object.
-object :: KM.KeyMap Value -> Builder
+object :: KM.KeyMap Value -> B.Builder
 object m = case KM.toList m of
     (x:xs) -> B.char8 '{' <> one x <> foldr withComma (B.char8 '}') xs
     _      -> emptyObject_
@@ -100,23 +100,23 @@ object m = case KM.toList m of
     one (k,v)     = key k <> B.char8 ':' <> encodeToBuilder v
 
 -- | Encode a JSON key.
-key :: Key -> Builder
+key :: Key -> B.Builder
 key = text . Key.toText
 
 -- | Encode a JSON string.
-text :: T.Text -> Builder
+text :: T.Text -> B.Builder
 text t = B.char8 '"' <> unquoted t <> B.char8 '"'
 
 -- | Encode a JSON string, without enclosing quotes.
-unquoted :: T.Text -> Builder
+unquoted :: T.Text -> B.Builder
 unquoted = encodeUtf8BuilderEscaped escapeAscii
 
 -- | Add quotes surrounding a builder
-quote :: Builder -> Builder
+quote :: B.Builder -> B.Builder
 quote b = B.char8 '"' <> b <> B.char8 '"'
 
 -- | Encode a JSON string.
-string :: String -> Builder
+string :: String -> B.Builder
 string t = B.char8 '"' <> BP.primMapListBounded go t <> B.char8 '"'
   where go = BP.condB (> '\x7f') BP.charUtf8 (c2w >$< escapeAscii)
 
@@ -139,17 +139,17 @@ c2w :: Char -> Word8
 c2w c = fromIntegral (ord c)
 
 -- | Encode a JSON number.
-scientific :: Scientific -> Builder
+scientific :: Scientific -> B.Builder
 scientific s
     | e < 0 || e > 1024 = scientificBuilder s
     | otherwise = B.integerDec (coefficient s * 10 ^ e)
   where
     e = base10Exponent s
 
-emptyArray_ :: Builder
+emptyArray_ :: B.Builder
 emptyArray_ = BP.primBounded (ascii2 ('[',']')) ()
 
-emptyObject_ :: Builder
+emptyObject_ :: B.Builder
 emptyObject_ = BP.primBounded (ascii2 ('{','}')) ()
 
 ascii2 :: (Char, Char) -> BP.BoundedPrim a
@@ -183,7 +183,7 @@ ascii8 cs = BP.liftFixedToBounded $ const cs >$<
     BP.char7 >*< BP.char7 >*< BP.char7 >*< BP.char7
 {-# INLINE ascii8 #-}
 
-day :: Day -> Builder
+day :: Day -> B.Builder
 day dd = encodeYear yr <>
          BP.primBounded (ascii6 ('-',(mh,(ml,('-',(dh,dl)))))) ()
   where (yr,m,d)    = toGregorian dd
@@ -191,14 +191,14 @@ day dd = encodeYear yr <>
         !(T dh dl)  = twoDigits d
 {-# INLINE day #-}
 
-month :: Month -> Builder
+month :: Month -> B.Builder
 month mm = encodeYear yr <>
            BP.primBounded (ascii3 ('-',(mh,ml))) ()
   where (yr,m) = toYearMonth mm
         !(T mh ml) = twoDigits m
 {-# INLINE month #-}
 
-quarter :: Quarter -> Builder
+quarter :: Quarter -> B.Builder
 quarter qq = encodeYear yr <>
              BP.primBounded (ascii3 ('-',('q',qd))) ()
   where (yr,q) = toYearQuarter qq
@@ -210,7 +210,7 @@ quarter qq = encodeYear yr <>
 {-# INLINE quarter #-}
 
 -- | Used in encoding day, month, quarter
-encodeYear :: Integer -> Builder
+encodeYear :: Integer -> B.Builder
 encodeYear y
     | y >= 1000 = B.integerDec y
     | y >= 0    = BP.primBounded (ascii4 (padYear y)) ()
@@ -223,11 +223,11 @@ encodeYear y
         in ('0',(digit a,(digit b,digit c)))
 {-# INLINE encodeYear #-}
 
-timeOfDay :: TimeOfDay -> Builder
+timeOfDay :: TimeOfDay -> B.Builder
 timeOfDay t = timeOfDay64 (toTimeOfDay64 t)
 {-# INLINE timeOfDay #-}
 
-timeOfDay64 :: TimeOfDay64 -> Builder
+timeOfDay64 :: TimeOfDay64 -> B.Builder
 timeOfDay64 (TOD h m s)
   | frac == 0 = hhmmss -- omit subseconds if 0
   | otherwise = hhmmss <> BP.primBounded showFrac frac
@@ -256,7 +256,7 @@ timeOfDay64 (TOD h m s)
     micro      =       1000000 -- number of microseconds in 1 second
     milli      =          1000 -- number of milliseconds in 1 second
 
-timeZone :: TimeZone -> Builder
+timeZone :: TimeZone -> B.Builder
 timeZone (TimeZone off _ _)
   | off == 0  = B.char7 'Z'
   | otherwise = BP.primBounded (ascii6 (s,(hh,(hl,(':',(mh,ml)))))) ()
@@ -266,7 +266,7 @@ timeZone (TimeZone off _ _)
         (h,m)      = abs off `quotRem` 60
 {-# INLINE timeZone #-}
 
-dayTime :: Day -> TimeOfDay64 -> Builder
+dayTime :: Day -> TimeOfDay64 -> B.Builder
 dayTime d t = day d <> B.char7 'T' <> timeOfDay64 t
 {-# INLINE dayTime #-}
 
@@ -274,11 +274,11 @@ utcTime :: UTCTime -> B.Builder
 utcTime (UTCTime d s) = dayTime d (diffTimeOfDay64 s) <> B.char7 'Z'
 {-# INLINE utcTime #-}
 
-localTime :: LocalTime -> Builder
+localTime :: LocalTime -> B.Builder
 localTime (LocalTime d t) = dayTime d (toTimeOfDay64 t)
 {-# INLINE localTime #-}
 
-zonedTime :: ZonedTime -> Builder
+zonedTime :: ZonedTime -> B.Builder
 zonedTime (ZonedTime t z) = localTime t <> timeZone z
 {-# INLINE zonedTime #-}
 
