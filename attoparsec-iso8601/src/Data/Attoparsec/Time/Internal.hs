@@ -21,7 +21,7 @@ import Prelude.Compat
 import Data.Fixed (Fixed(MkFixed), Pico)
 import Data.Int (Int64)
 import Data.Time (TimeOfDay(..))
-import Data.Time.Clock.Compat
+import Data.Time.Clock.Compat (DiffTime, diffTimeToPicoseconds)
 
 toPico :: Integer -> Pico
 toPico = MkFixed

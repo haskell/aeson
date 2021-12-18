@@ -68,14 +68,14 @@ import Data.Aeson.Types.Internal (Value, Key)
 import Data.ByteString.Builder (Builder, char7, toLazyByteString)
 import Data.ByteString.Short (ShortByteString)
 import qualified Data.Aeson.Key as Key
-import Data.Int
+import Data.Int (Int8, Int16, Int32, Int64)
 import Data.Scientific (Scientific)
 import Data.Text (Text)
 import Data.Time (Day, LocalTime, TimeOfDay, UTCTime, ZonedTime)
 import Data.Time.Calendar.Month.Compat (Month)
 import Data.Time.Calendar.Quarter.Compat (Quarter)
 import Data.Typeable (Typeable)
-import Data.Word
+import Data.Word (Word8, Word16, Word32, Word64)
 import qualified Data.Aeson.Encoding.Builder as EB
 import qualified Data.ByteString.Builder as B
 import qualified Data.ByteString.Lazy as BSL
