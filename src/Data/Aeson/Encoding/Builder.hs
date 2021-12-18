@@ -44,8 +44,10 @@ import Data.Aeson.Internal.Time
 import Data.Aeson.Types.Internal (Value (..), Key)
 import qualified Data.Aeson.Key as Key
 import qualified Data.Aeson.KeyMap as KM
-import Data.ByteString.Builder as B
-import Data.ByteString.Builder.Prim as BP
+import Data.ByteString.Builder (Builder)
+import qualified Data.ByteString.Builder as B
+import Data.ByteString.Builder.Prim ((>$<), (>*<))
+import qualified Data.ByteString.Builder.Prim as BP
 import Data.ByteString.Builder.Scientific (scientificBuilder)
 import Data.Char (chr, ord)
 import Data.Scientific (Scientific, base10Exponent, coefficient)
@@ -54,7 +56,7 @@ import Data.Time (UTCTime(..))
 import Data.Time.Calendar (Day(..), toGregorian)
 import Data.Time.Calendar.Month.Compat (Month, toYearMonth)
 import Data.Time.Calendar.Quarter.Compat (Quarter, toYearQuarter, QuarterOfYear (..))
-import Data.Time.LocalTime
+import Data.Time.LocalTime (LocalTime (..), TimeZone (..), ZonedTime (..), TimeOfDay (..))
 import Data.Word (Word8)
 import qualified Data.Text as T
 import qualified Data.Vector as V

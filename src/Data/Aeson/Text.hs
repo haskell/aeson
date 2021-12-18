@@ -28,7 +28,8 @@ import Data.Aeson.Types (Value(..), ToJSON(..))
 import Data.Aeson.Encoding (encodingToLazyByteString)
 import qualified Data.Aeson.KeyMap as KM
 import Data.Scientific (FPFormat(..), Scientific, base10Exponent)
-import Data.Text.Lazy.Builder
+import Data.Text.Lazy.Builder (Builder)
+import qualified Data.Text.Lazy.Builder as TB
 import Data.Text.Lazy.Builder.Scientific (formatScientificBuilder)
 import Numeric (showHex)
 import qualified Data.Aeson.Key as Key
@@ -62,23 +63,23 @@ encodeToTextBuilder =
     go (Array v)
         | V.null v = {-# SCC "go/Array" #-} "[]"
         | otherwise = {-# SCC "go/Array" #-}
-                      singleton '[' <>
+                      TB.singleton '[' <>
                       go (V.unsafeHead v) <>
-                      V.foldr f (singleton ']') (V.unsafeTail v)
-      where f a z = singleton ',' <> go a <> z
+                      V.foldr f (TB.singleton ']') (V.unsafeTail v)
+      where f a z = TB.singleton ',' <> go a <> z
     go (Object m) = {-# SCC "go/Object" #-}
         case KM.toList m of
-          (x:xs) -> singleton '{' <> one x <> foldr f (singleton '}') xs
+          (x:xs) -> TB.singleton '{' <> one x <> foldr f (TB.singleton '}') xs
           _      -> "{}"
-      where f a z     = singleton ',' <> one a <> z
-            one (k,v) = string (Key.toText k) <> singleton ':' <> go v
+      where f a z     = TB.singleton ',' <> one a <> z
+            one (k,v) = string (Key.toText k) <> TB.singleton ':' <> go v
 
 string :: T.Text -> Builder
-string s = {-# SCC "string" #-} singleton '"' <> quote s <> singleton '"'
+string s = {-# SCC "string" #-} TB.singleton '"' <> quote s <> TB.singleton '"'
   where
     quote q = case T.uncons t of
-                Nothing      -> fromText h
-                Just (!c,t') -> fromText h <> escape c <> quote t'
+                Nothing      -> TB.fromText h
+                Just (!c,t') -> TB.fromText h <> escape c <> quote t'
         where (h,t) = {-# SCC "break" #-} T.break isEscape q
     isEscape c = c == '\"' ||
                  c == '\\' ||
@@ -90,8 +91,8 @@ string s = {-# SCC "string" #-} singleton '"' <> quote s <> singleton '"'
     escape '\t' = "\\t"
 
     escape c
-        | c < '\x20' = fromString $ "\\u" ++ replicate (4 - length h) '0' ++ h
-        | otherwise  = singleton c
+        | c < '\x20' = TB.fromString $ "\\u" ++ replicate (4 - length h) '0' ++ h
+        | otherwise  = TB.singleton c
         where h = showHex (fromEnum c) ""
 
 fromScientific :: Scientific -> Builder

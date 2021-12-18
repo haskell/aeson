@@ -27,7 +27,7 @@ import Prelude.Compat
 
 import Control.Applicative ((<|>))
 import Control.Monad (void, when)
-import Data.Attoparsec.Text as A
+import Data.Attoparsec.Text (Parser, char, decimal, digit, option, anyChar, peekChar, peekChar', takeWhile1, satisfy)
 import Data.Attoparsec.Time.Internal (toPico)
 import Data.Bits ((.&.))
 import Data.Char (isDigit, ord)
