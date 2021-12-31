@@ -31,6 +31,7 @@ import qualified Data.String
 import qualified Data.Text as T
 import qualified Data.Text.Short as ST
 import qualified Language.Haskell.TH.Syntax as TH
+import qualified Test.QuickCheck as QC
 
 newtype Key = Key { unKey :: Text }
   deriving (Eq, Ord, Typeable, Data)
@@ -103,3 +104,16 @@ instance TH.Lift Key where
 #elif MIN_VERSION_template_haskell(2,16,0)
     liftTyped = TH.unsafeTExpCoerce . TH.lift
 #endif
+
+-- | @since 2.0.3.0
+instance QC.Arbitrary Key where
+    arbitrary = fromString <$> QC.arbitrary
+    shrink k  = fromString <$> QC.shrink (toString k)
+
+-- | @since 2.0.3.0
+instance QC.CoArbitrary Key where
+    coarbitrary = QC.coarbitrary . toString
+
+-- | @since 2.0.3.0
+instance QC.Function Key where
+    function = QC.functionMap toString fromString

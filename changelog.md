@@ -1,5 +1,12 @@
 For the latest version of this document, please see [https://github.com/haskell/aeson/blob/master/changelog.md](https://github.com/haskell/aeson/blob/master/changelog.md).
 
+### 2.0.3.0
+
+* `text-2.0` support
+* `bytestring-0.11.2.0` support
+* Rewrite pure text literal unescaper.
+* Add `QuickCheck`'s `Arbitrary`, `CoArbitrary` and `Function` instances
+
 ### 2.0.2.0
 
 * Add `IsList (KeyMap v)` instance.
