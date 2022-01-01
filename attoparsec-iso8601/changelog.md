@@ -1,12 +1,9 @@
 For the latest version of this document, please see [https://github.com/bos/aeson/blob/master/attoparsec-iso8601/changelog.md](https://github.com/bos/aeson/blob/master/attoparsec-iso8601/changelog.md).
 
-### 1.0.2.2
-
-* Avoid wild imports
-
 ### 1.0.2.1
 
 * Code (re)organization.
+* Avoid wildcard imports
 
 ### 1.0.2.0
 
