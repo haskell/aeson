@@ -113,6 +113,7 @@ import qualified Data.Aeson.KeyMap as KM
 import qualified Data.Scientific as Sci
 import qualified Data.Text as T
 import qualified Test.QuickCheck as QC
+import Witherable (ordNub)
 
 -- | Elements of a JSON path used to describe the location of an
 -- error.
@@ -395,12 +396,13 @@ instance Show Value where
 instance QC.Arbitrary Value where
     arbitrary = QC.sized arbValue
 
-    shrink Null       = []
-    shrink (Bool b)   = Null : map Bool (QC.shrink b)
-    shrink (String x) = Null : map (String . T.pack) (QC.shrink (T.unpack x))
-    shrink (Number x) = Null : map Number (shrScientific x)
-    shrink (Array x)  = Null : V.toList x ++ map (Array . V.fromList) (QC.shrink (V.toList x))
-    shrink (Object x) = Null : KM.elems x ++ map (Object . KM.fromList) (QC.shrink (KM.toList x))
+    shrink = ordNub . go where
+        go Null       = []
+        go (Bool b)   = Null : map Bool (QC.shrink b)
+        go (String x) = Null : map (String . T.pack) (QC.shrink (T.unpack x))
+        go (Number x) = Null : map Number (shrScientific x)
+        go (Array x)  = Null : V.toList x ++ map (Array . V.fromList) (QC.liftShrink go (V.toList x))
+        go (Object x) = Null : KM.elems x ++ map (Object . KM.fromList) (QC.liftShrink (QC.liftShrink go) (KM.toList x))
 
 -- | @since 2.0.3.0
 instance QC.CoArbitrary Value where

@@ -194,6 +194,7 @@ test-suite aeson-tests
     , generic-deriving      >=1.10     && <1.15
     , ghc-prim              >=0.2
     , hashable
+    , indexed-traversable
     , integer-logarithms    >=1        && <1.1
     , OneTuple
     , primitive
