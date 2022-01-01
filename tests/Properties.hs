@@ -11,14 +11,15 @@ import Test.QuickCheck (Property)
 import PropUtils
 import PropertyGeneric
 import PropertyKeys
+import PropertyQC
 import PropertyRoundTrip
 import PropertyTH
 
 
 tests :: TestTree
 tests = testGroup "properties" [
-  testGroup "encode" [
-      testProperty "encodeDouble" encodeDouble
+  testGroup "encode"
+    [ testProperty "encodeDouble" encodeDouble
     , testProperty "encodeInteger" encodeInteger
     ]
   , testProperty "read . show = id" roundtripReadShow
@@ -38,4 +39,5 @@ tests = testGroup "properties" [
     ]
   , genericTests
   , templateHaskellTests
+  , quickcheckTests
   ]

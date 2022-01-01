@@ -110,6 +110,9 @@ import qualified Data.Vector as V
 import qualified Language.Haskell.TH.Syntax as TH
 import qualified Data.Aeson.Key as Key
 import qualified Data.Aeson.KeyMap as KM
+import qualified Data.Scientific as Sci
+import qualified Data.Text as T
+import qualified Test.QuickCheck as QC
 
 -- | Elements of a JSON path used to describe the location of an
 -- error.
@@ -387,6 +390,92 @@ instance Show Value where
         $ showString "Object (fromList "
         . showsPrec 11 (KM.toAscList xs)
         . showChar ')'
+
+-- | @since 2.0.3.0
+instance QC.Arbitrary Value where
+    arbitrary = QC.sized arbValue
+
+    shrink Null       = []
+    shrink (Bool b)   = Null : map Bool (QC.shrink b)
+    shrink (String x) = Null : map (String . T.pack) (QC.shrink (T.unpack x))
+    shrink (Number x) = Null : map Number (shrScientific x)
+    shrink (Array x)  = Null : V.toList x ++ map (Array . V.fromList) (QC.shrink (V.toList x))
+    shrink (Object x) = Null : KM.elems x ++ map (Object . KM.fromList) (QC.shrink (KM.toList x))
+
+-- | @since 2.0.3.0
+instance QC.CoArbitrary Value where
+    coarbitrary Null       = QC.variant (0 :: Int)
+    coarbitrary (Bool b)   = QC.variant (1 :: Int) . QC.coarbitrary b
+    coarbitrary (String x) = QC.variant (2 :: Int) . QC.coarbitrary (T.unpack x)
+    coarbitrary (Number x) = QC.variant (3 :: Int) . QC.coarbitrary (Sci.coefficient x) . QC.coarbitrary (Sci.base10Exponent x)
+    coarbitrary (Array x)  = QC.variant (4 :: Int) . QC.coarbitrary (V.toList x)
+    coarbitrary (Object x) = QC.variant (5 :: Int) . QC.coarbitrary (KM.toList x)
+
+-- | @since 2.0.3.0
+instance QC.Function Value where
+    function = QC.functionMap fwd bwd where
+        fwd :: Value -> RepValue
+        fwd Null       = Left Nothing
+        fwd (Bool b)   = Left (Just b)
+        fwd (String x) = Right (Left (Left (T.unpack x)))
+        fwd (Number x) = Right (Left (Right (Sci.coefficient x, Sci.base10Exponent x)))
+        fwd (Array x)  = Right (Right (Left (V.toList x)))
+        fwd (Object x) = Right (Right (Right (KM.toList x)))
+
+        bwd :: RepValue -> Value
+        bwd (Left Nothing)                = Null
+        bwd (Left (Just b))               = Bool b
+        bwd (Right (Left (Left x)))       = String (T.pack x)
+        bwd (Right (Left (Right (x, y)))) = Number (Sci.scientific x y)
+        bwd (Right (Right (Left x)))      = Array (V.fromList x)
+        bwd (Right (Right (Right x)))     = Object (KM.fromList x)
+
+-- Used to implement QC.Function Value instance
+type RepValue
+    = Either (Maybe Bool) (Either (Either String (Integer, Int)) (Either [Value] [(Key, Value)]))
+
+arbValue :: Int -> QC.Gen Value
+arbValue n
+    | n <= 0 = QC.oneof
+        [ pure Null
+        , Bool <$> QC.arbitrary
+        , String <$> arbText
+        , Number <$> arbScientific
+        ]
+
+    | otherwise = QC.oneof
+        [ Object <$> arbObject n
+        , Array <$> arbArray  n
+        ]
+
+arbText :: QC.Gen Text
+arbText = T.pack <$> QC.arbitrary
+
+arbScientific :: QC.Gen Scientific
+arbScientific = Sci.scientific <$> QC.arbitrary <*> QC.arbitrary
+
+shrScientific :: Scientific -> [Scientific]
+shrScientific s = map (uncurry Sci.scientific) $
+    QC.shrink (Sci.coefficient s, Sci.base10Exponent s) 
+
+arbObject :: Int -> QC.Gen Object
+arbObject n = do
+    p <- arbPartition (n - 1)
+    KM.fromList <$> traverse (\m -> (,) <$> QC.arbitrary <*> arbValue m) p
+
+arbArray :: Int -> QC.Gen Array
+arbArray n = do
+    p <- arbPartition (n - 1)
+    V.fromList <$> traverse arbValue p
+
+arbPartition :: Int -> QC.Gen [Int]
+arbPartition k = case compare k 1 of
+    LT -> pure []
+    EQ -> pure [1]
+    GT -> do
+        first <- QC.chooseInt (1, k)
+        rest <- arbPartition $ k - first
+        QC.shuffle (first : rest)
 
 -- |
 --

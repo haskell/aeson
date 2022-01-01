@@ -26,7 +26,6 @@ import Types
 import Text.Read (readMaybe)
 import qualified Data.Attoparsec.Lazy as L
 import qualified Data.ByteString.Lazy.Char8 as L
-import qualified Data.HashMap.Strict as H
 import qualified Data.Map as Map
 import qualified Data.Text as T
 import qualified Data.Vector as V

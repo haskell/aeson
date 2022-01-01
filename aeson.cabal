@@ -1,5 +1,5 @@
 name:               aeson
-version:            2.0.2.0
+version:            2.0.3.0
 license:            BSD3
 license-file:       LICENSE
 category:           Text, Web, JSON
@@ -119,6 +119,7 @@ library
     , indexed-traversable   >=0.1.1    && <0.2
     , OneTuple              >=0.3.1    && <0.4
     , primitive             >=0.7.0.1  && <0.8
+    , QuickCheck            >=2.14.2   && <2.15
     , scientific            >=0.3.7.0  && <0.4
     , semialign             >=1.2      && <1.3
     , strict                >=0.4      && <0.5
@@ -166,6 +167,7 @@ test-suite aeson-tests
     Properties
     PropertyGeneric
     PropertyKeys
+    PropertyQC
     PropertyRoundTrip
     PropertyRTFunctors
     PropertyTH
