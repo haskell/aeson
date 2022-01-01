@@ -8,9 +8,9 @@
 #
 # For more information, see https://github.com/haskell-CI/haskell-ci
 #
-# version: 0.13.20211116
+# version: 0.13.20211226
 #
-# REGENDATA ("0.13.20211116",["github","cabal.project"])
+# REGENDATA ("0.13.20211226",["github","cabal.project"])
 #
 name: Haskell-CI
 on:
@@ -233,6 +233,16 @@ jobs:
       - name: prepare for constraint sets
         run: |
           rm -f cabal.project.local
+      - name: constraint set text-2.0
+        run: |
+          $CABAL v2-build $ARG_COMPILER --enable-tests --disable-benchmarks --constraint='text ^>=2.0' --dependencies-only -j2 all
+          $CABAL v2-build $ARG_COMPILER --enable-tests --disable-benchmarks --constraint='text ^>=2.0' all
+          $CABAL v2-test $ARG_COMPILER --enable-tests --disable-benchmarks --constraint='text ^>=2.0' all
+      - name: constraint set text-1.2
+        run: |
+          $CABAL v2-build $ARG_COMPILER --enable-tests --disable-benchmarks --constraint='text ^>=1.2.3.0' --dependencies-only -j2 all
+          $CABAL v2-build $ARG_COMPILER --enable-tests --disable-benchmarks --constraint='text ^>=1.2.3.0' all
+          $CABAL v2-test $ARG_COMPILER --enable-tests --disable-benchmarks --constraint='text ^>=1.2.3.0' all
       - name: constraint set bytestring-0.11.2.0
         run: |
           $CABAL v2-build $ARG_COMPILER --disable-tests --disable-benchmarks --constraint='bytestring >= 0.11.2.0' --dependencies-only -j2 all
