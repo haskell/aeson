@@ -1980,6 +1980,8 @@ instance ToJSON QuarterOfYear where
     toJSON Q3 = "q3"
     toJSON Q4 = "q4"
 
+    toEncoding = toEncodingQuarterOfYear
+
 toEncodingQuarterOfYear :: QuarterOfYear -> E.Encoding' a
 toEncodingQuarterOfYear Q1 = E.unsafeToEncoding "\"q1\""
 toEncodingQuarterOfYear Q2 = E.unsafeToEncoding "\"q2\""
