@@ -5,3 +5,6 @@ tests: false
 -- This may affect benchmark results
 --package aeson-benchmarks
 --  ghc-options: -O2 -fexpose-all-unfoldings -fspecialise-aggressively
+
+package hermes-json
+  flags: -native_comp

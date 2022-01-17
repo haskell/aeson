@@ -29,6 +29,7 @@ import qualified AesonMap
 import qualified AutoCompare
 import qualified Compare
 import qualified CompareWithJSON
+import qualified CompareWithHermes
 import qualified Dates
 import qualified GitHub
 import qualified Issue673
@@ -130,3 +131,4 @@ main = do
     ]
     ++ Compare.benchmarks -- compares to different libs (encoding)
     ++ [ CompareWithJSON.benchmark ]
+    ++ [ CompareWithHermes.benchmark ]

@@ -126,6 +126,7 @@ executable aeson-benchmark-suite
     , time
     , unordered-containers
     , vector
+    , hermes-json
 
   other-modules:
     AesonFoldable
@@ -142,6 +143,7 @@ executable aeson-benchmark-suite
     Compare
     Compare.JsonBench
     CompareWithJSON
+    CompareWithHermes
     Dates
     GitHub
     Issue673
