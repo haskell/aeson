@@ -29,7 +29,9 @@ import qualified AesonMap
 import qualified AutoCompare
 import qualified Compare
 import qualified CompareWithJSON
+#ifdef MIN_VERSION_hermes_json
 import qualified CompareWithHermes
+#endif
 import qualified Dates
 import qualified GitHub
 import qualified Issue673
@@ -131,4 +133,6 @@ main = do
     ]
     ++ Compare.benchmarks -- compares to different libs (encoding)
     ++ [ CompareWithJSON.benchmark ]
+#ifdef MIN_VERSION_hermes_json
     ++ [ CompareWithHermes.benchmark ]
+#endif
