@@ -29,6 +29,12 @@ import qualified AesonMap
 import qualified AutoCompare
 import qualified Compare
 import qualified CompareWithJSON
+<<<<<<< HEAD:benchmarks/bench/aeson-benchmark-suite.hs
+=======
+#ifdef MIN_VERSION_hermes_json
+import qualified CompareWithHermes
+#endif
+>>>>>>> Use hermes only with GHC > 8.8:benchmarks/bench/Suite.hs
 import qualified Dates
 import qualified GitHub
 import qualified Issue673
@@ -40,6 +46,10 @@ import           Utils
 
 #if !MIN_VERSION_text(2,0,0)
 import qualified UnescapePureText1          as Text1
+#endif
+
+#if __GLASGOW_HASKELL__ >=810
+import qualified CompareWithHermes
 #endif
 
 -------------------------------------------------------------------------------
@@ -136,3 +146,6 @@ main = do
     ]
     ++ Compare.benchmarks -- compares to different libs (encoding)
     ++ [ CompareWithJSON.benchmark ]
+#if __GLASGOW_HASKELL__ >=810
+    ++ [ CompareWithHermes.benchmark ]
+#endif
