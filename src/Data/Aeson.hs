@@ -110,6 +110,7 @@ module Data.Aeson
     , fieldLabelModifier
     , constructorTagModifier
     , allNullaryToStringTag
+    , nullaryToObject
     , omitNothingFields
     , sumEncoding
     , unwrapUnaryRecords
