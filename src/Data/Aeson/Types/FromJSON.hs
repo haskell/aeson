@@ -1241,7 +1241,9 @@ instance RecordFromJSON arity f => ConsFromJSON' arity f True where
 
 instance {-# OVERLAPPING #-}
          ConsFromJSON' arity U1 False where
-    -- Empty constructors are expected to be encoded as an empty array:
+    -- Empty constructors are expected to be encoded as an empty array or an object,
+    -- depending on nullaryToObject option (default is array)
+    -- TODO probably, with rejectUnknownFields option, the object should be empty to pass.
     consParseJSON' (cname :* tname :* opts :* _) v =
         Tagged . contextCons cname tname $
             if nullaryToObject opts
