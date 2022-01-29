@@ -1242,11 +1242,16 @@ instance RecordFromJSON arity f => ConsFromJSON' arity f True where
 instance {-# OVERLAPPING #-}
          ConsFromJSON' arity U1 False where
     -- Empty constructors are expected to be encoded as an empty array:
-    consParseJSON' (cname :* tname :* _) v =
-        Tagged . contextCons cname tname $ case v of
-            Array a | V.null a -> pure U1
-                    | otherwise -> fail_ a
-            _ -> typeMismatch "Array" v
+    consParseJSON' (cname :* tname :* opts :* _) v =
+        Tagged . contextCons cname tname $
+            if nullaryToObject opts
+                then case v of
+                    Object _ -> pure U1
+                    _ -> typeMismatch "Object" v
+                else case v of
+                    Array a | V.null a -> pure U1
+                            | otherwise -> fail_ a
+                    _ -> typeMismatch "Array" v
       where
         fail_ a = fail $
             "expected an empty Array, but encountered an Array of length " ++
