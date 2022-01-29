@@ -818,7 +818,7 @@ instance ToJSON1 f => GToJSON' Encoding One (Rec1 f) where
 
 instance GToJSON' Encoding arity U1 where
     -- Empty constructors are encoded to an empty array:
-    gToJSON _opts _ _ = E.emptyArray_
+    gToJSON opts _ _ =  if nullaryToObject opts then E.emptyObject_ else E.emptyArray_
     {-# INLINE gToJSON #-}
 
 instance ( EncodeProduct  arity a
