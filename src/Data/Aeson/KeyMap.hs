@@ -245,7 +245,7 @@ toList = M.toList . unKeyMap
 
 -- | Return a list of this map' elements.
 --
--- @since 2.0.2.0
+-- @since 2.0.3.0
 elems :: KeyMap v -> [v]
 elems = M.elems . unKeyMap
 
@@ -446,7 +446,7 @@ toList = H.toList . unKeyMap
 
 -- | Return a list of this map' elements.
 --
--- @since 2.0.2.0
+-- @since 2.0.3.0
 elems :: KeyMap v -> [v]
 elems = H.elems . unKeyMap
 
