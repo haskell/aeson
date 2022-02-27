@@ -87,10 +87,12 @@ module Data.Aeson.Types.Internal
 import Prelude.Compat
 
 import Control.Applicative (Alternative(..))
+import Control.Arrow (first)
 import Control.DeepSeq (NFData(..))
 import Control.Monad (MonadPlus(..), ap)
 import Data.Char (isLower, isUpper, toLower, isAlpha, isAlphaNum)
 import Data.Aeson.Key (Key)
+import qualified Data.Aeson.Key as Key
 import Data.Data (Data)
 import Data.Foldable (foldl')
 import Data.Hashable (Hashable(..))
@@ -104,6 +106,7 @@ import Data.Typeable (Typeable)
 import Data.Vector (Vector)
 import GHC.Generics (Generic)
 import Data.Aeson.KeyMap (KeyMap)
+import qualified Data.Aeson.KeyMap as KeyMap
 import qualified Control.Monad as Monad
 import qualified Control.Monad.Fail as Fail
 import qualified Data.Vector as V
@@ -445,7 +448,9 @@ instance TH.Lift Value where
       where s = unpack t
     lift (Array a)  = [| Array (V.fromList a') |]
       where a' = V.toList a
-    lift (Object o) = [| Object o |]
+    lift (Object o) = [| Object (KeyMap.fromList . map (first (Key.fromText . pack)) $ o') |]
+      where o' = map (first (unpack . Key.toText)) . KeyMap.toList $ o
+
 
 #if MIN_VERSION_template_haskell(2,17,0)
     liftTyped = TH.unsafeCodeCoerce . TH.lift

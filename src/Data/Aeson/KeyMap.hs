@@ -4,6 +4,7 @@
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE GADTs #-}
 {-# LANGUAGE TemplateHaskellQuotes #-}
+{-# LANGUAGE PatternSynonyms #-}
 
 -- |
 -- An abstract interface for maps from JSON keys to values.
@@ -84,7 +85,7 @@ module Data.Aeson.KeyMap (
 ) where
 
 -- Import stuff from Prelude explicitly
-import Prelude (Eq(..), Ord((>)), Int, Bool(..), Maybe(..))
+import Prelude (Eq(..), Ord((>)), Int, Bool(..), Maybe(..), id)
 import Prelude ((.), ($))
 import Prelude (Functor(fmap), Monad(..))
 import Prelude (Show, showsPrec, showParen, shows, showString)
@@ -126,9 +127,10 @@ import qualified Witherable as W
 -------------------------------------------------------------------------------
 
 -- | A map from JSON key type 'Key' to 'v'.
-newtype KeyMap v = KeyMap { unKeyMap :: Map Key v }
-  deriving (Eq, Ord, Typeable, Data, Functor)
+type KeyMap v = Map Key v
 
+pattern KeyMap a = a where
+  KeyMap a <- a
 
 -- | Construct an empty map.
 empty :: KeyMap v
@@ -333,8 +335,14 @@ import Data.Ord (comparing)
 import Prelude (fst)
 
 -- | A map from JSON key type 'Key' to 'v'.
-newtype KeyMap v = KeyMap { unKeyMap :: HashMap Key v }
-  deriving (Eq, Ord, Typeable, Data, Functor)
+type KeyMap v = HashMap Key v
+
+pattern KeyMap :: HashMap Key v -> KeyMap v
+pattern KeyMap a <- a where
+  KeyMap a = a
+
+unKeyMap :: KeyMap v -> HashMap Key v
+unKeyMap = id
 
 -- | Construct an empty map.
 empty :: KeyMap v
@@ -543,117 +551,4 @@ fromHashMapText = fromList . L.map (first Key.fromText) . H.toList
 -- Instances
 -------------------------------------------------------------------------------
 
--- This are defined using concrete combinators above.
-
-instance Read v => Read (KeyMap v) where
-    readPrec = parens $ prec 10 $ do
-      Ident "fromList" <- lexP
-      xs <- readPrec
-      return (fromList xs)
-
-    readListPrec = readListPrecDefault
-
-instance Show v => Show (KeyMap v) where
-    showsPrec d m = showParen (d > 10) $
-      showString "fromList " . shows (toAscList m)
-
-instance F.Foldable KeyMap where
-    foldMap f = foldMapWithKey (\ _k v -> f v)
-    {-# INLINE foldMap #-}
-    foldr = foldr
-    foldr' = foldr'
-    foldl = foldl
-    foldl' = foldl'
-    null = null
-    length = size
-
-instance T.Traversable KeyMap where
-    traverse = traverse
-
-instance Semigroup (KeyMap v) where
-    (<>) = union
-
-instance Monoid (KeyMap v) where
-    mempty = empty
-    mappend = (<>)
-
--------------------------------------------------------------------------------
--- template-haskell
--------------------------------------------------------------------------------
-
-instance TH.Lift v => TH.Lift (KeyMap v) where
-    lift m = [| fromList m' |] where m' = toList m
-
-#if MIN_VERSION_template_haskell(2,17,0)
-    liftTyped = TH.unsafeCodeCoerce . TH.lift
-#elif MIN_VERSION_template_haskell(2,16,0)
-    liftTyped = TH.unsafeTExpCoerce . TH.lift
-#endif
-
--------------------------------------------------------------------------------
--- hashable
--------------------------------------------------------------------------------
-
-instance Hashable v => Hashable (KeyMap v) where
-#ifdef USE_ORDEREDMAP
-    hashWithSalt salt (KeyMap m) = M.foldlWithKey'
-        (\acc k v -> acc `hashWithSalt` k `hashWithSalt` v)
-        (hashWithSalt salt (M.size m)) m
-#else
-    hashWithSalt salt (KeyMap hm) = hashWithSalt salt hm
-#endif
-
--------------------------------------------------------------------------------
--- deepseq
--------------------------------------------------------------------------------
-
-instance NFData v => NFData (KeyMap v) where
-    rnf (KeyMap hm) = rnf hm
-
--------------------------------------------------------------------------------
--- indexed-traversable
--------------------------------------------------------------------------------
-
-instance WI.FunctorWithIndex Key KeyMap where
-    imap = mapWithKey
-
-instance WI.FoldableWithIndex Key KeyMap where
-    ifoldr   = foldrWithKey
-
-instance WI.TraversableWithIndex Key KeyMap where
-    itraverse = traverseWithKey
-
--------------------------------------------------------------------------------
--- semialign
--------------------------------------------------------------------------------
-
-instance SA.Zip KeyMap where
-    zipWith = intersectionWith
-
-instance SAI.ZipWithIndex Key KeyMap where
-    izipWith = intersectionWithKey
-
-instance SA.Semialign KeyMap where
-    alignWith = alignWith
-
-instance SAI.SemialignWithIndex Key KeyMap where
-    ialignWith = alignWithKey
-
-instance SA.Align KeyMap where
-    nil = empty
-
--------------------------------------------------------------------------------
--- witherable
--------------------------------------------------------------------------------
-
-instance W.Filterable KeyMap where
-    filter = filter
-    mapMaybe = mapMaybe
-
-instance W.Witherable KeyMap where
-
-instance W.FilterableWithIndex Key KeyMap where
-    ifilter = filterWithKey
-    imapMaybe = mapMaybeWithKey
-
-instance W.WitherableWithIndex Key KeyMap where
+-- No instances for synonym

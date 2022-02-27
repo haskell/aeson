@@ -1760,20 +1760,6 @@ instance (ToJSON v, ToJSONKey k) => ToJSON (H.HashMap k v) where
     toEncoding = toEncoding1
 
 -------------------------------------------------------------------------------
--- Data.Aeson.KeyMap
--------------------------------------------------------------------------------
-
-instance ToJSON1 TM.KeyMap where
-    liftToJSON g _ = Object . fmap g
-    liftToEncoding g _ = dict E.key g TM.foldrWithKey
-
-instance (ToJSON v) => ToJSON (TM.KeyMap v) where
-    {-# SPECIALIZE instance ToJSON Object #-}
-
-    toJSON = toJSON1
-    toEncoding = toEncoding1
-
--------------------------------------------------------------------------------
 -- aeson
 -------------------------------------------------------------------------------
 
