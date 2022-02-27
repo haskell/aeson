@@ -1966,13 +1966,6 @@ instance (FromJSON v, FromJSONKey k, Eq k, Hashable k) => FromJSON (H.HashMap k 
 -- aeson
 -------------------------------------------------------------------------------
 
-instance FromJSON Key where
-    parseJSON = withText "Key" (pure . Key.fromText)
-
-instance FromJSONKey Key where
-    -- TODO: make me more efficient.
-    fromJSONKey = FromJSONKeyText Key.fromText
-
 instance FromJSON Value where
     parseJSON = pure
 

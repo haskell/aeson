@@ -169,9 +169,6 @@ instance (ApproxEq a) => ApproxEq [a] where
 instance Arbitrary a => Arbitrary (DList.DList a) where
     arbitrary = DList.fromList <$> arbitrary
 
-instance Arbitrary Key where
-    arbitrary = Key.fromText <$> arbitrary
-
 instance Arbitrary Value where
     arbitrary = sized arb where
         arb :: Int -> Gen Value

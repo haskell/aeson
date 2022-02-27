@@ -1763,13 +1763,6 @@ instance (ToJSON v, ToJSONKey k) => ToJSON (H.HashMap k v) where
 -- aeson
 -------------------------------------------------------------------------------
 
-instance ToJSON Key where
-    toJSON = toJSON . Key.toText
-    toEncoding = E.key
-
-instance ToJSONKey Key where
-    toJSONKey = ToJSONKeyText id E.key
-
 instance ToJSON Value where
     toJSON a = a
     toEncoding = E.value
