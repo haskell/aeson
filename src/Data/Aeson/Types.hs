@@ -14,6 +14,7 @@ module Data.Aeson.Types
     (
     -- * Core JSON types
       Value(..)
+    , Key
     , Encoding
     , unsafeToEncoding
     , fromEncoding
@@ -47,6 +48,7 @@ module Data.Aeson.Types
     , ToJSONKey(..)
     , ToJSONKeyFunction(..)
     , toJSONKeyText
+    , toJSONKeyKey
     , contramapToJSONKeyFunction
     , FromJSONKey(..)
     , FromJSONKeyFunction(..)

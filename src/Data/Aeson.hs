@@ -55,6 +55,7 @@ module Data.Aeson
     , fromEncoding
     , Array
     , Object
+    , Key
     -- * Convenience types
     , DotNetTime(..)
     -- * Type conversion

@@ -26,11 +26,12 @@ import Prelude.Compat
 
 import Data.Aeson.Types (Value(..), ToJSON(..))
 import Data.Aeson.Encoding (encodingToLazyByteString)
+import qualified Data.Aeson.KeyMap as KM
 import Data.Scientific (FPFormat(..), Scientific, base10Exponent)
 import Data.Text.Lazy.Builder
 import Data.Text.Lazy.Builder.Scientific (formatScientificBuilder)
 import Numeric (showHex)
-import qualified Data.HashMap.Strict as H
+import qualified Data.Aeson.Key as Key
 import qualified Data.Text as T
 import qualified Data.Text.Lazy as LT
 import qualified Data.Text.Lazy.Encoding as LT
@@ -66,11 +67,11 @@ encodeToTextBuilder =
                       V.foldr f (singleton ']') (V.unsafeTail v)
       where f a z = singleton ',' <> go a <> z
     go (Object m) = {-# SCC "go/Object" #-}
-        case H.toList m of
+        case KM.toList m of
           (x:xs) -> singleton '{' <> one x <> foldr f (singleton '}') xs
           _      -> "{}"
       where f a z     = singleton ',' <> one a <> z
-            one (k,v) = string k <> singleton ':' <> go v
+            one (k,v) = string (Key.toText k) <> singleton ':' <> go v
 
 string :: T.Text -> Builder
 string s = {-# SCC "string" #-} singleton '"' <> quote s <> singleton '"'

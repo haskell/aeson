@@ -13,19 +13,21 @@ import Prelude.Compat
 import Control.Applicative (empty)
 import Control.Monad
 import Data.Aeson.Types
+import qualified Data.Aeson.KeyMap as KM
 import Data.Function (on)
 import Data.Time (ZonedTime(..), TimeZone(..))
 import Data.Time.Clock (UTCTime(..))
 import Functions
 import Test.QuickCheck (Arbitrary(..), elements,  oneof, sized, Gen, chooseInt, shuffle)
 import Types
+import qualified Data.Aeson.Key as Key
 import qualified Data.DList as DList
 import qualified Data.Vector as V
 import qualified Data.HashMap.Strict as HM
 
+
 import Data.Orphans ()
 import Test.QuickCheck.Instances ()
-import Data.Hashable.Time ()
 
 -- "System" types.
 
@@ -167,6 +169,9 @@ instance (ApproxEq a) => ApproxEq [a] where
 instance Arbitrary a => Arbitrary (DList.DList a) where
     arbitrary = DList.fromList <$> arbitrary
 
+instance Arbitrary Key where
+    arbitrary = Key.fromText <$> arbitrary
+
 instance Arbitrary Value where
     arbitrary = sized arb where
         arb :: Int -> Gen Value
@@ -186,7 +191,7 @@ instance Arbitrary Value where
 
         obj n = do
             pars <- arbPartition (n - 1)
-            fmap (Object . HM.fromList) (traverse pair pars)
+            fmap (Object . KM.fromList) (traverse pair pars)
 
         pair n = do
             k <- arbitrary

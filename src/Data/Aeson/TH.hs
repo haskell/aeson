@@ -4,17 +4,7 @@
 {-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE NoImplicitPrelude #-}
 {-# LANGUAGE UndecidableInstances #-}
-#if __GLASGOW_HASKELL__ >= 800
--- a) THQ works on cross-compilers and unregisterised GHCs
--- b) may make compilation faster as no dynamic loading is ever needed (not sure about this)
--- c) removes one hindrance to have code inferred as SafeHaskell safe
 {-# LANGUAGE TemplateHaskellQuotes #-}
-#else
-{-# LANGUAGE TemplateHaskell #-}
-#endif
-
-#include "incoherent-compat.h"
-#include "overlapping-compat.h"
 
 {-|
 Module:      Data.Aeson.TH
@@ -128,6 +118,9 @@ import Data.Aeson.Types (Options(..), Parser, SumEncoding(..), Value(..), defaul
 import Data.Aeson.Types.Internal ((<?>), JSONPathElement(Key))
 import Data.Aeson.Types.FromJSON (parseOptionalFieldWith)
 import Data.Aeson.Types.ToJSON (fromPairs, pair)
+import Data.Aeson.Key (Key)
+import qualified Data.Aeson.Key as Key
+import qualified Data.Aeson.KeyMap as KM
 import Control.Monad (liftM2, unless, when)
 import Data.Foldable (foldr')
 #if MIN_VERSION_template_haskell(2,8,0) && !MIN_VERSION_template_haskell(2,10,0)
@@ -147,12 +140,13 @@ import Language.Haskell.TH.Syntax (mkNameG_tc)
 import Text.Printf (printf)
 import qualified Data.Aeson.Encoding.Internal as E
 import qualified Data.Foldable as F (all)
-import qualified Data.HashMap.Strict as H (difference, fromList, keys, lookup, toList)
 import qualified Data.List.NonEmpty as NE (length, reverse)
 import qualified Data.Map as M (fromList, keys, lookup , singleton, size)
+#if !MIN_VERSION_base(4,16,0)
 import qualified Data.Semigroup as Semigroup (Option(..))
+#endif
 import qualified Data.Set as Set (empty, insert, member)
-import qualified Data.Text as T (Text, pack, unpack)
+import qualified Data.Text as T (pack, unpack)
 import qualified Data.Vector as V (unsafeIndex, null, length, create, empty)
 import qualified Data.Vector.Mutable as VM (unsafeNew, unsafeWrite)
 
@@ -163,7 +157,7 @@ import qualified Data.Vector.Mutable as VM (unsafeNew, unsafeWrite)
 -- | Generates both 'ToJSON' and 'FromJSON' instance declarations for the given
 -- data type or data family instance constructor.
 --
--- This is a convienience function which is equivalent to calling both
+-- This is a convenience function which is equivalent to calling both
 -- 'deriveToJSON' and 'deriveFromJSON'.
 deriveJSON :: Options
            -- ^ Encoding options.
@@ -176,7 +170,7 @@ deriveJSON = deriveJSONBoth deriveToJSON deriveFromJSON
 -- | Generates both 'ToJSON1' and 'FromJSON1' instance declarations for the given
 -- data type or data family instance constructor.
 --
--- This is a convienience function which is equivalent to calling both
+-- This is a convenience function which is equivalent to calling both
 -- 'deriveToJSON1' and 'deriveFromJSON1'.
 deriveJSON1 :: Options
             -- ^ Encoding options.
@@ -189,7 +183,7 @@ deriveJSON1 = deriveJSONBoth deriveToJSON1 deriveFromJSON1
 -- | Generates both 'ToJSON2' and 'FromJSON2' instance declarations for the given
 -- data type or data family instance constructor.
 --
--- This is a convienience function which is equivalent to calling both
+-- This is a convenience function which is equivalent to calling both
 -- 'deriveToJSON2' and 'deriveFromJSON2'.
 deriveJSON2 :: Options
             -- ^ Encoding options.
@@ -475,8 +469,13 @@ argsToValue target jc tvMap opts multiCons
             restFields = mconcatE (map pureToPair rest)
 
             (maybes0, rest0) = partition isMaybe argCons
+#if MIN_VERSION_base(4,16,0)
+            maybes = maybes0
+            rest   = rest0
+#else
             (options, rest) = partition isOption rest0
             maybes = maybes0 ++ map optionToMaybe options
+#endif
 
             maybeToPair = toPairLifted True
             pureToPair = toPairLifted False
@@ -518,12 +517,14 @@ isMaybe :: (a, Type, b) -> Bool
 isMaybe (_, AppT (ConT t) _, _) = t == ''Maybe
 isMaybe _                       = False
 
+#if !MIN_VERSION_base(4,16,0)
 isOption :: (a, Type, b) -> Bool
 isOption (_, AppT (ConT t) _, _) = t == ''Semigroup.Option
 isOption _                       = False
 
 optionToMaybe :: (ExpQ, b, c) -> (ExpQ, b, c)
 optionToMaybe (a, b, c) = ([|Semigroup.getOption|] `appE` a, b, c)
+#endif
 
 (<^>) :: ExpQ -> ExpQ -> ExpQ
 (<^>) a b = infixApp a [|(E.><)|] b
@@ -574,7 +575,7 @@ fromPairsE = ([|fromPairs|] `appE`)
 --
 -- > pairE "k" [|v|] = [|pair "k" v|]
 pairE :: String -> ExpQ -> ExpQ
-pairE k v = [|pair k|] `appE` v
+pairE k v = [|pair (Key.fromString k)|] `appE` v
 
 --------------------------------------------------------------------------------
 -- FromJSON
@@ -695,7 +696,7 @@ consFromJSON jc tName opts instTys cons = do
                    else mixedMatches tvMap
 
     allNullaryMatches =
-      [ do txt <- newName "txt"
+      [ do txt <- newName "txtX"
            match (conP 'String [varP txt])
                  (guardedB $
                   [ liftM2 (,) (normalG $
@@ -772,12 +773,12 @@ consFromJSON jc tName opts instTys cons = do
         ]
 
     parseTaggedObject tvMap typFieldName valFieldName obj = do
-      conKey <- newName "conKey"
+      conKey <- newName "conKeyX"
       doE [ bindS (varP conKey)
                   (infixApp (varE obj)
                             [|(.:)|]
-                            ([|T.pack|] `appE` stringE typFieldName))
-          , noBindS $ parseContents tvMap conKey (Left (valFieldName, obj)) 'conNotFoundFailTaggedObject
+                            ([|Key.fromString|] `appE` stringE typFieldName))
+          , noBindS $ parseContents tvMap conKey (Left (valFieldName, obj)) 'conNotFoundFailTaggedObject [|Key.fromString|] [|Key.toString|]
           ]
 
     parseUntaggedValue tvMap cons' conVal =
@@ -806,8 +807,8 @@ consFromJSON jc tName opts instTys cons = do
 
 
     parse2ElemArray tvMap arr = do
-      conKey <- newName "conKey"
-      conVal <- newName "conVal"
+      conKey <- newName "conKeyY"
+      conVal <- newName "conValY"
       let letIx n ix =
               valD (varP n)
                    (normalB ([|V.unsafeIndex|] `appE`
@@ -818,12 +819,13 @@ consFromJSON jc tName opts instTys cons = do
            , letIx conVal 1
            ]
            (caseE (varE conKey)
-                  [ do txt <- newName "txt"
+                  [ do txt <- newName "txtY"
                        match (conP 'String [varP txt])
                              (normalB $ parseContents tvMap
                                                       txt
                                                       (Right conVal)
                                                       'conNotFoundFail2ElemArray
+                                                      [|T.pack|] [|T.unpack|]
                              )
                              []
                   , do other <- newName "other"
@@ -838,11 +840,11 @@ consFromJSON jc tName opts instTys cons = do
            )
 
     parseObjectWithSingleField tvMap obj = do
-      conKey <- newName "conKey"
-      conVal <- newName "conVal"
-      caseE ([e|H.toList|] `appE` varE obj)
+      conKey <- newName "conKeyZ"
+      conVal <- newName "conValZ"
+      caseE ([e|KM.toList|] `appE` varE obj)
             [ match (listP [tupP [varP conKey, varP conVal]])
-                    (normalB $ parseContents tvMap conKey (Right conVal) 'conNotFoundFailObjectSingleField)
+                    (normalB $ parseContents tvMap conKey (Right conVal) 'conNotFoundFailObjectSingleField [|Key.fromString|] [|Key.toString|])
                     []
             , do other <- newName "other"
                  match (varP other)
@@ -853,13 +855,13 @@ consFromJSON jc tName opts instTys cons = do
                        []
             ]
 
-    parseContents tvMap conKey contents errorFun =
+    parseContents tvMap conKey contents errorFun pack unpack=
         caseE (varE conKey)
               [ match wildP
                       ( guardedB $
                         [ do g <- normalG $ infixApp (varE conKey)
                                                      [|(==)|]
-                                                     ([|T.pack|] `appE`
+                                                     (pack `appE`
                                                         conNameExp opts con)
                              e <- checkExi tvMap con $
                                   parseArgs jc tvMap tName opts con contents
@@ -878,7 +880,7 @@ consFromJSON jc tName opts instTys cons = do
                                                      . constructorName
                                                      ) cons
                                                 )
-                                   `appE` ([|T.unpack|] `appE` varE conKey)
+                                   `appE` (unpack `appE` varE conKey)
                                  )
                         ]
                       )
@@ -938,11 +940,11 @@ parseRecord jc tvMap argTys opts tName conName fields obj inTaggedObject =
     where
       tagFieldNameAppender =
           if inTaggedObject then (tagFieldName (sumEncoding opts) :) else id
-      knownFields = appE [|H.fromList|] $ listE $
-          map (\knownName -> tupE [appE [|T.pack|] $ litE $ stringL knownName, [|()|]]) $
+      knownFields = appE [|KM.fromList|] $ listE $
+          map (\knownName -> tupE [appE [|Key.fromString|] $ litE $ stringL knownName, [|()|]]) $
               tagFieldNameAppender $ map (fieldLabel opts) fields
       checkUnknownRecords =
-          caseE (appE [|H.keys|] $ infixApp (varE obj) [|H.difference|] knownFields)
+          caseE (appE [|KM.keys|] $ infixApp (varE obj) [|KM.difference|] knownFields)
               [ match (listP []) (normalB [|return ()|]) []
               , newName "unknownFields" >>=
                   \unknownFields -> match (varP unknownFields)
@@ -957,7 +959,7 @@ parseRecord jc tvMap argTys opts tName conName fields obj inTaggedObject =
                `appE` litE (stringL $ show tName)
                `appE` litE (stringL $ constructorTagModifier opts $ nameBase conName)
                `appE` varE obj
-               `appE` ( [|T.pack|] `appE` stringE (fieldLabel opts field)
+               `appE` ( [|Key.fromString|] `appE` stringE (fieldLabel opts field)
                       )
              | (field, argTy) <- zip fields argTys
              ]
@@ -967,7 +969,7 @@ getValField obj valFieldName matches = do
   val <- newName "val"
   doE [ bindS (varP val) $ infixApp (varE obj)
                                     [|(.:)|]
-                                    ([|T.pack|] `appE`
+                                    ([|Key.fromString|] `appE`
                                        litE (stringL valFieldName))
       , noBindS $ caseE (varE val) matches
       ]
@@ -1122,24 +1124,26 @@ parseTypeMismatch tName conName expected actual =
 
 class LookupField a where
     lookupField :: (Value -> Parser a) -> String -> String
-                -> Object -> T.Text -> Parser a
+                -> Object -> Key -> Parser a
 
-instance OVERLAPPABLE_ LookupField a where
+instance {-# OVERLAPPABLE #-} LookupField a where
     lookupField = lookupFieldWith
 
-instance INCOHERENT_ LookupField (Maybe a) where
+instance {-# INCOHERENT #-} LookupField (Maybe a) where
     lookupField pj _ _ = parseOptionalFieldWith pj
-
-instance INCOHERENT_ LookupField (Semigroup.Option a) where
+ 
+#if !MIN_VERSION_base(4,16,0)
+instance {-# INCOHERENT #-} LookupField (Semigroup.Option a) where
     lookupField pj tName rec obj key =
         fmap Semigroup.Option
              (lookupField (fmap Semigroup.getOption . pj) tName rec obj key)
+#endif
 
 lookupFieldWith :: (Value -> Parser a) -> String -> String
-                -> Object -> T.Text -> Parser a
+                -> Object -> Key -> Parser a
 lookupFieldWith pj tName rec obj key =
-    case H.lookup key obj of
-      Nothing -> unknownFieldFail tName rec (T.unpack key)
+    case KM.lookup key obj of
+      Nothing -> unknownFieldFail tName rec (Key.toString key)
       Just v  -> pj v <?> Key key
 
 unknownFieldFail :: String -> String -> String -> Parser fail

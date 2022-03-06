@@ -26,6 +26,7 @@ module Data.Aeson.Encoding.Internal
     , wrapArray
     , null_
     , bool
+    , key
     , text
     , lazyText
     , string
@@ -61,8 +62,9 @@ module Data.Aeson.Encoding.Internal
 
 import Prelude.Compat
 
-import Data.Aeson.Types.Internal (Value)
+import Data.Aeson.Types.Internal (Value, Key)
 import Data.ByteString.Builder (Builder, char7, toLazyByteString)
+import qualified Data.Aeson.Key as Key
 import Data.Int
 import Data.Scientific (Scientific)
 import Data.Text (Text)
@@ -127,15 +129,15 @@ data Series = Empty
             | Value (Encoding' Series)
             deriving (Typeable)
 
-pair :: Text -> Encoding -> Series
-pair name val = pair' (text name) val
+pair :: Key -> Encoding -> Series
+pair name val = pair' (key name) val
 {-# INLINE pair #-}
 
 pairStr :: String -> Encoding -> Series
 pairStr name val = pair' (string name) val
 {-# INLINE pairStr #-}
 
-pair' :: Encoding' Text -> Encoding -> Series
+pair' :: Encoding' Key -> Encoding -> Series
 pair' name val = Value $ retagEncoding $ retagEncoding name >< colon >< val
 
 instance Semigroup Series where
@@ -184,7 +186,7 @@ list to' (x:xs) = openBracket >< to' x >< commas xs >< closeBracket
 
 -- | Encode as JSON object
 dict
-    :: (k -> Encoding' Text)                     -- ^ key encoding
+    :: (k -> Encoding' Key)                           -- ^ key encoding
     -> (v -> Encoding)                                -- ^ value encoding
     -> (forall a. (k -> v -> a -> a) -> a -> m -> a)  -- ^ @foldrWithKey@ - indexed fold
     -> m                                              -- ^ container
@@ -225,6 +227,9 @@ Encoding a >< Encoding b = Encoding (a <> b)
 tuple :: Encoding' InArray -> Encoding
 tuple b = retagEncoding $ openBracket >< b >< closeBracket
 {-# INLINE tuple #-}
+
+key :: Key -> Encoding' a
+key = text . Key.toText
 
 text :: Text -> Encoding' a
 text = Encoding . EB.text
@@ -289,6 +294,20 @@ integer = Encoding . B.integerDec
 float :: Float -> Encoding
 float = realFloatToEncoding $ Encoding . B.floatDec
 
+-- |
+--
+-- >>> double 42
+-- "42.0"
+--
+-- >>> double (0/0)
+-- "null"
+--
+-- >>> double (1/0)
+-- "\"+inf\""
+--
+-- >>> double (-23/0)
+-- "\"-inf\""
+--
 double :: Double -> Encoding
 double = realFloatToEncoding $ Encoding . B.doubleDec
 
@@ -297,8 +316,9 @@ scientific = Encoding . EB.scientific
 
 realFloatToEncoding :: RealFloat a => (a -> Encoding) -> a -> Encoding
 realFloatToEncoding e d
-    | isNaN d || isInfinite d = null_
-    | otherwise               = e d
+    | isNaN d      = null_
+    | isInfinite d = if d > 0 then Encoding "\"+inf\"" else Encoding "\"-inf\""
+    | otherwise    = e d
 {-# INLINE realFloatToEncoding #-}
 
 -------------------------------------------------------------------------------
@@ -339,10 +359,28 @@ integerText :: Integer -> Encoding' a
 integerText = Encoding . EB.quote . B.integerDec
 
 floatText :: Float -> Encoding' a
-floatText = Encoding . EB.quote . B.floatDec
+floatText d
+    | isInfinite d = if d > 0 then Encoding "\"+inf\"" else Encoding "\"-inf\""
+    | otherwise = Encoding . EB.quote . B.floatDec $ d
 
+-- |
+--
+-- >>> doubleText 42
+-- "\"42.0\""
+--
+-- >>> doubleText (0/0)
+-- "\"NaN\""
+--
+-- >>> doubleText (1/0)
+-- "\"+inf\""
+--
+-- >>> doubleText (-23/0)
+-- "\"-inf\""
+--
 doubleText :: Double -> Encoding' a
-doubleText = Encoding . EB.quote . B.doubleDec
+doubleText d
+    | isInfinite d = if d > 0 then Encoding "\"+inf\"" else Encoding "\"-inf\""
+    | otherwise = Encoding . EB.quote . B.doubleDec $ d
 
 scientificText :: Scientific -> Encoding' a
 scientificText = Encoding . EB.quote . EB.scientific

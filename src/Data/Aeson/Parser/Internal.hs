@@ -2,7 +2,7 @@
 {-# LANGUAGE CPP #-}
 {-# LANGUAGE NoImplicitPrelude #-}
 {-# LANGUAGE OverloadedStrings #-}
-#if __GLASGOW_HASKELL__ <= 710 && __GLASGOW_HASKELL__ >= 706
+#if __GLASGOW_HASKELL__ <= 800 && __GLASGOW_HASKELL__ >= 706
 -- Work around a compiler bug
 {-# OPTIONS_GHC -fsimpl-tick-factor=300 #-}
 #endif
@@ -51,7 +51,9 @@ import Prelude.Compat
 
 import Control.Applicative ((<|>))
 import Control.Monad (void, when)
-import Data.Aeson.Types.Internal (IResult(..), JSONPath, Object, Result(..), Value(..))
+import Data.Aeson.Types.Internal (IResult(..), JSONPath, Object, Result(..), Value(..), Key)
+import qualified Data.Aeson.KeyMap as KM
+import qualified Data.Aeson.Key as Key
 import Data.Attoparsec.ByteString.Char8 (Parser, char, decimal, endOfInput, isDigit_w8, signed, string)
 import Data.Function (fix)
 import Data.Functor.Compat (($>))
@@ -68,7 +70,6 @@ import qualified Data.ByteString.Lazy as L
 import qualified Data.ByteString.Lazy as BSL
 import qualified Data.ByteString.Lazy.Char8 as C
 import qualified Data.ByteString.Builder as B
-import qualified Data.HashMap.Strict as H
 import qualified Data.Scientific as Sci
 import Data.Aeson.Parser.Unescape (unescapeText)
 
@@ -131,31 +132,33 @@ json' = value'
 -- toplevel Value parser to be called recursively, to keep the parameter
 -- mkObject outside of the recursive loop for proper inlining.
 
-object_ :: ([(Text, Value)] -> Either String Object) -> Parser Value -> Parser Value
-object_ mkObject val = {-# SCC "object_" #-} Object <$> objectValues mkObject jstring val
+object_ :: ([(Key, Value)] -> Either String Object) -> Parser Value -> Parser Value
+object_ mkObject val = {-# SCC "object_" #-} Object <$> objectValues mkObject key val
 {-# INLINE object_ #-}
 
-object_' :: ([(Text, Value)] -> Either String Object) -> Parser Value -> Parser Value
+object_' :: ([(Key, Value)] -> Either String Object) -> Parser Value -> Parser Value
 object_' mkObject val' = {-# SCC "object_'" #-} do
-  !vals <- objectValues mkObject jstring' val'
+  !vals <- objectValues mkObject key' val'
   return (Object vals)
  where
-  jstring' = do
-    !s <- jstring
+  key' = do
+    !s <- key
     return s
 {-# INLINE object_' #-}
 
-objectValues :: ([(Text, Value)] -> Either String Object)
-             -> Parser Text -> Parser Value -> Parser (H.HashMap Text Value)
+objectValues :: ([(Key, Value)] -> Either String Object)
+             -> Parser Key -> Parser Value -> Parser (KM.KeyMap Value)
 objectValues mkObject str val = do
   skipSpace
   w <- A.peekWord8'
   if w == CLOSE_CURLY
-    then A.anyWord8 >> return H.empty
+    then A.anyWord8 >> return KM.empty
     else loop []
  where
-  -- Why use acc pattern here, you may ask? because 'H.fromList' use 'unsafeInsert'
-  -- and it's much faster because it's doing in place update to the 'HashMap'!
+  -- Why use acc pattern here, you may ask? because then the underlying 'KM.fromList'
+  -- implementation can make use of mutation when constructing a map. For example,
+  -- 'HashMap` uses 'unsafeInsert' and it's much faster because it's doing in place
+  -- update to the 'HashMap'!
   loop acc = do
     k <- (str A.<?> "object key") <* skipSpace <* (char ':' A.<?> "':'")
     v <- (val A.<?> "object value") <* skipSpace
@@ -196,7 +199,7 @@ arrayValues val = do
 
 -- | Parse any JSON value. Synonym of 'json'.
 value :: Parser Value
-value = jsonWith (pure . H.fromList)
+value = jsonWith (pure . KM.fromList)
 
 -- | Parse any JSON value.
 --
@@ -206,7 +209,7 @@ value = jsonWith (pure . H.fromList)
 --
 -- ==== __Examples__
 --
--- 'json' keeps only the first occurence of each key, using 'HashMap.Lazy.fromList'.
+-- 'json' keeps only the first occurence of each key, using 'Data.Aeson.KeyMap.fromList'.
 --
 -- @
 -- 'json' = 'jsonWith' ('Right' '.' 'H.fromList')
@@ -231,7 +234,7 @@ value = jsonWith (pure . H.fromList)
 -- @
 -- 'jsonNoDup' = 'jsonWith' 'parseListNoDup'
 -- @
-jsonWith :: ([(Text, Value)] -> Either String Object) -> Parser Value
+jsonWith :: ([(Key, Value)] -> Either String Object) -> Parser Value
 jsonWith mkObject = fix $ \value_ -> do
   skipSpace
   w <- A.peekWord8'
@@ -249,7 +252,7 @@ jsonWith mkObject = fix $ \value_ -> do
 
 -- | Variant of 'json' which keeps only the last occurence of every key.
 jsonLast :: Parser Value
-jsonLast = jsonWith (Right . H.fromListWith (const id))
+jsonLast = jsonWith (Right . KM.fromListWith (const id))
 
 -- | Variant of 'json' wrapping all object mappings in 'Array' to preserve
 -- key-value pairs with the same keys.
@@ -265,24 +268,25 @@ jsonNoDup = jsonWith parseListNoDup
 --
 -- >>> fromListAccum [("apple", Bool True), ("apple", Bool False), ("orange", Bool False)]
 -- fromList [("apple",Array [Bool False,Bool True]),("orange",Array [Bool False])]
-fromListAccum :: [(Text, Value)] -> Object
+fromListAccum :: [(Key, Value)] -> Object
 fromListAccum =
-  fmap (Array . Vector.fromList . ($ [])) . H.fromListWith (.) . (fmap . fmap) (:)
+  fmap (Array . Vector.fromList . ($ [])) . KM.fromListWith (.) . (fmap . fmap) (:)
 
 -- | @'fromListNoDup' kvs@ fails if @kvs@ contains duplicate keys.
-parseListNoDup :: [(Text, Value)] -> Either String Object
+parseListNoDup :: [(Key, Value)] -> Either String Object
 parseListNoDup =
-  H.traverseWithKey unwrap . H.fromListWith (\_ _ -> Nothing) . (fmap . fmap) Just
+  KM.traverseWithKey unwrap . KM.fromListWith (\_ _ -> Nothing) . (fmap . fmap) Just
   where
+
     unwrap k Nothing = Left $ "found duplicate key: " ++ show k
     unwrap _ (Just v) = Right v
 
 -- | Strict version of 'value'. Synonym of 'json''.
 value' :: Parser Value
-value' = jsonWith' (pure . H.fromList)
+value' = jsonWith' (pure . KM.fromList)
 
 -- | Strict version of 'jsonWith'.
-jsonWith' :: ([(Text, Value)] -> Either String Object) -> Parser Value
+jsonWith' :: ([(Key, Value)] -> Either String Object) -> Parser Value
 jsonWith' mkObject = fix $ \value_ -> do
   skipSpace
   w <- A.peekWord8'
@@ -304,7 +308,7 @@ jsonWith' mkObject = fix $ \value_ -> do
 
 -- | Variant of 'json'' which keeps only the last occurence of every key.
 jsonLast' :: Parser Value
-jsonLast' = jsonWith' (pure . H.fromListWith (const id))
+jsonLast' = jsonWith' (pure . KM.fromListWith (const id))
 
 -- | Variant of 'json'' wrapping all object mappings in 'Array' to preserve
 -- key-value pairs with the same keys.
@@ -318,6 +322,10 @@ jsonNoDup' = jsonWith' parseListNoDup
 -- | Parse a quoted JSON string.
 jstring :: Parser Text
 jstring = A.word8 DOUBLE_QUOTE *> jstring_
+
+-- | Parse a JSON Key
+key :: Parser Key
+key = Key.fromText <$> jstring
 
 -- | Parse a string without a leading quote.
 jstring_ :: Parser Text

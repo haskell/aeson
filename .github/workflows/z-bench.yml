@@ -8,9 +8,9 @@
 #
 # For more information, see https://github.com/haskell-CI/haskell-ci
 #
-# version: 0.11.20210214
+# version: 0.13.20210827
 #
-# REGENDATA ("0.11.20210214",["github","-o",".github/workflows/z-bench.yml","--config=cabal.bench.haskell-ci","--project","cabal.bench.project"])
+# REGENDATA ("0.13.20210827",["github","-o",".github/workflows/z-bench.yml","--config=cabal.bench.haskell-ci","--project","cabal.bench.project"])
 #
 name: Z Bench CI
 on:
@@ -22,7 +22,7 @@ on:
       - master
 jobs:
   linux:
-    name: Z Bench CI - Linux - GHC ${{ matrix.ghc }}
+    name: Z Bench CI - Linux - ${{ matrix.compiler }}
     runs-on: ubuntu-18.04
     container:
       image: buildpack-deps:bionic
@@ -30,53 +30,77 @@ jobs:
     strategy:
       matrix:
         include:
-          - ghc: 8.10.1
+          - compiler: ghc-9.0.1
+            compilerKind: ghc
+            compilerVersion: 9.0.1
+            setup-method: hvr-ppa
             allow-failure: false
-          - ghc: 8.8.3
+          - compiler: ghc-8.10.4
+            compilerKind: ghc
+            compilerVersion: 8.10.4
+            setup-method: hvr-ppa
             allow-failure: false
-          - ghc: 8.6.5
+          - compiler: ghc-8.8.4
+            compilerKind: ghc
+            compilerVersion: 8.8.4
+            setup-method: hvr-ppa
             allow-failure: false
-          - ghc: 8.4.4
+          - compiler: ghc-8.6.5
+            compilerKind: ghc
+            compilerVersion: 8.6.5
+            setup-method: hvr-ppa
             allow-failure: false
-          - ghc: 8.2.2
+          - compiler: ghc-8.4.4
+            compilerKind: ghc
+            compilerVersion: 8.4.4
+            setup-method: hvr-ppa
             allow-failure: false
-          - ghc: 8.0.2
+          - compiler: ghc-8.2.2
+            compilerKind: ghc
+            compilerVersion: 8.2.2
+            setup-method: hvr-ppa
             allow-failure: false
-          - ghc: 7.10.3
-            allow-failure: false
-          - ghc: 7.8.4
+          - compiler: ghc-8.0.2
+            compilerKind: ghc
+            compilerVersion: 8.0.2
+            setup-method: hvr-ppa
             allow-failure: false
       fail-fast: false
     steps:
       - name: apt
         run: |
           apt-get update
-          apt-get install -y --no-install-recommends gnupg ca-certificates dirmngr curl git software-properties-common
+          apt-get install -y --no-install-recommends gnupg ca-certificates dirmngr curl git software-properties-common libtinfo5
           apt-add-repository -y 'ppa:hvr/ghc'
           apt-get update
-          apt-get install -y ghc-$GHC_VERSION cabal-install-3.2
+          apt-get install -y "$HCNAME" cabal-install-3.4
         env:
-          GHC_VERSION: ${{ matrix.ghc }}
+          HCKIND: ${{ matrix.compilerKind }}
+          HCNAME: ${{ matrix.compiler }}
+          HCVER: ${{ matrix.compilerVersion }}
       - name: Set PATH and environment variables
         run: |
           echo "$HOME/.cabal/bin" >> $GITHUB_PATH
-          echo "LANG=C.UTF-8" >> $GITHUB_ENV
-          echo "CABAL_DIR=$HOME/.cabal" >> $GITHUB_ENV
-          echo "CABAL_CONFIG=$HOME/.cabal/config" >> $GITHUB_ENV
-          HC=/opt/ghc/$GHC_VERSION/bin/ghc
-          echo "HC=$HC" >> $GITHUB_ENV
-          echo "HCPKG=/opt/ghc/$GHC_VERSION/bin/ghc-pkg" >> $GITHUB_ENV
-          echo "HADDOCK=/opt/ghc/$GHC_VERSION/bin/haddock" >> $GITHUB_ENV
-          echo "CABAL=/opt/cabal/3.2/bin/cabal -vnormal+nowrap" >> $GITHUB_ENV
+          echo "LANG=C.UTF-8" >> "$GITHUB_ENV"
+          echo "CABAL_DIR=$HOME/.cabal" >> "$GITHUB_ENV"
+          echo "CABAL_CONFIG=$HOME/.cabal/config" >> "$GITHUB_ENV"
+          HCDIR=/opt/$HCKIND/$HCVER
+          HC=$HCDIR/bin/$HCKIND
+          echo "HC=$HC" >> "$GITHUB_ENV"
+          echo "HCPKG=$HCDIR/bin/$HCKIND-pkg" >> "$GITHUB_ENV"
+          echo "HADDOCK=$HCDIR/bin/haddock" >> "$GITHUB_ENV"
+          echo "CABAL=/opt/cabal/3.4/bin/cabal -vnormal+nowrap" >> "$GITHUB_ENV"
           HCNUMVER=$(${HC} --numeric-version|perl -ne '/^(\d+)\.(\d+)\.(\d+)(\.(\d+))?$/; print(10000 * $1 + 100 * $2 + ($3 == 0 ? $5 != 1 : $3))')
-          echo "HCNUMVER=$HCNUMVER" >> $GITHUB_ENV
-          echo "ARG_TESTS=--enable-tests" >> $GITHUB_ENV
-          echo "ARG_BENCH=--enable-benchmarks" >> $GITHUB_ENV
-          echo "HEADHACKAGE=false" >> $GITHUB_ENV
-          echo "ARG_COMPILER=--ghc --with-compiler=/opt/ghc/$GHC_VERSION/bin/ghc" >> $GITHUB_ENV
-          echo "GHCJSARITH=0" >> $GITHUB_ENV
+          echo "HCNUMVER=$HCNUMVER" >> "$GITHUB_ENV"
+          echo "ARG_TESTS=--enable-tests" >> "$GITHUB_ENV"
+          echo "ARG_BENCH=--enable-benchmarks" >> "$GITHUB_ENV"
+          echo "HEADHACKAGE=false" >> "$GITHUB_ENV"
+          echo "ARG_COMPILER=--$HCKIND --with-compiler=$HC" >> "$GITHUB_ENV"
+          echo "GHCJSARITH=0" >> "$GITHUB_ENV"
         env:
-          GHC_VERSION: ${{ matrix.ghc }}
+          HCKIND: ${{ matrix.compilerKind }}
+          HCNAME: ${{ matrix.compiler }}
+          HCVER: ${{ matrix.compilerVersion }}
       - name: env
         run: |
           env
@@ -137,7 +161,8 @@ jobs:
       - name: generate cabal.project
         run: |
           PKGDIR_aeson_benchmarks="$(find "$GITHUB_WORKSPACE/unpacked" -maxdepth 1 -type d -regex '.*/aeson-benchmarks-[0-9.]*')"
-          echo "PKGDIR_aeson_benchmarks=${PKGDIR_aeson_benchmarks}" >> $GITHUB_ENV
+          echo "PKGDIR_aeson_benchmarks=${PKGDIR_aeson_benchmarks}" >> "$GITHUB_ENV"
+          rm -f cabal.project cabal.project.local
           touch cabal.project
           touch cabal.project.local
           echo "packages: ${PKGDIR_aeson_benchmarks}" >> cabal.project
@@ -155,9 +180,9 @@ jobs:
       - name: cache
         uses: actions/cache@v2
         with:
-          key: ${{ runner.os }}-${{ matrix.ghc }}-${{ github.sha }}
+          key: ${{ runner.os }}-${{ matrix.compiler }}-${{ github.sha }}
           path: ~/.cabal/store
-          restore-keys: ${{ runner.os }}-${{ matrix.ghc }}-
+          restore-keys: ${{ runner.os }}-${{ matrix.compiler }}-
       - name: install dependencies
         run: |
           $CABAL v2-build $ARG_COMPILER --disable-tests --disable-benchmarks --dependencies-only -j2 all

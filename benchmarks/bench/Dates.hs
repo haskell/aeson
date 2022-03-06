@@ -1,6 +1,6 @@
 {-# LANGUAGE NoImplicitPrelude #-}
 
-module Main (main) where
+module Dates (benchmark) where
 
 import Prelude.Compat
 
@@ -10,17 +10,17 @@ import Data.Time.Clock (UTCTime)
 import Data.Time.LocalTime (ZonedTime)
 import qualified Data.ByteString.Lazy as BL
 
+import Utils (readL)
+
 utcTime :: BL.ByteString -> Maybe [UTCTime]
 utcTime = decode
 
 zTime :: BL.ByteString -> Maybe [ZonedTime]
 zTime = decode
 
-main :: IO ()
-main = do
-  let file1 = BL.readFile "json-data/dates.json"
-  let file2 = BL.readFile "json-data/dates-fract.json"
-  defaultMain [
+benchmark :: Benchmark
+benchmark =
+  bgroup "dates" [
       bgroup "decode" [
         bgroup "UTCTime" [
           env file1 $ \bs -> bench "whole" $ nf utcTime bs
@@ -42,3 +42,6 @@ main = do
         ]
       ]
     ]
+  where
+    file1 = readL "dates.json"
+    file2 = readL "dates-fract.json"
