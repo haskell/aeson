@@ -509,7 +509,7 @@ instance (ConstructorNames f, SumFromString f) => GFromJSONKey f where
 
 -- | Fail parsing due to a type mismatch, with a descriptive message.
 --
--- The following wrappers should generally be prefered:
+-- The following wrappers should generally be preferred:
 -- 'withObject', 'withArray', 'withText', 'withBool'.
 --
 -- ==== Error message example
