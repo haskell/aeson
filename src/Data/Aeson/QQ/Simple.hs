@@ -10,6 +10,18 @@ import           Language.Haskell.TH.Syntax (Lift (..))
 import           Prelude                    ()
 import           Prelude.Compat
 
+
+-- | Converts a string representation of a JSON value into 'Data.Aeson.Value' at compile-time.
+--
+-- @
+-- {-\# LANGUAGE QuasiQuotes \#-}
+--
+-- import Data.Aeson (Value)
+-- import Data.Aeson.QQ.Simple
+--
+-- joe :: 'Value'
+-- joe = [aesonQQ|{ "name": \"Joe\", "age": 12 }|]
+-- @
 aesonQQ :: QuasiQuoter
 aesonQQ = QuasiQuoter
     { quoteExp  = aesonExp

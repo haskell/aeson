@@ -1,1 +1,1 @@
-tests/JSONTestSuite/* linguist-vendored
+tests/JSONTestSuite/** linguist-vendored

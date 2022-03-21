@@ -2,7 +2,7 @@
 {-# LANGUAGE NoImplicitPrelude #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 
-module Main (main) where
+module Compare (benchmarks) where
 
 import Prelude.Compat
 
@@ -20,16 +20,15 @@ import Data.Json.Builder
 import Compare.JsonBuilder ()
 #endif
 
-main :: IO ()
-main =
-  defaultMain [
-     env (readV "json-data/twitter100.json") $ \ ~(twtr :: Result) ->
-     bgroup "CompareEncodeTwitter" [
-         bench "aeson" $ nf Aeson.encode twtr
-       , bench "buffer-builder" $ nf encodeJson twtr
+benchmarks :: [Benchmark]
+benchmarks =
+  [ env (readV "twitter100.json") $ \ ~(twtr :: Result) ->
+    bgroup "CompareEncodeTwitter"
+    [ bench "aeson" $ nf Aeson.encode twtr
+    , bench "buffer-builder" $ nf encodeJson twtr
 #ifdef MIN_VERSION_json_builder
-       , bench "json-builder" $ nf toJsonLBS twtr
+    , bench "json-builder" $ nf toJsonLBS twtr
 #endif
-       ]
-   , JsonBench.benchmarks
-   ]
+    ]
+  , JsonBench.benchmarks
+  ]

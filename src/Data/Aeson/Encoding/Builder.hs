@@ -41,7 +41,9 @@ module Data.Aeson.Encoding.Builder
 import Prelude.Compat
 
 import Data.Aeson.Internal.Time
-import Data.Aeson.Types.Internal (Value (..))
+import Data.Aeson.Types.Internal (Value (..), Key)
+import qualified Data.Aeson.Key as Key
+import qualified Data.Aeson.KeyMap as KM
 import Data.ByteString.Builder as B
 import Data.ByteString.Builder.Prim as BP
 import Data.ByteString.Builder.Scientific (scientificBuilder)
@@ -54,7 +56,6 @@ import Data.Time.Calendar.Month.Compat (Month, toYearMonth)
 import Data.Time.Calendar.Quarter.Compat (Quarter, toYearQuarter, QuarterOfYear (..))
 import Data.Time.LocalTime
 import Data.Word (Word8)
-import qualified Data.HashMap.Strict as HMS
 import qualified Data.Text as T
 import qualified Data.Vector as V
 
@@ -90,13 +91,17 @@ array v
     withComma a z = B.char8 ',' <> encodeToBuilder a <> z
 
 -- Encode a JSON object.
-object :: HMS.HashMap T.Text Value -> Builder
-object m = case HMS.toList m of
+object :: KM.KeyMap Value -> Builder
+object m = case KM.toList m of
     (x:xs) -> B.char8 '{' <> one x <> foldr withComma (B.char8 '}') xs
     _      -> emptyObject_
   where
     withComma a z = B.char8 ',' <> one a <> z
-    one (k,v)     = text k <> B.char8 ':' <> encodeToBuilder v
+    one (k,v)     = key k <> B.char8 ':' <> encodeToBuilder v
+
+-- | Encode a JSON key.
+key :: Key -> Builder
+key = text . Key.toText
 
 -- | Encode a JSON string.
 text :: T.Text -> Builder

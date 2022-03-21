@@ -1,7 +1,7 @@
 {-# LANGUAGE NoImplicitPrelude #-}
 {-# LANGUAGE OverloadedStrings #-}
 
-module Main (main) where
+module AesonFoldable (benchmark) where
 
 import Criterion.Main
 
@@ -61,8 +61,8 @@ benchEncode
 benchEncode name val
     = bench ("A " ++ name) $ nf A.encode val
 
-main :: IO ()
-main =  defaultMain
+benchmark :: Benchmark
+benchmark = bgroup "foldable"
     [ bgroup "encode"
         [ bgroup "List"
             [ benchEncode "-"     valueList

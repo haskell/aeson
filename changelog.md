@@ -1,4 +1,24 @@
-For the latest version of this document, please see [https://github.com/bos/aeson/blob/master/changelog.md](https://github.com/bos/aeson/blob/master/changelog.md).
+For the latest version of this document, please see [https://github.com/haskell/aeson/blob/master/changelog.md](https://github.com/haskell/aeson/blob/master/changelog.md).
+
+### 2.0.0.0
+
+* Remove forced `-O2` and then unneeded `fast` flag.
+  Also remove most of `INLINE` pragmas.
+  In the effect, `aeson` compiles almost twice as fast.
+
+  To get `fast` compilation effect cabal-install users may specify `optimization: False`.
+
+* Make map type used by Object abstract so the underlying implementation can
+  be modified, thanks to Callan McGill
+
+* Drop GHC-7 support
+
+* Remove Data.Aeson.Encode module
+
+* `Double` and `Float` infinities are encoded as `"+inf"` and `"-inf"`.
+  Change `To/FromJSONKey` instances to use `"+inf"` and `"-inf"` too.
+
+* `FromJSON ()` and `FromJSON (Proxy tag)` accept any JSON value.
 
 ### 1.5.6.0
 * Make `Show Value` instance print object keys in lexicographic order.
