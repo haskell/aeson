@@ -42,7 +42,8 @@ import Prelude.Compat
 
 import Data.Aeson.Internal.Time
 import Data.Aeson.Types.Internal (Value (..))
-import Data.ByteString.Builder as B
+import qualified Data.ByteString.Builder as B
+import Data.ByteString.Builder (Builder)
 import Data.ByteString.Builder.Prim as BP
 import Data.ByteString.Builder.Scientific (scientificBuilder)
 import Data.Char (chr, ord)

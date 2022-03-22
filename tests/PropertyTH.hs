@@ -1,10 +1,13 @@
+{-# LANGUAGE CPP #-}
 {-# LANGUAGE NoImplicitPrelude #-}
 
 module PropertyTH ( templateHaskellTests ) where
 
 import Prelude.Compat
 
+#if !MIN_VERSION_base(4,16,0)
 import Data.Semigroup (Option(..))
+#endif
 import Encoders
 import Instances ()
 import Test.Tasty (TestTree, testGroup)
@@ -74,11 +77,13 @@ templateHaskellTests =
           , testProperty "Tagged"  (toParseJSON thOneConstructorParseJSONTagged  thOneConstructorToJSONTagged)
           ]
         ]
+#if !MIN_VERSION_base(4,16,0)
       , testGroup "OptionField" [
           testProperty "like Maybe" $
           \x -> thOptionFieldToJSON (OptionField (Option x)) === thMaybeFieldToJSON (MaybeField x)
         , testProperty "roundTrip" (toParseJSON thOptionFieldParseJSON thOptionFieldToJSON)
         ]
+#endif
       ]
     , testGroup "toEncoding" [
         testProperty "NullaryString" $
@@ -124,7 +129,9 @@ templateHaskellTests =
       , testProperty "OneConstructorTagged" $
         thOneConstructorToJSONTagged `sameAs` thOneConstructorToEncodingTagged
 
+#if !MIN_VERSION_base(4,16,0)
       , testProperty "OptionField" $
         thOptionFieldToJSON `sameAs` thOptionFieldToEncoding
+#endif
       ]
     ]
