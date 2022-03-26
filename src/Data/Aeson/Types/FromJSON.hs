@@ -1865,9 +1865,9 @@ instance (FromJSONKey k, Ord k) => FromJSON1 (M.Map k) where
         uc :: Coercible Key k => Parser (M.Map Key a) -> Parser (M.Map k a)
         uc = unsafeCoerce
 
-        text f = case KM.coercionToMap of
+        text f = case KM.coercionToHashMap of
             Nothing       -> basic f
-            Just Coercion -> fmap (mapKeyO (f . Key.toText)) . M.traverseWithKey (\k v -> p v <?> Key k) . KM.toMap
+            Just Coercion -> fmap (mapKey (f . Key.toText)) . KM.traverseWithKey (\k v -> p v <?> Key k) . KM.toHashMap
         {-# INLINE text #-}
 
         basic f = fmap (KM.foldrWithKey (M.insert . f . Key.toText) M.empty) . KM.traverseWithKey (\k v -> p v <?> Key k)

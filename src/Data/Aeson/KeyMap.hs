@@ -127,39 +127,39 @@ import qualified Witherable as W
 -------------------------------------------------------------------------------
 
 -- | A map from JSON key type 'Key' to 'v'.
-type KeyMap v = Map Key v
+type KeyMap v = HashMap Key v
 
 pattern KeyMap a = a where
   KeyMap a <- a
 
 -- | Construct an empty map.
 empty :: KeyMap v
-empty = KeyMap M.empty
+empty = KeyMap H.empty
 
 -- | Is the map empty?
 null :: KeyMap v -> Bool
-null = M.null . unKeyMap
+null = H.null . unKeyMap
 
 -- | Return the number of key-value mappings in this map.
 size :: KeyMap v -> Int
-size = M.size . unKeyMap
+size = H.size . unKeyMap
 
 -- | Construct a map with a single element.
 singleton :: Key -> v -> KeyMap v
-singleton k v = KeyMap (M.singleton k v)
+singleton k v = KeyMap (H.singleton k v)
 
 -- | Is the key a member of the map?
 member :: Key -> KeyMap a -> Bool
-member t (KeyMap m) = M.member t m
+member t (KeyMap m) = H.member t m
 
 -- | Remove the mapping for the specified key from this map if present.
 delete :: Key -> KeyMap v -> KeyMap v
-delete k (KeyMap m) = KeyMap (M.delete k m)
+delete k (KeyMap m) = KeyMap (H.delete k m)
 
 -- | 'alterF' can be used to insert, delete, or update a value in a map.
 alterF :: Functor f => (Maybe v -> f (Maybe v)) -> Key -> KeyMap v -> f (KeyMap v)
 #if MIN_VERSION_containers(0,5,8)
-alterF f k = fmap KeyMap . M.alterF f k . unKeyMap
+alterF f k = fmap KeyMap . H.alterF f k . unKeyMap
 #else
 alterF f k m = fmap g (f mv) where
     g r =  case r of
@@ -174,13 +174,13 @@ alterF f k m = fmap g (f mv) where
 -- | Return the value to which the specified key is mapped,
 -- or Nothing if this map contains no mapping for the key.
 lookup :: Key -> KeyMap v -> Maybe v
-lookup t tm = M.lookup t (unKeyMap tm)
+lookup t tm = H.lookup t (unKeyMap tm)
 
 -- | Associate the specified value with the specified key
 -- in this map. If this map previously contained a mapping
 -- for the key, the old value is replaced.
 insert :: Key -> v -> KeyMap v -> KeyMap v
-insert k v tm = KeyMap (M.insert k v (unKeyMap tm))
+insert k v tm = KeyMap (H.insert k v (unKeyMap tm))
 
 -- | Map a function over all values in the map.
 map :: (a -> b) -> KeyMap a -> KeyMap b
@@ -188,28 +188,28 @@ map = fmap
 
 -- | Map a function over all values in the map.
 mapWithKey :: (Key -> a -> b) -> KeyMap a -> KeyMap b
-mapWithKey f (KeyMap m) = KeyMap (M.mapWithKey f m)
+mapWithKey f (KeyMap m) = KeyMap (H.mapWithKey f m)
 
 foldMapWithKey :: Monoid m => (Key -> a -> m) -> KeyMap a -> m
-foldMapWithKey f (KeyMap m) = M.foldMapWithKey f m
+foldMapWithKey f (KeyMap m) = H.foldMapWithKey f m
 
 foldr :: (a -> b -> b) -> b -> KeyMap a -> b
-foldr f z (KeyMap m) = M.foldr f z m
+foldr f z (KeyMap m) = H.foldr f z m
 
 foldr' :: (a -> b -> b) -> b -> KeyMap a -> b
-foldr' f z (KeyMap m) = M.foldr' f z m
+foldr' f z (KeyMap m) = H.foldr' f z m
 
 foldl :: (b -> a -> b) -> b -> KeyMap a -> b
-foldl f z (KeyMap m) = M.foldl f z m
+foldl f z (KeyMap m) = H.foldl f z m
 
 foldl' :: (b -> a -> b) -> b -> KeyMap a -> b
-foldl' f z (KeyMap m) = M.foldl' f z m
+foldl' f z (KeyMap m) = H.foldl' f z m
 
 -- | Reduce this map by applying a binary operator to all
 -- elements, using the given starting value (typically the
 -- right-identity of the operator).
 foldrWithKey :: (Key -> v -> a -> a) -> a -> KeyMap v -> a
-foldrWithKey f a = M.foldrWithKey f a . unKeyMap
+foldrWithKey f a = H.foldrWithKey f a . unKeyMap
 
 -- | Perform an Applicative action for each key-value pair
 -- in a 'KeyMap' and produce a 'KeyMap' of all the results.
@@ -219,64 +219,64 @@ traverse f = fmap KeyMap . T.traverse f . unKeyMap
 -- | Perform an Applicative action for each key-value pair
 -- in a 'KeyMap' and produce a 'KeyMap' of all the results.
 traverseWithKey :: Applicative f => (Key -> v1 -> f v2) -> KeyMap v1 -> f (KeyMap v2)
-traverseWithKey f = fmap KeyMap . M.traverseWithKey f  . unKeyMap
+traverseWithKey f = fmap KeyMap . H.traverseWithKey f  . unKeyMap
 
 -- | Construct a map from a list of elements. Uses the
 -- provided function, f, to merge duplicate entries with
 -- (f newVal oldVal).
 fromListWith :: (v -> v -> v) ->  [(Key, v)] -> KeyMap v
-fromListWith op = KeyMap . M.fromListWith op
+fromListWith op = KeyMap . H.fromListWith op
 
 -- |  Construct a map with the supplied mappings. If the
 -- list contains duplicate mappings, the later mappings take
 -- precedence.
 fromList :: [(Key, v)] -> KeyMap v
-fromList = KeyMap . M.fromList
+fromList = KeyMap . H.fromList
 
 -- | Return a list of this map's elements.
 --
 -- The order is not stable. Use 'toAscList' for stable ordering.
 toList :: KeyMap v -> [(Key, v)]
-toList = M.toList . unKeyMap
+toList = H.toList . unKeyMap
 
 -- | Return a list of this map's elements in ascending order
 -- based of the textual key.
 toAscList :: KeyMap v -> [(Key, v)]
-toAscList = M.toAscList . unKeyMap
+toAscList = H.toAscList . unKeyMap
 
 -- | Difference of two maps. Return elements of the first
 -- map not existing in the second.
 difference :: KeyMap v -> KeyMap v' -> KeyMap v
-difference tm1 tm2 = KeyMap (M.difference (unKeyMap tm1) (unKeyMap tm2))
+difference tm1 tm2 = KeyMap (H.difference (unKeyMap tm1) (unKeyMap tm2))
 
 -- The (left-biased) union of two maps. It prefers the first map when duplicate
 -- keys are encountered, i.e. ('union' == 'unionWith' 'const').
 union :: KeyMap v -> KeyMap v -> KeyMap v
-union (KeyMap x) (KeyMap y) = KeyMap (M.union x y)
+union (KeyMap x) (KeyMap y) = KeyMap (H.union x y)
 
 -- | The union with a combining function.
 unionWith :: (v -> v -> v) -> KeyMap v -> KeyMap v -> KeyMap v
-unionWith f (KeyMap x) (KeyMap y) = KeyMap (M.unionWith f x y)
+unionWith f (KeyMap x) (KeyMap y) = KeyMap (H.unionWith f x y)
 
 -- | The union with a combining function.
 unionWithKey :: (Key -> v -> v -> v) -> KeyMap v -> KeyMap v -> KeyMap v
-unionWithKey f (KeyMap x) (KeyMap y) = KeyMap (M.unionWithKey f x y)
+unionWithKey f (KeyMap x) (KeyMap y) = KeyMap (H.unionWithKey f x y)
 
 -- | The (left-biased) intersection of two maps (based on keys).
 intersection :: KeyMap a -> KeyMap b -> KeyMap a
-intersection (KeyMap x) (KeyMap y) = KeyMap (M.intersection x y)
+intersection (KeyMap x) (KeyMap y) = KeyMap (H.intersection x y)
 
 -- | The intersection with a combining function.
 intersectionWith :: (a -> b -> c) -> KeyMap a -> KeyMap b -> KeyMap c
-intersectionWith f (KeyMap x) (KeyMap y) = KeyMap (M.intersectionWith f x y)
+intersectionWith f (KeyMap x) (KeyMap y) = KeyMap (H.intersectionWith f x y)
 
 -- | The intersection with a combining function.
 intersectionWithKey :: (Key -> a -> b -> c) -> KeyMap a -> KeyMap b -> KeyMap c
-intersectionWithKey f (KeyMap x) (KeyMap y) = KeyMap (M.intersectionWithKey f x y)
+intersectionWithKey f (KeyMap x) (KeyMap y) = KeyMap (H.intersectionWithKey f x y)
 
 -- | Return a list of this map's keys.
 keys :: KeyMap v -> [Key]
-keys = M.keys . unKeyMap
+keys = H.keys . unKeyMap
 
 -- | Convert a 'KeyMap' to a 'HashMap'.
 toHashMap :: KeyMap v -> HashMap Key v
@@ -310,19 +310,19 @@ mapKeyVal fk kv = foldrWithKey (\k v -> insert (fk k) (kv v)) empty
 
 -- | Filter all keys/values that satisfy some predicate.
 filter :: (v -> Bool) -> KeyMap v -> KeyMap v
-filter f (KeyMap m) = KeyMap (M.filter f m)
+filter f (KeyMap m) = KeyMap (H.filter f m)
 
 -- | Filter all keys/values that satisfy some predicate.
 filterWithKey :: (Key -> v -> Bool) -> KeyMap v -> KeyMap v
-filterWithKey f (KeyMap m) = KeyMap (M.filterWithKey f m)
+filterWithKey f (KeyMap m) = KeyMap (H.filterWithKey f m)
 
 -- | Map values and collect the Just results.
 mapMaybe :: (a -> Maybe b) -> KeyMap a -> KeyMap b
-mapMaybe f (KeyMap m) = KeyMap (M.mapMaybe f m)
+mapMaybe f (KeyMap m) = KeyMap (H.mapMaybe f m)
 
 -- | Map values and collect the Just results.
 mapMaybeWithKey :: (Key -> v -> Maybe u) -> KeyMap v -> KeyMap u
-mapMaybeWithKey f (KeyMap m) = KeyMap (M.mapMaybeWithKey f m)
+mapMaybeWithKey f (KeyMap m) = KeyMap (H.mapMaybeWithKey f m)
 
 #else
 
@@ -489,7 +489,7 @@ fromHashMap = KeyMap
 
 -- | Convert a 'KeyMap' to a 'Map'.
 toMap :: KeyMap v -> Map Key v
-toMap = M.fromList . toList 
+toMap = M.fromList . toList
 
 -- | Convert a 'HashMap' to a 'Map'.
 fromMap :: Map Key v -> KeyMap v

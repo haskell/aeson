@@ -201,6 +201,7 @@ test-suite aeson-tests
     , generic-deriving      >=1.10     && <1.15
     , ghc-prim              >=0.2
     , hashable              >=1.2.4.0
+    , hashable-time         >=0.2.1    && <0.4
     , integer-logarithms    >=1        && <1.1
     , QuickCheck            >=2.14.2   && <2.15
     , quickcheck-instances  >=0.3.25.2 && <0.4

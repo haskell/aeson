@@ -84,7 +84,7 @@ import Data.Proxy (Proxy(..))
 import Data.Ratio (Ratio, denominator, numerator)
 import Data.Scientific (Scientific)
 import Data.Tagged (Tagged(..))
-import Data.Text (Text, pack)
+import Data.Text (Text, pack, unpack)
 import Data.These (These (..))
 import Data.Time (Day, DiffTime, LocalTime, NominalDiffTime, TimeOfDay, UTCTime, ZonedTime)
 import Data.Time.Calendar.Month.Compat (Month)
@@ -879,7 +879,7 @@ nonAllNullarySumToJSON opts targs =
     case sumEncoding opts of
 
       TaggedObject{..}      ->
-        taggedObject opts targs (Key.fromString tagFieldName) (Key.fromString contentsFieldName)
+        taggedObject opts targs tagFieldName contentsFieldName
 
       ObjectWithSingleField ->
         (unTagged :: Tagged ObjectWithSingleField enc -> enc)
@@ -1137,7 +1137,7 @@ fieldToPair :: (Selector s
 fieldToPair opts targs m1 =
   let key   = Key.fromString $ fieldLabelModifier opts (selName m1)
       value = gToJSON opts targs (unM1 m1)
-  in key `pair` value
+  in unpack key `pair` value
 {-# INLINE fieldToPair #-}
 
 --------------------------------------------------------------------------------
@@ -1202,7 +1202,7 @@ instance ( GToJSON'   enc arity a
     sumToJSON' opts targs =
       Tagged . fromPairs . (typ `pair`) . gToJSON opts targs
         where
-          typ = Key.fromString $ constructorTagModifier opts $
+          typ = constructorTagModifier opts $
                          conName (undefined :: t c a p)
     {-# INLINE sumToJSON' #-}
 
