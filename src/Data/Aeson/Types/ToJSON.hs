@@ -147,9 +147,8 @@ toJSONPair a b = liftToJSON2 a (listValue a) b (listValue b)
 
 realFloatToJSON :: RealFloat a => a -> Value
 realFloatToJSON d
-    | isNaN d      = Null
-    | isInfinite d = if d > 0 then "+inf" else "-inf"
-    | otherwise    = Number $ Scientific.fromFloatDigits d
+    | isNaN d || isInfinite d = Null
+    | otherwise = Number $ Scientific.fromFloatDigits d
 
 -------------------------------------------------------------------------------
 -- Generics
@@ -910,7 +909,7 @@ instance FromString Value where
 
 class TaggedObject enc arity f where
     taggedObject :: Options -> ToArgs enc arity a
-                 -> Key -> Key
+                 -> String -> String
                  -> f a -> enc
 
 instance ( TaggedObject enc arity a
@@ -944,7 +943,7 @@ instance ( IsRecord                      a isRecord
 
 class TaggedObject' enc pairs arity f isRecord where
     taggedObject' :: Options -> ToArgs enc arity a
-                  -> Key -> f a -> Tagged isRecord pairs
+                  -> String -> f a -> Tagged isRecord pairs
 
 instance ( GToJSON' enc arity f
          , KeyValuePair enc pairs
@@ -2672,12 +2671,12 @@ instance FromPairs Value (DList Pair) where
 -- ('Value' or 'Encoding'), and the result actually represents lists of pairs
 -- so it can be readily concatenated.
 class Monoid kv => KeyValuePair v kv where
-    pair :: Key -> v -> kv
+    pair :: String -> v -> kv
 
 instance (v ~ Value) => KeyValuePair v (DList Pair) where
-    pair k v = DList.singleton (k .= v)
+    pair k v = DList.singleton (pack k .= v)
     {-# INLINE pair #-}
 
 instance (e ~ Encoding) => KeyValuePair e Series where
-    pair = E.pair
+    pair = E.pairStr
     {-# INLINE pair #-}

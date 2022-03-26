@@ -109,8 +109,6 @@ jsonExamples =
         (M.fromList [(map pure "ab",1),(map pure "cd",3)] :: M.Map [I Char] Int)
 
   , example "nan :: Double" "null"  (Approx $ 0/0 :: Approx Double)
-  , example "+inf :: Double" "\"+inf\"" (Approx $ 1/0 :: Approx Double)
-  , example "-inf :: Double" "\"-inf\"" (Approx $ -1/0 :: Approx Double)
 
   , example "Ordering LT" "\"LT\"" LT
   , example "Ordering EQ" "\"EQ\"" EQ
@@ -132,8 +130,8 @@ jsonExamples =
 
   -- Three separate cases, as ordering in HashMap is not defined
   , example "HashMap Float Int, NaN" "{\"NaN\":1}"  (Approx $ HM.singleton (0/0) 1 :: Approx (HM.HashMap Float Int))
-  , example "HashMap Float Int, Infinity" "{\"+inf\":1}"  (HM.singleton (1/0) 1 :: HM.HashMap Float Int)
-  , example "HashMap Float Int, +Infinity" "{\"-inf\":1}"  (HM.singleton (negate 1/0) 1 :: HM.HashMap Float Int)
+  , example "HashMap Float Int, Infinity" "{\"Infinity\":1}"  (HM.singleton (1/0) 1 :: HM.HashMap Float Int)
+  , example "HashMap Float Int, +Infinity" "{\"-Infinity\":1}"  (HM.singleton (negate 1/0) 1 :: HM.HashMap Float Int)
 
   -- Functors
   , example "Identity Int" "1"  (pure 1 :: Identity Int)
@@ -260,10 +258,12 @@ jsonExamples =
     $ F.unfoldNu F.unFix $ F.Fix (S.These True (F.Fix (S.That (F.Fix (S.This False)))))
   ]
 
--- encodings which clash (like infinities prior aeson-2.0)
 jsonEncodingExamples :: [Example]
 jsonEncodingExamples =
   [
+  -- infinities cannot be recovered, null is decoded as NaN
+    example "inf :: Double" "null" (Approx $ 1/0 :: Approx Double)
+  , example "-inf :: Double" "null" (Approx $ -1/0 :: Approx Double)
   ]
 
 jsonDecodingExamples :: [Example]

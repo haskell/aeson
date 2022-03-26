@@ -178,11 +178,9 @@ parseJSONElemAtIndex :: (Value -> Parser a) -> Int -> V.Vector Value -> Parser a
 parseJSONElemAtIndex p idx ary = p (V.unsafeIndex ary idx) <?> Index idx
 
 parseRealFloat :: RealFloat a => String -> Value -> Parser a
-parseRealFloat _    (Number s)      = pure $ Scientific.toRealFloat s
-parseRealFloat _    Null            = pure (0/0)
-parseRealFloat _    (String "-inf") = pure (negate 1/0)
-parseRealFloat _    (String "+inf") = pure (1/0)
-parseRealFloat name v               = prependContext name (unexpected v)
+parseRealFloat _    (Number s) = pure $ Scientific.toRealFloat s
+parseRealFloat _    Null       = pure (0/0)
+parseRealFloat name v          = prependContext name (unexpected v)
 
 parseIntegralFromScientific :: forall a. Integral a => Scientific -> Parser a
 parseIntegralFromScientific s =
@@ -1527,7 +1525,10 @@ instance FromJSON Ordering where
                   " (expected \"LT\", \"EQ\", or \"GT\")"
 
 instance FromJSON () where
-    parseJSON _ = pure ()
+    parseJSON = withArray "()" $ \v ->
+                  if V.null v
+                    then pure ()
+                    else prependContext "()" $ fail "expected an empty array"
 
 instance FromJSON Char where
     parseJSON = withText "Char" parseChar
@@ -1546,20 +1547,20 @@ instance FromJSON Double where
 
 instance FromJSONKey Double where
     fromJSONKey = FromJSONKeyTextParser $ \t -> case t of
-        "NaN"   -> pure (0/0)
-        "-inf"  -> pure (1/0)
-        "+inf"  -> pure (negate 1/0)
-        _       -> Scientific.toRealFloat <$> parseScientificText t
+        "NaN"       -> pure (0/0)
+        "Infinity"  -> pure (1/0)
+        "-Infinity" -> pure (negate 1/0)
+        _           -> Scientific.toRealFloat <$> parseScientificText t
 
 instance FromJSON Float where
     parseJSON = parseRealFloat "Float"
 
 instance FromJSONKey Float where
     fromJSONKey = FromJSONKeyTextParser $ \t -> case t of
-        "NaN"  -> pure (0/0)
-        "+inf" -> pure (1/0)
-        "-inf" -> pure (negate 1/0)
-        _      -> Scientific.toRealFloat <$> parseScientificText t
+        "NaN"       -> pure (0/0)
+        "Infinity"  -> pure (1/0)
+        "-Infinity" -> pure (negate 1/0)
+        _           -> Scientific.toRealFloat <$> parseScientificText t
 
 instance (FromJSON a, Integral a) => FromJSON (Ratio a) where
     parseJSON (Number x)
@@ -2273,10 +2274,14 @@ instance FromJSON1 S.Maybe where
 -------------------------------------------------------------------------------
 
 instance FromJSON1 Proxy where
-    liftParseJSON _ _ _ = pure Proxy
+    liftParseJSON _ _ = fromNull "Proxy" Proxy
 
 instance FromJSON (Proxy a) where
-    parseJSON _ = pure Proxy
+    parseJSON = fromNull "Proxy" Proxy
+
+fromNull :: String -> a -> Value -> Parser a
+fromNull _ a Null = pure a
+fromNull c _ v    = prependContext c (typeMismatch "Null" v)
 
 instance FromJSON2 Tagged where
     liftParseJSON2 _ _ p _ = fmap Tagged . p
