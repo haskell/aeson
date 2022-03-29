@@ -133,11 +133,11 @@ json' = value'
 -- mkObject outside of the recursive loop for proper inlining.
 
 object_ :: ([(Key, Value)] -> Either String Object) -> Parser Value -> Parser Value
-object_ mkObject val = {-# SCC "object_" #-} Object <$> objectValues mkObject key val
+object_ mkObject val = Object <$> objectValues mkObject key val
 {-# INLINE object_ #-}
 
 object_' :: ([(Key, Value)] -> Either String Object) -> Parser Value -> Parser Value
-object_' mkObject val' = {-# SCC "object_'" #-} do
+object_' mkObject val' = do
   !vals <- objectValues mkObject key' val'
   return (Object vals)
  where
@@ -172,11 +172,11 @@ objectValues mkObject str val = do
 {-# INLINE objectValues #-}
 
 array_ :: Parser Value -> Parser Value
-array_ val = {-# SCC "array_" #-} Array <$> arrayValues val
+array_ val = Array <$> arrayValues val
 {-# INLINE array_ #-}
 
 array_' :: Parser Value -> Parser Value
-array_' val = {-# SCC "array_'" #-} do
+array_' val = do
   !vals <- arrayValues val
   return (Array vals)
 {-# INLINE array_' #-}
@@ -344,7 +344,7 @@ jstring_ = do
 
 jstringSlow :: B.ByteString -> Parser Text
 {-# INLINE jstringSlow #-}
-jstringSlow s' = {-# SCC "jstringSlow" #-} do
+jstringSlow s' = do
   s <- A.scan startState go <* A.anyWord8
   case unescapeText (B.append s' s) of
     Right r  -> return r
