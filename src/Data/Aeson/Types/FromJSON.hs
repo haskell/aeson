@@ -811,6 +811,10 @@ ifromJSON = iparse parseJSON
 --
 -- This differs from '.:?' by attempting to parse 'Null' the same as any
 -- other JSON value, instead of interpreting it as 'Nothing'.
+--
+-- This can be useful to distinguish between missing values and 'Null's by
+-- parsing a field into a @Maybe (Maybe a)@, with the outer 'Nothing' being
+-- a missing value and the inner 'Nothing' a 'Null'.
 (.:!) :: (FromJSON a) => Object -> Key -> Parser (Maybe a)
 (.:!) = explicitParseFieldMaybe' parseJSON
 
