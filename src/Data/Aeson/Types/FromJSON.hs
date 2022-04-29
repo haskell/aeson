@@ -1697,7 +1697,7 @@ instance FromJSONKey LT.Text where
 
 -- | @since 2.0.2.0
 instance FromJSON ST.ShortText where
-    parseJSON = withText "Lazy Text" $ pure . ST.fromText
+    parseJSON = withText "ShortText" $ pure . ST.fromText
 
 -- | @since 2.0.2.0
 instance FromJSONKey ST.ShortText where
