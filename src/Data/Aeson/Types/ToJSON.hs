@@ -313,7 +313,12 @@ class ToJSON a where
     -- @
 
     toEncoding :: a -> Encoding
+#if DEFAULT_TOENCODING_TO_TOJSON
     toEncoding = E.value . toJSON
+#else
+    default toEncoding :: (Generic a, GToJSON' Encoding Zero (Rep a)) => a -> Encoding
+    toEncoding = genericToEncoding defaultOptions
+#endif
 
     toJSONList :: [a] -> Value
     toJSONList = listValue toJSON
