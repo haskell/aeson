@@ -5,6 +5,7 @@
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE TemplateHaskellQuotes #-}
 {-# LANGUAGE TypeFamilies #-}
+{-# OPTIONS_GHC -fno-warn-orphans #-}
 
 -- |
 -- An abstract interface for maps from JSON keys to values.
@@ -88,7 +89,7 @@ module Data.Aeson.KeyMap (
 ) where
 
 -- Import stuff from Prelude explicitly
-import Prelude (Eq(..), Ord((>)), Int, Bool(..), Maybe(..))
+import Prelude (Ord((>)), Int, Bool(..), Maybe(..))
 import Prelude ((.), ($))
 import Prelude (Functor(fmap), Monad(..))
 import Prelude (Show, showsPrec, showParen, shows, showString)
@@ -96,8 +97,8 @@ import Prelude (Show, showsPrec, showParen, shows, showString)
 import Control.Applicative (Applicative)
 import Control.DeepSeq (NFData(..))
 import Data.Aeson.Key (Key)
+import Data.Aeson.KeyMap.Internal
 import Data.Bifunctor (first)
-import Data.Data (Data)
 import Data.Hashable (Hashable(..))
 import Data.HashMap.Strict (HashMap)
 import Data.Map (Map)
@@ -106,7 +107,6 @@ import Data.Semigroup (Semigroup((<>)))
 import Data.Text (Text)
 import Data.These (These (..))
 import Data.Type.Coercion (Coercion (..))
-import Data.Typeable (Typeable)
 import Text.Read (Read (..), Lexeme(..), readListPrecDefault, prec, lexP, parens)
 
 import qualified Data.Aeson.Key as Key
@@ -130,11 +130,6 @@ import qualified Witherable as W
 -------------------------------------------------------------------------------
 -- Map
 -------------------------------------------------------------------------------
-
--- | A map from JSON key type 'Key' to 'v'.
-newtype KeyMap v = KeyMap { unKeyMap :: Map Key v }
-  deriving (Eq, Ord, Typeable, Data, Functor)
-
 
 -- | Construct an empty map.
 empty :: KeyMap v
@@ -343,10 +338,6 @@ mapMaybeWithKey f (KeyMap m) = KeyMap (M.mapMaybeWithKey f m)
 import Data.List (sortBy)
 import Data.Ord (comparing)
 import Prelude (fst)
-
--- | A map from JSON key type 'Key' to 'v'.
-newtype KeyMap v = KeyMap { unKeyMap :: HashMap Key v }
-  deriving (Eq, Ord, Typeable, Data, Functor)
 
 -- | Construct an empty map.
 empty :: KeyMap v

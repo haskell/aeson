@@ -1,10 +1,10 @@
-resolver: nightly-2019-10-14
+resolver: lts-19.7
 packages:
 - '.'
 - attoparsec-iso8601
 flags:
   aeson:
-    fast: true
+    ordered-keymap: false
   attoparsec-iso8601:
     fast: true
 extra-deps:
