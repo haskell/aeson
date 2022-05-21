@@ -67,7 +67,9 @@ library
     Data.Aeson.Internal
     Data.Aeson.Internal.Time
     Data.Aeson.Key
+    Data.Aeson.Key.Internal
     Data.Aeson.KeyMap
+    Data.Aeson.KeyMap.Internal
     Data.Aeson.Parser
     Data.Aeson.Parser.Internal
     Data.Aeson.QQ.Simple
@@ -81,7 +83,6 @@ library
     Data.Aeson.Internal.Functions
     Data.Aeson.Internal.Text
     Data.Aeson.Internal.TH
-    Data.Aeson.KeyMap.Internal
     Data.Aeson.Parser.Time
     Data.Aeson.Parser.Unescape
     Data.Aeson.Types.Class

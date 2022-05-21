@@ -21,10 +21,8 @@ module Data.Aeson.Internal
     , formatError
     , ifromJSON
     , iparse
-    , KeyMap(..)
     ) where
 
 
-import Data.Aeson.KeyMap.Internal
 import Data.Aeson.Types.FromJSON (ifromJSON)
 import Data.Aeson.Types.Internal
