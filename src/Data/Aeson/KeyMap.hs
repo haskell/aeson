@@ -85,6 +85,9 @@ module Data.Aeson.KeyMap (
     filterWithKey,
     mapMaybe,
     mapMaybeWithKey,
+
+    -- * Key Type
+    Key,
 ) where
 
 -- Import stuff from Prelude explicitly
