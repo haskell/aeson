@@ -88,8 +88,6 @@ module Data.Aeson.KeyMap (
     
     -- * Key Type
     Key,
-    fromText,
-    toText,
 ) where
 
 -- Import stuff from Prelude explicitly
