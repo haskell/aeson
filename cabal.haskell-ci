@@ -9,6 +9,7 @@ hlint-job: 8.8.3
 hlint-yaml: .hlint.yaml
 
 constraint-set cffi
+  ghc:         <9.4
   constraints: aeson +cffi
   tests:       True
   run-tests:   True
