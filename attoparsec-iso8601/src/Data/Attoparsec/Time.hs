@@ -19,6 +19,7 @@ module Data.Attoparsec.Time
     , timeZone
     , utcTime
     , zonedTime
+    , year
     , month
     , quarter
     ) where
@@ -27,7 +28,7 @@ import Prelude.Compat
 
 import Control.Applicative ((<|>))
 import Control.Monad (void, when)
-import Data.Attoparsec.Text (Parser, char, decimal, digit, option, anyChar, peekChar, peekChar', takeWhile1, satisfy)
+import Data.Attoparsec.Text (Parser, char, digit, option, anyChar, peekChar, peekChar', takeWhile1, satisfy)
 import Data.Attoparsec.Time.Internal (toPico)
 import Data.Bits ((.&.))
 import Data.Char (isDigit, ord)
@@ -35,6 +36,7 @@ import Data.Fixed (Pico)
 import Data.Int (Int64)
 import Data.Maybe (fromMaybe)
 import Data.Time.Calendar (Day, fromGregorianValid)
+import Data.Time.Calendar.Compat (Year)
 import Data.Time.Calendar.Quarter.Compat (Quarter, QuarterOfYear (..), fromYearQuarter)
 import Data.Time.Calendar.Month.Compat (Month, fromYearMonthValid)
 import Data.Time.Clock (UTCTime(..))
@@ -42,27 +44,37 @@ import qualified Data.Text as T
 import qualified Data.Time.LocalTime as Local
 
 -- | Parse a date of the form @[+,-]YYYY-MM-DD@.
+--
+-- The year must contain at least 4 digits, to avoid the Y2K problem:
+-- a two-digit year @YY@ may mean @YY@, @19YY@, or @20YY@, and we make it
+-- an error to prevent the ambiguity.
+-- Years from @0000@ to @0999@ must thus be zero-padded.
+-- The year may have more than 4 digits.
 day :: Parser Day
 day = do
   absOrNeg <- negate <$ char '-' <|> id <$ char '+' <|> pure id
-  y <- (decimal <* char '-') <|> fail "date must be of form [+,-]YYYY-MM-DD"
+  y <- (year <* char '-') <|> fail "date must be of form [+,-]YYYY-MM-DD"
   m <- (twoDigits <* char '-') <|> fail "date must be of form [+,-]YYYY-MM-DD"
   d <- twoDigits <|> fail "date must be of form [+,-]YYYY-MM-DD"
   maybe (fail "invalid date") return (fromGregorianValid (absOrNeg y) m d)
 
 -- | Parse a month of the form @[+,-]YYYY-MM@.
+--
+-- See also 'day' for details about the year format.
 month :: Parser Month
 month = do
   absOrNeg <- negate <$ char '-' <|> id <$ char '+' <|> pure id
-  y <- (decimal <* char '-') <|> fail "month must be of form [+,-]YYYY-MM"
+  y <- (year <* char '-') <|> fail "month must be of form [+,-]YYYY-MM"
   m <- twoDigits <|> fail "month must be of form [+,-]YYYY-MM"
   maybe (fail "invalid month") return (fromYearMonthValid (absOrNeg y) m)
 
 -- | Parse a quarter of the form @[+,-]YYYY-QN@.
+--
+-- See also 'day' for details about the year format.
 quarter :: Parser Quarter
 quarter = do
   absOrNeg <- negate <$ char '-' <|> id <$ char '+' <|> pure id
-  y <- (decimal <* char '-') <|> fail "month must be of form [+,-]YYYY-MM"
+  y <- (year <* char '-') <|> fail "month must be of form [+,-]YYYY-MM"
   _ <- char 'q' <|> char 'Q'
   q <- parseQ
   return $! fromYearQuarter (absOrNeg y) q
@@ -71,6 +83,19 @@ quarter = do
       <|> Q2 <$ char '2'
       <|> Q3 <$ char '3'
       <|> Q4 <$ char '4'
+
+-- | Parse a year @YYYY@, with at least 4 digits. Does not include any sign.
+--
+-- Note: 'Year' is a type synonym for 'Integer'.
+--
+-- @since 1.1.0.0
+year :: Parser Year
+year = do
+  ds <- takeWhile1 isDigit
+  if T.length ds < 4 then
+    fail "expected year with at least 4 digits"
+  else
+    pure (txtToInteger ds)
 
 -- | Parse a two-digit integer (e.g. day of month, hour).
 twoDigits :: Parser Int
@@ -172,3 +197,53 @@ zonedTime = Local.ZonedTime <$> localTime <*> (fromMaybe utc <$> timeZone)
 
 utc :: Local.TimeZone
 utc = Local.TimeZone 0 False ""
+
+------------------ Copy-pasted and adapted from base ------------------------
+
+txtToInteger :: T.Text -> Integer
+txtToInteger bs
+    | l > 40    = valInteger 10 l [ fromIntegral (ord w - 48) | w <- T.unpack bs ]
+    | otherwise = txtToIntegerSimple bs
+  where
+    l = T.length bs
+
+txtToIntegerSimple :: T.Text -> Integer
+txtToIntegerSimple = T.foldl' step 0 where
+  step a b = a * 10 + fromIntegral (ord b - 48) -- 48 = '0'
+
+-- A sub-quadratic algorithm for Integer. Pairs of adjacent radix b
+-- digits are combined into a single radix b^2 digit. This process is
+-- repeated until we are left with a single digit. This algorithm
+-- performs well only on large inputs, so we use the simple algorithm
+-- for smaller inputs.
+valInteger :: Integer -> Int -> [Integer] -> Integer
+valInteger = go
+  where
+    go :: Integer -> Int -> [Integer] -> Integer
+    go _ _ []  = 0
+    go _ _ [d] = d
+    go b l ds
+        | l > 40 = b' `seq` go b' l' (combine b ds')
+        | otherwise = valSimple b ds
+      where
+        -- ensure that we have an even number of digits
+        -- before we call combine:
+        ds' = if even l then ds else 0 : ds
+        b' = b * b
+        l' = (l + 1) `quot` 2
+
+    combine b (d1 : d2 : ds) = d `seq` (d : combine b ds)
+      where
+        d = d1 * b + d2
+    combine _ []  = []
+    combine _ [_] = errorWithoutStackTrace "this should not happen"
+
+-- The following algorithm is only linear for types whose Num operations
+-- are in constant time.
+valSimple :: Integer -> [Integer] -> Integer
+valSimple base = go 0
+  where
+    go r [] = r
+    go r (d : ds) = r' `seq` go r' ds
+      where
+        r' = r * base + fromIntegral d

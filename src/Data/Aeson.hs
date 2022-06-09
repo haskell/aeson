@@ -34,6 +34,12 @@ module Data.Aeson
 
     -- ** Direct encoding
     -- $encoding
+
+    -- * Remarks on specific encodings
+    -- ** Time
+    -- $time
+
+    -- * Main encoding and decoding functions
       decode
     , decode'
     , eitherDecode
@@ -528,3 +534,36 @@ eitherDecodeFileStrict' =
 -- > > import Data.Sequence as Seq
 -- > > encode (Seq.fromList [1,2,3])
 -- > "[1,2,3]"
+
+-- $time
+--
+-- This module contains instances of 'ToJSON' and 'FromJSON' for types from
+-- the <https://hackage.haskell.org/package/time time> library.
+--
+-- Those instances encode time as JSON strings in
+-- <https://en.wikipedia.org/wiki/ISO_8601 ISO 8601> formats, with the
+-- following general form for 'Data.Time.Clock.UTCTime' and
+-- 'Data.Time.LocalTime.ZonedTime', while other time types use subsets of those
+-- fields:
+--
+-- > [+,-]YYYY-MM-DDThh:mm[:ss[.sss]]Z
+--
+-- where
+--
+-- - @[+,-]@ is an optional sign, @+@ or @-@.
+-- - @YYYY@ is the year, which must have at least 4 digits to prevent Y2K problems.
+--   Years from @0000@ to @0999@ must thus be zero-padded.
+-- - @MM@ is a two-digit month.
+-- - @DD@ is a two-digit day.
+-- - @T@ is a literal @\'T\'@ character separating the date and the time of
+--   day. It may be a space instead.
+-- - @hh@ is a two-digit hour.
+-- - @mm@ is a two-digit minute.
+-- - @ss@ is a two-digit second.
+-- - @sss@ is a decimal fraction of a second; it may have any nonzero number of digits.
+-- - @Z@ is a time zone; it may be preceded by an optional space.
+--
+-- For more information, see <https://en.wikipedia.org/wiki/ISO_8601 ISO 8601>
+-- <https://hackage.haskell.org/package/time time>,
+-- and <https://hackage.haskell.org/package/attoparsec-iso8601 attoparsec-iso8601>
+-- (where the relevant parsers are defined).

@@ -1,5 +1,9 @@
 For the latest version of this document, please see [https://github.com/haskell/aeson/blob/master/changelog.md](https://github.com/haskell/aeson/blob/master/changelog.md).
 
+### 2.1.0.0
+
+- Change time instances of types with year (`Day`, `UTCTime`) to require years with at least 4 digits.
+
 ### 2.0.3.0
 
 * `text-2.0` support
