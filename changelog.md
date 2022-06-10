@@ -7,6 +7,7 @@ For the latest version of this document, please see [https://github.com/haskell/
 - Export `Key` type also from `Data.Aeson.KeyMap` module.
 - Export `mapWithKey` from `Data.Aeson.KeyMap` module.
 - Export `ifromJSON` and `iparse` from `Data.Aeson.Types`. Add `iparseEither`.
+- Add `MonadFix Parser` instance.
 
 ### 2.0.3.0
 

@@ -90,10 +90,12 @@ import Prelude.Compat
 import Control.Applicative (Alternative(..))
 import Control.DeepSeq (NFData(..))
 import Control.Monad (MonadPlus(..), ap)
+import Control.Monad.Fix (MonadFix (..))
 import Data.Char (isLower, isUpper, toLower, isAlpha, isAlphaNum)
 import Data.Aeson.Key (Key)
 import Data.Data (Data)
 import Data.Foldable (foldl')
+import Data.Functor.Identity (Identity (..))
 import Data.Hashable (Hashable(..))
 import Data.List (intercalate)
 import Data.Scientific (Scientific)
@@ -306,6 +308,15 @@ instance Monad.Monad Parser where
     fail = Fail.fail
     {-# INLINE fail #-}
 #endif
+
+-- |
+--
+-- @since 2.1.0.0
+instance MonadFix Parser where
+    mfix f = let p = f (lower [] p) in p
+      where
+        lower :: JSONPath -> Parser a -> a
+        lower path p = runIdentity (runParser p path (error "mfix @Aeson.Parser") Identity)
 
 instance Fail.MonadFail Parser where
     fail msg = Parser $ \path kf _ks -> kf (reverse path) msg
