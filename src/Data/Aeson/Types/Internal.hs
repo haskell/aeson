@@ -95,7 +95,6 @@ import Data.Char (isLower, isUpper, toLower, isAlpha, isAlphaNum)
 import Data.Aeson.Key (Key)
 import Data.Data (Data)
 import Data.Foldable (foldl')
-import Data.Functor.Identity (Identity (..))
 import Data.Hashable (Hashable(..))
 import Data.List (intercalate)
 import Data.Scientific (Scientific)
@@ -313,10 +312,14 @@ instance Monad.Monad Parser where
 --
 -- @since 2.1.0.0
 instance MonadFix Parser where
-    mfix f = let p = f (lower [] p) in p
+    mfix f = Parser $ \path kf ks -> let x = runParser (f (fromISuccess x)) path IError ISuccess in
+        case x of
+            IError p e -> kf p e
+            ISuccess y -> ks y
       where
-        lower :: JSONPath -> Parser a -> a
-        lower path p = runIdentity (runParser p path (error "mfix @Aeson.Parser") Identity)
+        fromISuccess :: IResult a -> a
+        fromISuccess (ISuccess x)      = x
+        fromISuccess (IError path msg) = error $ "mfix @Aeson.Parser: " ++ formatPath path ++ ": " ++ msg
 
 instance Fail.MonadFail Parser where
     fail msg = Parser $ \path kf _ks -> kf (reverse path) msg
