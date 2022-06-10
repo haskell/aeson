@@ -65,6 +65,7 @@ module Data.Aeson.KeyMap (
     -- * Traversal
     -- ** Map
     map,
+    mapWithKey,
     mapKeyVal,
     traverse,
     traverseWithKey,
@@ -194,6 +195,8 @@ map :: (a -> b) -> KeyMap a -> KeyMap b
 map = fmap
 
 -- | Map a function over all values in the map.
+--
+-- @since 2.1.0.0
 mapWithKey :: (Key -> a -> b) -> KeyMap a -> KeyMap b
 mapWithKey f (KeyMap m) = KeyMap (M.mapWithKey f m)
 
@@ -395,6 +398,8 @@ map :: (a -> b) -> KeyMap a -> KeyMap b
 map = fmap
 
 -- | Map a function over all values in the map.
+--
+-- @since 2.1.0.0
 mapWithKey :: (Key -> a -> b) -> KeyMap a -> KeyMap b
 mapWithKey f (KeyMap m) = KeyMap (H.mapWithKey f m)
 
