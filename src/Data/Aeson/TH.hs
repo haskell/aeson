@@ -1,5 +1,6 @@
 {-# LANGUAGE BangPatterns #-}
 {-# LANGUAGE CPP #-}
+{-# LANGUAGE EmptyCase #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE NoImplicitPrelude #-}
@@ -74,6 +75,9 @@ Please note that you can derive instances for tuples using the following syntax:
 -- FromJSON and ToJSON instances for 4-tuples.
 $('deriveJSON' 'defaultOptions' ''(,,,))
 @
+
+If you derive `ToJSON` for a type that has no constructors, the splice will
+require enabling @EmptyCase@ to compile.
 
 -}
 module Data.Aeson.TH
@@ -327,8 +331,8 @@ consToValue :: ToJSONFun
             -- ^ Constructors for which to generate JSON generating code.
             -> Q Exp
 
-consToValue _ _ _ _ [] = error $ "Data.Aeson.TH.consToValue: "
-                             ++ "Not a single constructor given!"
+consToValue _ _ _ _ [] =
+    [| \x -> case x of {} |]
 
 consToValue target jc opts instTys cons = autoletE liftSBS $ \letInsert -> do
     value <- newName "value"
@@ -688,8 +692,8 @@ consFromJSON :: JSONClass
              -- ^ Constructors for which to generate JSON parsing code.
              -> Q Exp
 
-consFromJSON _ _ _ _ [] = error $ "Data.Aeson.TH.consFromJSON: "
-                                ++ "Not a single constructor given!"
+consFromJSON _ _ _ _ [] =
+    [| \_ -> fail "Attempted to parse empty type" |]
 
 consFromJSON jc tName opts instTys cons = do
   value <- newName "value"
@@ -1154,7 +1158,7 @@ instance {-# OVERLAPPABLE #-} LookupField a where
 
 instance {-# INCOHERENT #-} LookupField (Maybe a) where
     lookupField pj _ _ = parseOptionalFieldWith pj
- 
+
 #if !MIN_VERSION_base(4,16,0)
 instance {-# INCOHERENT #-} LookupField (Semigroup.Option a) where
     lookupField pj tName rec obj key =
