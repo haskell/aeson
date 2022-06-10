@@ -3,6 +3,7 @@ For the latest version of this document, please see [https://github.com/haskell/
 ### 2.1.0.0
 
 - Change time instances of types with year (`Day`, `UTCTime`) to require years with at least 4 digits.
+- Change `KeyValue` instances to be more general (and use equality to constraint them) instead of being more lax flexible instances.
 
 ### 2.0.3.0
 
