@@ -43,6 +43,7 @@ module Data.Aeson.Types.Internal
     , JSONPathElement(..)
     , JSONPath
     , iparse
+    , iparseEither
     , parse
     , parseEither
     , parseMaybe
@@ -579,6 +580,14 @@ parseEither :: (a -> Parser b) -> a -> Either String b
 parseEither m v = runParser (m v) [] onError Right
   where onError path msg = Left (formatError path msg)
 {-# INLINE parseEither #-}
+
+-- | Run a 'Parser' with an 'Either' result type.
+-- If the parse fails, the 'Left' payload will contain an error message and a json path to failed element.
+--
+-- @since 2.1.0.0
+iparseEither :: (a -> Parser b) -> a -> Either (JSONPath, String) b
+iparseEither m v = runParser (m v) [] (\path msg -> Left (path, msg)) Right
+{-# INLINE iparseEither #-}
 
 -- | Annotate an error message with a
 -- <http://goessner.net/articles/JsonPath/ JSONPath> error location.

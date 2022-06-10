@@ -6,6 +6,7 @@ For the latest version of this document, please see [https://github.com/haskell/
 - Change `KeyValue` instances to be more general (and use equality to constraint them) instead of being more lax flexible instances.
 - Export `Key` type also from `Data.Aeson.KeyMap` module.
 - Export `mapWithKey` from `Data.Aeson.KeyMap` module.
+- Export `ifromJSON` and `iparse` from `Data.Aeson.Types`. Add `iparseEither`.
 
 ### 2.0.3.0
 
