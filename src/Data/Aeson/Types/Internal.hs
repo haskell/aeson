@@ -90,6 +90,7 @@ import Prelude.Compat
 import Control.Applicative (Alternative(..))
 import Control.DeepSeq (NFData(..))
 import Control.Monad (MonadPlus(..), ap)
+import Control.Monad.Fix (MonadFix (..))
 import Data.Char (isLower, isUpper, toLower, isAlpha, isAlphaNum)
 import Data.Aeson.Key (Key)
 import Data.Data (Data)
@@ -306,6 +307,19 @@ instance Monad.Monad Parser where
     fail = Fail.fail
     {-# INLINE fail #-}
 #endif
+
+-- |
+--
+-- @since 2.1.0.0
+instance MonadFix Parser where
+    mfix f = Parser $ \path kf ks -> let x = runParser (f (fromISuccess x)) path IError ISuccess in
+        case x of
+            IError p e -> kf p e
+            ISuccess y -> ks y
+      where
+        fromISuccess :: IResult a -> a
+        fromISuccess (ISuccess x)      = x
+        fromISuccess (IError path msg) = error $ "mfix @Aeson.Parser: " ++ formatPath path ++ ": " ++ msg
 
 instance Fail.MonadFail Parser where
     fail msg = Parser $ \path kf _ks -> kf (reverse path) msg
