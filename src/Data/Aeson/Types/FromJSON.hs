@@ -978,6 +978,11 @@ class GFromJSON' arity f where
                 -> Value
                 -> Parser (f a)
 
+-- | No constructors.
+instance GFromJSON' arity V1 where
+    gParseJSON' _ _ = fail "Attempted to parse empty type"
+    {-# INLINE gParseJSON' #-}
+
 -- | Single constructor.
 instance ( ConsFromJSON arity a
          , AllNullary         (C1 c a) allNullary

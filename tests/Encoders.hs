@@ -409,6 +409,29 @@ thGADTParseJSONDefault :: Value -> Parser (GADT String)
 thGADTParseJSONDefault = $(mkParseJSON defaultOptions ''GADT)
 
 --------------------------------------------------------------------------------
+-- NoConstructors encoders/decoders
+--------------------------------------------------------------------------------
+
+thNoConstructorsToJSONDefault :: NoConstructors -> Value
+thNoConstructorsToJSONDefault = $(mkToJSON defaultOptions ''NoConstructors)
+
+thNoConstructorsToEncodingDefault :: NoConstructors -> Encoding
+thNoConstructorsToEncodingDefault = $(mkToEncoding defaultOptions ''NoConstructors)
+
+thNoConstructorsParseJSONDefault :: Value -> Parser NoConstructors
+thNoConstructorsParseJSONDefault = $(mkParseJSON defaultOptions ''NoConstructors)
+
+
+gNoConstructorsToJSONDefault :: NoConstructors -> Value
+gNoConstructorsToJSONDefault = genericToJSON defaultOptions
+
+gNoConstructorsToEncodingDefault :: NoConstructors -> Encoding
+gNoConstructorsToEncodingDefault = genericToEncoding defaultOptions
+
+gNoConstructorsParseJSONDefault :: Value -> Parser NoConstructors
+gNoConstructorsParseJSONDefault = genericParseJSON defaultOptions
+
+--------------------------------------------------------------------------------
 -- OneConstructor encoders/decoders
 --------------------------------------------------------------------------------
 

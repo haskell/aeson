@@ -829,6 +829,12 @@ instance ( ToJSON1 f
 --------------------------------------------------------------------------------
 -- Generic toEncoding
 
+instance GToJSON' Encoding arity V1 where
+    -- Empty values do not exist, which makes the job of formatting them
+    -- rather easy:
+    gToJSON _ _ x = x `seq` error "case: V1"
+    {-# INLINE gToJSON #-}
+
 instance ToJSON a => GToJSON' Encoding arity (K1 i a) where
     -- Constant values are encoded using their ToJSON instance:
     gToJSON _opts _ = toEncoding . unK1
