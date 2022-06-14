@@ -9,6 +9,11 @@
 {-# LANGUAGE QuasiQuotes #-}
 {-# LANGUAGE RecursiveDo #-}
 
+#if __GLASGOW_HASKELL__ >= 806
+{-# LANGUAGE DerivingVia #-}
+{-# LANGUAGE StandaloneDeriving #-}
+#endif
+
 -- For Data.Aeson.Types.camelTo
 {-# OPTIONS_GHC -fno-warn-deprecations #-}
 
@@ -55,6 +60,7 @@ import Data.Text (Text)
 import Data.Time (UTCTime)
 import Data.Time.Format.Compat (parseTimeM, defaultTimeLocale)
 import GHC.Generics (Generic)
+import GHC.Generics.Generically (Generically (..))
 import Instances ()
 import Numeric.Natural (Natural)
 import System.Directory (getDirectoryContents)
@@ -97,9 +103,13 @@ data Wibble = Wibble {
 
 instance FromJSON Wibble
 
+#if __GLASGOW_HASKELL__ >= 806
+deriving via Generically Wibble instance ToJSON Wibble
+#else
 instance ToJSON Wibble where
     toJSON     = genericToJSON defaultOptions
     toEncoding = genericToEncoding defaultOptions
+#endif
 
 -- Test that if we put a bomb in a data structure, but only demand
 -- part of it via lazy encoding, we do not unexpectedly fail.

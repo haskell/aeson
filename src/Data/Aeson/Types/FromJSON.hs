@@ -118,6 +118,9 @@ import Data.Word (Word16, Word32, Word64, Word8)
 import Foreign.Storable (Storable)
 import Foreign.C.Types (CTime (..))
 import GHC.Generics
+#if !MIN_VERSION_base(4,17,0)
+import GHC.Generics.Generically (Generically (..), Generically1 (..))
+#endif
 import Numeric.Natural (Natural)
 import Text.ParserCombinators.ReadP (readP_to_S)
 import Unsafe.Coerce (unsafeCoerce)
@@ -362,6 +365,12 @@ genericLiftParseJSON opts pj pjl = fmap to1 . gParseJSON opts (From1Args pj pjl)
 -- instance 'FromJSON' Coord
 -- @
 --
+-- or using the [DerivingVia extension](https://downloads.haskell.org/ghc/9.2.3/docs/html/users_guide/exts/deriving_via.html)
+--
+-- @
+-- deriving via 'Generically' Coord instance 'FromJSON' Coord
+-- @
+--
 -- The default implementation will be equivalent to
 -- @parseJSON = 'genericParseJSON' 'defaultOptions'@; if you need different
 -- options, you can customize the generic decoding by defining:
@@ -385,6 +394,10 @@ class FromJSON a where
           zipWithM (parseIndexedJSON parseJSON) [0..]
         . V.toList
         $ a
+
+-- | @since 2.1.0.0
+instance (Generic a, GFromJSON Zero (Rep a)) => FromJSON (Generically a) where
+    parseJSON = coerce (genericParseJSON defaultOptions :: Value -> Parser a)
 
 -------------------------------------------------------------------------------
 --  Classes and types for map keys
@@ -575,6 +588,12 @@ typeOf v = case v of
 -- instance 'FromJSON' a => 'FromJSON1' (Pair a)
 -- @
 --
+-- or
+--
+-- @
+-- deriving via 'Generically1' (Pair a) instance 'FromJSON1' (Pair a)
+-- @
+--
 -- If the default implementation doesn't give exactly the results you want,
 -- you can customize the generic decoding with only a tiny amount of
 -- effort, using 'genericLiftParseJSON' with your preferred 'Options':
@@ -596,6 +615,11 @@ class FromJSON1 f where
 
     liftParseJSONList :: (Value -> Parser a) -> (Value -> Parser [a]) -> Value -> Parser [f a]
     liftParseJSONList f g v = listParser (liftParseJSON f g) v
+
+-- | @since 2.1.0.0
+instance (Generic1 f, GFromJSON One (Rep1 f)) => FromJSON1 (Generically1 f) where
+    liftParseJSON :: forall a. (Value -> Parser a) -> (Value -> Parser [a]) -> Value -> Parser (Generically1 f a)
+    liftParseJSON = coerce (genericLiftParseJSON defaultOptions :: (Value -> Parser a) -> (Value -> Parser [a]) -> Value -> Parser (f a))
 
 -- | Lift the standard 'parseJSON' function through the type constructor.
 parseJSON1 :: (FromJSON1 f, FromJSON a) => Value -> Parser (f a)
