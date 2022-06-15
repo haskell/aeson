@@ -158,9 +158,10 @@ unsafePairSBS k v = Value $ retagEncoding $ Encoding (B.shortByteString k) >< v
 {-# INLINE unsafePairSBS #-}
 
 instance Semigroup Series where
-    Empty   <> a       = a
-    a       <> Empty   = a
-    Value a <> Value b = Value (a >< comma >< b)
+    Empty   <> a = a
+    Value a <> b = Value $ a >< case b of
+        Empty   -> empty
+        Value x -> comma >< x
 
 instance Monoid Series where
     mempty  = Empty
