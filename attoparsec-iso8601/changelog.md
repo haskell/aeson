@@ -3,6 +3,7 @@ For the latest version of this document, please see [https://github.com/bos/aeso
 ### 1.1.0.0
 
 - Change parsers of types with year (`Day`, `UTCTime`) to require years with at least 4 digits.
+- Remove `fast` and `developer` package flags
 
 ### 1.0.2.1
 
