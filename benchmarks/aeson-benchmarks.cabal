@@ -31,6 +31,7 @@ library
     , data-fix
     , deepseq
     , dlist
+    , generically
     , ghc-prim
     , hashable
     , indexed-traversable

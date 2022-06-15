@@ -8,6 +8,8 @@ For the latest version of this document, please see [https://github.com/haskell/
 - Export `mapWithKey` from `Data.Aeson.KeyMap` module.
 - Export `ifromJSON` and `iparse` from `Data.Aeson.Types`. Add `iparseEither`.
 - Add `MonadFix Parser` instance.
+- Make `Semigroup Series` slightly lazier
+- Add instances for `Generically` type
 
 ### 2.0.3.0
 

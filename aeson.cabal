@@ -107,6 +107,7 @@ library
   -- Compat
   build-depends:
       base-compat-batteries  >=0.10.0 && <0.13
+    , generically            >=0.1    && <0.2
     , time-compat            >=1.9.6  && <1.10
 
   if !impl(ghc >=8.6)
@@ -194,6 +195,7 @@ test-suite aeson-tests
     , dlist
     , filepath
     , generic-deriving      >=1.10     && <1.15
+    , generically
     , ghc-prim              >=0.2
     , hashable
     , indexed-traversable

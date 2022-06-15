@@ -4,6 +4,7 @@
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE FunctionalDependencies #-}
+{-# LANGUAGE InstanceSigs #-}
 {-# LANGUAGE GADTs #-}
 {-# LANGUAGE NoImplicitPrelude #-}
 {-# LANGUAGE OverloadedStrings #-}
@@ -68,6 +69,7 @@ import qualified Data.Aeson.Key as Key
 import qualified Data.Aeson.KeyMap as KM
 import Data.Attoparsec.Number (Number(..))
 import Data.Bits (unsafeShiftR)
+import Data.Coerce (coerce)
 import Data.DList (DList)
 import Data.Fixed (Fixed, HasResolution, Nano)
 import Data.Foldable (toList)
@@ -101,6 +103,9 @@ import Data.Word (Word16, Word32, Word64, Word8)
 import Foreign.Storable (Storable)
 import Foreign.C.Types (CTime (..))
 import GHC.Generics
+#if !MIN_VERSION_base(4,17,0)
+import GHC.Generics.Generically (Generically (..), Generically1 (..))
+#endif
 import Numeric.Natural (Natural)
 import qualified Data.Aeson.Encoding as E
 import qualified Data.Aeson.Encoding.Internal as E (InArray, comma, econcat, retagEncoding, key)
@@ -256,6 +261,12 @@ genericLiftToEncoding opts te tel = gToJSON opts (To1Args te tel) . from1
 --     'toEncoding' = 'genericToEncoding' 'defaultOptions'
 -- @
 --
+-- or more conveniently using the [DerivingVia extension](https://downloads.haskell.org/ghc/9.2.3/docs/html/users_guide/exts/deriving_via.html)
+--
+-- @
+-- deriving via 'Generically' Coord instance 'ToJSON' Coord
+-- @
+--
 -- If on the other hand you wish to customize the generic decoding, you have
 -- to implement both methods:
 --
@@ -272,7 +283,7 @@ genericLiftToEncoding opts te tel = gToJSON opts (To1Args te tel) . from1
 -- Previous versions of this library only had the 'toJSON' method. Adding
 -- 'toEncoding' had two reasons:
 --
--- 1. toEncoding is more efficient for the common case that the output of
+-- 1. 'toEncoding' is more efficient for the common case that the output of
 -- 'toJSON' is directly serialized to a @ByteString@.
 -- Further, expressing either method in terms of the other would be
 -- non-optimal.
@@ -320,6 +331,11 @@ class ToJSON a where
 
     toEncodingList :: [a] -> Encoding
     toEncodingList = listEncoding toEncoding
+
+-- | @since 2.1.0.0
+instance (Generic a, GToJSON' Value Zero (Rep a), GToJSON' Encoding Zero (Rep a)) => ToJSON (Generically a) where
+    toJSON     = coerce (genericToJSON     defaultOptions :: a -> Value)
+    toEncoding = coerce (genericToEncoding defaultOptions :: a -> Encoding)
 
 -------------------------------------------------------------------------------
 -- Object key-value pairs
@@ -614,6 +630,14 @@ class ToJSON1 f where
 
     liftToEncodingList :: (a -> Encoding) -> ([a] -> Encoding) -> [f a] -> Encoding
     liftToEncodingList f g = listEncoding (liftToEncoding f g)
+
+-- | @since 2.1.0.0
+instance (Generic1 f, GToJSON' Value One (Rep1 f), GToJSON' Encoding One (Rep1 f)) => ToJSON1 (Generically1 f) where
+    liftToJSON :: forall a. (a -> Value) -> ([a] -> Value) -> Generically1 f a -> Value
+    liftToJSON = coerce (genericLiftToJSON defaultOptions :: (a -> Value) -> ([a] -> Value) -> f a -> Value)
+
+    liftToEncoding :: forall a. (a -> Encoding) -> ([a] -> Encoding) -> Generically1 f a -> Encoding
+    liftToEncoding = coerce (genericLiftToEncoding defaultOptions :: (a -> Encoding) -> ([a] -> Encoding) -> f a -> Encoding)
 
 -- | Lift the standard 'toJSON' function through the type constructor.
 toJSON1 :: (ToJSON1 f, ToJSON a) => f a -> Value
