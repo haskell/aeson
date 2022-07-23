@@ -331,14 +331,11 @@ key = Key.fromText <$> jstring
 jstring_ :: Parser Text
 {-# INLINE jstring_ #-}
 jstring_ = do
-  -- not sure whether >= or bit hackery is faster
-  -- perfectly, we shouldn't care, it's compiler job.
   s <- A.takeWhile (\w -> w /= DOUBLE_QUOTE && w /= BACKSLASH && w >= 0x20 && w < 0x80)
-  let txt = unsafeDecodeASCII s
   mw <- A.peekWord8
   case mw of
     Nothing           -> fail "string without end"
-    Just DOUBLE_QUOTE -> A.anyWord8 $> txt
+    Just DOUBLE_QUOTE -> A.anyWord8 $> unsafeDecodeASCII s
     Just w | w < 0x20 -> fail "unescaped control character"
     _                 -> jstringSlow s
 
@@ -354,9 +351,8 @@ jstringSlow s' = do
     go a c
       | a                  = Just False
       | c == DOUBLE_QUOTE  = Nothing
-      | otherwise = let a' = c == backslash
+      | otherwise = let a' = c == BACKSLASH
                     in Just a'
-      where backslash = BACKSLASH
 
 decodeWith :: Parser Value -> (Value -> Result a) -> L.ByteString -> Maybe a
 decodeWith p to s =
