@@ -28,6 +28,7 @@ constraint-set bytestring-0.11.2.0
   constraints: bytestring >= 0.11.2.0
 
 constraint-set text-1.2
+  ghc:         <9.4
   constraints: text ^>=1.2.3.0
   tests: True
   run-tests: True
