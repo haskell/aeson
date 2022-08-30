@@ -16,6 +16,7 @@ module Data.Aeson.KeyMap (
     -- * Query
     null,
     lookup,
+    (!?),
     size,
     member,
 
@@ -183,6 +184,14 @@ alterF f k m = fmap g (f mv) where
 -- or Nothing if this map contains no mapping for the key.
 lookup :: Key -> KeyMap v -> Maybe v
 lookup t tm = M.lookup t (unKeyMap tm)
+
+-- | Return the value to which the specified key is mapped,
+-- or Nothing if this map contains no mapping for the key.
+--
+-- This is a flipped version of 'lookup'.
+--
+(!?) :: KeyMap v -> Key -> Maybe v
+(!?) m k = lookup k m
 
 -- | Associate the specified value with the specified key
 -- in this map. If this map previously contained a mapping
@@ -386,6 +395,14 @@ alterF f k = fmap KeyMap . H.alterF f k . unKeyMap
 -- or Nothing if this map contains no mapping for the key.
 lookup :: Key -> KeyMap v -> Maybe v
 lookup t tm = H.lookup t (unKeyMap tm)
+
+-- | Return the value to which the specified key is mapped,
+-- or Nothing if this map contains no mapping for the key.
+--
+-- This is a flipped version of 'lookup'.
+--
+(!?) :: KeyMap v -> Key -> Maybe v
+(!?) m k = lookup k m
 
 -- | Associate the specified value with the specified key
 -- in this map. If this map previously contained a mapping
