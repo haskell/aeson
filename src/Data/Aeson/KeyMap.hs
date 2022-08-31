@@ -185,14 +185,6 @@ alterF f k m = fmap g (f mv) where
 lookup :: Key -> KeyMap v -> Maybe v
 lookup t tm = M.lookup t (unKeyMap tm)
 
--- | Return the value to which the specified key is mapped,
--- or Nothing if this map contains no mapping for the key.
---
--- This is a flipped version of 'lookup'.
---
-(!?) :: KeyMap v -> Key -> Maybe v
-(!?) m k = lookup k m
-
 -- | Associate the specified value with the specified key
 -- in this map. If this map previously contained a mapping
 -- for the key, the old value is replaced.
@@ -396,14 +388,6 @@ alterF f k = fmap KeyMap . H.alterF f k . unKeyMap
 lookup :: Key -> KeyMap v -> Maybe v
 lookup t tm = H.lookup t (unKeyMap tm)
 
--- | Return the value to which the specified key is mapped,
--- or Nothing if this map contains no mapping for the key.
---
--- This is a flipped version of 'lookup'.
---
-(!?) :: KeyMap v -> Key -> Maybe v
-(!?) m k = lookup k m
-
 -- | Associate the specified value with the specified key
 -- in this map. If this map previously contained a mapping
 -- for the key, the old value is replaced.
@@ -565,6 +549,16 @@ mapMaybeWithKey f (KeyMap m) = KeyMap (H.mapMaybeWithKey f m)
 -------------------------------------------------------------------------------
 -- combinators using existing abstractions
 -------------------------------------------------------------------------------
+
+-- | Return the value to which the specified key is mapped,
+-- or Nothing if this map contains no mapping for the key.
+--
+-- This is a flipped version of 'lookup'.
+--
+-- @since 2.1.1.0
+--
+(!?) :: KeyMap v -> Key -> Maybe v
+(!?) m k = lookup k m
 
 -- | Generalized union with combining function.
 alignWith :: (These a b -> c) -> KeyMap a -> KeyMap b -> KeyMap c
