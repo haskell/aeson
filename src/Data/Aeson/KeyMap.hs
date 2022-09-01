@@ -16,6 +16,7 @@ module Data.Aeson.KeyMap (
     -- * Query
     null,
     lookup,
+    (!?),
     size,
     member,
 
@@ -548,6 +549,16 @@ mapMaybeWithKey f (KeyMap m) = KeyMap (H.mapMaybeWithKey f m)
 -------------------------------------------------------------------------------
 -- combinators using existing abstractions
 -------------------------------------------------------------------------------
+
+-- | Return the value to which the specified key is mapped,
+-- or Nothing if this map contains no mapping for the key.
+--
+-- This is a flipped version of 'lookup'.
+--
+-- @since 2.1.1.0
+--
+(!?) :: KeyMap v -> Key -> Maybe v
+(!?) m k = lookup k m
 
 -- | Generalized union with combining function.
 alignWith :: (These a b -> c) -> KeyMap a -> KeyMap b -> KeyMap c
