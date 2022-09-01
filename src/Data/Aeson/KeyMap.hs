@@ -26,6 +26,7 @@ module Data.Aeson.KeyMap (
 
     -- ** Insertion
     insert,
+    insertWith,
 
     -- * Deletion
     delete,
@@ -190,6 +191,22 @@ lookup t tm = M.lookup t (unKeyMap tm)
 -- for the key, the old value is replaced.
 insert :: Key -> v -> KeyMap v -> KeyMap v
 insert k v tm = KeyMap (M.insert k v (unKeyMap tm))
+
+-- | Insert with a function combining new and old values, taken in that order.
+--
+-- >>> insertWith (-) (fromText "a") 2 (fromList [(fromText "a", 1)])
+-- fromList [("a",1)]
+-- >>> insertWith (flip (-)) (fromText "a") 2 (fromList [(fromText "a", 1)])
+-- fromList [("a",-1)]
+-- >>> insertWith (-) (fromText "b") 2 (fromList [(fromText "a", 1)])
+-- fromList [("a",1),("b",2)]
+-- >>> insertWith (-) (fromText "b") 2 empty
+-- fromList [("b",2)]
+insertWith :: (a -> a -> a) -> Key -> a -> KeyMap a -> KeyMap a
+insertWith f k a m = if null m then singleton k a else
+  case lookup k m of
+    Nothing -> insert k a m
+    Just v -> insert k (f a v) m
 
 -- | Map a function over all values in the map.
 map :: (a -> b) -> KeyMap a -> KeyMap b
