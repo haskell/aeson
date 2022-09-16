@@ -1,5 +1,12 @@
 For the latest version of this document, please see [https://github.com/haskell/aeson/blob/master/changelog.md](https://github.com/haskell/aeson/blob/master/changelog.md).
 
+### 2.0.3.1
+
+This is a backport of patch 720b857e2e0acf2edc4f5512f2b217a89449a89d first released in 2.1.1.0.
+
+- Use `unsafeDupablePerformIO` instead of incorrect `accursedUnutterablePerformIO` in creation of keys in TH serialisation.
+  This fixes a bug in TH deriving, e.g. when `Strict` pragma was enabled.
+
 ### 2.0.3.0
 
 * `text-2.0` support

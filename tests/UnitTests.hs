@@ -71,6 +71,7 @@ import qualified Data.Text.Lazy.Encoding as TLE
 import qualified Data.Vector as Vector
 import qualified ErrorMessages
 import qualified SerializationFormatSpec
+import Regression.Issue967
 
 roundTripCamel :: String -> Assertion
 roundTripCamel name = assertEqual "" name (camelFrom '_' $ camelTo '_' name)
@@ -779,4 +780,5 @@ tests = testGroup "unit" [
     [ testCase "example" $
       assertEqual "" (object ["foo" .= True]) [aesonQQ| {"foo": true } |]
     ]
+  , issue967
   ]
