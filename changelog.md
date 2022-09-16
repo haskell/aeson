@@ -3,6 +3,8 @@ For the latest version of this document, please see [https://github.com/haskell/
 ### 2.1.1.0
 
 - Add `Data.Aeson.KeyMap.!?` (flipped) alias to `Data.Aeson.KeyMap.lookup`.
+- Use `unsafeDupablePerformIO` instead of incorrect `accursedUnutterablePerformIO` in creation of keys in TH serialisation.
+  This fixes a bug in TH deriving, e.g. when `Strict` pragma was enabled.
 
 ### 2.1.0.0
 

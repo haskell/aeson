@@ -175,6 +175,7 @@ test-suite aeson-tests
     PropertyRTFunctors
     PropertyTH
     PropUtils
+    Regression.Issue967
     SerializationFormatSpec
     Types
     UnitTests
