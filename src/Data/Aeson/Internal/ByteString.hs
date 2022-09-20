@@ -13,8 +13,8 @@ import Data.Word (Word8)
 import Foreign.ForeignPtr (ForeignPtr)
 import Data.ByteString.Short (ShortByteString, fromShort)
 import GHC.Exts (Addr#, Ptr (Ptr))
-import Data.ByteString.Internal (accursedUnutterablePerformIO)
 import Data.ByteString.Short.Internal (createFromPtr)
+import System.IO.Unsafe (unsafeDupablePerformIO)
 
 import qualified Data.ByteString as BS
 import qualified Language.Haskell.TH.Lib as TH
@@ -82,6 +82,7 @@ liftSBS sbs = withBS bs $ \_ len -> [| unsafePackLenLiteral |]
       bs = fromShort sbs
 #endif
 
+-- this is copied verbatim from @bytestring@, but only in recent versions.
 unsafePackLenLiteral :: Int -> Addr# -> ShortByteString
 unsafePackLenLiteral len addr# =
-    accursedUnutterablePerformIO $ createFromPtr (Ptr addr#) len
+    unsafeDupablePerformIO $ createFromPtr (Ptr addr#) len

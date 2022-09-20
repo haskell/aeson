@@ -81,6 +81,7 @@ import qualified Data.Vector as Vector
 import qualified ErrorMessages
 import qualified SerializationFormatSpec
 import qualified Data.Map as Map -- Lazy!
+import Regression.Issue967
 
 roundTripCamel :: String -> Assertion
 roundTripCamel name = assertEqual "" name (camelFrom '_' $ camelTo '_' name)
@@ -894,4 +895,5 @@ tests = testGroup "unit" [
       assertEqual "" (object ["foo" .= True]) [aesonQQ| {"foo": true } |]
     ]
   , monadFixTests
+  , issue967
   ]
