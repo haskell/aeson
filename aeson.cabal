@@ -166,6 +166,7 @@ test-suite aeson-tests
     ErrorMessages
     Functions
     Instances
+    JSONTestSuite
     Options
     Properties
     PropertyGeneric

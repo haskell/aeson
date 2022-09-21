@@ -1,7 +1,0 @@
-[package]
-name = "rj"
-version = "0.1.0"
-authors = ["Nicolas Seriot <nicolas@seriot.ch>"]
-
-[dependencies]
-serde_json = "*"
