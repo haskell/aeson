@@ -18,10 +18,12 @@ jsonTestSuiteTest path = testCase fileName $ do
     payload <- L.readFile path
     let result = eitherDecode payload :: Either String Value
     assertBool (show result) $ case take 2 fileName of
-      "i_" -> isRight result
-      "n_" -> isLeft result
-      "y_" -> isRight result
-      _    -> isRight result -- test_transform tests have inconsistent names
+      "n_"                                                -> isLeft result
+      "y_"                                                -> isRight result
+      "i_" | fileName `HashSet.member` ignore_accepted    -> isRight result
+           | otherwise                                    -> isLeft result
+      _    | fileName `HashSet.member` transform_rejected -> isLeft result
+           | otherwise                                    -> isRight result -- test_transform tests have inconsistent names
   where
     fileName = takeFileName path
 
@@ -35,8 +37,7 @@ tests = do
   testPaths <- fmap (sort . concat) . forM suites $ \suite -> do
     let dir = suitePath </> suite
     entries <- getDirectoryContents dir
-    let ok name = takeExtension name == ".json" &&
-                  not (name `HashSet.member` blacklist)
+    let ok name = takeExtension name == ".json"
     return . map (dir </>) . filter ok $ entries
   return $ testGroup "JSONTestSuite" $ map jsonTestSuiteTest testPaths
 
@@ -44,37 +45,36 @@ tests = do
 -- Not all of these failures are genuine bugs.
 -- Of those that are bugs, not all are worth fixing.
 
-blacklist :: HashSet.HashSet String
--- blacklist = HashSet.empty
-blacklist = _blacklist
+-- | The @i@ cases we can ignore. We don't.
+--
+-- @i_@ - parsers are free to accept or reject content
+--
+-- We specify which @i_@ case we accept, so we can catch changes even in unspecified behavior.
+-- (There is less case we accept)
+ignore_accepted :: HashSet.HashSet FilePath
+ignore_accepted = HashSet.fromList
+    [ "i_number_double_huge_neg_exp.json"
+    , "i_number_huge_exp.json"
+    , "i_number_neg_int_huge_exp.json"
+    , "i_number_pos_double_huge_exp.json"
+    , "i_number_real_neg_overflow.json"
+    , "i_number_real_pos_overflow.json"
+    , "i_number_real_underflow.json"
+    , "i_number_too_big_neg_int.json"
+    , "i_number_too_big_pos_int.json"
+    , "i_number_very_big_negative_int.json"
+    , "i_structure_500_nested_arrays.json"
+    ]
 
-_blacklist :: HashSet.HashSet String
-_blacklist = HashSet.fromList
-  [ "i_string_UTF8_surrogate_U+D800.json"
-  , "i_object_key_lone_2nd_surrogate.json"
-  , "i_string_1st_surrogate_but_2nd_missing.json"
-  , "i_string_1st_valid_surrogate_2nd_invalid.json"
-  , "i_string_UTF-16LE_with_BOM.json"
-  , "i_string_UTF-16_invalid_lonely_surrogate.json"
-  , "i_string_UTF-16_invalid_surrogate.json"
-  , "i_string_UTF-8_invalid_sequence.json"
-  , "i_string_incomplete_surrogate_and_escape_valid.json"
-  , "i_string_incomplete_surrogate_pair.json"
-  , "i_string_incomplete_surrogates_escape_valid.json"
-  , "i_string_invalid_lonely_surrogate.json"
-  , "i_string_invalid_surrogate.json"
-  , "i_string_inverted_surrogates_U+1D11E.json"
-  , "i_string_lone_second_surrogate.json"
-  , "i_string_not_in_unicode_range.json"
-  , "i_string_truncated-utf-8.json"
-  , "i_structure_UTF-8_BOM_empty_object.json"
-  , "string_1_escaped_invalid_codepoint.json"
-  , "string_1_invalid_codepoint.json"
-  , "string_1_invalid_codepoints.json"
-  , "string_2_escaped_invalid_codepoints.json"
-  , "string_2_invalid_codepoints.json"
-  , "string_3_escaped_invalid_codepoints.json"
-  , "string_3_invalid_codepoints.json"
-  , "y_string_utf16BE_no_BOM.json"
-  , "y_string_utf16LE_no_BOM.json"
-  ]
+-- | Transform folder contain weird structures and characters that parsers may understand differently.
+--
+-- We don't even try to understand some.
+transform_rejected :: HashSet.HashSet FilePath
+transform_rejected = HashSet.fromList
+    [ "string_1_escaped_invalid_codepoint.json"
+    , "string_1_invalid_codepoint.json"
+    , "string_2_escaped_invalid_codepoints.json"
+    , "string_2_invalid_codepoints.json"
+    , "string_3_escaped_invalid_codepoints.json"
+    , "string_3_invalid_codepoints.json"
+    ]
