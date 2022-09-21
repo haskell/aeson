@@ -1,2 +1,0 @@
-cd /Users/nst/Projects/dropbox/JSON/test_json-rustc_serialize/rj; cargo build ;/Users/nst/Projects/dropbox/JSON/test_json-rustc_serialize/rj/target/debug/rj /Users/nst/Projects/dropbox/JSON/test_cases/n_177.json
-
