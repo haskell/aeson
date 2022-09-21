@@ -194,6 +194,7 @@ insert k v tm = KeyMap (M.insert k v (unKeyMap tm))
 
 -- | Insert with a function combining new and old values, taken in that order.
 --
+-- @since 2.1.1.0
 insertWith :: (a -> a -> a) -> Key -> a -> KeyMap a -> KeyMap a
 insertWith f k v m = KeyMap (M.insertWith f k v (unKeyMap m))
 
@@ -402,6 +403,7 @@ insert k v tm = KeyMap (H.insert k v (unKeyMap tm))
 
 -- | Insert with a function combining new and old values, taken in that order.
 --
+-- @since 2.1.1.0
 insertWith :: (a -> a -> a) -> Key -> a -> KeyMap a -> KeyMap a
 insertWith f k v m = KeyMap (H.insertWith f k v (unKeyMap m))
 
