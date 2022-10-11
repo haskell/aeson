@@ -1,6 +1,3 @@
-{-# OPTIONS_GHC -Wno-incomplete-patterns #-}
--- The function `emptyCase` emits the warning, but we should only use it for
--- Void-like types, where there are no patterns to match on
 {-# LANGUAGE BangPatterns #-}
 {-# LANGUAGE CPP #-}
 {-# LANGUAGE EmptyCase #-}
@@ -78,6 +75,9 @@ Please note that you can derive instances for tuples using the following syntax:
 -- FromJSON and ToJSON instances for 4-tuples.
 $('deriveJSON' 'defaultOptions' ''(,,,))
 @
+
+If you derive `ToJSON` for a type that has no constructors, the splice will
+require enabling @EmptyCase@ to compile.
 
 -}
 module Data.Aeson.TH
@@ -332,9 +332,7 @@ consToValue :: ToJSONFun
             -> Q Exp
 
 consToValue _ _ _ _ [] =
-    -- If we put the expression into the TH-generated code directly,
-    -- that makes it require EmptyCase at use-sites too
-    [| emptyCase |]
+    [| \x -> case x of {} |]
 
 consToValue target jc opts instTys cons = autoletE liftSBS $ \letInsert -> do
     value <- newName "value"
@@ -2050,6 +2048,3 @@ starKindStatusToName _             = Nothing
 -- the kind variables' Names out.
 catKindVarNames :: [StarKindStatus] -> [Name]
 catKindVarNames = mapMaybe starKindStatusToName
-
-emptyCase :: a -> b
-emptyCase x = case x of {}
