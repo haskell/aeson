@@ -1,5 +1,9 @@
+{-# OPTIONS_GHC -Wno-incomplete-patterns #-}
+-- The function `emptyCase` emits the warning, but we should only use it for
+-- Void-like types, where there are no patterns to match on
 {-# LANGUAGE BangPatterns #-}
 {-# LANGUAGE CPP #-}
+{-# LANGUAGE EmptyCase #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE NoImplicitPrelude #-}
@@ -328,7 +332,9 @@ consToValue :: ToJSONFun
             -> Q Exp
 
 consToValue _ _ _ _ [] =
-    [| \x -> x `seq` error "case: V1" |]
+    -- If we put the expression into the TH-generated code directly,
+    -- that makes it require EmptyCase at use-sites too
+    [| emptyCase |]
 
 consToValue target jc opts instTys cons = autoletE liftSBS $ \letInsert -> do
     value <- newName "value"
@@ -2044,3 +2050,6 @@ starKindStatusToName _             = Nothing
 -- the kind variables' Names out.
 catKindVarNames :: [StarKindStatus] -> [Name]
 catKindVarNames = mapMaybe starKindStatusToName
+
+emptyCase :: a -> b
+emptyCase x = case x of {}
