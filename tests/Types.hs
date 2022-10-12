@@ -1,7 +1,6 @@
 {-# LANGUAGE CPP #-}
 {-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE DeriveGeneric #-}
-{-# LANGUAGE EmptyDataDeriving #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE GADTs #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
@@ -49,7 +48,6 @@ data UFoo = UFoo {
     } deriving (Show, Eq, Data, Typeable)
 
 data NoConstructors
-    deriving (Show, Eq, Typeable, Data)
 
 data OneConstructor = OneConstructor
                       deriving (Show, Eq, Typeable, Data)
