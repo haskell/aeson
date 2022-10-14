@@ -1313,6 +1313,10 @@ instance ToJSON Void where
     toJSON = absurd
     toEncoding = absurd
 
+-- | @since 2.1.2.0
+instance ToJSONKey Void where
+    toJSONKey = ToJSONKeyText absurd absurd
+
 instance ToJSON Bool where
     toJSON = Bool
     toEncoding = E.bool

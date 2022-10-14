@@ -4,6 +4,7 @@ For the latest version of this document, please see [https://github.com/haskell/
 
 * Support deriving for empty datatypes (such as `Void` and `V1`)
   in `FromJSON` and `ToJSON`.
+* Add `To/FromJSONKey Void` instances
 
 ### 2.1.1.0
 
