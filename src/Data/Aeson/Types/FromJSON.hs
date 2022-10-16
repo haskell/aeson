@@ -19,9 +19,6 @@
 -- TODO: Drop this when we remove support for Data.Attoparsec.Number
 {-# OPTIONS_GHC -fno-warn-deprecations #-}
 
--- | Convert types from JSON representation
---
--- @since 1.0.0.0
 module Data.Aeson.Types.FromJSON
     (
     -- * Core JSON classes
@@ -249,8 +246,6 @@ parseOptionalFieldWith pj obj key =
 -------------------------------------------------------------------------------
 
 -- | Class of generic representation types that can be converted from JSON.
---
--- @since 1.0.0.0
 class GFromJSON arity f where
     -- | This method (applied to 'defaultOptions') is used as the
     -- default generic implementation of 'parseJSON' (if the @arity@ is 'Zero')
@@ -507,8 +502,6 @@ mapFromJSONKeyFunction = fmap
 -- instance 'FromJSONKey' Color where
 --   'fromJSONKey' = 'genericFromJSONKey' 'defaultJSONKeyOptions'
 -- @
---
--- @since 1.4.4.0
 genericFromJSONKey :: forall a. (Generic a, GFromJSONKey (Rep a))
              => JSONKeyOptions
              -> FromJSONKeyFunction a
@@ -520,8 +513,6 @@ genericFromJSONKey opts = FromJSONKeyTextParser $ \t ->
   where
     cnames = unTagged2 (constructorTags (keyModifier opts) :: Tagged2 (Rep a) [String])
 
--- |
--- @since 1.4.4.0
 class    (ConstructorNames f, SumFromString f) => GFromJSONKey f where
 instance (ConstructorNames f, SumFromString f) => GFromJSONKey f where
 

@@ -41,7 +41,6 @@ import qualified Data.Vector as V
 -- | Encode a JSON 'Value' to a "Data.Text.Lazy"
 --
 -- /Note:/ uses 'toEncoding'
--- @since 1.0.0.0
 encodeToLazyText :: ToJSON a => a -> LT.Text
 encodeToLazyText = LT.decodeUtf8 . encodingToLazyByteString . toEncoding
 
@@ -53,7 +52,6 @@ encodeToLazyText = LT.decodeUtf8 . encodingToLazyByteString . toEncoding
 -- or @'fromEncoding' . 'toEncoding'@ (ByteString.Builder) instead.
 --
 -- /Note:/ Uses 'toJSON'
--- @since 1.0.0.0
 encodeToTextBuilder :: ToJSON a => a -> Builder
 encodeToTextBuilder =
     go . toJSON

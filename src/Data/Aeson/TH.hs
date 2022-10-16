@@ -177,8 +177,6 @@ deriveJSON = deriveJSONBoth deriveToJSON deriveFromJSON
 --
 -- This is a convenience function which is equivalent to calling both
 -- 'deriveToJSON1' and 'deriveFromJSON1'.
---
--- @since 1.0.0.0
 deriveJSON1 :: Options
             -- ^ Encoding options.
             -> Name
@@ -192,8 +190,6 @@ deriveJSON1 = deriveJSONBoth deriveToJSON1 deriveFromJSON1
 --
 -- This is a convenience function which is equivalent to calling both
 -- 'deriveToJSON2' and 'deriveFromJSON2'.
---
--- @since 1.0.0.0
 deriveJSON2 :: Options
             -- ^ Encoding options.
             -> Name
@@ -227,8 +223,6 @@ deriveToJSON = deriveToJSONCommon toJSONClass
 
 -- | Generates a 'ToJSON1' instance declaration for the given data type or
 -- data family instance constructor.
---
--- @since 1.0.0.0
 deriveToJSON1 :: Options
               -- ^ Encoding options.
               -> Name
@@ -239,8 +233,6 @@ deriveToJSON1 = deriveToJSONCommon toJSON1Class
 
 -- | Generates a 'ToJSON2' instance declaration for the given data type or
 -- data family instance constructor.
---
--- @since 1.0.0.0
 deriveToJSON2 :: Options
               -- ^ Encoding options.
               -> Name
@@ -270,8 +262,6 @@ mkToJSON = mkToJSONCommon toJSONClass
 -- | Generates a lambda expression which encodes the given data type or
 -- data family instance constructor as a 'Value' by using the given encoding
 -- function on occurrences of the last type parameter.
---
--- @since 1.0.0.0
 mkLiftToJSON :: Options -- ^ Encoding options.
              -> Name -- ^ Name of the type to encode.
              -> Q Exp
@@ -280,8 +270,6 @@ mkLiftToJSON = mkToJSONCommon toJSON1Class
 -- | Generates a lambda expression which encodes the given data type or
 -- data family instance constructor as a 'Value' by using the given encoding
 -- functions on occurrences of the last two type parameters.
---
--- @since 1.0.0.0
 mkLiftToJSON2 :: Options -- ^ Encoding options.
               -> Name -- ^ Name of the type to encode.
               -> Q Exp
@@ -303,8 +291,6 @@ mkToEncoding = mkToEncodingCommon toJSONClass
 -- | Generates a lambda expression which encodes the given data type or
 -- data family instance constructor as a JSON string by using the given encoding
 -- function on occurrences of the last type parameter.
---
--- @since 1.0.0.0
 mkLiftToEncoding :: Options -- ^ Encoding options.
                  -> Name -- ^ Name of the type to encode.
                  -> Q Exp
@@ -313,8 +299,6 @@ mkLiftToEncoding = mkToEncodingCommon toJSON1Class
 -- | Generates a lambda expression which encodes the given data type or
 -- data family instance constructor as a JSON string by using the given encoding
 -- functions on occurrences of the last two type parameters.
---
--- @since 1.0.0.0
 mkLiftToEncoding2 :: Options -- ^ Encoding options.
                   -> Name -- ^ Name of the type to encode.
                   -> Q Exp
@@ -632,8 +616,6 @@ deriveFromJSON = deriveFromJSONCommon fromJSONClass
 
 -- | Generates a 'FromJSON1' instance declaration for the given data type or
 -- data family instance constructor.
---
--- @since 1.0.0.0
 deriveFromJSON1 :: Options
                 -- ^ Encoding options.
                 -> Name
@@ -644,8 +626,6 @@ deriveFromJSON1 = deriveFromJSONCommon fromJSON1Class
 
 -- | Generates a 'FromJSON2' instance declaration for the given data type or
 -- data family instance constructor.
---
--- @since 1.0.0.0
 deriveFromJSON2 :: Options
                 -- ^ Encoding options.
                 -> Name
@@ -674,8 +654,6 @@ mkParseJSON = mkParseJSONCommon fromJSONClass
 -- | Generates a lambda expression which parses the JSON encoding of the given
 -- data type or data family instance constructor by using the given parsing
 -- function on occurrences of the last type parameter.
---
--- @since 1.0.0.0
 mkLiftParseJSON :: Options -- ^ Encoding options.
                 -> Name -- ^ Name of the encoded type.
                 -> Q Exp
@@ -684,8 +662,6 @@ mkLiftParseJSON = mkParseJSONCommon fromJSON1Class
 -- | Generates a lambda expression which parses the JSON encoding of the given
 -- data type or data family instance constructor by using the given parsing
 -- functions on occurrences of the last two type parameters.
---
--- @since 1.0.0.0
 mkLiftParseJSON2 :: Options -- ^ Encoding options.
                  -> Name -- ^ Name of the encoded type.
                  -> Q Exp

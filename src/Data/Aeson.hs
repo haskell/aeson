@@ -165,14 +165,10 @@ import qualified Data.ByteString.Lazy as L
 -- | Efficiently serialize a JSON value as a lazy 'L.ByteString'.
 --
 -- This is implemented in terms of the 'ToJSON' class's 'toEncoding' method.
---
--- @since 1.0.0.0
 encode :: (ToJSON a) => a -> L.ByteString
 encode = encodingToLazyByteString . toEncoding
 
 -- | Efficiently serialize a JSON value as a lazy 'L.ByteString' and write it to a file.
---
--- @since 1.3.1.0
 encodeFile :: (ToJSON a) => FilePath -> a -> IO ()
 encodeFile fp = L.writeFile fp . encode
 
@@ -211,8 +207,6 @@ decodeStrict = decodeStrictWith jsonEOF fromJSON
 --
 -- This function parses immediately, but defers conversion.  See
 -- 'json' for details.
---
--- @since 1.3.1.0
 decodeFileStrict :: (FromJSON a) => FilePath -> IO (Maybe a)
 decodeFileStrict = fmap decodeStrict . B.readFile
 
@@ -251,8 +245,6 @@ decodeStrict' = decodeStrictWith jsonEOF' fromJSON
 --
 -- This function parses and performs conversion immediately.  See
 -- 'json'' for details.
---
--- @since 1.3.1.0
 decodeFileStrict' :: (FromJSON a) => FilePath -> IO (Maybe a)
 decodeFileStrict' = fmap decodeStrict' . B.readFile
 
@@ -272,8 +264,6 @@ eitherDecodeStrict =
 {-# INLINE eitherDecodeStrict #-}
 
 -- | Like 'decodeFileStrict' but returns an error message when decoding fails.
---
--- @since 1.3.1.0
 eitherDecodeFileStrict :: (FromJSON a) => FilePath -> IO (Either String a)
 eitherDecodeFileStrict =
   fmap eitherDecodeStrict . B.readFile
@@ -291,8 +281,6 @@ eitherDecodeStrict' =
 {-# INLINE eitherDecodeStrict' #-}
 
 -- | Like 'decodeFileStrict'' but returns an error message when decoding fails.
---
--- @since 1.3.1.0
 eitherDecodeFileStrict' :: (FromJSON a) => FilePath -> IO (Either String a)
 eitherDecodeFileStrict' =
   fmap eitherDecodeStrict' . B.readFile
