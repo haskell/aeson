@@ -18,6 +18,9 @@
 -- TODO: Drop this when we remove support for Data.Attoparsec.Number
 {-# OPTIONS_GHC -fno-warn-deprecations #-}
 
+-- | Convert types to JSON representation
+--
+-- @since 1.0.0.0
 module Data.Aeson.Types.ToJSON
     (
     -- * Core JSON classes
@@ -555,10 +558,14 @@ contramapToJSONKeyFunction h x = case x of
 -- instance 'ToJSONKey' Color where
 --   'toJSONKey' = 'genericToJSONKey' 'defaultJSONKeyOptions'
 -- @
+--
+-- @since 1.4.4.0
 genericToJSONKey :: (Generic a, GToJSONKey (Rep a))
            => JSONKeyOptions -> ToJSONKeyFunction a
 genericToJSONKey opts = toJSONKeyKey (Key.fromString . keyModifier opts . getConName . from)
 
+-- |
+-- @since 1.4.4.0
 class    GetConName f => GToJSONKey f
 instance GetConName f => GToJSONKey f
 

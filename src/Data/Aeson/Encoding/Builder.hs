@@ -11,6 +11,8 @@
 -- Portability: portable
 --
 -- Efficiently serialize a JSON value using the UTF-8 encoding.
+--
+-- @since 1.0.0.0
 
 module Data.Aeson.Encoding.Builder
     (

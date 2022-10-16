@@ -8,6 +8,8 @@
 
 -- |
 -- An abstract interface for maps from JSON keys to values.
+--
+-- @since 2.0.0.0
 
 module Data.Aeson.KeyMap (
     -- * Map Type

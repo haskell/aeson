@@ -22,6 +22,8 @@ import           Prelude.Compat
 -- joe :: 'Value'
 -- joe = [aesonQQ|{ "name": \"Joe\", "age": 12 }|]
 -- @
+--
+-- @since 1.4.2.0
 aesonQQ :: QuasiQuoter
 aesonQQ = QuasiQuoter
     { quoteExp  = aesonExp
