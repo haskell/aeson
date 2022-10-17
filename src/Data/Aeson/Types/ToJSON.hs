@@ -1,5 +1,6 @@
 {-# LANGUAGE CPP #-}
 {-# LANGUAGE DefaultSignatures #-}
+{-# LANGUAGE EmptyCase #-}
 {-# LANGUAGE EmptyDataDecls #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE FlexibleInstances #-}
@@ -829,6 +830,12 @@ instance ( ToJSON1 f
 --------------------------------------------------------------------------------
 -- Generic toEncoding
 
+instance GToJSON' Encoding arity V1 where
+    -- Empty values do not exist, which makes the job of formatting them
+    -- rather easy:
+    gToJSON _ _ x = case x of {}
+    {-# INLINE gToJSON #-}
+
 instance ToJSON a => GToJSON' Encoding arity (K1 i a) where
     -- Constant values are encoded using their ToJSON instance:
     gToJSON _opts _ = toEncoding . unK1
@@ -1305,6 +1312,10 @@ instance (ToJSON a, ToJSON b) => ToJSON (Either a b) where
 instance ToJSON Void where
     toJSON = absurd
     toEncoding = absurd
+
+-- | @since 2.1.2.0
+instance ToJSONKey Void where
+    toJSONKey = ToJSONKeyText absurd absurd
 
 instance ToJSON Bool where
     toJSON = Bool

@@ -1,5 +1,11 @@
 For the latest version of this document, please see [https://github.com/haskell/aeson/blob/master/changelog.md](https://github.com/haskell/aeson/blob/master/changelog.md).
 
+### 2.1.2.0
+
+* Support deriving for empty datatypes (such as `Void` and `V1`)
+  in `FromJSON` and `ToJSON`.
+* Add `To/FromJSONKey Void` instances
+
 ### 2.1.1.0
 
 - Add `Data.Aeson.KeyMap.!?` (flipped) alias to `Data.Aeson.KeyMap.lookup`.

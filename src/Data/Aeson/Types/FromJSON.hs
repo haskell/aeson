@@ -978,6 +978,11 @@ class GFromJSON' arity f where
                 -> Value
                 -> Parser (f a)
 
+-- | No constructors.
+instance GFromJSON' arity V1 where
+    gParseJSON' _ _ = fail "Attempted to parse empty type"
+    {-# INLINE gParseJSON' #-}
+
 -- | Single constructor.
 instance ( ConsFromJSON arity a
          , AllNullary         (C1 c a) allNullary
@@ -1536,6 +1541,10 @@ instance (FromJSON a, FromJSON b) => FromJSON (Either a b) where
 
 instance FromJSON Void where
     parseJSON _ = fail "Cannot parse Void"
+
+-- | @since 2.1.2.0
+instance FromJSONKey Void where
+    fromJSONKey = FromJSONKeyTextParser $ \_ -> fail "Cannot parse Void"
 
 instance FromJSON Bool where
     parseJSON (Bool b) = pure b

@@ -47,6 +47,8 @@ data UFoo = UFoo {
     , uFooInt :: Int
     } deriving (Show, Eq, Data, Typeable)
 
+data NoConstructors
+
 data OneConstructor = OneConstructor
                       deriving (Show, Eq, Typeable, Data)
 
@@ -116,6 +118,7 @@ newtype OptionField = OptionField { optionField :: Option Int }
 
 deriving instance Generic Foo
 deriving instance Generic UFoo
+deriving instance Generic NoConstructors
 deriving instance Generic OneConstructor
 deriving instance Generic (Product2 a b)
 deriving instance Generic (Product6 a b c d e f)
