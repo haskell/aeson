@@ -3,6 +3,11 @@
 {-# LANGUAGE GADTs #-}
 {-# LANGUAGE TemplateHaskellQuotes #-}
 
+-- |
+-- Strong type for JSON keys.
+--
+-- @since 2.0.0.0
+
 module Data.Aeson.Key (
     Key,
     fromString,
