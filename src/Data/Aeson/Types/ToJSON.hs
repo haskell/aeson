@@ -564,7 +564,7 @@ class    GetConName f => GToJSONKey f
 instance GetConName f => GToJSONKey f
 
 -------------------------------------------------------------------------------
--- Lifings of FromJSON and ToJSON to unary and binary type constructors
+-- Liftings of FromJSON and ToJSON to unary and binary type constructors
 -------------------------------------------------------------------------------
 
 

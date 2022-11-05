@@ -464,7 +464,7 @@ instance Functor FromJSONKeyFunction where
 -- are derived with generalized newtype deriving.
 -- compatible with 'Text' i.e. hash values be equal for wrapped values as well.
 --
--- On pre GHC 7.8 this is unconstrainted function.
+-- On pre GHC 7.8 this is unconstrained function.
 fromJSONKeyCoerce ::
     Coercible Text a =>
     FromJSONKeyFunction a
@@ -557,7 +557,7 @@ typeOf v = case v of
     Null     -> "Null"
 
 -------------------------------------------------------------------------------
--- Lifings of FromJSON and ToJSON to unary and binary type constructors
+-- Liftings of FromJSON and ToJSON to unary and binary type constructors
 -------------------------------------------------------------------------------
 
 -- | Lifting of the 'FromJSON' class to unary type constructors.
