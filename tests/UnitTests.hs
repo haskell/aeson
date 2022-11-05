@@ -818,7 +818,7 @@ tests = testGroup "unit" [
   , testCase "Small rational"           smallRationalDecoding
   , testCase "Big scientific exponent" bigScientificExponent
   , testCase "Big integer decoding" bigIntegerDecoding
-  , testCase "Big natural decading" bigNaturalDecoding
+  , testCase "Big natural decoding" bigNaturalDecoding
   , testCase "Big integer key decoding" bigIntegerKeyDecoding
   , testGroup "QQ.Simple"
     [ testCase "example" $
