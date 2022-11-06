@@ -268,13 +268,13 @@ value = jsonWith (pure . KM.fromList)
 --
 -- ==== __Examples__
 --
--- 'json' keeps only the first occurence of each key, using 'Data.Aeson.KeyMap.fromList'.
+-- 'json' keeps only the first occurrence of each key, using 'Data.Aeson.KeyMap.fromList'.
 --
 -- @
 -- 'json' = 'jsonWith' ('Right' '.' 'H.fromList')
 -- @
 --
--- 'jsonLast' keeps the last occurence of each key, using
+-- 'jsonLast' keeps the last occurrence of each key, using
 -- @'HashMap.Lazy.fromListWith' ('const' 'id')@.
 --
 -- @
@@ -309,7 +309,7 @@ jsonWith mkObject = fix $ \value_ -> do
       | otherwise    -> fail "not a valid json value"
 {-# INLINE jsonWith #-}
 
--- | Variant of 'json' which keeps only the last occurence of every key.
+-- | Variant of 'json' which keeps only the last occurrence of every key.
 jsonLast :: Parser Value
 jsonLast = jsonWith (Right . KM.fromListWith (const id))
 
@@ -365,7 +365,7 @@ jsonWith' mkObject = fix $ \value_ -> do
                       | otherwise -> fail "not a valid json value"
 {-# INLINE jsonWith' #-}
 
--- | Variant of 'json'' which keeps only the last occurence of every key.
+-- | Variant of 'json'' which keeps only the last occurrence of every key.
 jsonLast' :: Parser Value
 jsonLast' = jsonWith' (pure . KM.fromListWith (const id))
 
