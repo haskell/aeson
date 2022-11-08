@@ -1,5 +1,9 @@
 For the latest version of this document, please see [https://github.com/haskell/aeson/blob/master/changelog.md](https://github.com/haskell/aeson/blob/master/changelog.md).
 
+### Upcoming
+
+* Improve `Arbitrary` instance (see #980, requires major version bump).
+
 ### 2.1.2.0
 
 * Support deriving for empty datatypes (such as `Void` and `V1`)

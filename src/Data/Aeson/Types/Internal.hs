@@ -453,11 +453,13 @@ type RepValue
 
 arbValue :: Int -> QC.Gen Value
 arbValue n
-    | n <= 0 = QC.oneof
+    | n <= 1 = QC.oneof
         [ pure Null
         , Bool <$> QC.arbitrary
         , String <$> arbText
         , Number <$> arbScientific
+        , pure emptyObject
+        , pure emptyArray
         ]
 
     | otherwise = QC.oneof
