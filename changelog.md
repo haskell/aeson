@@ -7,6 +7,7 @@ For the latest version of this document, please see [https://github.com/haskell/
 * Remove `cffi` flag. Then the C implementation for string unescaping was used for `text <2` versions.
   The new native Haskell implementation introduced in version 2.0.3.0 is at least as fast.
 * Drop instances for `attoparsec.Number`.
+* Improve `Arbitrary Value` instance.
 
 ### 2.1.2.1
 
