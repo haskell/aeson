@@ -20,6 +20,7 @@ tested-with:
    || ==9.0.2
    || ==9.2.6
    || ==9.4.4
+   || ==9.6.1
 
 synopsis:           Fast JSON parsing and encoding
 cabal-version:      >=1.10
