@@ -8,9 +8,9 @@
 #
 # For more information, see https://github.com/haskell-CI/haskell-ci
 #
-# version: 0.15.20220609
+# version: 0.15.20230115
 #
-# REGENDATA ("0.15.20220609",["github","-o",".github/workflows/z-bench.yml","--config=cabal.bench.haskell-ci","--project","cabal.bench.project"])
+# REGENDATA ("0.15.20230115",["github","-o",".github/workflows/z-bench.yml","--config=cabal.bench.haskell-ci","--project","cabal.bench.project"])
 #
 name: Z Bench CI
 on:
@@ -32,9 +32,9 @@ jobs:
     strategy:
       matrix:
         include:
-          - compiler: ghc-9.2.2
+          - compiler: ghc-9.2.5
             compilerKind: ghc
-            compilerVersion: 9.2.2
+            compilerVersion: 9.2.5
             setup-method: ghcup
             allow-failure: false
           - compiler: ghc-9.0.2
@@ -80,7 +80,7 @@ jobs:
           apt-get install -y --no-install-recommends gnupg ca-certificates dirmngr curl git software-properties-common libtinfo5
           if [ "${{ matrix.setup-method }}" = ghcup ]; then
             mkdir -p "$HOME/.ghcup/bin"
-            curl -sL https://downloads.haskell.org/ghcup/0.1.17.8/x86_64-linux-ghcup-0.1.17.8 > "$HOME/.ghcup/bin/ghcup"
+            curl -sL https://downloads.haskell.org/ghcup/0.1.18.0/x86_64-linux-ghcup-0.1.18.0 > "$HOME/.ghcup/bin/ghcup"
             chmod a+x "$HOME/.ghcup/bin/ghcup"
             "$HOME/.ghcup/bin/ghcup" install ghc "$HCVER" || (cat "$HOME"/.ghcup/logs/*.* && false)
             "$HOME/.ghcup/bin/ghcup" install cabal 3.6.2.0 || (cat "$HOME"/.ghcup/logs/*.* && false)
@@ -89,7 +89,7 @@ jobs:
             apt-get update
             apt-get install -y "$HCNAME"
             mkdir -p "$HOME/.ghcup/bin"
-            curl -sL https://downloads.haskell.org/ghcup/0.1.17.8/x86_64-linux-ghcup-0.1.17.8 > "$HOME/.ghcup/bin/ghcup"
+            curl -sL https://downloads.haskell.org/ghcup/0.1.18.0/x86_64-linux-ghcup-0.1.18.0 > "$HOME/.ghcup/bin/ghcup"
             chmod a+x "$HOME/.ghcup/bin/ghcup"
             "$HOME/.ghcup/bin/ghcup" install cabal 3.6.2.0 || (cat "$HOME"/.ghcup/logs/*.* && false)
           fi
