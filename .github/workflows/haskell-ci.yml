@@ -170,7 +170,7 @@ jobs:
         run: |
           $CABAL v2-update -v
       - name: cache (tools)
-        uses: actions/cache@v2
+        uses: actions/cache@v3
         with:
           key: ${{ runner.os }}-${{ matrix.compiler }}-tools-cd9045c2
           path: ~/.haskell-ci-tools
@@ -183,8 +183,17 @@ jobs:
           rm -f cabal-plan.xz
           chmod a+x $HOME/.cabal/bin/cabal-plan
           cabal-plan --version
+      - name: install cabal-docspec
+        run: |
+          mkdir -p $HOME/.cabal/bin
+          curl -sL https://github.com/phadej/cabal-extras/releases/download/cabal-docspec-0.0.0.20211114/cabal-docspec-0.0.0.20211114.xz > cabal-docspec.xz
+          echo 'e224700d9e8c9ec7ec6bc3f542ba433cd9925a5d356676c62a9bd1f2c8be8f8a  cabal-docspec.xz' | sha256sum -c -
+          xz -d < cabal-docspec.xz > $HOME/.cabal/bin/cabal-docspec
+          rm -f cabal-docspec.xz
+          chmod a+x $HOME/.cabal/bin/cabal-docspec
+          cabal-docspec --version
       - name: checkout
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
         with:
           path: source
       - name: initial cabal.project for sdist
@@ -232,7 +241,7 @@ jobs:
           $CABAL v2-build $ARG_COMPILER $ARG_TESTS $ARG_BENCH --dry-run all
           cabal-plan
       - name: cache
-        uses: actions/cache@v2
+        uses: actions/cache@v3
         with:
           key: ${{ runner.os }}-${{ matrix.compiler }}-${{ github.sha }}
           path: ~/.cabal/store
@@ -250,6 +259,10 @@ jobs:
       - name: tests
         run: |
           $CABAL v2-test $ARG_COMPILER $ARG_TESTS $ARG_BENCH all --test-show-details=direct
+      - name: docspec
+        run: |
+          $CABAL v2-build $ARG_COMPILER $ARG_TESTS $ARG_BENCH all
+          cabal-docspec $ARG_COMPILER
       - name: haddock
         run: |
           if [ $((HCNUMVER >= 80600)) -ne 0 ] ; then $CABAL v2-haddock --haddock-all $ARG_COMPILER --with-haddock $HADDOCK $ARG_TESTS $ARG_BENCH all ; fi

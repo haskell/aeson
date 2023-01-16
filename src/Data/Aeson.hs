@@ -1,4 +1,5 @@
 {-# LANGUAGE NoImplicitPrelude #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 -- |
 -- Module:      Data.Aeson
 -- Copyright:   (c) 2011-2016 Bryan O'Sullivan
@@ -55,6 +56,12 @@ module Data.Aeson
     , eitherDecodeFileStrict
     , eitherDecodeStrict'
     , eitherDecodeFileStrict'
+    -- ** Exception throwing variants
+    , AesonException (..)
+    , throwDecode
+    , throwDecodeStrict
+    , throwDecode'
+    , throwDecodeStrict'
     -- * Core JSON types
     , Value(..)
     , Encoding
@@ -154,6 +161,8 @@ module Data.Aeson
 
 import Prelude.Compat
 
+import Control.Exception (Exception (..))
+import Control.Monad.Catch (MonadThrow (..))
 import Data.Aeson.Types.FromJSON (ifromJSON, parseIndexedJSON)
 import Data.Aeson.Encoding (encodingToLazyByteString)
 import Data.Aeson.Parser.Internal (decodeWith, decodeStrictWith, eitherDecodeWith, eitherDecodeStrictWith, jsonEOF, json, jsonEOF', json')
@@ -161,6 +170,9 @@ import Data.Aeson.Types
 import Data.Aeson.Types.Internal (formatError)
 import qualified Data.ByteString as B
 import qualified Data.ByteString.Lazy as L
+
+-- $setup
+-- >>> :set -XOverloadedStrings
 
 -- | Efficiently serialize a JSON value as a lazy 'L.ByteString'.
 --
@@ -285,6 +297,62 @@ eitherDecodeFileStrict' :: (FromJSON a) => FilePath -> IO (Either String a)
 eitherDecodeFileStrict' =
   fmap eitherDecodeStrict' . B.readFile
 {-# INLINE eitherDecodeFileStrict' #-}
+
+throwFormatError :: MonadThrow m => Either (JSONPath, String) a -> m a
+throwFormatError = either (throwM . AesonException . uncurry formatError) return
+{-# INLINE throwFormatError #-}
+
+-- | Like 'decode' but throws an 'AesonException' when decoding fails.
+--
+-- >>> throwDecode "42" :: Maybe Int
+-- Just 42
+--
+-- >>> throwDecode "42" :: IO Int
+-- 42
+--
+-- >>> throwDecode "true" :: IO Int
+-- ...Exception: AesonException...
+--
+-- @since 2.1.2.0
+--
+throwDecode :: forall a m. (FromJSON a, MonadThrow m) => L.ByteString -> m a
+throwDecode = throwFormatError . eitherDecodeWith jsonEOF ifromJSON
+{-# INLINE throwDecode #-}
+
+-- | Like 'decodeStrict' but throws an 'AesonException' when decoding fails.
+--
+-- @since 2.1.2.0
+--
+throwDecodeStrict :: forall a m. (FromJSON a, MonadThrow m) => B.ByteString -> m a
+throwDecodeStrict =
+  throwFormatError . eitherDecodeStrictWith jsonEOF ifromJSON
+{-# INLINE throwDecodeStrict #-}
+
+-- | Like 'decode'' but throws an 'AesonException' when decoding fails.
+--
+-- @since 2.1.2.0
+--
+throwDecode' :: forall a m. (FromJSON a, MonadThrow m) => L.ByteString -> m a
+throwDecode' = throwFormatError . eitherDecodeWith jsonEOF' ifromJSON
+{-# INLINE throwDecode' #-}
+
+-- | Like 'decodeStrict'' but throws an 'AesonException' when decoding fails.
+--
+-- @since 2.1.2.0
+--
+throwDecodeStrict' :: forall a m. (FromJSON a, MonadThrow m) => B.ByteString -> m a
+throwDecodeStrict' =
+  throwFormatError . eitherDecodeStrictWith jsonEOF' ifromJSON
+{-# INLINE throwDecodeStrict' #-}
+
+-- | Exception thrown by 'throwDecode' and variants.
+--
+-- @since 2.1.2.0
+newtype AesonException = AesonException String
+  deriving (Show)
+
+instance Exception AesonException where
+    displayException (AesonException str) = "aeson: " ++ str
 
 -- $use
 --

@@ -1,5 +1,6 @@
 branches: master
 cabal-check: False
+docspec: True
 
 -- GADT docs
 haddock: >=8.6

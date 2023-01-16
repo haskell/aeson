@@ -31,6 +31,7 @@ library
     , data-fix
     , deepseq
     , dlist
+    , exceptions
     , generically
     , ghc-prim
     , hashable
