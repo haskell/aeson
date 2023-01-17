@@ -2,6 +2,11 @@ For the latest version of this document, please see [https://github.com/haskell/
 
 ### 2.1.2.0
 
+* Add `throwDecode :: (MonadThrow m, FromJSON a) => ByteString -> m a`
+  and variants.
+
+### 2.1.2.0
+
 * Support deriving for empty datatypes (such as `Void` and `V1`)
   in `FromJSON` and `ToJSON`.
 * Add `To/FromJSONKey Void` instances
