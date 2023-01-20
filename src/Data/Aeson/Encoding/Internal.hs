@@ -10,6 +10,7 @@ module Data.Aeson.Encoding.Internal
       Encoding' (..)
     , Encoding
     , encodingToLazyByteString
+    , encodingToStrictByteString
     , unsafeToEncoding
     , retagEncoding
     , Series (..)
@@ -65,6 +66,7 @@ module Data.Aeson.Encoding.Internal
 import Prelude.Compat
 
 import Data.Aeson.Types.Internal (Value, Key)
+import Data.Aeson.Internal.StrictBuilder (toStrictByteString)
 import Data.ByteString.Builder (Builder, char7, toLazyByteString)
 import Data.ByteString.Short (ShortByteString)
 import qualified Data.Aeson.Key as Key
@@ -77,6 +79,7 @@ import Data.Time.Calendar.Quarter.Compat (Quarter)
 import Data.Typeable (Typeable)
 import Data.Word (Word8, Word16, Word32, Word64)
 import qualified Data.Aeson.Encoding.Builder as EB
+import qualified Data.ByteString as BS
 import qualified Data.ByteString.Builder as B
 import qualified Data.ByteString.Lazy as BSL
 import qualified Data.Text.Lazy as LT
@@ -101,9 +104,20 @@ type Encoding = Encoding' Value
 unsafeToEncoding :: Builder -> Encoding' a
 unsafeToEncoding = Encoding
 
+-- | Convert 'Encoding' to /lazy/ 'BSL.ByteString'.
 encodingToLazyByteString :: Encoding' a -> BSL.ByteString
 encodingToLazyByteString = toLazyByteString . fromEncoding
 {-# INLINE encodingToLazyByteString #-}
+
+-- | Convert 'Encoding' to /strict/ 'BS.ByteString'.
+--
+-- This might or might not be more efficient than @'BSL.toStrict' . 'encodingToLazyByteString'@
+--
+-- @since 2.1.2.0
+--
+encodingToStrictByteString :: Encoding' a -> BS.ByteString
+encodingToStrictByteString = toStrictByteString . fromEncoding
+{-# INLINE encodingToStrictByteString #-}
 
 retagEncoding :: Encoding' a -> Encoding' b
 retagEncoding = Encoding . fromEncoding

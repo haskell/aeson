@@ -7,7 +7,7 @@ module PropUtils (module PropUtils) where
 import Prelude.Compat
 
 import Data.Aeson (eitherDecode, encode)
-import Data.Aeson.Encoding (encodingToLazyByteString)
+import Data.Aeson.Encoding (encodingToLazyByteString, encodingToStrictByteString)
 import Data.Aeson.Internal (IResult(..), formatError, ifromJSON, iparse)
 import qualified Data.Aeson.Internal as I
 import Data.Aeson.Parser (value)
@@ -25,6 +25,7 @@ import Test.QuickCheck (Arbitrary(..), Property, Testable, (===), (.&&.), counte
 import Types
 import Text.Read (readMaybe)
 import qualified Data.Attoparsec.Lazy as L
+import qualified Data.Attoparsec.ByteString as S
 import qualified Data.ByteString.Lazy.Char8 as L
 import qualified Data.Map as Map
 import qualified Data.Text as T
@@ -66,6 +67,14 @@ roundTripEnc eq _ i =
       L.Done _ (IError path err) -> failure "fromJSON" (formatError path err) i
       L.Fail _ _ err             -> failure "parse" err i
 
+roundTripStrictEnc :: (FromJSON a, ToJSON a, Show a) =>
+             (a -> a -> Property) -> a -> a -> Property
+roundTripStrictEnc eq _ i =
+    case fmap ifromJSON . S.parseOnly value . encodingToStrictByteString . toEncoding $ i of
+      Right (ISuccess v)      -> v `eq` i
+      Right (IError path err) -> failure "fromJSON" (formatError path err) i
+      Left  err               -> failure "parse" err i
+
 roundTripNoEnc :: (FromJSON a, ToJSON a, Show a) =>
              (a -> a -> Property) -> a -> a -> Property
 roundTripNoEnc eq _ i =
@@ -74,7 +83,10 @@ roundTripNoEnc eq _ i =
       (IError path err) -> failure "fromJSON" (formatError path err) i
 
 roundTripEq :: (Eq a, FromJSON a, ToJSON a, Show a) => a -> a -> Property
-roundTripEq x y = roundTripEnc (===) x y .&&. roundTripNoEnc (===) x y
+roundTripEq x y =
+    roundTripEnc (===) x y .&&.
+    roundTripStrictEnc (===) x y .&&.
+    roundTripNoEnc (===) x y
 
 roundtripReadShow :: Value -> Property
 roundtripReadShow v = readMaybe (show v) === Just v
