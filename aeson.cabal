@@ -81,6 +81,7 @@ library
     Data.Aeson.Internal.Functions
     Data.Aeson.Internal.Prelude
     Data.Aeson.Internal.Scientific
+    Data.Aeson.Internal.StrictBuilder
     Data.Aeson.Internal.Text
     Data.Aeson.Internal.TH
     Data.Aeson.Internal.Unescape

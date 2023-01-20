@@ -11,6 +11,7 @@ module Data.Aeson.Encoding
       Encoding
     , Encoding'
     , encodingToLazyByteString
+    , encodingToStrictByteString
     , fromEncoding
     , unsafeToEncoding
     , Series
