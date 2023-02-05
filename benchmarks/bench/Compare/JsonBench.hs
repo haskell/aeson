@@ -13,9 +13,9 @@
 module Compare.JsonBench (benchmarks) where
 
 import Prelude.Compat hiding ((<>))
+import Bench
 
 import Control.DeepSeq (NFData(..))
-import Criterion
 import Data.Aeson ((.:))
 import Data.Monoid ((<>))
 import Data.Text (Text)

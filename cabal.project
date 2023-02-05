@@ -2,5 +2,6 @@ with-compiler: ghc
 packages: .
 packages: attoparsec-iso8601
 packages: examples
+packages: benchmarks
 tests: true
--- constraints: aeson +cffi
+benchmarks: true

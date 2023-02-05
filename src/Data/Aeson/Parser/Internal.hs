@@ -45,6 +45,8 @@ module Data.Aeson.Parser.Internal
     -- ** Handling objects with duplicate keys
     , fromListAccum
     , parseListNoDup
+    -- * Text literal unescaping
+    , unescapeText
     ) where
 
 import Prelude.Compat

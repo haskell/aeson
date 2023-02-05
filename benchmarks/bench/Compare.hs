@@ -5,8 +5,8 @@
 module Compare (benchmarks) where
 
 import Prelude.Compat
+import Bench
 
-import Criterion.Main
 import Twitter
 import Twitter.Manual ()
 import Utils (readV)

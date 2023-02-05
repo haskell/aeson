@@ -5,11 +5,11 @@
 module CompareWithJSON (benchmark) where
 
 import Prelude.Compat
+import Bench
 
 import Blaze.ByteString.Builder (toLazyByteString)
 import Blaze.ByteString.Builder.Char.Utf8 (fromString)
 import Control.DeepSeq (NFData(rnf))
-import Criterion.Main
 import Data.Maybe (fromMaybe)
 import qualified Data.Aeson as A
 import qualified Data.Aeson.Text as A

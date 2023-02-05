@@ -3,9 +3,9 @@
 module Typed.TH (benchmarks, decodeBenchmarks) where
 
 import Prelude.Compat
+import Bench
 
 import Data.Aeson hiding (Result)
-import Criterion
 import Data.ByteString.Lazy as L
 import Twitter.TH
 import Utils

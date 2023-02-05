@@ -3,7 +3,7 @@
 
 module Issue673 where
 
-import Criterion.Main
+import Bench
 import Prelude.Compat
 import Data.Int (Int64)
 import Data.Scientific (Scientific)

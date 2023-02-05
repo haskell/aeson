@@ -1,7 +1,7 @@
-cabal-version:      >=1.10
-name:               aeson-benchmarks
-version:            0
-build-type:         Simple
+cabal-version: >=1.10
+name:          aeson-benchmarks
+version:       0
+build-type:    Simple
 tested-with:
   GHC ==8.0.2
    || ==8.2.2
@@ -11,8 +11,12 @@ tested-with:
    || ==8.10.7
    || ==9.0.2
    || ==9.2.5
+   || ==9.4.4
 
-extra-source-files: cbits/*.c
+flag tasty-bench
+  description: Use tasty-bench, otherwise criterion
+  default:     True
+  manual:      True
 
 flag text2
   manual:  False
@@ -20,98 +24,30 @@ flag text2
 
 library
   default-language: Haskell2010
-  hs-source-dirs:   src src-ffi src-pure attoparsec-iso8601/src
-  c-sources:        cbits/unescape_string.c
-  build-depends:
-      attoparsec
-    , base
-    , base-compat-batteries
-    , bytestring             >=0.10.4
-    , containers
-    , data-fix
-    , deepseq
-    , dlist
-    , exceptions
-    , generically
-    , ghc-prim
-    , hashable
-    , indexed-traversable
-    , mtl
-    , OneTuple
-    , primitive
-    , QuickCheck
-    , scientific
-    , semialign
-    , strict
-    , syb
-    , tagged
-    , template-haskell
-    , text
-    , text-short
-    , th-abstraction
-    , these
-    , time
-    , time-compat
-    , transformers
-    , unordered-containers
-    , uuid-types
-    , vector
-    , witherable
+  build-depends:    base
 
+executable aeson-benchmark-suite
+  default-language: Haskell2010
+  main-is:          aeson-benchmark-suite.hs
+  hs-source-dirs:   bench examples/src
+  ghc-options:      -Wall -rtsopts
+
+  -- use tasty-bench or criterion
+  if flag(tasty-bench)
+    build-depends: tasty-bench
+
+  else
+    build-depends: criterion
+
+  -- text version split
   if flag(text2)
     build-depends: text >=2
 
   else
     build-depends: text <2
 
-  if !impl(ghc >=8.6)
-    build-depends: contravariant
-
-  cpp-options:      -DUSE_ORDEREDMAP=1
-  ghc-options:      -Wall
-  cpp-options:      -DGENERICS
-  exposed-modules:
-    Data.Aeson
-    Data.Aeson.Encoding
-    Data.Aeson.Encoding.Builder
-    Data.Aeson.Encoding.Internal
-    Data.Aeson.Internal
-    Data.Aeson.Internal.ByteString
-    Data.Aeson.Internal.Functions
-    Data.Aeson.Internal.Integer
-    Data.Aeson.Internal.Text
-    Data.Aeson.Internal.TH
-    Data.Aeson.Internal.Time
-    Data.Aeson.Internal.Word8
-    Data.Aeson.Key
-    Data.Aeson.KeyMap
-    Data.Aeson.Parser
-    Data.Aeson.Parser.Internal
-    Data.Aeson.Parser.Time
-    Data.Aeson.Parser.Unescape
-    Data.Aeson.Parser.UnescapePure
-    Data.Aeson.Text
-    Data.Aeson.TH
-    Data.Aeson.Types
-    Data.Aeson.Types.Class
-    Data.Aeson.Types.FromJSON
-    Data.Aeson.Types.Generic
-    Data.Aeson.Types.Internal
-    Data.Aeson.Types.ToJSON
-    Data.Attoparsec.Time
-    Data.Attoparsec.Time.Internal
-
-  if !flag(text2)
-    exposed-modules: Data.Aeson.Parser.UnescapeFFI
-
--- Idea is to fold as many benchmarks into this as possible.
-executable aeson-benchmark-suite
-  default-language: Haskell2010
-  main-is:          Suite.hs
-  hs-source-dirs:   bench examples/src
-  ghc-options:      -Wall -rtsopts
   build-depends:
-      aeson-benchmarks
+      aeson
     , attoparsec
     , base
     , base-compat-batteries
@@ -119,7 +55,6 @@ executable aeson-benchmark-suite
     , blaze-builder
     , bytestring
     , containers
-    , criterion
     , deepseq
     , filepath
     , hashable
@@ -144,6 +79,7 @@ executable aeson-benchmark-suite
     Auto.T.BigSum
     Auto.T.D
     AutoCompare
+    Bench
     Compare
     Compare.JsonBench
     CompareWithJSON
@@ -167,9 +103,6 @@ executable aeson-benchmark-suite
   if impl(ghc <8.4)
     other-modules: Compare.JsonBuilder
     build-depends: json-builder
-
-  if !impl(ghc >=8.0)
-    build-depends: fail
 
   if !flag(text2)
     -- buffer-builder might work with text-2 sometime

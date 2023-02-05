@@ -2,7 +2,7 @@
 
 module Typed (benchmark) where
 
-import           Criterion.Main
+import           Bench
 import qualified Typed.Generic  as Generic
 import qualified Typed.Manual   as Manual
 import qualified Typed.TH       as TH

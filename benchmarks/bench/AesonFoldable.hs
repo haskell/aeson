@@ -3,9 +3,8 @@
 
 module AesonFoldable (benchmark) where
 
-import Criterion.Main
-
 import Prelude.Compat
+import Bench
 
 import Data.Foldable (toList)
 import qualified Data.Aeson as A
