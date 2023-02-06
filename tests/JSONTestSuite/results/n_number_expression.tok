@@ -1,0 +1,4 @@
+TkArrayOpen
+TkItem
+TkNumber NumInteger 1
+TkArrayErr "Unexpected \"+2]\", expecting , or ]"

@@ -25,11 +25,13 @@ pattern W8_BACKSLASH    :: Word8
 pattern W8_DOUBLE_QUOTE :: Word8
 pattern W8_DOT          :: Word8
 pattern W8_COMMA        :: Word8
+pattern W8_COLON        :: Word8
 
 pattern W8_BACKSLASH    = 92
 pattern W8_COMMA        = 44
 pattern W8_DOT          = 46
 pattern W8_DOUBLE_QUOTE = 34
+pattern W8_COLON        = 58
 
 -- parentheses
 pattern W8_CLOSE_CURLY  :: Word8

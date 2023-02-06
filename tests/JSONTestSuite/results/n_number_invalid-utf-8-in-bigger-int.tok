@@ -1,0 +1,4 @@
+TkArrayOpen
+TkItem
+TkNumber NumInteger 123
+TkArrayErr "Unexpected \"\\229]\", expecting , or ]"

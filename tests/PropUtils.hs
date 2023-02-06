@@ -46,6 +46,7 @@ import Text.Read (readMaybe)
 import qualified Data.Attoparsec.Lazy as L
 import qualified Data.ByteString.Lazy.Char8 as L
 import qualified Data.Vector as V
+import qualified Data.Aeson.Decoding as Dec
 
 
 encodeDouble :: Double -> Double -> Property
@@ -83,6 +84,13 @@ roundTripEnc eq i =
       L.Done _ (IError path err) -> failure "fromJSON" (formatError path err) i
       L.Fail _ _ err             -> failure "parse" err i
 
+roundTripDecEnc :: (FromJSON a, ToJSON a, Show a) =>
+             (a -> a -> Property) -> a -> Property
+roundTripDecEnc eq i =
+    case Dec.eitherDecodeStrict . L.toStrict . encode $ i of
+      Right v      -> v `eq` i
+      Left err     -> failure "parse" err i
+
 roundTripNoEnc :: (FromJSON a, ToJSON a, Show a) =>
              (a -> a -> Property) -> a -> Property
 roundTripNoEnc eq i =
@@ -91,7 +99,7 @@ roundTripNoEnc eq i =
       (IError path err) -> failure "fromJSON" (formatError path err) i
 
 roundTripEq :: (Eq a, FromJSON a, ToJSON a, Show a) => a -> Property
-roundTripEq y = roundTripEnc (===) y .&&. roundTripNoEnc (===) y
+roundTripEq y = roundTripEnc (===) y .&&. roundTripNoEnc (===) y .&&. roundTripDecEnc (===) y
 
 roundtripReadShow :: Value -> Property
 roundtripReadShow v = readMaybe (show v) === Just v

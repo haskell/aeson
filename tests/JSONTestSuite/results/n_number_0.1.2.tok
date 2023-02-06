@@ -1,0 +1,4 @@
+TkArrayOpen
+TkItem
+TkNumber NumDecimal 0.1
+TkArrayErr "Unexpected \".2]\", expecting , or ]"
