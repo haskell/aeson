@@ -10,9 +10,8 @@ module ErrorMessages
 import Prelude.Compat
 
 import Data.Aeson (FromJSON(..), Value, json)
-import Data.Aeson.Types (Parser)
+import Data.Aeson.Types (Parser, formatError, iparse)
 import Data.Aeson.Parser (eitherDecodeWith)
-import Data.Aeson.Internal (formatError, iparse)
 import Data.Algorithm.Diff (PolyDiff (..), getGroupedDiff)
 import Data.Proxy (Proxy(..))
 import Data.Semigroup ((<>))

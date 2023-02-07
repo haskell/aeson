@@ -9,6 +9,7 @@
 -- Portability: portable
 
 module Data.Aeson.Internal.Time
+    {-# DEPRECATED "This module will be removed in the next major aeson version." #-}
     (
       TimeOfDay64(..)
     , fromPico

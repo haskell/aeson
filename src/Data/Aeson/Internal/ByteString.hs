@@ -16,7 +16,6 @@ import GHC.Exts (Addr#, Ptr (Ptr))
 import Data.ByteString.Short.Internal (createFromPtr)
 import System.IO.Unsafe (unsafeDupablePerformIO)
 
-import qualified Data.ByteString as BS
 import qualified Language.Haskell.TH.Lib as TH
 import qualified Language.Haskell.TH.Syntax as TH
 
@@ -28,6 +27,10 @@ import GHC.ForeignPtr (ForeignPtr(ForeignPtr))
 import GHC.Types (Int (..))
 import GHC.Prim (plusAddr#)
 #endif
+#endif
+
+#if !MIN_VERSION_template_haskell(2,16,0)
+import qualified Data.ByteString as BS
 #endif
 
 mkBS :: ForeignPtr Word8 -> Int -> ByteString
@@ -60,10 +63,7 @@ withBS (PS !sfp !soff !slen) kont = kont (plusForeignPtr sfp soff) slen
 plusForeignPtr :: ForeignPtr a -> Int -> ForeignPtr b
 plusForeignPtr (ForeignPtr addr guts) (I# offset) = ForeignPtr (plusAddr# addr offset) guts
 {-# INLINE [0] plusForeignPtr #-}
-{-# RULES
-"ByteString plusForeignPtr/0" forall fp .
-   plusForeignPtr fp 0 = fp
- #-}
+{-# RULES "ByteString plusForeignPtr/0" forall fp .  plusForeignPtr fp 0 = fp #-}
 #endif
 #endif
 

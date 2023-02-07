@@ -8,8 +8,6 @@ import Prelude.Compat
 
 import Data.Aeson (eitherDecode, encode)
 import Data.Aeson.Encoding (encodingToLazyByteString)
-import Data.Aeson.Internal (IResult(..), formatError, ifromJSON, iparse)
-import qualified Data.Aeson.Internal as I
 import Data.Aeson.Parser (value)
 import Data.Aeson.Types
 import qualified Data.Aeson.Key as Key
@@ -114,17 +112,17 @@ parserThrowErrorProp msg =
 -- | Tests (also) that we catch the JSONPath and it has elements in the right order.
 parserCatchErrorProp :: [String] -> String -> Property
 parserCatchErrorProp path msg =
-    result === Success ([I.Key "outer", I.Key "inner"] ++ jsonPath, msg)
+    result === Success ([Key "outer", Key "inner"] ++ jsonPath, msg)
   where
     parser = parserCatchError outer (curry pure)
 
-    outer = inner I.<?> I.Key "outer"
-    inner = parserThrowError jsonPath msg I.<?> I.Key "inner"
+    outer = inner <?> Key "outer"
+    inner = parserThrowError jsonPath msg <?> Key "inner"
 
-    result :: Result (I.JSONPath, String)
+    result :: Result (JSONPath, String)
     result = parse (const parser) ()
 
-    jsonPath = map (I.Key . Key.fromString) path
+    jsonPath = map (Key . Key.fromString) path
 
 -- | Perform a structural comparison of the results of two encoding
 -- methods. Compares decoded values to account for HashMap-driven

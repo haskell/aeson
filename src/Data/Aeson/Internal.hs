@@ -13,6 +13,7 @@
 -- to being changed at any time.
 
 module Data.Aeson.Internal
+    {-# DEPRECATED "All contents of this module are exported from Data.Aeson.Types module. This module will be removed in the next major aeson version." #-}
     (
       IResult(..)
     , JSONPathElement(..)
@@ -22,7 +23,6 @@ module Data.Aeson.Internal
     , ifromJSON
     , iparse
     ) where
-
 
 import Data.Aeson.Types.Internal
 import Data.Aeson.Types.FromJSON (ifromJSON)

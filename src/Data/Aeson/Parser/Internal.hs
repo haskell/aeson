@@ -1,6 +1,5 @@
 {-# LANGUAGE BangPatterns #-}
 {-# LANGUAGE CPP #-}
-{-# LANGUAGE PatternSynonyms #-}
 {-# LANGUAGE NoImplicitPrelude #-}
 {-# LANGUAGE OverloadedStrings #-}
 #if __GLASGOW_HASKELL__ <= 800 && __GLASGOW_HASKELL__ >= 706
@@ -61,7 +60,6 @@ import Data.Functor.Compat (($>))
 import Data.Scientific (Scientific)
 import Data.Text (Text)
 import Data.Vector (Vector)
-import Data.Word (Word8)
 import qualified Data.Vector as Vector (empty, fromList, fromListN, reverse)
 import qualified Data.Attoparsec.ByteString as A
 import qualified Data.Attoparsec.Lazy as L
@@ -73,80 +71,13 @@ import qualified Data.ByteString.Lazy.Char8 as C
 import qualified Data.ByteString.Builder as B
 import qualified Data.Scientific as Sci
 import Data.Aeson.Parser.Unescape (unescapeText)
+import Data.Aeson.Internal.Integer
 import Data.Aeson.Internal.Text
+import Data.Aeson.Internal.Word8
 
 -- $setup
 -- >>> :set -XOverloadedStrings
 -- >>> import Data.Aeson.Types
-
--------------------------------------------------------------------------------
--- Word8 ASCII codes as patterns
--------------------------------------------------------------------------------
-
--- GHC-8.0 doesn't support giving multiple pattern synonyms type signature at once
-
--- spaces
-pattern W8_SPACE :: Word8
-pattern W8_NL    :: Word8
-pattern W8_CR    :: Word8
-pattern W8_TAB   :: Word8
-
-pattern W8_SPACE = 0x20
-pattern W8_NL    = 0x0a
-pattern W8_CR    = 0x0d
-pattern W8_TAB   = 0x09
-
--- punctuation
-pattern W8_BACKSLASH    :: Word8
-pattern W8_DOUBLE_QUOTE :: Word8
-pattern W8_DOT          :: Word8
-pattern W8_COMMA        :: Word8
-
-pattern W8_BACKSLASH    = 92
-pattern W8_COMMA        = 44
-pattern W8_DOT          = 46
-pattern W8_DOUBLE_QUOTE = 34
-
--- parentheses
-pattern W8_CLOSE_CURLY  :: Word8
-pattern W8_CLOSE_SQUARE :: Word8
-pattern W8_OPEN_SQUARE  :: Word8
-pattern W8_OPEN_CURLY   :: Word8
-
-pattern W8_OPEN_CURLY   = 123
-pattern W8_OPEN_SQUARE  = 91
-pattern W8_CLOSE_CURLY  = 125
-pattern W8_CLOSE_SQUARE = 93
-
--- operators
-pattern W8_MINUS :: Word8
-pattern W8_PLUS  :: Word8
-
-pattern W8_PLUS  = 43
-pattern W8_MINUS = 45
-
--- digits
-pattern W8_0 :: Word8
-pattern W8_9 :: Word8
-
-pattern W8_0 = 48
-pattern W8_9 = 57
-
--- lower case
-pattern W8_e :: Word8
-pattern W8_f :: Word8
-pattern W8_n :: Word8
-pattern W8_t :: Word8
-
-pattern W8_e = 101
-pattern W8_f = 102
-pattern W8_n = 110
-pattern W8_t = 116
-
--- upper case
-pattern W8_E :: Word8
-pattern W8_E = 69
-
 
 -------------------------------------------------------------------------------
 -- Parsers
@@ -547,53 +478,3 @@ scientific = do
       fmap (Sci.scientific signedCoeff . (e +)) (signed decimal)) <|>
     return (Sci.scientific signedCoeff    e)
 {-# INLINE scientific #-}
-
------------------- Copy-pasted and adapted from base ------------------------
-
-bsToInteger :: B.ByteString -> Integer
-bsToInteger bs
-    | l > 40    = valInteger 10 l [ fromIntegral (w - W8_0) | w <- B.unpack bs ]
-    | otherwise = bsToIntegerSimple bs
-  where
-    l = B.length bs
-
-bsToIntegerSimple :: B.ByteString -> Integer
-bsToIntegerSimple = B.foldl' step 0 where
-  step a b = a * 10 + fromIntegral (b - W8_0)
-
--- A sub-quadratic algorithm for Integer. Pairs of adjacent radix b
--- digits are combined into a single radix b^2 digit. This process is
--- repeated until we are left with a single digit. This algorithm
--- performs well only on large inputs, so we use the simple algorithm
--- for smaller inputs.
-valInteger :: Integer -> Int -> [Integer] -> Integer
-valInteger = go
-  where
-    go :: Integer -> Int -> [Integer] -> Integer
-    go _ _ []  = 0
-    go _ _ [d] = d
-    go b l ds
-        | l > 40 = b' `seq` go b' l' (combine b ds')
-        | otherwise = valSimple b ds
-      where
-        -- ensure that we have an even number of digits
-        -- before we call combine:
-        ds' = if even l then ds else 0 : ds
-        b' = b * b
-        l' = (l + 1) `quot` 2
-
-    combine b (d1 : d2 : ds) = d `seq` (d : combine b ds)
-      where
-        d = d1 * b + d2
-    combine _ []  = []
-    combine _ [_] = errorWithoutStackTrace "this should not happen"
-
--- The following algorithm is only linear for types whose Num operations
--- are in constant time.
-valSimple :: Integer -> [Integer] -> Integer
-valSimple base = go 0
-  where
-    go r [] = r
-    go r (d : ds) = r' `seq` go r' ds
-      where
-        r' = r * base + fromIntegral d
