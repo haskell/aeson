@@ -40,7 +40,7 @@ module Data.Aeson.Encoding.Builder
 
 import Prelude.Compat
 
-import Data.Aeson.Internal.Time
+import Data.Attoparsec.Time.Internal
 import Data.Aeson.Types.Internal (Value (..), Key)
 import qualified Data.Aeson.Key as Key
 import qualified Data.Aeson.KeyMap as KM
