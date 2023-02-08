@@ -1,4 +1,5 @@
 {-# LANGUAGE NoImplicitPrelude #-}
+{-# LANGUAGE TypeApplications #-}
 
 module PropertyRoundTrip ( roundTripTests ) where
 
@@ -8,6 +9,7 @@ import Control.Applicative (Const)
 import Data.Aeson.Types
 import Data.DList (DList)
 import Data.List.NonEmpty (NonEmpty)
+import Data.Map (Map)
 import Data.Proxy (Proxy)
 import Data.Ratio (Ratio)
 import Data.Sequence (Seq)
@@ -33,63 +35,64 @@ import qualified Data.Strict as S
 import qualified Data.Fix as F
 import PropUtils
 import PropertyRTFunctors
+import Data.Int (Int8)
 
 import Instances ()
 
 roundTripTests :: TestTree
 roundTripTests =
   testGroup "roundTrip" [
-      testProperty "Value" $ roundTripEq (undefined :: Value)
-    , testProperty "Bool" $ roundTripEq True
-    , testProperty "Double" $ roundTripEq (1 :: Approx Double)
-    , testProperty "Int" $ roundTripEq (1 :: Int)
-    , testProperty "NonEmpty Char" $ roundTripEq (undefined :: NonEmpty Char)
-    , testProperty "Integer" $ roundTripEq (1 :: Integer)
-    , testProperty "String" $ roundTripEq ("" :: String)
-    , testProperty "Text" $ roundTripEq T.empty
-    , testProperty "Lazy Text" $ roundTripEq LT.empty
-    , testProperty "Foo" $ roundTripEq (undefined :: Foo)
-    , testProperty "Day" $ roundTripEq (undefined :: Day)
-    , testProperty "Month" $ roundTripEq (undefined :: Month)
-    , testProperty "Quarter" $ roundTripEq (undefined :: Quarter)
-    , testProperty "QuarterOfYear" $ roundTripEq (undefined :: QuarterOfYear)
-    , testProperty "BCE Day" $ roundTripEq (undefined :: BCEDay)
-    , testProperty "DotNetTime" $ roundTripEq (undefined :: Approx DotNetTime)
-    , testProperty "LocalTime" $ roundTripEq (undefined :: LocalTime)
-    , testProperty "TimeOfDay" $ roundTripEq (undefined :: TimeOfDay)
-    , testProperty "UTCTime" $ roundTripEq (undefined :: UTCTime)
-    , testProperty "ZonedTime" $ roundTripEq (undefined :: ZonedTime)
-    , testProperty "NominalDiffTime" $ roundTripEq (undefined :: NominalDiffTime)
-    , testProperty "DiffTime" $ roundTripEq (undefined :: DiffTime)
-    , testProperty "DayOfWeek" $ roundTripEq (undefined :: DayOfWeek)
-    , testProperty "SystemTime" $ roundTripEq (undefined :: SystemTime)
-    , testProperty "CalendarDiffTime" $ roundTripEq (undefined :: CalendarDiffTime)
-    , testProperty "CalendarDiffDays" $ roundTripEq (undefined :: CalendarDiffDays)
-    , testProperty "Version" $ roundTripEq (undefined :: Version)
-    , testProperty "Natural" $ roundTripEq (undefined :: Natural)
-    , testProperty "Proxy" $ roundTripEq (undefined :: Proxy Int)
-    , testProperty "Tagged" $ roundTripEq (undefined :: Tagged Int Char)
-    , testProperty "Const" $ roundTripEq (undefined :: Const Int Char)
-    , testProperty "DList" $ roundTripEq (undefined :: DList Int)
-    , testProperty "Seq" $ roundTripEq (undefined :: Seq Int)
-    , testProperty "Rational" $ roundTripEq (undefined :: Rational)
-    , testProperty "Ratio Int" $ roundTripEq (undefined :: Ratio Int)
-    , testProperty "UUID" $ roundTripEq UUID.nil
-    , testProperty "These" $ roundTripEq (These 'x' True)
-    , testProperty "Fix" $ roundTripEq (undefined :: F.Fix (These Char))
-    , testProperty "Mu" $ roundTripEq (undefined :: F.Mu (These Char))
-    , testProperty "Nu" $ roundTripEq (undefined :: F.Nu (These Char))
-    , testProperty "Strict Pair" $ roundTripEq (undefined :: S.Pair Int Char)
-    , testProperty "Strict Either" $ roundTripEq (undefined :: S.Either Int Char)
-    , testProperty "Strict These" $ roundTripEq (undefined :: S.These Int Char)
-    , testProperty "Strict Maybe" $ roundTripEq (undefined :: S.Maybe Int)
-    , testProperty "Solo Int" $ roundTripEq (undefined :: Solo Int)
-    , testProperty "ShortText" $ roundTripEq (undefined :: ST.ShortText)
+      testProperty "Value" $ roundTripEq @Value
+    , testProperty "Bool" $ roundTripEq @Bool
+    , testProperty "Double" $ roundTripEq @(Approx Double)
+    , testProperty "Int" $ roundTripEq @Int
+    , testProperty "NonEmpty Char" $ roundTripEq @(NonEmpty Char)
+    , testProperty "Integer" $ roundTripEq @Integer
+    , testProperty "String" $ roundTripEq @String
+    , testProperty "Text" $ roundTripEq @T.Text
+    , testProperty "Lazy Text" $ roundTripEq @LT.Text
+    , testProperty "Foo" $ roundTripEq @Foo
+    , testProperty "Day" $ roundTripEq @Day
+    , testProperty "Month" $ roundTripEq @Month
+    , testProperty "Quarter" $ roundTripEq @Quarter
+    , testProperty "QuarterOfYear" $ roundTripEq @QuarterOfYear
+    , testProperty "BCE Day" $ roundTripEq @BCEDay
+    , testProperty "DotNetTime" $ roundTripEq @(Approx DotNetTime)
+    , testProperty "LocalTime" $ roundTripEq @LocalTime
+    , testProperty "TimeOfDay" $ roundTripEq @TimeOfDay
+    , testProperty "UTCTime" $ roundTripEq @UTCTime
+    , testProperty "ZonedTime" $ roundTripEq @ZonedTime
+    , testProperty "NominalDiffTime" $ roundTripEq @NominalDiffTime
+    , testProperty "DiffTime" $ roundTripEq @DiffTime
+    , testProperty "DayOfWeek" $ roundTripEq @DayOfWeek
+    , testProperty "SystemTime" $ roundTripEq @SystemTime
+    , testProperty "CalendarDiffTime" $ roundTripEq @CalendarDiffTime
+    , testProperty "CalendarDiffDays" $ roundTripEq @CalendarDiffDays
+    , testProperty "Version" $ roundTripEq @Version
+    , testProperty "Natural" $ roundTripEq @Natural
+    , testProperty "Proxy" $ roundTripEq @(Proxy Int)
+    , testProperty "Tagged" $ roundTripEq @(Tagged Int Char)
+    , testProperty "Const" $ roundTripEq @(Const Int Char)
+    , testProperty "DList" $ roundTripEq @(DList Int)
+    , testProperty "Seq" $ roundTripEq @(Seq Int)
+    , testProperty "Rational" $ roundTripEq @Rational
+    , testProperty "Ratio Int" $ roundTripEq @(Ratio Int)
+    , testProperty "UUID" $ roundTripEq @UUID.UUID
+    , testProperty "These" $ roundTripEq @(These Char Bool)
+    , testProperty "Fix" $ roundTripEq @(F.Fix (These Char))
+    , testProperty "Mu" $ roundTripEq @(F.Mu (These Char))
+    , testProperty "Nu" $ roundTripEq @(F.Nu (These Char))
+    , testProperty "Strict Pair" $ roundTripEq @(S.Pair Int Char)
+    , testProperty "Strict Either" $ roundTripEq @(S.Either Int Char)
+    , testProperty "Strict These" $ roundTripEq @(S.These Int Char)
+    , testProperty "Strict Maybe" $ roundTripEq @(S.Maybe Int)
+    , testProperty "Solo Int" $ roundTripEq @(Solo Int)
+    , testProperty "ShortText" $ roundTripEq @(ST.ShortText)
     , roundTripFunctorsTests
     , testGroup "ghcGenerics" [
         testProperty "OneConstructor" $ roundTripEq OneConstructor
-      , testProperty "Product2" $ roundTripEq (undefined :: Product2 Int Bool)
-      , testProperty "Product6" $ roundTripEq (undefined :: P6)
-      , testProperty "Sum4" $ roundTripEq (undefined :: S4)
+      , testProperty "Product2" $ roundTripEq @(Product2 Int Bool)
+      , testProperty "Product6" $ roundTripEq @(Product6 Int Bool String (Approx Double) (Int, Approx Double) ())
+      , testProperty "Sum4" $ roundTripEq @(Sum4 Int8 ZonedTime T.Text (Map String Int))
       ]
     ]
