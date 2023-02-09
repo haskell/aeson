@@ -8,9 +8,9 @@
 module AesonMap (benchmark) where
 
 import           Prelude.Compat
+import           Bench
 
 import           Control.DeepSeq
-import           Criterion.Main
 import           Data.Aeson
 import           Data.Aeson.Types     (fromJSONKeyCoerce)
 import qualified Data.ByteString.Lazy as LBS

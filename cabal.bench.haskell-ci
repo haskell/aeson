@@ -1,6 +1,0 @@
--- I wonder if name affects the order CI runs.
-github-action-name: Z Bench CI
-branches:           master
-haddock:            False
-cabal-check:        False
-unconstrained:      False

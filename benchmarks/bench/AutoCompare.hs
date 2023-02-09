@@ -5,7 +5,7 @@ module AutoCompare (benchmark, sanityCheck) where
 
 import Control.DeepSeq
 import Control.Monad
-import Criterion.Main
+import Bench
 import Data.Aeson
 
 import qualified Auto.T.D as T

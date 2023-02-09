@@ -1,7 +1,0 @@
-with-compiler: ghc
-packages: benchmarks/
-tests: false
-
--- This may affect benchmark results
---package aeson-benchmarks
---  ghc-options: -O2 -fexpose-all-unfoldings -fspecialise-aggressively

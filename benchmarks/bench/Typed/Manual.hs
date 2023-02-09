@@ -1,17 +1,22 @@
+{-# LANGUAGE CPP #-}
 {-# LANGUAGE NoImplicitPrelude #-}
 
 module Typed.Manual (benchmarks, decodeBenchmarks) where
 
 import Prelude.Compat
+import Bench
 
 import Data.Aeson hiding (Result)
-import Criterion
-import Data.ByteString.Lazy as L
+import qualified Data.ByteString as B
+import qualified Data.ByteString.Lazy as L
 import Twitter.Manual
 import Utils
 
 encodeDirect :: Result -> L.ByteString
 encodeDirect = encode
+
+encodeDirectStrict :: Result -> B.ByteString
+encodeDirectStrict = L.toStrict . encode
 
 encodeViaValue :: Result -> L.ByteString
 encodeViaValue = encode . toJSON
@@ -23,6 +28,10 @@ benchmarks =
       bgroup "direct" [
         bench "twitter100" $ nf encodeDirect twitter100
       , bench "jp100"      $ nf encodeDirect jp100
+      ]
+    , bgroup "strictViaLazy" [
+        bench "twitter100" $ whnf encodeDirectStrict twitter100
+      , bench "jp100"      $ whnf encodeDirectStrict jp100
       ]
     , bgroup "viaValue" [
         bench "twitter100" $ nf encodeViaValue twitter100

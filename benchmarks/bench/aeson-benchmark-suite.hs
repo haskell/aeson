@@ -8,21 +8,20 @@ module Main (main) where
 import           Data.Aeson
 import           Prelude.Compat
 
-import           Control.DeepSeq                (NFData)
-import           Criterion.Main                 (Benchmark, bench, bgroup,
-                                                 defaultMain, env, nf, whnf)
-import           Data.Proxy                     (Proxy (..))
-import           Data.Vector                    (Vector)
+import           Bench                      (Benchmark, bench, bgroup,
+                                             defaultMain, env, nf, whnf)
+import           Control.DeepSeq            (NFData)
+import           Data.Aeson.Parser.Internal (unescapeText)
+import           Data.Proxy                 (Proxy (..))
+import           Data.Vector                (Vector)
 
-import qualified Data.Aeson.Encoding.Builder    as Aeson.EB
-import qualified Data.Aeson.Parser.UnescapePure as Pure
-import qualified Data.ByteString                as BS
-import qualified Data.ByteString.Base16         as Base16
-import qualified Data.ByteString.Builder        as B
-import qualified Data.ByteString.Char8          as BS8
-import qualified Data.ByteString.Lazy           as LBS
-import qualified Data.Text                      as T
-import qualified Data.Text.Encoding             as TE
+import qualified Data.ByteString            as BS
+import qualified Data.ByteString.Base16     as Base16
+import qualified Data.ByteString.Builder    as B
+import qualified Data.ByteString.Char8      as BS8
+import qualified Data.ByteString.Lazy       as LBS
+import qualified Data.Text                  as T
+import qualified Data.Text.Encoding         as TE
 
 import qualified AesonFoldable
 import qualified AesonMap
@@ -34,13 +33,12 @@ import qualified GitHub
 import qualified Issue673
 import qualified Micro
 import qualified Typed
-import qualified UnescapePureText2              as Text2
+import qualified UnescapePureText2          as Text2
 
 import           Utils
 
 #if !MIN_VERSION_text(2,0,0)
-import qualified Data.Aeson.Parser.UnescapeFFI  as FFI
-import qualified UnescapePureText1              as Text1
+import qualified UnescapePureText1          as Text1
 #endif
 
 -------------------------------------------------------------------------------
@@ -71,7 +69,7 @@ decodeBench name fp _ = bgroup name
 escapeBench :: Benchmark
 escapeBench = bgroup "Escape"
     [ example "ascii" $ BS8.pack $ take 500 $ cycle ['a'..'z']
-    , example "cyrillic" $ LBS.toStrict $ B.toLazyByteString $ Aeson.EB.unquoted $ T.unwords
+    , example "cyrillic" $ TE.encodeUtf8 $ T.unwords
       [ "Стандарт состоит из двух основных частей: универсального набора "
       , "символов (англ. Universal character set, UCS) и семейства кодировок"
       , "(англ. Unicode transformation format, UTF). Универсальный набор"
@@ -98,9 +96,8 @@ escapeBench = bgroup "Escape"
   where
     example :: String -> BS.ByteString -> Benchmark
     example name input = bgroup name
-      [ bench "pure"  $ whnf Pure.unescapeText input
+      [ bench "def"   $ whnf unescapeText input
 #if !MIN_VERSION_text(2,0,0)
-      , bench "ffi"   $ whnf FFI.unescapeText input
       , bench "text1" $ whnf Text1.unescapeText input
 #endif
       , bench "text2" $ whnf Text2.unescapeText input
