@@ -46,6 +46,7 @@ extra-source-files:
   tests/golden/*.expected
   tests/JSONTestSuite/test_parsing/*.json
   tests/JSONTestSuite/test_transform/*.json
+  tests/JSONTestSuite/results/*.txt
 
 flag cffi
   description:

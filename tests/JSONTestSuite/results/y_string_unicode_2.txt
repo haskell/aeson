@@ -1,0 +1,1 @@
+Right (Array [String "\9026\12852\9026"])

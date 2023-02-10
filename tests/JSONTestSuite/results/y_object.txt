@@ -1,0 +1,1 @@
+Right (Object (fromList [("asd",String "sdf"),("dfg",String "fgh")]))
