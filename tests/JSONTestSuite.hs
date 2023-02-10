@@ -10,6 +10,7 @@ import Data.List (sort)
 import Control.Monad (forM)
 
 import qualified Data.ByteString as B
+import qualified Data.ByteString.Lazy as L
 import qualified Data.ByteString.Lazy.Char8 as LBS8
 import qualified Data.HashSet as HashSet
 
@@ -17,6 +18,7 @@ import Data.Aeson
 import qualified Data.Aeson.Decoding as D
 import Data.Aeson.Decoding.Tokens
 import qualified Data.Aeson.Decoding.ByteString as D
+import qualified Data.Aeson.Decoding.ByteString.Lazy as D
 
 
 jsonTestSuiteTest :: FilePath -> TestTree
@@ -45,12 +47,17 @@ jsonTestSuiteTest path = case take 2 fileName of
             assertBool (show result) (isRight result)
             return (LBS8.pack (show result ++ "\n"))
 
-        , goldenVsStringDiff "tokens" diff ("tests" </>  "JSONTestSuite" </> "results" </> fileName -<.> "tok") $ do
+        , goldenVsStringDiff "tokens bs" diff ("tests" </>  "JSONTestSuite" </> "results" </> fileName -<.> "tok") $ do
             payload <- B.readFile path
             let result = D.bsToTokens payload
             return (LBS8.pack (unlines (showTokens (const []) result)))
 
-          ]
+        , goldenVsStringDiff "tokens lbs" diff ("tests" </>  "JSONTestSuite" </> "results" </> fileName -<.> "tok") $ do
+            payload <- L.readFile path
+            let result = D.lbsToTokens payload
+            return (LBS8.pack (unlines (showTokens (const []) result)))
+
+        ]
 
     negative = testGroup fileName
         [ testCase "decode" $ do
@@ -60,11 +67,21 @@ jsonTestSuiteTest path = case take 2 fileName of
             assertBool ("decode:" ++ show result1) (isLeft result1)
 
             let result2 = D.eitherDecodeStrict payload :: Either String Value
-            assertBool ("tokens:" ++ show result2) (isLeft result2)
+            assertBool ("strict:" ++ show result2) (isLeft result2)
 
-        , goldenVsStringDiff "tokens" diff ("tests" </>  "JSONTestSuite" </> "results" </> fileName -<.> "tok") $ do
+            payloadL <- L.readFile path
+
+            let result3 = D.eitherDecode payloadL :: Either String Value
+            assertBool ("lazy:" ++ show result3) (isLeft result3)
+
+        , goldenVsStringDiff "tokens bs" diff ("tests" </>  "JSONTestSuite" </> "results" </> fileName -<.> "tok") $ do
             payload <- B.readFile path
             let result = D.bsToTokens payload
+            return (LBS8.pack (unlines (showTokens (const []) result)))
+
+        , goldenVsStringDiff "tokens lbs" diff ("tests" </>  "JSONTestSuite" </> "results" </> fileName -<.> "tok") $ do
+            payload <- L.readFile path
+            let result = D.lbsToTokens payload
             return (LBS8.pack (unlines (showTokens (const []) result)))
 
         ]

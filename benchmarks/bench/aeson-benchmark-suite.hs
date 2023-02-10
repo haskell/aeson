@@ -53,9 +53,10 @@ decodeBench
   -> Proxy a   -- ^ what type
   -> Benchmark
 decodeBench name fp _ = bgroup name
-    [ env (readL fp) $ \contents -> bench "lazy"   $ nf decL contents
-    , env (readS fp) $ \contents -> bench "strict" $ nf decS contents
-    , env (readS fp) $ \contents -> bench "tokens" $ nf decT contents
+    [ env (readL fp) $ \contents -> bench "lazy"       $ nf decL contents
+    , env (readS fp) $ \contents -> bench "strict"     $ nf decS contents
+    , env (readL fp) $ \contents -> bench "lazy tok"   $ nf decU contents
+    , env (readS fp) $ \contents -> bench "strict tok" $ nf decT contents
     ]
   where
     decL :: LBS.ByteString -> Maybe a
@@ -66,6 +67,9 @@ decodeBench name fp _ = bgroup name
 
     decT :: BS.ByteString -> Maybe a
     decT = Dec.decodeStrict
+
+    decU :: LBS.ByteString -> Maybe a
+    decU = Dec.decode
 
 -------------------------------------------------------------------------------
 -- Escape bench

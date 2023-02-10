@@ -3,19 +3,19 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE ViewPatterns        #-}
 {-# OPTIONS_GHC -O2 #-}
--- | Parser from strict 'ByteString' to 'Tokens'.
-module Data.Aeson.Decoding.ByteString (
-    bsToTokens,
+-- | Parser from lazy 'ByteString' to 'Tokens'.
+module Data.Aeson.Decoding.ByteString.Lazy (
+    lbsToTokens,
 ) where
 
-import           Data.ByteString              (ByteString)
+import           Data.ByteString.Lazy         (ByteString)
 import           Data.Char                    (chr)
 import           Data.Text                    (Text)
 import           Data.Word                    (Word8)
 
 import qualified Data.Aeson.Key               as Key
 import qualified Data.ByteString              as BS
-import qualified Data.ByteString.Unsafe       as BS.Unsafe
+import qualified Data.ByteString.Lazy         as LBS
 import qualified Data.Scientific              as Sci
 
 import           Data.Aeson.Decoding.Internal
@@ -25,14 +25,14 @@ import           Data.Aeson.Internal.Text     (unsafeDecodeASCII)
 import           Data.Aeson.Internal.Word8
 import           Data.Aeson.Parser.Unescape   (unescapeText)
 
--- | Lex (and parse) strict 'ByteString' into 'Tokens' stream.
+-- | Lex (and parse) lazy 'ByteString' into 'Tokens' stream.
 --
 -- @since 2.1.2.0
 --
-bsToTokens :: ByteString -> Tokens ByteString String
-bsToTokens bs0 = goT bs0 id where
+lbsToTokens :: ByteString -> Tokens ByteString String
+lbsToTokens bs0 = goT bs0 id where
     goT :: Parser Tokens k
-    goT (skipSpace -> bs) k = case BS.uncons bs of
+    goT (skipSpace -> bs) k = case LBS.uncons bs of
         Nothing         -> tkErr "Unexpected end-of-input, expecting JSON value"
         Just (!w, !bs1) -> tokenCase w bs1 bs k
 
@@ -58,13 +58,13 @@ bsToTokens bs0 = goT bs0 id where
 
     -- Array
     goA :: Parser TkArray k
-    goA (skipSpace -> bs) k = case BS.uncons bs of
+    goA (skipSpace -> bs) k = case LBS.uncons bs of
         Nothing         -> tkErrEOF "JSON value or ]"
         Just (W8_CLOSE_SQUARE, !bs1) -> TkArrayEnd (k bs1)
         Just (w,  !bs1) -> TkItem $ tokenCase w bs1 bs $ \bs2 -> goA1 bs2 k
 
     goA1 :: Parser TkArray k
-    goA1 (skipSpace -> bs) k = case BS.uncons bs of
+    goA1 (skipSpace -> bs) k = case LBS.uncons bs of
         Nothing                      -> tkErrEOF ", or ]"
         Just (W8_CLOSE_SQUARE, !bs1) -> TkArrayEnd (k bs1)
         Just (W8_COMMA, !bs1)        -> TkItem $ goT bs1 $ \bs2 -> goA1 bs2 k
@@ -72,7 +72,7 @@ bsToTokens bs0 = goT bs0 id where
 
     -- Record
     goR :: Parser TkRecord k
-    goR (skipSpace -> bs) k = case BS.uncons bs of
+    goR (skipSpace -> bs) k = case LBS.uncons bs of
         Nothing                       -> tkErrEOF "record key literal or }"
         Just (W8_DOUBLE_QUOTE,  !bs1) -> goRK bs1 k           -- "
         Just (W8_CLOSE_CURLY, !bs1)   -> TkRecordEnd (k bs1)  -- }
@@ -80,9 +80,9 @@ bsToTokens bs0 = goT bs0 id where
 
     -- after record pair, expecting ," or }
     goR1 :: Parser TkRecord k
-    goR1 (skipSpace -> bs) k = case BS.uncons bs of
+    goR1 (skipSpace -> bs) k = case LBS.uncons bs of
         Nothing                           -> tkErr "Unexpected end-of-input, expecting , or }"
-        Just (W8_COMMA, !bs1) -> case BS.uncons (skipSpace bs1) of
+        Just (W8_COMMA, !bs1) -> case LBS.uncons (skipSpace bs1) of
             Nothing                      -> tkErrEOF "key literal"
             Just (W8_DOUBLE_QUOTE, !bs2) -> goRK bs2 k
             Just _                       -> tkErrBS bs "key literal"
@@ -95,24 +95,24 @@ bsToTokens bs0 = goT bs0 id where
 
     -- after key of a record, expecting :
     goRK' :: Text -> Parser TkRecord k
-    goRK' t (skipSpace -> bs) k = case BS.uncons bs of
+    goRK' t (skipSpace -> bs) k = case LBS.uncons bs of
         Nothing               -> tkErrEOF ":"
         Just (W8_COLON, !bs3) -> TkPair (Key.fromText t) $ goT bs3 $ \bs4 -> goR1 bs4 k
         Just _                -> tkErrBS bs ":"
 
 stripPrefix :: ByteString -> Int -> ByteString -> Maybe ByteString
-stripPrefix pfx n bs | BS.isPrefixOf pfx bs = Just (BS.Unsafe.unsafeDrop n bs)
-                     | otherwise            = Nothing
+stripPrefix pfx n bs | LBS.isPrefixOf pfx bs = Just (LBS.drop (fromIntegral n) bs)
+                     | otherwise             = Nothing
 {-# INLINE stripPrefix #-}
 
 type Parser tk k = ByteString -> (ByteString -> k) -> tk k String
 
 showBeginning :: ByteString -> String
-showBeginning = show . BS.take 30
+showBeginning = show . LBS.take 30
 
 -- | Strip leading (ASCII) space
 skipSpace :: ByteString -> ByteString
-skipSpace = BS.dropWhile $ \w -> w == 0x20 || w == 0x0a || w == 0x0d || w == 0x09
+skipSpace = LBS.dropWhile $ \w -> w == 0x20 || w == 0x0a || w == 0x0d || w == 0x09
 {-# INLINE skipSpace #-}
 
 tkErrEOF :: AsError t =>String ->  t k String
@@ -125,6 +125,12 @@ tkErrBS bs expected = tkErr $
     "Unexpected " ++ showBeginning bs ++ ", expecting " ++ expected
 {-# INLINE tkErrBS #-}
 
+lbsTake :: Int -> ByteString -> BS.ByteString
+lbsTake n bs = LBS.toStrict (LBS.take (fromIntegral n) bs)
+
+lbsDrop :: Int -> ByteString -> ByteString
+lbsDrop n = LBS.drop (fromIntegral n)
+
 -------------------------------------------------------------------------------
 -- Text
 -------------------------------------------------------------------------------
@@ -136,9 +142,9 @@ scanStringLiteral
     -> r
 scanStringLiteral ok err bs0 = go 0 bs0 where
     go :: Int -> ByteString -> r
-    go !n !bs = case BS.uncons bs of
+    go !n !bs = case LBS.uncons bs of
         Nothing          -> errEnd
-        Just (34, _)     -> ok (unsafeDecodeASCII (BS.Unsafe.unsafeTake n bs0)) (BS.Unsafe.unsafeDrop (n + 1) bs0)
+        Just (34, _)     -> ok (unsafeDecodeASCII (lbsTake n bs0)) (lbsDrop  (n + 1) bs0)
         Just (92, bs')   -> goSlash (n + 1) bs'
         Just (w8, bs')
             | w8 < 0x20  -> errCC
@@ -147,16 +153,16 @@ scanStringLiteral ok err bs0 = go 0 bs0 where
 
     -- in goEsc and goSlash we don't need to check for control characters as unescapeText verifies that.
     goEsc :: Int -> ByteString -> r
-    goEsc !n !bs = case BS.uncons bs of
+    goEsc !n !bs = case LBS.uncons bs of
         Nothing        -> errEnd
-        Just (34, _)   -> case unescapeText (BS.Unsafe.unsafeTake n bs0) of
-            Right t -> ok t (BS.drop (n + 1) bs0)
+        Just (34, _)   -> case unescapeText (lbsTake n bs0) of
+            Right t -> ok t (lbsDrop (n + 1) bs0)
             Left e  -> err (show e)
         Just (92, bs') -> goSlash (n + 1) bs'
         Just (_,  bs') -> goEsc (n + 1) bs'
 
     goSlash :: Int -> ByteString -> r
-    goSlash !n !bs = case BS.uncons bs of
+    goSlash !n !bs = case LBS.uncons bs of
         Nothing       -> errEnd
         Just (_, bs') -> goEsc (n + 1) bs'
 
@@ -184,7 +190,7 @@ scanNumberLiteral
     -> r
 scanNumberLiteral kont err bs0 = state_start bs0 where
     state_start :: ByteString -> r
-    state_start !bs = case BS.uncons bs of
+    state_start !bs = case LBS.uncons bs of
         Nothing                      -> errEnd
         Just (w8, bs')
             | W8_0 < w8, w8 <= W8_9  -> state_i1 1 bs'
@@ -192,7 +198,7 @@ scanNumberLiteral kont err bs0 = state_start bs0 where
             | otherwise              -> err $ "Unexpected " ++ show w8 ++ " while parsing number literal"
 
     state_after0 :: ByteString -> r
-    state_after0 !bs = case BS.uncons bs of
+    state_after0 !bs = case LBS.uncons bs of
         Nothing                         -> kont (NumInteger 0) bs
         Just (w8, bs')
             | W8_0 <= w8, w8 <= W8_9    -> err "Number literal with leading zero"
@@ -201,7 +207,7 @@ scanNumberLiteral kont err bs0 = state_start bs0 where
             | otherwise                 -> kont (NumInteger 0) bs
 
     state_i1 :: Int -> ByteString -> r
-    state_i1 !n !bs = case BS.uncons bs of
+    state_i1 !n !bs = case LBS.uncons bs of
         Nothing                         -> kont (NumInteger int) bs
         Just (w8, bs')
             | W8_0 <= w8, w8 <= W8_9    -> state_i1 (n + 1) bs'
@@ -209,38 +215,38 @@ scanNumberLiteral kont err bs0 = state_start bs0 where
             | W8_e == w8 || W8_E == w8  -> go_sci int 0 bs'
             | otherwise                 -> kont (NumInteger int) bs
       where
-        int = bsToInteger (BS.Unsafe.unsafeTake n bs0)
+        int = bsToInteger (lbsTake n bs0)
 
     go_dec :: Integer -> ByteString -> r
-    go_dec !int !bs1 = case BS.uncons bs1 of
+    go_dec !int !bs1 = case LBS.uncons bs1 of
         Nothing                       -> errEnd
         Just (w8, bs')
             | W8_0 <= w8, w8 <= W8_9  -> state_dec 1 bs'
             | otherwise               -> err $ "Unexpected " ++ show w8 ++ " while parsing number literal"
       where
         state_dec :: Int -> ByteString -> r
-        state_dec !n !bs = case BS.uncons bs of
+        state_dec !n !bs = case LBS.uncons bs of
             Nothing                         -> kont (NumDecimal dec) bs
             Just (w8, bs')
                 | W8_0 <= w8, w8 <= W8_9    -> state_dec (n + 1) bs'
                 | W8_e == w8 || W8_E == w8  -> go_sci coef (negate n) bs'
                 | otherwise                 -> kont (NumDecimal dec) bs
           where
-            frac = bsToInteger (BS.Unsafe.unsafeTake n bs1)
+            frac = bsToInteger (lbsTake n bs1)
             coef = int * 10 ^ n + frac
             dec  = Sci.scientific coef (negate n)
 
     go_sci :: Integer -> Int -> ByteString -> r
-    go_sci !coef !exp10 !bs2 = case BS.uncons bs2 of
+    go_sci !coef !exp10 !bs2 = case LBS.uncons bs2 of
         Nothing                       -> errEnd
         Just (w8, bs')
             | W8_0 <= w8, w8 <= W8_9  -> go_sci_pos coef exp10 bs2 1 bs'
-            | W8_PLUS == w8           -> case BS.uncons bs' of
+            | W8_PLUS == w8           -> case LBS.uncons bs' of
                 Nothing               -> errEnd
                 Just (w8', bs'')
                     | W8_0 <= w8', w8' <= W8_9  -> go_sci_pos coef exp10 bs' 1 bs''
                     | otherwise       ->  errUnx w8'
-            | W8_MINUS == w8          -> case BS.uncons bs' of
+            | W8_MINUS == w8          -> case LBS.uncons bs' of
                 Nothing               -> errEnd
                 Just (w8', bs'')
                     | W8_0 <= w8', w8' <= W8_9  -> go_sci_neg coef exp10 bs' 1 bs''
@@ -248,23 +254,23 @@ scanNumberLiteral kont err bs0 = state_start bs0 where
             | otherwise               -> errUnx w8
 
     go_sci_pos :: Integer -> Int -> ByteString -> Int -> ByteString -> r
-    go_sci_pos !coef !exp10 !bs2 !n !bs = case BS.uncons bs of
+    go_sci_pos !coef !exp10 !bs2 !n !bs = case LBS.uncons bs of
         Nothing                       -> kont (NumScientific sci) bs
         Just (w8, bs')
             | W8_0 <= w8, w8 <= W8_9  -> go_sci_pos coef exp10 bs2 (n + 1) bs'
             | otherwise               -> kont (NumScientific sci) bs
       where
-        exp10' = fromInteger (bsToInteger (BS.Unsafe.unsafeTake n bs2))
+        exp10' = fromInteger (bsToInteger (lbsTake n bs2))
         sci = Sci.scientific coef (exp10 + exp10')
 
     go_sci_neg :: Integer -> Int -> ByteString -> Int -> ByteString -> r
-    go_sci_neg !coef !exp10 !bs2 !n !bs = case BS.uncons bs of
+    go_sci_neg !coef !exp10 !bs2 !n !bs = case LBS.uncons bs of
         Nothing                       -> kont (NumScientific sci) bs
         Just (w8, bs')
             | W8_0 <= w8, w8 <= W8_9  -> go_sci_neg coef exp10 bs2 (n + 1) bs'
             | otherwise               -> kont (NumScientific sci) bs
       where
-        exp10' = fromInteger (bsToInteger (BS.Unsafe.unsafeTake n bs2))
+        exp10' = fromInteger (bsToInteger (lbsTake n bs2))
         sci = Sci.scientific coef (exp10 - exp10')
 
     errEnd    = err "Unexpected end-of-input while parsing number literal"
