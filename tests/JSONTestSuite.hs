@@ -3,29 +3,39 @@ module JSONTestSuite (tests) where
 import Test.Tasty (TestTree, testGroup)
 import Data.Either.Compat (isLeft, isRight)
 import Test.Tasty.HUnit ( testCase, assertBool )
+import Test.Tasty.Golden (goldenVsString)
 import System.Directory (getDirectoryContents)
-import System.FilePath ((</>), takeExtension, takeFileName)
+import System.FilePath ((</>), (-<.>), takeExtension, takeFileName)
 import Data.List (sort)
 import Control.Monad (forM)
 
 import qualified Data.ByteString.Lazy as L
+import qualified Data.ByteString.Lazy.Char8 as LBS8
 import qualified Data.HashSet as HashSet
 
 import Data.Aeson
 
 jsonTestSuiteTest :: FilePath -> TestTree
-jsonTestSuiteTest path = testCase fileName $ do
-    payload <- L.readFile path
-    let result = eitherDecode payload :: Either String Value
-    assertBool (show result) $ case take 2 fileName of
-      "n_"                                                -> isLeft result
-      "y_"                                                -> isRight result
-      "i_" | fileName `HashSet.member` ignore_accepted    -> isRight result
-           | otherwise                                    -> isLeft result
-      _    | fileName `HashSet.member` transform_rejected -> isLeft result
-           | otherwise                                    -> isRight result -- test_transform tests have inconsistent names
+jsonTestSuiteTest path = case take 2 fileName of
+    "n_"                                                -> negative
+    "y_"                                                -> positive
+    "i_" | fileName `HashSet.member` ignore_accepted    -> positive
+         | otherwise                                    -> negative
+    _    | fileName `HashSet.member` transform_rejected -> negative
+         | otherwise                                    -> positive
   where
     fileName = takeFileName path
+
+    positive = goldenVsString fileName ("tests" </>  "JSONTestSuite" </> "results" </> fileName -<.> "txt") $ do
+        payload <- L.readFile path
+        let result = eitherDecode payload :: Either String Value
+        assertBool (show result) (isRight result)
+        return (LBS8.pack (show result ++ "\n"))
+
+    negative = testCase fileName $ do
+        payload <- L.readFile path
+        let result = eitherDecode payload :: Either String Value
+        assertBool (show result) (isLeft result)
 
 -- Build a collection of tests based on the current contents of the
 -- JSONTestSuite test directories.

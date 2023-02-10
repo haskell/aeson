@@ -1,0 +1,1 @@
+Right (Array [Number 1.0,Null,Null,Null,Number 2.0])

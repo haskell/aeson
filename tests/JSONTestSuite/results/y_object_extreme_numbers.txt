@@ -1,0 +1,1 @@
+Right (Object (fromList [("max",Number 1.0e28),("min",Number (-1.0e28))]))
