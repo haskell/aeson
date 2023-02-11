@@ -2,6 +2,9 @@ branches: master
 cabal-check: False
 docspec: True
 
+-- due hermes-json depending on attoparsec-iso8601
+install-dependencies: False
+
 -- GADT docs
 haddock: >=8.6
 

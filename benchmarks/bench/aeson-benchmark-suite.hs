@@ -42,6 +42,10 @@ import           Utils
 import qualified UnescapePureText1          as Text1
 #endif
 
+#if __GLASGOW_HASKELL__ >=810
+import qualified CompareWithHermes
+#endif
+
 -------------------------------------------------------------------------------
 -- Decode bench
 -------------------------------------------------------------------------------
@@ -136,3 +140,6 @@ main = do
     ]
     ++ Compare.benchmarks -- compares to different libs (encoding)
     ++ [ CompareWithJSON.benchmark ]
+#if __GLASGOW_HASKELL__ >=810
+    ++ [ CompareWithHermes.benchmark ]
+#endif
