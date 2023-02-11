@@ -4,9 +4,11 @@ For the latest version of this document, please see [https://github.com/haskell/
 
 * Add `throwDecode :: (MonadThrow m, FromJSON a) => ByteString -> m a`
   and variants.
-
-### 2.1.2.0
-
+* Add `Data.Aeson.Decoding` which uses new underlying tokenizer / parser.
+  This parser seems to be faster, and the intermediate `Tokens` streams
+  allow to differentiate more than `Value` if needed.
+  If no critical issues is found, this parser will become the default
+  in next major `aeson` version.
 * Support deriving for empty datatypes (such as `Void` and `V1`)
   in `FromJSON` and `ToJSON`.
 * Add `To/FromJSONKey Void` instances

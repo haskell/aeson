@@ -250,6 +250,10 @@ fromListWith op = KeyMap . M.fromListWith op
 -- |  Construct a map with the supplied mappings. If the
 -- list contains duplicate mappings, the later mappings take
 -- precedence.
+--
+-- >>> fromList [("a", 'x'), ("a", 'y')]
+-- fromList [("a",'y')]
+--
 fromList :: [(Key, v)] -> KeyMap v
 fromList = KeyMap . M.fromList
 

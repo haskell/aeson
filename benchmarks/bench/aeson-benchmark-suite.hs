@@ -14,6 +14,7 @@ import           Control.DeepSeq            (NFData)
 import           Data.Aeson.Parser.Internal (unescapeText)
 import           Data.Proxy                 (Proxy (..))
 import           Data.Vector                (Vector)
+import qualified Data.Aeson.Decoding        as Dec
 
 import qualified Data.ByteString            as BS
 import qualified Data.ByteString.Base16     as Base16
@@ -52,8 +53,10 @@ decodeBench
   -> Proxy a   -- ^ what type
   -> Benchmark
 decodeBench name fp _ = bgroup name
-    [ env (readL fp) $ \contents -> bench "lazy"   $ nf decL contents
-    , env (readS fp) $ \contents -> bench "strict" $ nf decS contents
+    [ env (readL fp) $ \contents -> bench "lazy"       $ nf decL contents
+    , env (readS fp) $ \contents -> bench "strict"     $ nf decS contents
+    , env (readL fp) $ \contents -> bench "lazy tok"   $ nf decU contents
+    , env (readS fp) $ \contents -> bench "strict tok" $ nf decT contents
     ]
   where
     decL :: LBS.ByteString -> Maybe a
@@ -61,6 +64,12 @@ decodeBench name fp _ = bgroup name
 
     decS :: BS.ByteString -> Maybe a
     decS = decodeStrict
+
+    decT :: BS.ByteString -> Maybe a
+    decT = Dec.decodeStrict
+
+    decU :: LBS.ByteString -> Maybe a
+    decU = Dec.decode
 
 -------------------------------------------------------------------------------
 -- Escape bench

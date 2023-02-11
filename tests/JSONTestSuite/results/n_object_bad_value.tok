@@ -1,0 +1,5 @@
+TkArrayOpen
+TkItem
+TkText "x"
+TkItem
+TkErr "Unexpected \"truth]\", expecting JSON value"

@@ -1,0 +1,5 @@
+TkArrayOpen
+TkItem
+TkNumber NumInteger 1
+TkItem
+TkErr "Unexpected \"]\", expecting JSON value"

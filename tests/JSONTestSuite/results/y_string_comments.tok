@@ -1,0 +1,4 @@
+TkArrayOpen
+TkItem
+TkText "a/*b*/c/*d//e"
+TkArrayEnd

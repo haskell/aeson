@@ -1,0 +1,6 @@
+TkRecordOpen
+TkPair "min"
+TkNumber NumScientific (-1.0e28)
+TkPair "max"
+TkNumber NumScientific 1.0e28
+TkRecordEnd

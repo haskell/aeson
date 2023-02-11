@@ -1,0 +1,4 @@
+TkRecordOpen
+TkPair "foo\NULbar"
+TkNumber NumInteger 42
+TkRecordEnd
