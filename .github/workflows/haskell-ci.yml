@@ -246,6 +246,7 @@ jobs:
           if [ $((HCNUMVER >= 80200)) -ne 0 ] ; then echo "package aeson-benchmarks" >> cabal.project ; fi
           if [ $((HCNUMVER >= 80200)) -ne 0 ] ; then echo "    ghc-options: -Werror=missing-methods" >> cabal.project ; fi
           cat >> cabal.project <<EOF
+          allow-newer: hermes-json:attoparsec-iso8601
           EOF
           $HCPKG list --simple-output --names-only | perl -ne 'for (split /\s+/) { print "constraints: $_ installed\n" unless /^(aeson|aeson-benchmarks|aeson-examples|attoparsec-iso8601)$/; }' >> cabal.project.local
           cat cabal.project
@@ -260,10 +261,6 @@ jobs:
           key: ${{ runner.os }}-${{ matrix.compiler }}-${{ github.sha }}
           path: ~/.cabal/store
           restore-keys: ${{ runner.os }}-${{ matrix.compiler }}-
-      - name: install dependencies
-        run: |
-          $CABAL v2-build $ARG_COMPILER --disable-tests --disable-benchmarks --dependencies-only -j2 all
-          $CABAL v2-build $ARG_COMPILER $ARG_TESTS $ARG_BENCH --dependencies-only -j2 all
       - name: build w/o tests
         run: |
           $CABAL v2-build $ARG_COMPILER --disable-tests --disable-benchmarks all
@@ -289,31 +286,25 @@ jobs:
           rm -f cabal.project.local
       - name: constraint set text-2.0
         run: |
-          $CABAL v2-build $ARG_COMPILER --enable-tests --disable-benchmarks --constraint='text ^>=2.0' --dependencies-only -j2 all
           $CABAL v2-build $ARG_COMPILER --enable-tests --disable-benchmarks --constraint='text ^>=2.0' all
           $CABAL v2-test $ARG_COMPILER --enable-tests --disable-benchmarks --constraint='text ^>=2.0' all
       - name: constraint set text-1.2
         run: |
-          if [ $((HCNUMVER < 90400)) -ne 0 ] ; then $CABAL v2-build $ARG_COMPILER --enable-tests --disable-benchmarks --constraint='text ^>=1.2.3.0' --dependencies-only -j2 all ; fi
           if [ $((HCNUMVER < 90400)) -ne 0 ] ; then $CABAL v2-build $ARG_COMPILER --enable-tests --disable-benchmarks --constraint='text ^>=1.2.3.0' all ; fi
           if [ $((HCNUMVER < 90400)) -ne 0 ] ; then $CABAL v2-test $ARG_COMPILER --enable-tests --disable-benchmarks --constraint='text ^>=1.2.3.0' all ; fi
       - name: constraint set bytestring-0.11.2.0
         run: |
-          $CABAL v2-build $ARG_COMPILER --disable-tests --disable-benchmarks --constraint='bytestring >= 0.11.2.0' --dependencies-only -j2 all
           $CABAL v2-build $ARG_COMPILER --disable-tests --disable-benchmarks --constraint='bytestring >= 0.11.2.0' all
       - name: constraint set ordered-keymap-off
         run: |
-          $CABAL v2-build $ARG_COMPILER --enable-tests --disable-benchmarks --constraint='aeson -ordered-keymap' --dependencies-only -j2 all
           $CABAL v2-build $ARG_COMPILER --enable-tests --disable-benchmarks --constraint='aeson -ordered-keymap' all
           $CABAL v2-test $ARG_COMPILER --enable-tests --disable-benchmarks --constraint='aeson -ordered-keymap' all
       - name: constraint set ordered-keymap-on
         run: |
-          $CABAL v2-build $ARG_COMPILER --enable-tests --disable-benchmarks --constraint='aeson +ordered-keymap' --dependencies-only -j2 all
           $CABAL v2-build $ARG_COMPILER --enable-tests --disable-benchmarks --constraint='aeson +ordered-keymap' all
           $CABAL v2-test $ARG_COMPILER --enable-tests --disable-benchmarks --constraint='aeson +ordered-keymap' all
       - name: constraint set cffi
         run: |
-          if [ $((HCNUMVER < 90400)) -ne 0 ] ; then $CABAL v2-build $ARG_COMPILER --enable-tests --disable-benchmarks --constraint='aeson +cffi' --dependencies-only -j2 all ; fi
           if [ $((HCNUMVER < 90400)) -ne 0 ] ; then $CABAL v2-build $ARG_COMPILER --enable-tests --disable-benchmarks --constraint='aeson +cffi' all ; fi
           if [ $((HCNUMVER < 90400)) -ne 0 ] ; then $CABAL v2-test $ARG_COMPILER --enable-tests --disable-benchmarks --constraint='aeson +cffi' all ; fi
       - name: save cache

@@ -29,12 +29,6 @@ import qualified AesonMap
 import qualified AutoCompare
 import qualified Compare
 import qualified CompareWithJSON
-<<<<<<< HEAD:benchmarks/bench/aeson-benchmark-suite.hs
-=======
-#ifdef MIN_VERSION_hermes_json
-import qualified CompareWithHermes
-#endif
->>>>>>> Use hermes only with GHC > 8.8:benchmarks/bench/Suite.hs
 import qualified Dates
 import qualified GitHub
 import qualified Issue673

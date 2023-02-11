@@ -13,6 +13,7 @@ import qualified Data.Aeson.Parser.Internal as I
 import qualified Data.ByteString as BS
 import qualified Data.ByteString.Lazy as BL
 import qualified Data.Hermes as H
+import qualified Data.Hermes.Aeson as H.A
 import qualified Twitter as T
 import Twitter.Manual () -- fair comparison with manual Hermes decoders
 import Twitter.Hermes
@@ -40,6 +41,14 @@ decodeH s = case H.decodeEither twitterResultDecoder s of
   Right result -> result
   Left err -> error (show err)
 
+-- decode to A.Value, and then use A.FromJSON instance.
+decodeHA :: BS.ByteString -> T.Result
+decodeHA s = case H.decodeEither H.A.valueDecoder s of
+  Left err -> error (show err)
+  Right v  -> case A.fromJSON v of
+      A.Success x -> x
+      A.Error err -> error (show err)
+
 benchmark :: Benchmark
 benchmark =
   env (readL enFile) $ \enA ->
@@ -55,12 +64,14 @@ benchmark =
         , bench "aeson/parser"   $ nf decodeIP enA
         , bench "aeson/tokens/strict" $ nf decodeTS enS
         , bench "hermes"         $ nf decodeH enS
+        , bench "hermes/aeson"   $ nf decodeHA enS
         ]
       , bgroup "jp" [
           bench "aeson"          $ nf decode jpA
         , bench "aeson/stricter" $ nf decodeS jpS
         , bench "aeson/tokens/strict" $ nf decodeTS jpS
         , bench "hermes"         $ nf decodeH jpS
+        , bench "hermes/aeson"   $ nf decodeHA jpS
         ]
       ]
     ]

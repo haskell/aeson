@@ -108,6 +108,7 @@ executable aeson-benchmark-suite
     build-depends: hermes-json >=0.2.0.1
     other-modules:
       CompareWithHermes
+      Data.Hermes.Aeson
       Twitter.Hermes
 
   if !flag(text2)
