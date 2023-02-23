@@ -1586,8 +1586,8 @@ instance FromJSON Double where
 instance FromJSONKey Double where
     fromJSONKey = FromJSONKeyTextParser $ \t -> case t of
         "NaN"   -> pure (0/0)
-        "-inf"  -> pure (1/0)
-        "+inf"  -> pure (negate 1/0)
+        "+inf"  -> pure (1/0)
+        "-inf"  -> pure (negate 1/0)
         _       -> Scientific.toRealFloat <$> parseScientificText t
 
 instance FromJSON Float where
