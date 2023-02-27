@@ -14,7 +14,7 @@ cabal-version:   >=1.10
 homepage:        https://github.com/haskell/aeson
 bug-reports:     https://github.com/haskell/aeson/issues
 build-type:      Simple
-tested-with:     GHC == 8.0.2, GHC == 8.2.2, GHC == 8.4.4, GHC == 8.6.5, GHC == 8.8.4, GHC == 8.10.7, GHC == 9.0.2, GHC ==9.2.6, GHC==9.4.4
+tested-with:     GHC == 8.0.2, GHC == 8.2.2, GHC == 8.4.4, GHC == 8.6.5, GHC == 8.8.4, GHC == 8.10.7, GHC == 9.0.2, GHC ==9.2.7, GHC==9.4.4
 extra-source-files:
   README.md
   changelog.md
