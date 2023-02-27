@@ -1,5 +1,5 @@
 name:               aeson
-version:            2.1.2.0
+version:            2.1.2.1
 license:            BSD3
 license-file:       LICENSE
 category:           Text, Web, JSON
@@ -18,7 +18,7 @@ tested-with:
    || ==8.8.4
    || ==8.10.7
    || ==9.0.2
-   || ==9.2.6
+   || ==9.2.7
    || ==9.4.4
 
 synopsis:           Fast JSON parsing and encoding
@@ -215,7 +215,7 @@ test-suite aeson-tests
     , OneTuple
     , primitive
     , QuickCheck            >=2.14.2   && <2.15
-    , quickcheck-instances  >=0.3.26.1 && <0.4
+    , quickcheck-instances  >=0.3.29   && <0.4
     , scientific
     , strict
     , tagged
