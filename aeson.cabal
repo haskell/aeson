@@ -138,7 +138,7 @@ library
     , strict                >=0.4      && <0.5
     , tagged                >=0.8.6    && <0.9
     , text-short            >=0.1.5    && <0.2
-    , th-abstraction        >=0.3.0.0  && <0.5
+    , th-abstraction        >=0.3.0.0  && <0.6
     , these                 >=1.1.1.1  && <1.2
     , unordered-containers  >=0.2.10.0 && <0.3
     , uuid-types            >=1.0.5    && <1.1
