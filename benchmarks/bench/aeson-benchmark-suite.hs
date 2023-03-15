@@ -42,7 +42,7 @@ import           Utils
 import qualified UnescapePureText1          as Text1
 #endif
 
-#if __GLASGOW_HASKELL__ >=810
+#ifdef MIN_VERSION_hermes_json
 import qualified CompareWithHermes
 #endif
 
@@ -140,6 +140,6 @@ main = do
     ]
     ++ Compare.benchmarks -- compares to different libs (encoding)
     ++ [ CompareWithJSON.benchmark ]
-#if __GLASGOW_HASKELL__ >=810
+#ifdef MIN_VERSION_hermes_json
     ++ [ CompareWithHermes.benchmark ]
 #endif
