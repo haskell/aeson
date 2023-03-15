@@ -12,6 +12,7 @@ tested-with:
    || ==9.0.2
    || ==9.2.7
    || ==9.4.4
+   || ==9.6.1
 
 flag tasty-bench
   description: Use tasty-bench, otherwise criterion
@@ -104,8 +105,8 @@ executable aeson-benchmark-suite
     other-modules: Compare.JsonBuilder
     build-depends: json-builder
 
-  if impl(ghc >=8.10)
-    build-depends: hermes-json >=0.2.0.1
+  if impl(ghc >=8.10 && <9.6)
+    build-depends: hermes-json >=0.2.0.1 && <0.3
     other-modules:
       CompareWithHermes
       Data.Hermes.Aeson
