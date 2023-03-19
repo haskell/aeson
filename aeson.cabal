@@ -1,6 +1,6 @@
 name:               aeson
 version:            2.1.2.1
-x-revision:         2
+x-revision:         3
 license:            BSD3
 license-file:       LICENSE
 category:           Text, Web, JSON
@@ -118,7 +118,7 @@ library
 
   -- Compat
   build-depends:
-      base-compat-batteries  >=0.10.0 && <0.13
+      base-compat-batteries  >=0.10.0 && <0.14
     , generically            >=0.1    && <0.2
     , time-compat            >=1.9.6  && <1.10
 
@@ -199,7 +199,7 @@ test-suite aeson-tests
     , attoparsec
     , base
     , base-compat
-    , base-orphans          >=0.5.3    && <0.9
+    , base-orphans          >=0.5.3    && <0.10
     , base16-bytestring
     , bytestring
     , containers
