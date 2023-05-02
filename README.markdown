@@ -14,7 +14,7 @@ Please report bugs via the
 
 Master [git repository](http://github.com/haskell/aeson):
 
-* `git clone git://github.com/haskell/aeson.git`
+* `git clone git@github.com:haskell/aeson.git`
 
 See what's changed in recent (and upcoming) releases:
 
