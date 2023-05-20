@@ -219,6 +219,8 @@ decodeStrict = decodeStrictWith jsonEOF fromJSON
 --
 -- This function parses immediately, but defers conversion.  See
 -- 'json' for details.
+--
+-- Throws an 'Exception' when the file is missing.
 decodeFileStrict :: (FromJSON a) => FilePath -> IO (Maybe a)
 decodeFileStrict = fmap decodeStrict . B.readFile
 
@@ -257,6 +259,8 @@ decodeStrict' = decodeStrictWith jsonEOF' fromJSON
 --
 -- This function parses and performs conversion immediately.  See
 -- 'json'' for details.
+--
+-- Throws an 'Exception' when the file is missing.
 decodeFileStrict' :: (FromJSON a) => FilePath -> IO (Maybe a)
 decodeFileStrict' = fmap decodeStrict' . B.readFile
 
@@ -276,6 +280,8 @@ eitherDecodeStrict =
 {-# INLINE eitherDecodeStrict #-}
 
 -- | Like 'decodeFileStrict' but returns an error message when decoding fails.
+--
+-- Throws an 'Exception' when the file is missing.
 eitherDecodeFileStrict :: (FromJSON a) => FilePath -> IO (Either String a)
 eitherDecodeFileStrict =
   fmap eitherDecodeStrict . B.readFile
@@ -293,6 +299,8 @@ eitherDecodeStrict' =
 {-# INLINE eitherDecodeStrict' #-}
 
 -- | Like 'decodeFileStrict'' but returns an error message when decoding fails.
+--
+-- Throws an 'Exception' when the file is missing.
 eitherDecodeFileStrict' :: (FromJSON a) => FilePath -> IO (Either String a)
 eitherDecodeFileStrict' =
   fmap eitherDecodeStrict' . B.readFile
