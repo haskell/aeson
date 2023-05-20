@@ -199,6 +199,8 @@ encodeFile fp = L.writeFile fp . encode
 --
 -- This function parses immediately, but defers conversion.  See
 -- 'json' for details.
+--
+-- Throws an 'Exception' when the file is missing.
 decodeFileStrict :: (FromJSON a) => FilePath -> IO (Maybe a)
 decodeFileStrict = fmap decodeStrict . B.readFile
 
@@ -226,12 +228,15 @@ decodeStrict' = decodeStrict
 -- If this fails due to incomplete or invalid input, 'Nothing' is
 -- returned.
 --
--- Since @2.2.0.0@ an alias for 'decodeFileStrict'.
+-- Throws an 'Exception' when the file is missing.
 --
+-- Since @2.2.0.0@ an alias for 'decodeFileStrict'.
 decodeFileStrict' :: (FromJSON a) => FilePath -> IO (Maybe a)
 decodeFileStrict' = decodeFileStrict
 
 -- | Like 'decodeFileStrict' but returns an error message when decoding fails.
+--
+-- Throws an 'Exception' when the file is missing.
 eitherDecodeFileStrict :: (FromJSON a) => FilePath -> IO (Either String a)
 eitherDecodeFileStrict =
   fmap eitherDecodeStrict . B.readFile
@@ -252,6 +257,8 @@ eitherDecodeStrict' = eitherDecodeStrict
 {-# INLINE eitherDecodeStrict' #-}
 
 -- | Like 'decodeFileStrict'' but returns an error message when decoding fails.
+--
+-- Throws an 'Exception' when the file is missing.
 --
 -- Since @2.2.0.0@ an alias for 'eitherDecodeFileStrict'.
 eitherDecodeFileStrict' :: (FromJSON a) => FilePath -> IO (Either String a)
