@@ -130,9 +130,7 @@ import qualified Data.Aeson.KeyMap as KM
 import qualified Data.Attoparsec.ByteString.Char8 as A (endOfInput, parseOnly, scientific)
 import qualified Data.ByteString.Lazy as L
 import qualified Data.DList as DList
-#if MIN_VERSION_dlist(1,0,0)
 import qualified Data.DList.DNonEmpty as DNE
-#endif
 import qualified Data.Fix as F
 import qualified Data.HashMap.Strict as H
 import qualified Data.HashSet as HashSet
@@ -1783,7 +1781,6 @@ instance FromJSON1 DList.DList where
 instance (FromJSON a) => FromJSON (DList.DList a) where
     parseJSON = parseJSON1
 
-#if MIN_VERSION_dlist(1,0,0)
 -- | @since 1.5.3.0
 instance FromJSON1 DNE.DNonEmpty where
     liftParseJSON p _ = withArray "DNonEmpty" $
@@ -1795,7 +1792,6 @@ instance FromJSON1 DNE.DNonEmpty where
 -- | @since 1.5.3.0
 instance (FromJSON a) => FromJSON (DNE.DNonEmpty a) where
     parseJSON = parseJSON1
-#endif
 
 -------------------------------------------------------------------------------
 -- OneTuple
