@@ -1,11 +1,6 @@
 {-# LANGUAGE BangPatterns #-}
 {-# LANGUAGE CPP #-}
-{-# LANGUAGE NoImplicitPrelude #-}
 {-# LANGUAGE OverloadedStrings #-}
-#if __GLASGOW_HASKELL__ <= 800 && __GLASGOW_HASKELL__ >= 706
--- Work around a compiler bug
-{-# OPTIONS_GHC -fsimpl-tick-factor=300 #-}
-#endif
 -- |
 -- Module:      Data.Aeson.Parser.Internal
 -- Copyright:   (c) 2011-2016 Bryan O'Sullivan
@@ -49,19 +44,12 @@ module Data.Aeson.Parser.Internal
     , unescapeText
     ) where
 
-import Prelude.Compat
+import Data.Aeson.Internal.Prelude
 
-import Control.Applicative ((<|>))
-import Control.Monad (void, when)
 import Data.Aeson.Types.Internal (IResult(..), JSONPath, Object, Result(..), Value(..), Key)
 import qualified Data.Aeson.KeyMap as KM
 import qualified Data.Aeson.Key as Key
 import Data.Attoparsec.ByteString.Char8 (Parser, char, decimal, endOfInput, isDigit_w8, signed, string)
-import Data.Function (fix)
-import Data.Functor.Compat (($>))
-import Data.Scientific (Scientific)
-import Data.Text (Text)
-import Data.Vector (Vector)
 import qualified Data.Vector as Vector (empty, fromList, fromListN, reverse)
 import qualified Data.Attoparsec.ByteString as A
 import qualified Data.Attoparsec.Lazy as L

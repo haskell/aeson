@@ -12,8 +12,7 @@ author:             Bryan O'Sullivan <bos@serpentine.com>
 maintainer:         Adam Bergmark <adam@bergmark.nl>
 stability:          experimental
 tested-with:
-  GHC ==8.0.2
-   || ==8.2.2
+  GHC ==8.2.2
    || ==8.4.4
    || ==8.6.5
    || ==8.8.4
@@ -91,6 +90,7 @@ library
     Data.Aeson.Internal.ByteString
     Data.Aeson.Internal.Functions
     Data.Aeson.Internal.Integer
+    Data.Aeson.Internal.Prelude
     Data.Aeson.Internal.Text
     Data.Aeson.Internal.TH
     Data.Aeson.Internal.Word8
@@ -106,20 +106,19 @@ library
 
   -- GHC bundled libs
   build-depends:
-      base              >=4.9.0.0  && <5
-    , bytestring        >=0.10.8.1 && <0.12
-    , containers        >=0.5.7.1  && <0.7
-    , deepseq           >=1.4.2.0  && <1.5
+      base              >=4.10.0.0 && <5
+    , bytestring        >=0.10.8.2 && <0.12
+    , containers        >=0.5.10.2 && <0.7
+    , deepseq           >=1.4.3.0  && <1.5
     , exceptions        >=0.10.4   && <0.11
     , ghc-prim          >=0.5.0.0  && <0.11
-    , template-haskell  >=2.11.0.0 && <2.21
+    , template-haskell  >=2.12.0.0 && <2.21
     , text              >=1.2.3.0  && <1.3  || >=2.0 && <2.1
-    , time              >=1.6.0.1  && <1.13
+    , time              >=1.8.0.2  && <1.13
 
   -- Compat
   build-depends:
-      base-compat-batteries  >=0.10.0 && <0.14
-    , generically            >=0.1    && <0.2
+      generically            >=0.1    && <0.2
     , time-compat            >=1.9.6  && <1.10
 
   if !impl(ghc >=8.6)

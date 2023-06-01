@@ -309,7 +309,6 @@ thMaybeFieldToJSON = $(mkToJSON optsOptionField 'MaybeField)
 -- NOTE 2: We actually only use the INCOHERENT pragma on specific instances
 -- instead of the IncoherentInstances language extension. Therefore, this is
 -- only supported on GHC versions >= 7.10.
-#if __GLASGOW_HASKELL__ >= 710
 incoherentInstancesNeededParseJSONString :: FromJSON a => Value -> Parser (IncoherentInstancesNeeded a)
 incoherentInstancesNeededParseJSONString = case () of
   _ | True  -> $(mkParseJSON defaultOptions ''IncoherentInstancesNeeded)
@@ -319,7 +318,6 @@ incoherentInstancesNeededToJSON :: ToJSON a => IncoherentInstancesNeeded a -> Va
 incoherentInstancesNeededToJSON = case () of
   _ | True  -> $(mkToJSON defaultOptions ''IncoherentInstancesNeeded)
     | False -> genericToJSON defaultOptions
-#endif
 
 -------------------------------------------------------------------------------
 -- EitherTextInt encoders/decodes

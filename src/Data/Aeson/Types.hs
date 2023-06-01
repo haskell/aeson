@@ -1,4 +1,3 @@
-{-# LANGUAGE NoImplicitPrelude #-}
 -- |
 -- Module:      Data.Aeson.Types
 -- Copyright:   (c) 2011-2016 Bryan O'Sullivan
@@ -158,8 +157,6 @@ module Data.Aeson.Types
     , formatRelativePath
     , formatError
     ) where
-
-import Prelude.Compat
 
 import Data.Aeson.Encoding (Encoding, unsafeToEncoding, fromEncoding, Series, pairs)
 import Data.Aeson.Types.Class

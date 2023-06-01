@@ -17,9 +17,7 @@
 -- For Data.Aeson.Types.camelTo
 {-# OPTIONS_GHC -fno-warn-deprecations #-}
 
-#if MIN_VERSION_base(4,9,0)
 {-# OPTIONS_GHC -fno-warn-unused-top-binds #-}
-#endif
 
 module UnitTests
     (
@@ -298,17 +296,14 @@ fromJSONKeyAssertions =
     , assertIsCoerce  "Tagged Int Text" (fromJSONKey :: FromJSONKeyFunction (Tagged Int Text))
     , assertIsCoerce  "MyText"          (fromJSONKey :: FromJSONKeyFunction MyText)
 
-#if __GLASGOW_HASKELL__ >= 710
     , assertIsCoerce' "MyText'"         (fromJSONKey :: FromJSONKeyFunction MyText')
     , assertIsCoerce  "Const Text"      (fromJSONKey :: FromJSONKeyFunction (Const Text ()))
-#endif
     ]
   where
     assertIsCoerce :: String -> FromJSONKeyFunction a -> Assertion
     assertIsCoerce _ FromJSONKeyCoerce = pure ()
     assertIsCoerce n _                 = assertFailure n
 
-#if __GLASGOW_HASKELL__ >= 710
     assertIsCoerce' :: String -> FromJSONKeyFunction a -> Assertion
     assertIsCoerce' _ FromJSONKeyCoerce = pure ()
     assertIsCoerce' n _                 = pickWithRules (assertFailure n) (pure ())
@@ -321,7 +316,6 @@ pickWithRules
 pickWithRules _ = id
 {-# NOINLINE pickWithRules #-}
 {-# RULES "pickWithRules/rule" [0] forall x. pickWithRules x = const x #-}
-#endif
 
 ------------------------------------------------------------------------------
 -- Regressions

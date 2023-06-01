@@ -7,7 +7,6 @@
 {-# LANGUAGE FunctionalDependencies #-}
 {-# LANGUAGE InstanceSigs #-}
 {-# LANGUAGE GADTs #-}
-{-# LANGUAGE NoImplicitPrelude #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE PatternGuards #-}
 {-# LANGUAGE PolyKinds #-}
@@ -57,9 +56,8 @@ module Data.Aeson.Types.ToJSON
     , listValue
     ) where
 
-import Prelude.Compat
+import Data.Aeson.Internal.Prelude
 
-import Control.Applicative (Const(..))
 import Control.Monad.ST (ST)
 import Data.Aeson.Encoding (Encoding, Encoding', Series, dict, emptyArray_)
 import Data.Aeson.Encoding.Internal ((>*<))
@@ -70,7 +68,6 @@ import qualified Data.Aeson.Key as Key
 import qualified Data.Aeson.KeyMap as KM
 import Data.Attoparsec.Number (Number(..))
 import Data.Bits (unsafeShiftR)
-import Data.Coerce (coerce)
 import Data.DList (DList)
 import Data.Fixed (Fixed, HasResolution, Nano)
 import Data.Foldable (toList)
@@ -80,16 +77,12 @@ import Data.Functor.Identity (Identity(..))
 import Data.Functor.Product (Product(..))
 import Data.Functor.Sum (Sum(..))
 import Data.Functor.These (These1 (..))
-import Data.Int (Int16, Int32, Int64, Int8)
 import Data.List (intersperse)
 import Data.List.NonEmpty (NonEmpty(..))
-import Data.Proxy (Proxy(..))
 import Data.Ratio (Ratio, denominator, numerator)
-import Data.Scientific (Scientific)
 import Data.Tagged (Tagged(..))
-import Data.Text (Text, pack)
 import Data.These (These (..))
-import Data.Time (Day, DiffTime, LocalTime, NominalDiffTime, TimeOfDay, UTCTime, ZonedTime)
+import Data.Time (Day, DiffTime, LocalTime, NominalDiffTime, TimeOfDay, ZonedTime)
 import Data.Time.Calendar.Month.Compat (Month)
 import Data.Time.Calendar.Quarter.Compat (Quarter, QuarterOfYear (..))
 import Data.Time.Calendar.Compat (CalendarDiffDays (..), DayOfWeek (..))
@@ -97,17 +90,10 @@ import Data.Time.LocalTime.Compat (CalendarDiffTime (..))
 import Data.Time.Clock.System.Compat (SystemTime (..))
 import Data.Time.Format.Compat (FormatTime, formatTime, defaultTimeLocale)
 import Data.Tuple.Solo (Solo (..), getSolo)
-import Data.Vector (Vector)
 import Data.Version (Version, showVersion)
-import Data.Void (Void, absurd)
-import Data.Word (Word16, Word32, Word64, Word8)
 import Foreign.Storable (Storable)
 import Foreign.C.Types (CTime (..))
 import GHC.Generics
-#if !MIN_VERSION_base(4,17,0)
-import GHC.Generics.Generically (Generically (..), Generically1 (..))
-#endif
-import Numeric.Natural (Natural)
 import qualified Data.Aeson.Encoding as E
 import qualified Data.Aeson.Encoding.Internal as E (InArray, comma, econcat, retagEncoding, key)
 import qualified Data.ByteString.Lazy as L
@@ -879,7 +865,7 @@ class SumToJSON enc arity f allNullary where
               -> f a -> Tagged allNullary enc
 
 instance ( GetConName f
-         , FromString enc
+         , IsString enc
          , TaggedObject                     enc arity f
          , SumToJSON' ObjectWithSingleField enc arity f
          , SumToJSON' TwoElemArray          enc arity f
@@ -928,14 +914,7 @@ nonAllNullarySumToJSON opts targs =
 
 --------------------------------------------------------------------------------
 
-class FromString enc where
-  fromString :: String -> enc
 
-instance FromString Encoding where
-  fromString = toEncoding
-
-instance FromString Value where
-  fromString = String . pack
 
 --------------------------------------------------------------------------------
 
@@ -957,7 +936,7 @@ instance ( TaggedObject enc arity a
 instance ( IsRecord                      a isRecord
          , TaggedObject' enc pairs arity a isRecord
          , FromPairs enc pairs
-         , FromString enc
+         , IsString enc
          , KeyValuePair enc pairs
          , Constructor c
          ) => TaggedObject enc arity (C1 c a)
@@ -1045,7 +1024,7 @@ instance ( GToJSON'    Value arity a
          ) => SumToJSON' TwoElemArray Value arity (C1 c a) where
     sumToJSON' opts targs x = Tagged $ Array $ V.create $ do
       mv <- VM.unsafeNew 2
-      VM.unsafeWrite mv 0 $ String $ pack $ constructorTagModifier opts
+      VM.unsafeWrite mv 0 $ String $ T.pack $ constructorTagModifier opts
                                    $ conName (undefined :: t c a p)
       VM.unsafeWrite mv 1 $ gToJSON opts targs x
       return mv
@@ -1249,7 +1228,7 @@ instance {-# OVERLAPPABLE #-}
 
 instance {-# OVERLAPPING #-}
     ( Constructor c
-    , FromString enc
+    , IsString enc
     ) => SumToJSON' UntaggedValue enc arity (C1 c U1)
   where
     sumToJSON' opts _ _ = Tagged . fromString $

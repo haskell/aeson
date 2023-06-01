@@ -3,7 +3,6 @@
 {-# LANGUAGE EmptyCase #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE NamedFieldPuns #-}
-{-# LANGUAGE NoImplicitPrelude #-}
 {-# LANGUAGE UndecidableInstances #-}
 {-# LANGUAGE TemplateHaskellQuotes #-}
 
@@ -111,12 +110,10 @@ module Data.Aeson.TH
     , mkLiftParseJSON2
     ) where
 
-import Prelude.Compat hiding (fail)
-
 -- We don't have MonadFail Q, so we should use `fail` from real `Prelude`
-import Prelude (fail)
 
-import Control.Applicative ((<|>))
+import Data.Aeson.Internal.Prelude
+
 import Data.Char (ord)
 import Data.Aeson (Object, (.:), FromJSON(..), FromJSON1(..), FromJSON2(..), ToJSON(..), ToJSON1(..), ToJSON2(..))
 import Data.Aeson.Types (Options(..), Parser, SumEncoding(..), Value(..), defaultOptions, defaultTaggedObject)
@@ -126,25 +123,16 @@ import Data.Aeson.Types.ToJSON (fromPairs, pair)
 import Data.Aeson.Key (Key)
 import qualified Data.Aeson.Key as Key
 import qualified Data.Aeson.KeyMap as KM
-import Control.Monad (liftM2, unless, when)
 import Data.Foldable (foldr')
-#if MIN_VERSION_template_haskell(2,8,0) && !MIN_VERSION_template_haskell(2,10,0)
-import Data.List (nub)
-#endif
-import Data.List (foldl', genericLength, intercalate, partition, union)
+import Data.List (genericLength, intercalate, partition, union)
 import Data.List.NonEmpty ((<|), NonEmpty((:|)))
 import Data.Map (Map)
-import Data.Maybe (catMaybes, fromMaybe, mapMaybe)
 import qualified Data.Monoid as Monoid
 import Data.Set (Set)
 import Language.Haskell.TH hiding (Arity)
 import Language.Haskell.TH.Datatype
-#if MIN_VERSION_template_haskell(2,8,0) && !(MIN_VERSION_template_haskell(2,10,0))
-import Language.Haskell.TH.Syntax (mkNameG_tc)
-#endif
 import Text.Printf (printf)
 import qualified Data.Aeson.Encoding.Internal as E
-import qualified Data.Foldable as F (all)
 import qualified Data.List.NonEmpty as NE (length, reverse)
 import qualified Data.Map as M (fromList, keys, lookup , singleton, size)
 #if !MIN_VERSION_base(4,16,0)
@@ -1649,7 +1637,7 @@ newNameList prefix len = mapM newName [prefix ++ show n | n <- [1..len]]
 hasKindVarChain :: Int -> Type -> Maybe [Name]
 hasKindVarChain kindArrows t =
   let uk = uncurryKind (tyKind t)
-  in if (NE.length uk - 1 == kindArrows) && F.all isStarOrVar uk
+  in if (NE.length uk - 1 == kindArrows) && all isStarOrVar uk
         then Just (concatMap freeVariables uk)
         else Nothing
 
@@ -1704,17 +1692,10 @@ isInTypeFamilyApp names tyFun tyArgs =
     go tcName = do
       info <- reify tcName
       case info of
-#if MIN_VERSION_template_haskell(2,11,0)
         FamilyI (OpenTypeFamilyD (TypeFamilyHead _ bndrs _ _)) _
           -> withinFirstArgs bndrs
         FamilyI (ClosedTypeFamilyD (TypeFamilyHead _ bndrs _ _) _) _
           -> withinFirstArgs bndrs
-#else
-        FamilyI (FamilyD TypeFam _ bndrs _) _
-          -> withinFirstArgs bndrs
-        FamilyI (ClosedTypeFamilyD _ bndrs _ _) _
-          -> withinFirstArgs bndrs
-#endif
         _ -> return False
       where
         withinFirstArgs :: [a] -> Q Bool
@@ -1753,12 +1734,7 @@ mentionsName = go
 
 -- | Does an instance predicate mention any of the Names in the list?
 predMentionsName :: Pred -> [Name] -> Bool
-#if MIN_VERSION_template_haskell(2,10,0)
 predMentionsName = mentionsName
-#else
-predMentionsName (ClassP n tys) names = n `elem` names || any (`mentionsName` names) tys
-predMentionsName (EqualP t1 t2) names = mentionsName t1 names || mentionsName t2 names
-#endif
 
 -- | Split an applied type into its individual components. For example, this:
 --
@@ -1836,12 +1812,7 @@ valueConName (Bool   _) = "Boolean"
 valueConName Null       = "Null"
 
 applyCon :: Name -> Name -> Pred
-applyCon con t =
-#if MIN_VERSION_template_haskell(2,10,0)
-          AppT (ConT con) (VarT t)
-#else
-          ClassP con [VarT t]
-#endif
+applyCon con t = AppT (ConT con) (VarT t)
 
 -- | Checks to see if the last types in a data family instance can be safely eta-
 -- reduced (i.e., dropped), given the other types. This checks for three conditions:

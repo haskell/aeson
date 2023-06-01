@@ -170,18 +170,7 @@ delete k (KeyMap m) = KeyMap (M.delete k m)
 
 -- | 'alterF' can be used to insert, delete, or update a value in a map.
 alterF :: Functor f => (Maybe v -> f (Maybe v)) -> Key -> KeyMap v -> f (KeyMap v)
-#if MIN_VERSION_containers(0,5,8)
 alterF f k = fmap KeyMap . M.alterF f k . unKeyMap
-#else
-alterF f k m = fmap g (f mv) where
-    g r =  case r of
-        Nothing -> case mv of
-            Nothing -> m
-            Just _  -> delete k m
-        Just v' -> insert k v' m
-
-    mv = lookup k m
-#endif
 
 -- | Return the value to which the specified key is mapped,
 -- or Nothing if this map contains no mapping for the key.
