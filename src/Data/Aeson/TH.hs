@@ -138,7 +138,7 @@ import Data.Maybe (catMaybes, fromMaybe, mapMaybe)
 import qualified Data.Monoid as Monoid
 import Data.Set (Set)
 import Language.Haskell.TH hiding (Arity)
-import Language.Haskell.TH.Datatype as Datatype
+import Language.Haskell.TH.Datatype
 #if MIN_VERSION_template_haskell(2,8,0) && !(MIN_VERSION_template_haskell(2,10,0))
 import Language.Haskell.TH.Syntax (mkNameG_tc)
 #endif
@@ -1257,11 +1257,7 @@ deriveJSONClass consFuns jc opts name = do
   case info of
     DatatypeInfo { datatypeContext   = ctxt
                  , datatypeName      = parentName
-#if MIN_VERSION_th_abstraction(0,3,0)
                  , datatypeInstTypes = instTys
-#else
-                 , datatypeVars      = instTys
-#endif
                  , datatypeVariant   = variant
                  , datatypeCons      = cons
                  } -> do
@@ -1293,11 +1289,7 @@ mkFunCommon consFun jc opts name = do
   case info of
     DatatypeInfo { datatypeContext   = ctxt
                  , datatypeName      = parentName
-#if MIN_VERSION_th_abstraction(0,3,0)
                  , datatypeInstTypes = instTys
-#else
-                 , datatypeVars      = instTys
-#endif
                  , datatypeVariant   = variant
                  , datatypeCons      = cons
                  } -> do
@@ -1456,9 +1448,7 @@ buildTypeInstance tyConName jc dataCxt varTysOrig variant = do
                          Newtype         -> False
                          DataInstance    -> True
                          NewtypeInstance -> True
-#if MIN_VERSION_th_abstraction(0,5,0)
-                         Datatype.TypeData -> False
-#endif
+                         Language.Haskell.TH.Datatype.TypeData -> False
 
         remainingTysOrigSubst' :: [Type]
         -- See Note [Kind signatures in derived instances] for an explanation
