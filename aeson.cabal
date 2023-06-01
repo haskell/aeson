@@ -129,7 +129,7 @@ library
   build-depends:
       attoparsec            >=0.14.2   && <0.15
     , data-fix              >=0.3.2    && <0.4
-    , dlist                 >=0.8.0.4  && <1.1
+    , dlist                 >=1.0      && <1.1
     , hashable              >=1.3.5.0  && <1.5
     , indexed-traversable   >=0.1.2    && <0.2
     , OneTuple              >=0.3.1    && <0.5
