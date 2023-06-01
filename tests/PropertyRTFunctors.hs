@@ -20,7 +20,7 @@ roundTripFunctorsTests =
 
       , testProperty "Identity Char" $ roundTripEq @(I Char)
       , testProperty "Identity [Char]" $ roundTripEq @(I String)
-      , testProperty "[Identity Char]" $ roundTripEq @([I Char])
+      , testProperty "[Identity Char]" $ roundTripEq @[I Char]
 
       , testProperty "Compose I  I  Int" $ roundTripEq @(LogScaled (Compose I  I  Int))
       , testProperty "Compose [] I  Int" $ roundTripEq @(LogScaled (Compose [] I  Int))

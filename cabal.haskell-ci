@@ -9,7 +9,7 @@ install-dependencies: False
 haddock: >=8.6
 
 hlint: True
-hlint-job: 8.8.3
+hlint-job: 9.2.8
 hlint-yaml: .hlint.yaml
 
 constraint-set cffi

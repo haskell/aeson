@@ -1476,7 +1476,7 @@ instance ToJSON LT.Text where
     toEncoding = E.lazyText
 
 instance ToJSONKey LT.Text where
-    toJSONKey = toJSONKeyText (LT.toStrict)
+    toJSONKey = toJSONKeyText LT.toStrict
 
 -- | @since 2.0.2.0
 instance ToJSON ST.ShortText where
