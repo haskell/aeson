@@ -51,8 +51,9 @@ import qualified Data.Aeson.Decoding as Dec
 
 encodeDouble :: Double -> Double -> Property
 encodeDouble num denom
-    | isInfinite d || isNaN d = encode d === "null"
-    | otherwise               = (read . L.unpack . encode) d === d
+    | isNaN d      = encode d === "null"
+    | isInfinite d = if d > 0 then encode d === "\"+inf\"" else encode d === "\"-inf\""
+    | otherwise    = (read . L.unpack . encode) d === d
   where d = num / denom
 
 encodeInteger :: Integer -> Property
