@@ -2,17 +2,9 @@
 {-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
-{-# LANGUAGE NoImplicitPrelude #-}
 {-# LANGUAGE Rank2Types #-}
 {-# LANGUAGE StandaloneDeriving #-}
-#if __GLASGOW_HASKELL__ >= 800
--- a) THQ works on cross-compilers and unregisterised GHCs
--- b) may make compilation faster as no dynamic loading is ever needed (not sure about this)
--- c) removes one hindrance to have code inferred as SafeHaskell safe
 {-# LANGUAGE TemplateHaskellQuotes #-}
-#else
-{-# LANGUAGE TemplateHaskell #-}
-#endif
 
 -- |
 -- Module:      Data.Aeson.Types.Internal
@@ -85,26 +77,16 @@ module Data.Aeson.Types.Internal
     , DotNetTime(..)
     ) where
 
-import Prelude.Compat
+import Data.Aeson.Internal.Prelude
 
-import Control.Applicative (Alternative(..))
 import Control.DeepSeq (NFData(..))
 import Control.Monad (MonadPlus(..), ap)
-import Control.Monad.Fix (MonadFix (..))
 import Data.Char (isLower, isUpper, toLower, isAlpha, isAlphaNum)
 import Data.Aeson.Key (Key)
-import Data.Data (Data)
-import Data.Foldable (foldl')
 import Data.Hashable (Hashable(..))
 import Data.List (intercalate)
-import Data.Scientific (Scientific)
-import Data.String (IsString(..))
-import Data.Text (Text, pack, unpack)
-import Data.Time (UTCTime)
+import Data.Text (pack, unpack)
 import Data.Time.Format (FormatTime)
-import Data.Typeable (Typeable)
-import Data.Vector (Vector)
-import GHC.Generics (Generic)
 import Data.Aeson.KeyMap (KeyMap)
 import qualified Control.Monad as Monad
 import qualified Control.Monad.Fail as Fail

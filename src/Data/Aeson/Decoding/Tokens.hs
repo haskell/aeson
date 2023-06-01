@@ -10,9 +10,9 @@ module Data.Aeson.Decoding.Tokens (
 ) where
 
 import           Data.Aeson.Key            (Key)
-import           Data.Bifoldable.Compat    (Bifoldable (..))
-import           Data.Bifunctor.Compat     (Bifunctor (..))
-import           Data.Bitraversable.Compat (Bitraversable (..), bifoldMapDefault, bimapDefault)
+import           Data.Bifoldable           (Bifoldable (..))
+import           Data.Bifunctor            (Bifunctor (..))
+import           Data.Bitraversable        (Bitraversable (..), bifoldMapDefault, bimapDefault)
 import           Data.Scientific           (Scientific)
 import           Data.Text                 (Text)
 

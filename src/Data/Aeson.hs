@@ -1,4 +1,3 @@
-{-# LANGUAGE NoImplicitPrelude #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 -- |
 -- Module:      Data.Aeson
@@ -158,8 +157,6 @@ module Data.Aeson
     , json'
     , parseIndexedJSON
     ) where
-
-import Prelude.Compat
 
 import Control.Exception (Exception (..))
 import Control.Monad.Catch (MonadThrow (..))

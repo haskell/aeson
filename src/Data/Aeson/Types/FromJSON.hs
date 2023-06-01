@@ -6,7 +6,6 @@
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE GADTs #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
-{-# LANGUAGE NoImplicitPrelude #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE PolyKinds #-}
 {-# LANGUAGE RecordWildCards #-}
@@ -76,9 +75,8 @@ module Data.Aeson.Types.FromJSON
     , parseOptionalFieldWith
     ) where
 
-import Prelude.Compat
+import Data.Aeson.Internal.Prelude
 
-import Control.Applicative ((<|>), Const(..), liftA2)
 import Control.Monad (zipWithM)
 import Data.Aeson.Internal.Functions (mapKey, mapKeyO)
 import Data.Aeson.Parser.Internal (eitherDecodeWith, jsonEOF)
@@ -92,16 +90,13 @@ import Data.Functor.Product (Product(..))
 import Data.Functor.Sum (Sum(..))
 import Data.Functor.These (These1 (..))
 import Data.Hashable (Hashable(..))
-import Data.Int (Int16, Int32, Int64, Int8)
 import Data.List.NonEmpty (NonEmpty(..))
-import Data.Maybe (fromMaybe)
-import Data.Proxy (Proxy(..))
 import Data.Ratio ((%), Ratio)
-import Data.Scientific (Scientific, base10Exponent)
+import Data.Scientific (base10Exponent)
 import Data.Tagged (Tagged(..))
-import Data.Text (Text, pack, unpack)
+import Data.Text (pack, unpack)
 import Data.These (These (..))
-import Data.Time (Day, DiffTime, LocalTime, NominalDiffTime, TimeOfDay, UTCTime, ZonedTime)
+import Data.Time (Day, DiffTime, LocalTime, NominalDiffTime, TimeOfDay, ZonedTime)
 import Data.Time.Calendar.Compat (CalendarDiffDays (..), DayOfWeek (..))
 import Data.Time.Calendar.Month.Compat (Month)
 import Data.Time.Calendar.Quarter.Compat (Quarter, QuarterOfYear (..))
@@ -111,17 +106,10 @@ import Data.Time.Format.Compat (parseTimeM, defaultTimeLocale)
 import Data.Traversable as Tr (sequence)
 import Data.Tuple.Solo (Solo (..))
 import Data.Type.Coercion (Coercion (..))
-import Data.Vector (Vector)
 import Data.Version (Version, parseVersion)
-import Data.Void (Void)
-import Data.Word (Word16, Word32, Word64, Word8)
 import Foreign.Storable (Storable)
 import Foreign.C.Types (CTime (..))
 import GHC.Generics
-#if !MIN_VERSION_base(4,17,0)
-import GHC.Generics.Generically (Generically (..), Generically1 (..))
-#endif
-import Numeric.Natural (Natural)
 import Text.ParserCombinators.ReadP (readP_to_S)
 import Unsafe.Coerce (unsafeCoerce)
 import qualified Data.Aeson.Parser.Time as Time
@@ -160,8 +148,6 @@ import qualified Data.Primitive.Array as PM
 import qualified Data.Primitive.SmallArray as PM
 import qualified Data.Primitive.Types as PM
 import qualified Data.Primitive.PrimArray as PM
-
-import Data.Coerce (Coercible, coerce)
 
 #if __GLASGOW_HASKELL__ < 804
 import qualified Data.Type.Coercion

@@ -1,5 +1,4 @@
 {-# LANGUAGE BangPatterns #-}
-{-# LANGUAGE NoImplicitPrelude #-}
 {-# LANGUAGE OverloadedStrings #-}
 -- |
 -- Module:      Data.Aeson.Text
@@ -22,12 +21,12 @@ module Data.Aeson.Text
     , encodeToTextBuilder
     ) where
 
-import Prelude.Compat
+import Data.Aeson.Internal.Prelude
 
 import Data.Aeson.Types (Value(..), ToJSON(..))
 import Data.Aeson.Encoding (encodingToLazyByteString)
 import qualified Data.Aeson.KeyMap as KM
-import Data.Scientific (FPFormat(..), Scientific, base10Exponent)
+import Data.Scientific (FPFormat(..), base10Exponent)
 import Data.Text.Lazy.Builder (Builder)
 import qualified Data.Text.Lazy.Builder as TB
 import Data.Text.Lazy.Builder.Scientific (formatScientificBuilder)

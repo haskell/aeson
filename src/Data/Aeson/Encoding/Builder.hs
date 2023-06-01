@@ -1,5 +1,4 @@
 {-# LANGUAGE BangPatterns #-}
-{-# LANGUAGE NoImplicitPrelude #-}
 {-# LANGUAGE TupleSections #-}
 -- |
 -- Module:      Data.Aeson.Encoding.Builder
@@ -38,7 +37,7 @@ module Data.Aeson.Encoding.Builder
     , ascii5
     ) where
 
-import Prelude.Compat
+import Data.Aeson.Internal.Prelude
 
 import Data.Attoparsec.Time.Internal
 import Data.Aeson.Types.Internal (Value (..), Key)
@@ -50,14 +49,13 @@ import Data.ByteString.Builder.Prim ((>$<), (>*<))
 import qualified Data.ByteString.Builder.Prim as BP
 import Data.ByteString.Builder.Scientific (scientificBuilder)
 import Data.Char (chr, ord)
-import Data.Scientific (Scientific, base10Exponent, coefficient)
+import Data.Scientific (base10Exponent, coefficient)
 import Data.Text.Encoding (encodeUtf8BuilderEscaped)
 import Data.Time (UTCTime(..))
 import Data.Time.Calendar (Day(..), toGregorian)
 import Data.Time.Calendar.Month.Compat (Month, toYearMonth)
 import Data.Time.Calendar.Quarter.Compat (Quarter, toYearQuarter, QuarterOfYear (..))
 import Data.Time.LocalTime (LocalTime (..), TimeZone (..), ZonedTime (..), TimeOfDay (..))
-import Data.Word (Word8)
 import qualified Data.Text as T
 import qualified Data.Vector as V
 

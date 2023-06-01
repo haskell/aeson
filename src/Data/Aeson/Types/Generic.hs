@@ -5,7 +5,6 @@
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE FunctionalDependencies #-}
 {-# LANGUAGE KindSignatures #-}
-{-# LANGUAGE NoImplicitPrelude #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TypeOperators #-}
 {-# LANGUAGE UndecidableInstances #-}
@@ -36,7 +35,6 @@ module Data.Aeson.Types.Generic
     , (:*)(..)
     ) where
 
-import Prelude.Compat
 import Data.Kind (Type)
 
 import GHC.Generics
