@@ -1,4 +1,3 @@
-{-# LANGUAGE DeriveTraversable #-}
 -- | Token definitions.
 module Data.Aeson.Decoding.Tokens (
     -- * Types

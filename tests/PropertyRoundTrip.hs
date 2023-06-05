@@ -87,7 +87,7 @@ roundTripTests =
     , testProperty "Strict These" $ roundTripEq @(S.These Int Char)
     , testProperty "Strict Maybe" $ roundTripEq @(S.Maybe Int)
     , testProperty "Solo Int" $ roundTripEq @(Solo Int)
-    , testProperty "ShortText" $ roundTripEq @(ST.ShortText)
+    , testProperty "ShortText" $ roundTripEq @ST.ShortText
     , roundTripFunctorsTests
     , testGroup "ghcGenerics" [
         testProperty "OneConstructor" $ roundTripEq OneConstructor
