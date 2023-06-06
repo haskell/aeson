@@ -1,6 +1,5 @@
 name:               aeson
-version:            2.1.2.1
-x-revision:         3
+version:            2.2
 license:            BSD3
 license-file:       LICENSE
 category:           Text, Web, JSON
@@ -39,23 +38,14 @@ description:
 extra-source-files:
   *.yaml
   benchmarks/json-data/*.json
-  cbits/*.c
   changelog.md
   README.markdown
-  src-ffi/Data/Aeson/Parser/*.hs
   src-pure/Data/Aeson/Parser/*.hs
   tests/golden/*.expected
   tests/JSONTestSuite/results/*.tok
   tests/JSONTestSuite/results/*.txt
   tests/JSONTestSuite/test_parsing/*.json
   tests/JSONTestSuite/test_transform/*.json
-
-flag cffi
-  description:
-    Controls whether to include c-ffi bits or pure haskell. Default to False for security.
-
-  default:     False
-  manual:      True
 
 flag ordered-keymap
   description: Use ordered @Data.Map.Strict@ for KeyMap implementation.
@@ -148,16 +138,9 @@ library
 
   ghc-options:      -Wall
 
-  if (impl(ghcjs) || !flag(cffi))
-    hs-source-dirs: src-pure
-    other-modules:  Data.Aeson.Parser.UnescapePure
-
-  else
-    c-sources:      cbits/unescape_string.c
-    cpp-options:    -DCFFI
-    hs-source-dirs: src-ffi
-    other-modules:  Data.Aeson.Parser.UnescapeFFI
-    build-depends:  text <2.0
+  -- String unescaping
+  hs-source-dirs: src-pure
+  other-modules:  Data.Aeson.Parser.UnescapePure
 
   if flag(ordered-keymap)
     cpp-options: -DUSE_ORDEREDMAP=1

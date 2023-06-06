@@ -12,12 +12,6 @@ hlint: True
 hlint-job: 9.2.8
 hlint-yaml: .hlint.yaml
 
-constraint-set cffi
-  ghc:         <9.4
-  constraints: aeson +cffi
-  tests:       True
-  run-tests:   True
-
 constraint-set ordered-keymap-on
   constraints: aeson +ordered-keymap
   tests:       True
