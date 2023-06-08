@@ -10,6 +10,7 @@ module Data.Aeson.Decoding.ByteString (
 
 import           Data.ByteString              (ByteString)
 import           Data.Char                    (chr)
+import           Data.Integer.Conversion      (byteStringToInteger)
 import           Data.Text                    (Text)
 import           Data.Word                    (Word8)
 
@@ -20,7 +21,6 @@ import qualified Data.Scientific              as Sci
 
 import           Data.Aeson.Decoding.Internal
 import           Data.Aeson.Decoding.Tokens
-import           Data.Aeson.Internal.Integer
 import           Data.Aeson.Internal.Text     (unsafeDecodeASCII)
 import           Data.Aeson.Internal.Word8
 import           Data.Aeson.Parser.Unescape   (unescapeText)
@@ -209,7 +209,7 @@ scanNumberLiteral kont err bs0 = state_start bs0 where
             | W8_e == w8 || W8_E == w8  -> go_sci int 0 bs'
             | otherwise                 -> kont (NumInteger int) bs
       where
-        int = bsToInteger (BS.Unsafe.unsafeTake n bs0)
+        int = byteStringToInteger (BS.Unsafe.unsafeTake n bs0)
 
     go_dec :: Integer -> ByteString -> r
     go_dec !int !bs1 = case BS.uncons bs1 of
@@ -226,7 +226,7 @@ scanNumberLiteral kont err bs0 = state_start bs0 where
                 | W8_e == w8 || W8_E == w8  -> go_sci coef (negate n) bs'
                 | otherwise                 -> kont (NumDecimal dec) bs
           where
-            frac = bsToInteger (BS.Unsafe.unsafeTake n bs1)
+            frac = byteStringToInteger (BS.Unsafe.unsafeTake n bs1)
             coef = int * 10 ^ n + frac
             dec  = Sci.scientific coef (negate n)
 
@@ -254,7 +254,7 @@ scanNumberLiteral kont err bs0 = state_start bs0 where
             | W8_0 <= w8, w8 <= W8_9  -> go_sci_pos coef exp10 bs2 (n + 1) bs'
             | otherwise               -> kont (NumScientific sci) bs
       where
-        exp10' = fromInteger (bsToInteger (BS.Unsafe.unsafeTake n bs2))
+        exp10' = fromInteger (byteStringToInteger (BS.Unsafe.unsafeTake n bs2))
         sci = Sci.scientific coef (exp10 + exp10')
 
     go_sci_neg :: Integer -> Int -> ByteString -> Int -> ByteString -> r
@@ -264,7 +264,7 @@ scanNumberLiteral kont err bs0 = state_start bs0 where
             | W8_0 <= w8, w8 <= W8_9  -> go_sci_neg coef exp10 bs2 (n + 1) bs'
             | otherwise               -> kont (NumScientific sci) bs
       where
-        exp10' = fromInteger (bsToInteger (BS.Unsafe.unsafeTake n bs2))
+        exp10' = fromInteger (byteStringToInteger (BS.Unsafe.unsafeTake n bs2))
         sci = Sci.scientific coef (exp10 - exp10')
 
     errEnd    = err "Unexpected end-of-input while parsing number literal"

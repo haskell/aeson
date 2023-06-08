@@ -50,6 +50,7 @@ import Data.Aeson.Types.Internal (IResult(..), JSONPath, Object, Result(..), Val
 import qualified Data.Aeson.KeyMap as KM
 import qualified Data.Aeson.Key as Key
 import Data.Attoparsec.ByteString.Char8 (Parser, char, decimal, endOfInput, isDigit_w8, signed, string)
+import Data.Integer.Conversion (byteStringToInteger)
 import qualified Data.Vector as Vector (empty, fromList, fromListN, reverse)
 import qualified Data.Attoparsec.ByteString as A
 import qualified Data.Attoparsec.Lazy as L
@@ -61,7 +62,6 @@ import qualified Data.ByteString.Lazy.Char8 as C
 import qualified Data.ByteString.Builder as B
 import qualified Data.Scientific as Sci
 import Data.Aeson.Parser.Unescape (unescapeText)
-import Data.Aeson.Internal.Integer
 import Data.Aeson.Internal.Text
 import Data.Aeson.Internal.Word8
 
@@ -440,7 +440,7 @@ decimal0 = do
   digits <- A.takeWhile1 isDigit_w8
   if B.length digits > 1 && B.unsafeHead digits == W8_0
     then fail "leading zero"
-    else return (bsToInteger digits)
+    else return (byteStringToInteger digits)
 
 -- | Parse a JSON number.
 scientific :: Parser Scientific
