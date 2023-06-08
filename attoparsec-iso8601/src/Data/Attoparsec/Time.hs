@@ -26,11 +26,11 @@ module Data.Attoparsec.Time
 import Control.Applicative ((<|>))
 import Control.Monad (void, when)
 import Data.Attoparsec.Text (Parser, char, digit, option, anyChar, peekChar, peekChar', takeWhile1, satisfy)
-import Data.Attoparsec.Time.Internal (toPico)
 import Data.Bits ((.&.))
 import Data.Char (isDigit, ord)
-import Data.Fixed (Pico)
+import Data.Fixed (Pico, Fixed (..))
 import Data.Int (Int64)
+import Data.Integer.Conversion (textToInteger)
 import Data.Maybe (fromMaybe)
 import Data.Time.Calendar (Day, fromGregorianValid)
 import Data.Time.Calendar.Compat (Year)
@@ -92,7 +92,7 @@ year = do
   if T.length ds < 4 then
     fail "expected year with at least 4 digits"
   else
-    pure (txtToInteger ds)
+    pure (textToInteger ds)
 
 -- | Parse a two-digit integer (e.g. day of month, hour).
 twoDigits :: Parser Int
@@ -126,7 +126,7 @@ seconds = do
       return $! parsePicos real t
     _ -> return $! fromIntegral real
  where
-  parsePicos a0 t = toPico (fromIntegral (t' * 10^n))
+  parsePicos a0 t = MkFixed (fromIntegral (t' * 10^n))
     where T n t'  = T.foldl' step (T 12 (fromIntegral a0)) t
           step ma@(T m a) c
               | m <= 0    = ma
@@ -194,53 +194,3 @@ zonedTime = Local.ZonedTime <$> localTime <*> (fromMaybe utc <$> timeZone)
 
 utc :: Local.TimeZone
 utc = Local.TimeZone 0 False ""
-
------------------- Copy-pasted and adapted from base ------------------------
-
-txtToInteger :: T.Text -> Integer
-txtToInteger bs
-    | l > 40    = valInteger 10 l [ fromIntegral (ord w - 48) | w <- T.unpack bs ]
-    | otherwise = txtToIntegerSimple bs
-  where
-    l = T.length bs
-
-txtToIntegerSimple :: T.Text -> Integer
-txtToIntegerSimple = T.foldl' step 0 where
-  step a b = a * 10 + fromIntegral (ord b - 48) -- 48 = '0'
-
--- A sub-quadratic algorithm for Integer. Pairs of adjacent radix b
--- digits are combined into a single radix b^2 digit. This process is
--- repeated until we are left with a single digit. This algorithm
--- performs well only on large inputs, so we use the simple algorithm
--- for smaller inputs.
-valInteger :: Integer -> Int -> [Integer] -> Integer
-valInteger = go
-  where
-    go :: Integer -> Int -> [Integer] -> Integer
-    go _ _ []  = 0
-    go _ _ [d] = d
-    go b l ds
-        | l > 40 = b' `seq` go b' l' (combine b ds')
-        | otherwise = valSimple b ds
-      where
-        -- ensure that we have an even number of digits
-        -- before we call combine:
-        ds' = if even l then ds else 0 : ds
-        b' = b * b
-        l' = (l + 1) `quot` 2
-
-    combine b (d1 : d2 : ds) = d `seq` (d : combine b ds)
-      where
-        d = d1 * b + d2
-    combine _ []  = []
-    combine _ [_] = errorWithoutStackTrace "this should not happen"
-
--- The following algorithm is only linear for types whose Num operations
--- are in constant time.
-valSimple :: Integer -> [Integer] -> Integer
-valSimple base = go 0
-  where
-    go r [] = r
-    go r (d : ds) = r' `seq` go r' ds
-      where
-        r' = r * base + fromIntegral d
