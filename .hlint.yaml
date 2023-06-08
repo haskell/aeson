@@ -13,6 +13,14 @@
     name: "Use <=<"
     within:
       - Data.Aeson.Types.FromJSON
+- ignore:
+    name: "Avoid lambda"
+    within:
+      - Data.Time.FromText
+- ignore:
+    name: "Use isDigit"
+    within:
+      - Data.Time.FromText
 
 # CPP confuses
 - ignore:

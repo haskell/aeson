@@ -22,7 +22,7 @@ tested-with:
    || ==9.6.2
 
 synopsis:           Fast JSON parsing and encoding
-cabal-version:      >=1.10
+cabal-version:      1.12
 homepage:           https://github.com/haskell/aeson
 bug-reports:        https://github.com/haskell/aeson/issues
 build-type:         Simple

@@ -133,6 +133,9 @@ seconds = do
 
 -- | Parse a time zone, and return 'Nothing' if the offset from UTC is
 -- zero. (This makes some speedups possible.)
+--
+-- The accepted formats are @Z@, @+HH@, @+HHMM@, or @+HH:MM@.
+--
 timeZone :: Parser (Maybe Local.TimeZone)
 timeZone = do
   ch <- satisfy $ \c -> c == 'Z' || c == '+' || c == '-'
@@ -174,6 +177,7 @@ utcTime = do
     Nothing -> let !tt = Local.timeOfDayToTime t
                in return (UTCTime d tt)
     Just tz -> return $! Local.localTimeToUTC tz lt
+
 
 -- | Parse a date with time zone info. Acceptable formats:
 --
