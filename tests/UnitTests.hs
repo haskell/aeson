@@ -60,6 +60,8 @@ import Test.Tasty (TestTree, testGroup)
 import Test.Tasty.HUnit (Assertion, assertFailure, assertEqual, testCase, testCaseSteps, (@?=))
 import Text.Printf (printf)
 import UnitTests.NullaryConstructors (nullaryConstructors)
+import UnitTests.OptionalFields (optionalFields)
+import qualified Data.ByteString as S
 import qualified Data.ByteString.Base16.Lazy as LBase16
 import qualified Data.ByteString.Lazy.Char8 as L
 import qualified Data.Text.Lazy as LT
@@ -804,6 +806,7 @@ tests = testGroup "unit" [
   , testGroup "Object construction" $ fmap (testCase "-") objectConstruction
   , testGroup "Issue #351" $ fmap (testCase "-") issue351
   , testGroup "Nullary constructors" $ fmap (testCase "-") nullaryConstructors
+  , testGroup "Optional fields" optionalFields
   , testGroup "FromJSONKey" $ fmap (testCase "-") fromJSONKeyAssertions
   , testCase "PR #455" pr455
   , testCase "Unescape string (PR #477)" unescapeString

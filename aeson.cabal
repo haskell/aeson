@@ -168,6 +168,10 @@ test-suite aeson-tests
     Types
     UnitTests
     UnitTests.NullaryConstructors
+    UnitTests.OptionalFields
+    UnitTests.OptionalFields.Common
+    UnitTests.OptionalFields.Generics
+    UnitTests.OptionalFields.TH
 
   build-depends:
       aeson
