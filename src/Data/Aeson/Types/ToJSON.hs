@@ -8,7 +8,6 @@
 {-# LANGUAGE InstanceSigs #-}
 {-# LANGUAGE GADTs #-}
 {-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE PatternGuards #-}
 {-# LANGUAGE PolyKinds #-}
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE ScopedTypeVariables #-}
@@ -75,6 +74,7 @@ import Data.Functor.Sum (Sum(..))
 import Data.Functor.These (These1 (..))
 import Data.List (intersperse)
 import Data.List.NonEmpty (NonEmpty(..))
+import Data.Maybe (isNothing)
 import Data.Ratio (Ratio, denominator, numerator)
 import Data.Tagged (Tagged(..))
 import Data.These (These (..))
@@ -303,7 +303,6 @@ class ToJSON a where
     -- instance 'ToJSON' Coord where
     --     'toEncoding' = 'genericToEncoding' 'defaultOptions'
     -- @
-
     toEncoding :: a -> Encoding
     toEncoding = E.value . toJSON
 
@@ -312,6 +311,33 @@ class ToJSON a where
 
     toEncodingList :: [a] -> Encoding
     toEncodingList = listEncoding toEncoding
+
+    -- | Defines when it is acceptable to omit a field of this type from a record.
+    --
+    -- @
+    --   newtype A = A Int deriving (Generic, Eq)
+    --   instance ToJSON A where omitField = (== A 0)
+    --
+    --   data R = R { a :: A, b :: Int } deriving ('Generic')
+    --   instance ToJSON R where toJSON = genericToJSON 'defaultOptions' {'omitNothingFields' = True}
+    --
+    --   encode R {a = A 0, b = 0} -- "{\"b\":0}"
+    -- @
+    --
+    -- The default implementation is @omitField = const False@.
+    --
+    -- @omitField@ Has no effect when using an 'Options' where @omitNothingFields@ is @False@
+    -- (which is the case for @defaultOptions@).
+    --
+    -- @
+    --   data R' = R' { a :: A, b :: Int } deriving (Generic, FromJSON)
+    --
+    --   encode R' {a = A 0, b = 0} -- "{\"a\":0,\"b\":0}"
+    -- @
+    --
+    -- @since x.x.x.x
+    omitField :: a -> Bool
+    omitField = const False
 
 -- | @since 2.1.0.0
 instance (Generic a, GToJSON' Value Zero (Rep a), GToJSON' Encoding Zero (Rep a)) => ToJSON (Generically a) where
@@ -1102,50 +1128,29 @@ instance ( Monoid pairs
     {-# INLINE recordToPairs #-}
 
 instance ( Selector s
-         , GToJSON' enc arity a
+         , GToJSON' enc arity (K1 i t)
          , KeyValuePair enc pairs
-         ) => RecordToPairs enc pairs arity (S1 s a)
+         , ToJSON t
+         ) => RecordToPairs enc pairs arity (S1 s (K1 i t))
   where
-    recordToPairs = fieldToPair
+    recordToPairs opts targs m1
+      | omitNothingFields opts && omitField (unK1 $ unM1 m1 :: t) = mempty
+      | otherwise =
+        let key   = Key.fromString $ fieldLabelModifier opts (selName m1)
+            value = gToJSON opts targs (unM1 m1)
+         in key `pair` value
     {-# INLINE recordToPairs #-}
 
-instance {-# INCOHERENT #-}
-    ( Selector s
-    , GToJSON' enc arity (K1 i (Maybe a))
-    , KeyValuePair enc pairs
-    , Monoid pairs
-    ) => RecordToPairs enc pairs arity (S1 s (K1 i (Maybe a)))
+instance ( Selector s
+         , GToJSON' enc arity (Rec1 f)
+         , KeyValuePair enc pairs
+         ) => RecordToPairs enc pairs arity (S1 s (Rec1 f))
   where
-    recordToPairs opts _ (M1 k1) | omitNothingFields opts
-                                 , K1 Nothing <- k1 = mempty
-    recordToPairs opts targs m1 = fieldToPair opts targs m1
+    recordToPairs opts targs m1 =
+      let key   = Key.fromString $ fieldLabelModifier opts (selName m1)
+          value = gToJSON opts targs (unM1 m1)
+        in key `pair` value
     {-# INLINE recordToPairs #-}
-
-#if !MIN_VERSION_base(4,16,0)
-instance {-# INCOHERENT #-}
-    ( Selector s
-    , GToJSON' enc arity (K1 i (Maybe a))
-    , KeyValuePair enc pairs
-    , Monoid pairs
-    ) => RecordToPairs enc pairs arity (S1 s (K1 i (Semigroup.Option a)))
-  where
-    recordToPairs opts targs = recordToPairs opts targs . unwrap
-      where
-        unwrap :: S1 s (K1 i (Semigroup.Option a)) p -> S1 s (K1 i (Maybe a)) p
-        unwrap (M1 (K1 (Semigroup.Option a))) = M1 (K1 a)
-    {-# INLINE recordToPairs #-}
-#endif
-
-fieldToPair :: (Selector s
-               , GToJSON' enc arity a
-               , KeyValuePair enc pairs)
-            => Options -> ToArgs enc arity p
-            -> S1 s a p -> pairs
-fieldToPair opts targs m1 =
-  let key   = Key.fromString $ fieldLabelModifier opts (selName m1)
-      value = gToJSON opts targs (unM1 m1)
-  in key `pair` value
-{-# INLINE fieldToPair #-}
 
 --------------------------------------------------------------------------------
 
@@ -1264,6 +1269,7 @@ instance ToJSON1 Maybe where
 
 instance (ToJSON a) => ToJSON (Maybe a) where
     toJSON = toJSON1
+    omitField = isNothing
     toEncoding = toEncoding1
 
 
@@ -2071,6 +2077,8 @@ instance ToJSON1 Semigroup.Option where
 instance ToJSON a => ToJSON (Semigroup.Option a) where
     toJSON = toJSON1
     toEncoding = toEncoding1
+    omitField (Semigroup.Option Nothing) = True
+    omitField (Semigroup.Option Just {}) = False
 #endif
 
 -------------------------------------------------------------------------------

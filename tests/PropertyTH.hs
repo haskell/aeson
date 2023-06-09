@@ -130,10 +130,5 @@ templateHaskellTests =
         thOneConstructorToJSONDefault `sameAs` thOneConstructorToEncodingDefault
       , testProperty "OneConstructorTagged" $
         thOneConstructorToJSONTagged `sameAs` thOneConstructorToEncodingTagged
-
-#if !MIN_VERSION_base(4,16,0)
-      , testProperty "OptionField" $
-        thOptionFieldToJSON `sameAs` thOptionFieldToEncoding
-#endif
       ]
     ]

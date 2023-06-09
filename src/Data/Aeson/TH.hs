@@ -114,11 +114,11 @@ module Data.Aeson.TH
 
 import Data.Aeson.Internal.Prelude
 
+import Data.Bool (bool)
 import Data.Char (ord)
 import Data.Aeson (Object, (.:), FromJSON(..), FromJSON1(..), FromJSON2(..), ToJSON(..), ToJSON1(..), ToJSON2(..))
 import Data.Aeson.Types (Options(..), Parser, SumEncoding(..), Value(..), defaultOptions, defaultTaggedObject)
 import Data.Aeson.Types.Internal ((<?>), JSONPathElement(Key))
-import Data.Aeson.Types.FromJSON (parseOptionalFieldWith)
 import Data.Aeson.Types.ToJSON (fromPairs, pair)
 import Data.Aeson.Key (Key)
 import qualified Data.Aeson.Key as Key
@@ -135,9 +135,6 @@ import Text.Printf (printf)
 import qualified Data.Aeson.Encoding.Internal as E
 import qualified Data.List.NonEmpty as NE (length, reverse)
 import qualified Data.Map as M (fromList, keys, lookup , singleton, size)
-#if !MIN_VERSION_base(4,16,0)
-import qualified Data.Semigroup as Semigroup (Option(..))
-#endif
 import qualified Data.Set as Set (empty, insert, member)
 import qualified Data.Text as T (pack, unpack)
 import qualified Data.Vector as V (unsafeIndex, null, length, create, empty)
@@ -456,40 +453,24 @@ argsToValue letInsert target jc tvMap opts multiCons
       (True,True,[_]) -> argsToValue letInsert target jc tvMap opts multiCons
                                      (info{constructorVariant = NormalConstructor})
       _ -> do
+
         argTys' <- mapM resolveTypeSynonyms argTys
         args <- newNameList "arg" $ length argTys'
-        let pairs | omitNothingFields opts = infixApp maybeFields
-                                                      [|(Monoid.<>)|]
-                                                      restFields
-                  | otherwise = mconcatE (map pureToPair argCons)
+        let argCons = zip3 (map varE args) argTys' fields
 
-            argCons = zip3 (map varE args) argTys' fields
+            toPair (arg, argTy, fld) =
+              let fieldName = fieldLabel opts fld
+                  toValue = dispatchToJSON target jc conName tvMap argTy
+                  omitFn
+                    | omitNothingFields opts = [| omitField |]
+                    | otherwise = [| const False |]
+              in
+              [| \f x arg' -> bool x mempty (f arg') |]
+                `appE` omitFn
+                `appE` pairE letInsert target fieldName (toValue `appE` arg)
+                `appE` arg
 
-            maybeFields = mconcatE (map maybeToPair maybes)
-
-            restFields = mconcatE (map pureToPair rest)
-
-            (maybes0, rest0) = partition isMaybe argCons
-#if MIN_VERSION_base(4,16,0)
-            maybes = maybes0
-            rest   = rest0
-#else
-            (options, rest) = partition isOption rest0
-            maybes = maybes0 ++ map optionToMaybe options
-#endif
-
-            maybeToPair = toPairLifted True
-            pureToPair = toPairLifted False
-
-            toPairLifted lifted (arg, argTy, field) =
-              let toValue = dispatchToJSON target jc conName tvMap argTy
-                  fieldName = fieldLabel opts field
-                  e arg' = pairE letInsert target fieldName (toValue `appE` arg')
-              in if lifted
-                then do
-                  x <- newName "x"
-                  [|maybe mempty|] `appE` lam1E (varP x) (e (varE x)) `appE` arg
-                else e arg
+            pairs = mconcatE (map toPair argCons)
 
         match (conP conName $ map varP args)
               (normalB $ recordSumToValue letInsert target opts multiCons (null argTys) conName pairs)
@@ -513,19 +494,6 @@ argsToValue letInsert target jc tvMap opts multiCons
               ]
           )
           []
-
-isMaybe :: (a, Type, b) -> Bool
-isMaybe (_, AppT (ConT t) _, _) = t == ''Maybe
-isMaybe _                       = False
-
-#if !MIN_VERSION_base(4,16,0)
-isOption :: (a, Type, b) -> Bool
-isOption (_, AppT (ConT t) _, _) = t == ''Semigroup.Option
-isOption _                       = False
-
-optionToMaybe :: (ExpQ, b, c) -> (ExpQ, b, c)
-optionToMaybe (a, b, c) = ([|Semigroup.getOption|] `appE` a, b, c)
-#endif
 
 (<^>) :: ExpQ -> ExpQ -> ExpQ
 (<^>) a b = infixApp a [|(E.><)|] b
@@ -953,6 +921,9 @@ parseRecord jc tvMap argTys opts tName conName fields obj inTaggedObject =
            (infixApp (conE conName) [|(<$>)|] x)
            xs
     where
+      defVal = case jc of
+        JSONClass From Arity0 -> [|omittedField|]
+        _ -> [|Nothing|]
       tagFieldNameAppender =
           if inTaggedObject then (tagFieldName (sumEncoding opts) :) else id
       knownFields = appE [|KM.fromList|] $ listE $
@@ -970,6 +941,7 @@ parseRecord jc tvMap argTys opts tName conName fields obj inTaggedObject =
                       []
               ]
       x:xs = [ [|lookupField|]
+               `appE` defVal
                `appE` dispatchParseJSON jc conName tvMap argTy
                `appE` litE (stringL $ show tName)
                `appE` litE (stringL $ constructorTagModifier opts $ nameBase conName)
@@ -1137,28 +1109,14 @@ parseTypeMismatch tName conName expected actual =
           , actual
           ]
 
-class LookupField a where
-    lookupField :: (Value -> Parser a) -> String -> String
-                -> Object -> Key -> Parser a
-
-instance {-# OVERLAPPABLE #-} LookupField a where
-    lookupField = lookupFieldWith
-
-instance {-# INCOHERENT #-} LookupField (Maybe a) where
-    lookupField pj _ _ = parseOptionalFieldWith pj
-
-#if !MIN_VERSION_base(4,16,0)
-instance {-# INCOHERENT #-} LookupField (Semigroup.Option a) where
-    lookupField pj tName rec obj key =
-        fmap Semigroup.Option
-             (lookupField (fmap Semigroup.getOption . pj) tName rec obj key)
-#endif
-
-lookupFieldWith :: (Value -> Parser a) -> String -> String
-                -> Object -> Key -> Parser a
-lookupFieldWith pj tName rec obj key =
+lookupField :: Maybe a -> (Value -> Parser a) -> String -> String
+            -> Object -> Key -> Parser a
+lookupField maybeDefault pj tName rec obj key =
     case KM.lookup key obj of
-      Nothing -> unknownFieldFail tName rec (Key.toString key)
+      Nothing ->
+        case maybeDefault of
+          Nothing -> unknownFieldFail tName rec (Key.toString key)
+          Just x -> pure x
       Just v  -> pj v <?> Key key
 
 unknownFieldFail :: String -> String -> String -> Parser fail

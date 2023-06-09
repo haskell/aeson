@@ -70,7 +70,6 @@ module Data.Aeson.Types.FromJSON
     , (.:?)
     , (.:!)
     , (.!=)
-
     -- * Internal
     , parseOptionalFieldWith
     ) where
@@ -378,6 +377,33 @@ class FromJSON a where
           zipWithM (parseIndexedJSON parseJSON) [0..]
         . V.toList
         $ a
+
+    -- | Default value for optional fields.
+    --
+    -- Defining @omittedField = 'Just' x@ makes object fields of this type optional.
+    -- When the field is omitted, the default value @x@ will be used.
+    --
+    -- @
+    --   newtype A = A Int deriving (Generic)
+    --   instance FromJSON A where omittedField = Just (A 0)
+    --
+    --   data R = R { a :: A, b :: Int } deriving ('Generic', 'FromJSON')
+    --
+    --   decode "{\"b\":1}" -- Just (R (A 0) 1)
+    -- @
+    --
+    -- Defining @omittedField = 'Nothing'@ makes object fields of this type required.
+    --
+    -- @
+    --   omittedField :: Maybe Int -- Nothing
+    --   decode "{\"a\":1}" -- Nothing
+    -- @
+    --
+    -- The default implementation is @omittedField = Nothing@.
+    --
+    -- @since x.x.x.x
+    omittedField :: Maybe a
+    omittedField = Nothing
 
 -- | @since 2.1.0.0
 instance (Generic a, GFromJSON Zero (Rep a)) => FromJSON (Generically a) where
@@ -1336,34 +1362,46 @@ instance ( RecordFromJSON' arity a
               <*> recordParseJSON' p obj
     {-# INLINE recordParseJSON' #-}
 
-instance {-# OVERLAPPABLE #-} (Selector s, GFromJSON arity a) =>
-         RecordFromJSON' arity (S1 s a) where
-    recordParseJSON' (cname :* tname :* opts :* fargs) obj = do
-        fv <- contextCons cname tname (obj .: label)
-        M1 <$> gParseJSON opts fargs fv <?> Key label
-      where
-        label = Key.fromString $ fieldLabelModifier opts sname
-        sname = selName (undefined :: M1 _i s _f _p)
+instance {-# OVERLAPPABLE #-}
+         RecordFromJSON' arity f => RecordFromJSON' arity (M1 i s f) where
+    recordParseJSON' args obj = M1 <$> recordParseJSON' args obj
     {-# INLINE recordParseJSON' #-}
 
-instance {-# INCOHERENT #-} (Selector s, FromJSON a) =>
-         RecordFromJSON' arity (S1 s (K1 i (Maybe a))) where
-    recordParseJSON' (_ :* _ :* opts :* _) obj = M1 . K1 <$> obj .:? label
-      where
-        label = Key.fromString $ fieldLabelModifier opts sname
-        sname = selName (undefined :: M1 _i s _f _p)
+instance (Selector s, FromJSON a, Generic a, K1 i a ~ Rep a) =>
+         RecordFromJSON' arity (S1 s (K1 i a)) where
+    recordParseJSON' args obj =
+      recordParseJSONImpl (fmap K1 omittedField) gParseJSON args obj
     {-# INLINE recordParseJSON' #-}
 
-#if !MIN_VERSION_base(4,16,0)
--- Parse an Option like a Maybe.
-instance {-# INCOHERENT #-} (Selector s, FromJSON a) =>
-         RecordFromJSON' arity (S1 s (K1 i (Semigroup.Option a))) where
-    recordParseJSON' p obj = wrap <$> recordParseJSON' p obj
-      where
-        wrap :: S1 s (K1 i (Maybe a)) p -> S1 s (K1 i (Semigroup.Option a)) p
-        wrap (M1 (K1 a)) = M1 (K1 (Semigroup.Option a))
+instance {-# OVERLAPPING #-}
+         (Selector s, FromJSON a) =>
+         RecordFromJSON' arity (S1 s (Rec0 a)) where
+    recordParseJSON' args obj =
+      recordParseJSONImpl (fmap K1 omittedField) gParseJSON args obj
     {-# INLINE recordParseJSON' #-}
-#endif
+
+instance (Selector s, GFromJSON arity (Rec1 f), FromJSON1 f) =>
+         RecordFromJSON' arity (S1 s (Rec1 f)) where
+    recordParseJSON' args obj = recordParseJSONImpl Nothing gParseJSON args obj
+    {-# INLINE recordParseJSON' #-}
+
+recordParseJSONImpl :: forall s arity a f i
+                     . (Selector s)
+                    => Maybe (f a)
+                    -> (Options -> FromArgs arity a -> Value -> Parser (f a))
+                    -> (ConName :* TypeName :* Options :* FromArgs arity a)
+                    -> Object -> Parser (M1 i s f a)
+recordParseJSONImpl mdef parseVal (cname :* tname :* opts :* fargs) obj =
+  handleMissingKey (M1 <$> mdef) $ do
+    fv <- contextCons cname tname (obj .: label)
+    M1 <$> parseVal opts fargs fv <?> Key label
+  where
+    handleMissingKey Nothing p = p
+    handleMissingKey (Just def) p = if label `KM.member` obj then p else pure def
+
+    label = Key.fromString $ fieldLabelModifier opts sname
+    sname = selName (undefined :: M1 _i s _f _p)
+{-# INLINE recordParseJSONImpl #-}
 
 --------------------------------------------------------------------------------
 
@@ -1507,7 +1545,7 @@ instance FromJSON1 Maybe where
 
 instance (FromJSON a) => FromJSON (Maybe a) where
     parseJSON = parseJSON1
-
+    omittedField = Just Nothing
 
 instance FromJSON2 Either where
     liftParseJSON2 pA _ pB _ (Object (KM.toList -> [(key, value)]))
@@ -2274,6 +2312,7 @@ instance FromJSON1 Semigroup.Option where
 
 instance FromJSON a => FromJSON (Semigroup.Option a) where
     parseJSON = parseJSON1
+    omittedField = Just (Semigroup.Option Nothing)
 #endif
 
 -------------------------------------------------------------------------------

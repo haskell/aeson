@@ -51,6 +51,7 @@ import Numeric.Natural (Natural)
 import Test.Tasty (TestTree, testGroup)
 import Test.Tasty.HUnit (Assertion, assertFailure, assertEqual, testCase)
 import Text.Printf (printf)
+import qualified Data.ByteString as S
 import qualified Data.ByteString.Base16.Lazy as LBase16
 import qualified Data.ByteString.Lazy.Char8 as L
 import qualified Data.Text.Lazy as LT
@@ -60,6 +61,7 @@ import qualified Data.Text.Lazy.Encoding as TLE
 import qualified ErrorMessages
 import qualified SerializationFormatSpec
 
+import UnitTests.OptionalFields (optionalFields)
 import UnitTests.NullaryConstructors (nullaryConstructors)
 import Regression.Issue351
 import Regression.Issue571
@@ -536,7 +538,12 @@ tests = testGroup "unit" [
   , hashableLaws
   , testGroup "Object construction" $ fmap (testCase "-") objectConstruction
   , testGroup "Nullary constructors" $ fmap (testCase "-") nullaryConstructors
+<<<<<<< HEAD
   , fromJSONKeyTests
+=======
+  , testGroup "Optional fields" optionalFields
+  , testGroup "FromJSONKey" $ fmap (testCase "-") fromJSONKeyAssertions
+>>>>>>> 97b7bd8 (Type-directed optional fields)
   , testCase "PR #455" pr455
   , testCase "Unescape string (PR #477)" unescapeString
   , testCase "Show Options" showOptions
