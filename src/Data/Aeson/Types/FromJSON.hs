@@ -79,6 +79,7 @@ import Data.Aeson.Internal.Prelude
 
 import Control.Monad (zipWithM)
 import Data.Aeson.Internal.Functions (mapKey, mapKeyO)
+import Data.Aeson.Internal.Scientific
 import Data.Aeson.Types.Generic
 import Data.Aeson.Types.Internal
 import Data.Aeson.Decoding.ByteString.Lazy
@@ -116,7 +117,6 @@ import Unsafe.Coerce (unsafeCoerce)
 import qualified Data.Aeson.Parser.Time as Time
 import qualified Data.Aeson.Key as Key
 import qualified Data.Aeson.KeyMap as KM
-import qualified Data.Attoparsec.ByteString.Char8 as A (endOfInput, parseOnly, scientific)
 import qualified Data.ByteString.Lazy as L
 import qualified Data.DList as DList
 import qualified Data.DList.DNonEmpty as DNE
@@ -199,10 +199,9 @@ parseBoundedIntegral name =
     prependContext name . withScientific' parseBoundedIntegralFromScientific
 
 parseScientificText :: Text -> Parser Scientific
-parseScientificText
-    = either fail pure
-    . A.parseOnly (A.scientific <* A.endOfInput)
-    . T.encodeUtf8
+parseScientificText = scanScientific
+    (\sci rest -> if T.null rest then return sci else fail $ "Expecting end-of-input, got " ++ show (T.take 10 rest))
+    fail
 
 parseIntegralText :: Integral a => String -> Text -> Parser a
 parseIntegralText name t =

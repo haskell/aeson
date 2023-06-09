@@ -17,6 +17,7 @@
     name: "Avoid lambda"
     within:
       - Data.Time.FromText
+      - Data.Aeson.Internal.Scientific
 - ignore:
     name: "Use isDigit"
     within:
