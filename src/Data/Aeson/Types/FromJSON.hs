@@ -2071,31 +2071,31 @@ instance (PM.Prim a,FromJSON a) => FromJSON (PM.PrimArray a) where
 -------------------------------------------------------------------------------
 
 instance FromJSON Day where
-    parseJSON = withText "Day" (Time.run Time.day)
+    parseJSON = withText "Day" (Time.run Time.parseDay)
 
 instance FromJSONKey Day where
-    fromJSONKey = FromJSONKeyTextParser (Time.run Time.day)
+    fromJSONKey = FromJSONKeyTextParser (Time.run Time.parseDay)
 
 
 instance FromJSON TimeOfDay where
-    parseJSON = withText "TimeOfDay" (Time.run Time.timeOfDay)
+    parseJSON = withText "TimeOfDay" (Time.run Time.parseTimeOfDay)
 
 instance FromJSONKey TimeOfDay where
-    fromJSONKey = FromJSONKeyTextParser (Time.run Time.timeOfDay)
+    fromJSONKey = FromJSONKeyTextParser (Time.run Time.parseTimeOfDay)
 
 
 instance FromJSON LocalTime where
-    parseJSON = withText "LocalTime" (Time.run Time.localTime)
+    parseJSON = withText "LocalTime" (Time.run Time.parseLocalTime)
 
 instance FromJSONKey LocalTime where
-    fromJSONKey = FromJSONKeyTextParser (Time.run Time.localTime)
+    fromJSONKey = FromJSONKeyTextParser (Time.run Time.parseLocalTime)
 
 
 -- | Supported string formats:
 --
--- @YYYY-MM-DD HH:MM Z@
--- @YYYY-MM-DD HH:MM:SS Z@
--- @YYYY-MM-DD HH:MM:SS.SSS Z@
+-- @YYYY-MM-DD HH:MMZ@
+-- @YYYY-MM-DD HH:MM:SSZ@
+-- @YYYY-MM-DD HH:MM:SS.SSSZ@
 --
 -- The first space may instead be a @T@, and the second space is
 -- optional.  The @Z@ represents UTC.  The @Z@ may be replaced with a
@@ -2103,17 +2103,17 @@ instance FromJSONKey LocalTime where
 -- two digits are hours, the @:@ is optional and the second two digits
 -- (also optional) are minutes.
 instance FromJSON ZonedTime where
-    parseJSON = withText "ZonedTime" (Time.run Time.zonedTime)
+    parseJSON = withText "ZonedTime" (Time.run Time.parseZonedTime)
 
 instance FromJSONKey ZonedTime where
-    fromJSONKey = FromJSONKeyTextParser (Time.run Time.zonedTime)
+    fromJSONKey = FromJSONKeyTextParser (Time.run Time.parseZonedTime)
 
 
 instance FromJSON UTCTime where
-    parseJSON = withText "UTCTime" (Time.run Time.utcTime)
+    parseJSON = withText "UTCTime" (Time.run Time.parseUTCTime)
 
 instance FromJSONKey UTCTime where
-    fromJSONKey = FromJSONKeyTextParser (Time.run Time.utcTime)
+    fromJSONKey = FromJSONKeyTextParser (Time.run Time.parseUTCTime)
 
 
 -- | This instance includes a bounds check to prevent maliciously
@@ -2166,30 +2166,22 @@ instance FromJSONKey DayOfWeek where
     fromJSONKey = FromJSONKeyTextParser parseDayOfWeek
 
 instance FromJSON QuarterOfYear where
-    parseJSON = withText "DaysOfWeek" parseQuarterOfYear
-
-parseQuarterOfYear :: T.Text -> Parser QuarterOfYear
-parseQuarterOfYear t = case T.toLower t of
-    "q1" -> return Q1
-    "q2" -> return Q2
-    "q3" -> return Q3
-    "q4" -> return Q4
-    _    -> fail "Invalid quarter of year"
+    parseJSON = withText "QuarterOfYear" (Time.run Time.parseQuarterOfYear)
 
 instance FromJSONKey QuarterOfYear where
-    fromJSONKey = FromJSONKeyTextParser parseQuarterOfYear
+    fromJSONKey = FromJSONKeyTextParser (Time.run Time.parseQuarterOfYear)
 
 instance FromJSON Quarter where
-    parseJSON = withText "Quarter" (Time.run Time.quarter)
+    parseJSON = withText "Quarter" (Time.run Time.parseQuarter)
 
 instance FromJSONKey Quarter where
-    fromJSONKey = FromJSONKeyTextParser (Time.run Time.quarter)
+    fromJSONKey = FromJSONKeyTextParser (Time.run Time.parseQuarter)
 
 instance FromJSON Month where
-    parseJSON = withText "Month" (Time.run Time.month)
+    parseJSON = withText "Month" (Time.run Time.parseMonth)
 
 instance FromJSONKey Month where
-    fromJSONKey = FromJSONKeyTextParser (Time.run Time.month)
+    fromJSONKey = FromJSONKeyTextParser (Time.run Time.parseMonth)
 
 -------------------------------------------------------------------------------
 -- base Monoid/Semigroup
