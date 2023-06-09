@@ -54,14 +54,14 @@ import Data.Maybe (fromMaybe)
 import Data.Scientific (Scientific, scientific)
 import Data.Tagged (Tagged(..))
 import Data.Text (Text)
-import Data.Time (UTCTime)
+import Data.Time (UTCTime, ZonedTime)
 import Data.Time.Format.Compat (parseTimeM, defaultTimeLocale)
 import GHC.Generics (Generic)
 import GHC.Generics.Generically (Generically (..))
 import Instances ()
 import Numeric.Natural (Natural)
 import Test.Tasty (TestTree, testGroup)
-import Test.Tasty.HUnit (Assertion, assertFailure, assertEqual, testCase, (@?=))
+import Test.Tasty.HUnit (Assertion, assertFailure, assertEqual, testCase, testCaseSteps, (@?=))
 import Text.Printf (printf)
 import UnitTests.NullaryConstructors (nullaryConstructors)
 import qualified Data.ByteString as S
@@ -188,8 +188,8 @@ utcTimeGood = do
 
 -- Test that a few non-timezone qualified timestamp formats get
 -- rejected if decoding to UTCTime.
-utcTimeBad :: Assertion
-utcTimeBad = do
+utcTimeBad :: (String -> IO ()) -> Assertion
+utcTimeBad info = do
   verifyFailParse "2000-01-01T12:13:00" -- missing Zulu time not allowed (some TZ required)
   verifyFailParse "2000-01-01 12:13:00" -- missing Zulu time not allowed (some TZ required)
   verifyFailParse "2000-01-01"          -- date only not OK
@@ -199,10 +199,21 @@ utcTimeBad = do
   verifyFailParse "2015-01-03 12:13:00.Z" -- decimal at the end but no digits
   verifyFailParse "2015-01-03 12:13.000Z" -- decimal at the end, but no seconds
   verifyFailParse "2015-01-03 23:59:61Z"  -- exceeds allowed seconds per day
+  verifyFailParse "2015-01-03 12:13:00 Z" -- space before Zulu
+  verifyFailParse "2015-01-03 12:13:00 +00:00" -- space before offset
   where
-    verifyFailParse (s :: LT.Text) =
-      let (dec :: Maybe UTCTime) = decode . LT.encodeUtf8 $ LT.concat ["\"", s, "\""] in
-      assertEqual "verify failure" Nothing dec
+    verifyFailParse :: LT.Text -> Assertion
+    verifyFailParse s = do
+      info (LT.unpack s)
+      let bs = LT.encodeUtf8 $ LT.concat ["\"", s, "\""]
+      let decU = decode bs :: Maybe UTCTime
+      let decZ = decode bs :: Maybe ZonedTime
+      assertIsNothing "verify failure UTCTime"   decU
+      assertIsNothing "verify failure ZonedTime"   decZ
+
+assertIsNothing :: Show a => String -> Maybe a -> Assertion
+assertIsNothing _    Nothing = return ()
+assertIsNothing err (Just a) = assertFailure $ err ++ " " ++ show a
 
 -- Non identifier keys should be escaped & enclosed in brackets
 formatErrorExample :: Assertion
@@ -787,7 +798,7 @@ tests = testGroup "unit" [
     ]
   , testGroup "utctime" [
       testCase "good" utcTimeGood
-    , testCase "bad"  utcTimeBad
+    , testCaseSteps "bad"  utcTimeBad
     ]
   , testGroup "formatError" [
       testCase "example 1" formatErrorExample

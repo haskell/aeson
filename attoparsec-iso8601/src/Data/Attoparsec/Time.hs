@@ -24,8 +24,7 @@ module Data.Attoparsec.Time
     ) where
 
 import Control.Applicative ((<|>))
-import Control.Monad (void, when)
-import Data.Attoparsec.Text (Parser, char, digit, option, anyChar, peekChar, peekChar', takeWhile1, satisfy)
+import Data.Attoparsec.Text (Parser, char, digit, option, anyChar, peekChar, takeWhile1, satisfy)
 import Data.Bits ((.&.))
 import Data.Char (isDigit, ord)
 import Data.Fixed (Pico, Fixed (..))
@@ -136,8 +135,6 @@ seconds = do
 -- zero. (This makes some speedups possible.)
 timeZone :: Parser (Maybe Local.TimeZone)
 timeZone = do
-  let maybeSkip c = do ch <- peekChar'; when (ch == c) (void anyChar)
-  maybeSkip ' '
   ch <- satisfy $ \c -> c == 'Z' || c == '+' || c == '-'
   if ch == 'Z'
     then return Nothing
