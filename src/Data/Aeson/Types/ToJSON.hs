@@ -15,9 +15,6 @@
 {-# LANGUAGE TypeOperators #-}
 {-# LANGUAGE UndecidableInstances #-}
 
--- TODO: Drop this when we remove support for Data.Attoparsec.Number
-{-# OPTIONS_GHC -fno-warn-deprecations #-}
-
 module Data.Aeson.Types.ToJSON
     (
     -- * Core JSON classes
@@ -66,7 +63,6 @@ import Data.Aeson.Types.Generic (AllNullary, False, IsRecord, One, ProductSize, 
 import Data.Aeson.Types.Internal
 import qualified Data.Aeson.Key as Key
 import qualified Data.Aeson.KeyMap as KM
-import Data.Attoparsec.Number (Number(..))
 import Data.Bits (unsafeShiftR)
 import Data.DList (DList)
 import Data.Fixed (Fixed, HasResolution, Nano)
@@ -1331,15 +1327,6 @@ instance ToJSON Double where
 
 instance ToJSONKey Double where
     toJSONKey = toJSONKeyTextEnc E.doubleText
-
-
-instance ToJSON Number where
-    toJSON (D d) = toJSON d
-    toJSON (I i) = toJSON i
-
-    toEncoding (D d) = toEncoding d
-    toEncoding (I i) = toEncoding i
-
 
 instance ToJSON Float where
     toJSON = realFloatToJSON

@@ -6,6 +6,7 @@ For the latest version of this document, please see [https://github.com/haskell/
 * Move `Data.Aeson.Parser` module into separate `attoparsec-aeson` package, as these parsers are not used by `aeson` itself anymore.
 * Remove `cffi` flag. Then the C implementation for string unescaping was used for `text <2` versions.
   The new native Haskell implementation introduced in version 2.0.3.0 is at least as fast.
+* Drop instances for `attoparsec.Number`.
 
 ### 2.1.2.1
 
