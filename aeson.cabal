@@ -63,8 +63,6 @@ library
     Data.Aeson.Decoding.Tokens
     Data.Aeson.Encoding
     Data.Aeson.Encoding.Internal
-    Data.Aeson.Internal
-    Data.Aeson.Internal.Time
     Data.Aeson.Key
     Data.Aeson.KeyMap
     Data.Aeson.Parser
