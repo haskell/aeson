@@ -79,9 +79,10 @@ import Data.Aeson.Internal.Prelude
 
 import Control.Monad (zipWithM)
 import Data.Aeson.Internal.Functions (mapKey, mapKeyO)
-import Data.Aeson.Parser.Internal (eitherDecodeWith, jsonEOF)
 import Data.Aeson.Types.Generic
 import Data.Aeson.Types.Internal
+import Data.Aeson.Decoding.ByteString.Lazy
+import Data.Aeson.Decoding.Conversion (unResult, toResultValue, lbsSpace)
 import Data.Bits (unsafeShiftR)
 import Data.Fixed (Fixed, HasResolution (resolution), Nano)
 import Data.Functor.Compose (Compose(..))
@@ -781,8 +782,14 @@ withEmbeddedJSON :: String -> (Value -> Parser a) -> Value -> Parser a
 withEmbeddedJSON _ innerParser (String txt) =
     either fail innerParser $ eitherDecode (L.fromStrict $ T.encodeUtf8 txt)
     where
-        eitherDecode = eitherFormatError . eitherDecodeWith jsonEOF ifromJSON
-        eitherFormatError = either (Left . uncurry formatError) Right
+        -- TODO: decode from strict text
+        eitherDecode :: (FromJSON a) => L.ByteString -> Either String a
+        eitherDecode bs = unResult (toResultValue (lbsToTokens bs)) Left $ \v bs' -> case ifromJSON v of
+            ISuccess x
+                | lbsSpace bs' -> Right x
+                | otherwise    -> Left "Trailing garbage"
+            IError path msg  -> Left $ formatError path msg
+
 withEmbeddedJSON name _ v = prependContext name (typeMismatch "String" v)
 
 -- | Convert a value from JSON, failing if the types do not match.

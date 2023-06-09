@@ -49,6 +49,7 @@ executable aeson-benchmark-suite
   build-depends:
       aeson
     , attoparsec
+    , attoparsec-aeson
     , base
     , base-compat-batteries
     , base16-bytestring

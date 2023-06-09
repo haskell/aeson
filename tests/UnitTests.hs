@@ -35,17 +35,13 @@ import Data.Aeson.Types (JSONPathElement(..), formatError)
 import Data.Aeson.QQ.Simple (aesonQQ)
 import Data.Aeson.TH (deriveJSON, deriveToJSON, deriveToJSON1)
 import Data.Aeson.Text (encodeToTextBuilder)
-import Data.Aeson.Parser
-  ( json, jsonLast, jsonAccum, jsonNoDup
-  , json', jsonLast', jsonAccum', jsonNoDup')
 import Data.Aeson.Types
   ( Options(..), Result(Success, Error), ToJSON(..)
-  , Value(Array, Bool, Null, Number, Object, String), camelTo, camelTo2
+  , Value(..), camelTo, camelTo2
   , explicitParseField, liftParseJSON, listParser
   , defaultOptions, formatPath, formatRelativePath, omitNothingFields, parse, parseMaybe)
 import qualified Data.Aeson.Types
 import qualified Data.Aeson.KeyMap as KM
-import Data.Attoparsec.ByteString (Parser, parseOnly)
 import Data.Char (toUpper, GeneralCategory(Control,Surrogate), generalCategory)
 import Data.Hashable (hash)
 import Data.HashMap.Strict (HashMap)
@@ -64,14 +60,12 @@ import Test.Tasty (TestTree, testGroup)
 import Test.Tasty.HUnit (Assertion, assertFailure, assertEqual, testCase, testCaseSteps, (@?=))
 import Text.Printf (printf)
 import UnitTests.NullaryConstructors (nullaryConstructors)
-import qualified Data.ByteString as S
 import qualified Data.ByteString.Base16.Lazy as LBase16
 import qualified Data.ByteString.Lazy.Char8 as L
 import qualified Data.Text.Lazy as LT
 import qualified Data.Text.Lazy.Builder as TLB
 import qualified Data.Text.Lazy.Encoding as LT
 import qualified Data.Text.Lazy.Encoding as TLE
-import qualified Data.Vector as Vector
 import qualified ErrorMessages
 import qualified SerializationFormatSpec
 import qualified Data.Map as Map -- Lazy!
@@ -573,6 +567,7 @@ unknownFields = concat
         testsTagged :: String -> Value -> Result UnknownFieldsUnaryTagged -> [TestTree]
         testsTagged = testsBase fromJSON (parse (genericParseJSON taggedOpts))
 
+{-
 testParser :: (Eq a, Show a)
            => String -> Parser a -> S.ByteString -> Either String a -> TestTree
 testParser name json_ s expected =
@@ -606,6 +601,7 @@ keyOrdering =
       "{\"k\":true,\"k\":false}" $
       Left "Failed reading: found duplicate key: \"k\""
   ]
+-}
 
 ratioDenominator0 :: Assertion
 ratioDenominator0 =
@@ -816,7 +812,7 @@ tests = testGroup "unit" [
   , testCase "withEmbeddedJSON" withEmbeddedJSONTest
   , testCase "SingleFieldCon" singleFieldCon
   , testGroup "UnknownFields" unknownFields
-  , testGroup "Ordering of object keys" keyOrdering
+  -- , testGroup "Ordering of object keys" keyOrdering
   , testCase "Ratio with denominator 0" ratioDenominator0
   , testCase "Rational parses number"   rationalNumber
   , testCase "Big rational"             bigRationalDecoding

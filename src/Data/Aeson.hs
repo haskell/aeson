@@ -153,19 +153,16 @@ module Data.Aeson
     , (.!=)
     , object
     -- * Parsing
-    , json
-    , json'
     , parseIndexedJSON
     ) where
 
-import Control.Exception (Exception (..))
 import Control.Monad.Catch (MonadThrow (..))
 import Data.Aeson.Types.FromJSON (parseIndexedJSON)
 import Data.Aeson.Encoding (encodingToLazyByteString)
-import Data.Aeson.Parser.Internal (decodeWith, decodeStrictWith, eitherDecodeWith, eitherDecodeStrictWith, jsonEOF, json, jsonEOF', json')
 import Data.Aeson.Types
 import qualified Data.ByteString as B
 import qualified Data.ByteString.Lazy as L
+import Data.Aeson.Decoding (decode, eitherDecode, throwDecode, decodeStrict, eitherDecodeStrict, throwDecodeStrict)
 
 -- $setup
 -- >>> :set -XOverloadedStrings
@@ -179,32 +176,6 @@ encode = encodingToLazyByteString . toEncoding
 -- | Efficiently serialize a JSON value as a lazy 'L.ByteString' and write it to a file.
 encodeFile :: (ToJSON a) => FilePath -> a -> IO ()
 encodeFile fp = L.writeFile fp . encode
-
--- | Efficiently deserialize a JSON value from a lazy 'L.ByteString'.
--- If this fails due to incomplete or invalid input, 'Nothing' is
--- returned.
---
--- The input must consist solely of a JSON document, with no trailing
--- data except for whitespace.
---
--- This function parses immediately, but defers conversion.  See
--- 'json' for details.
-decode :: (FromJSON a) => L.ByteString -> Maybe a
-decode = decodeWith jsonEOF fromJSON
-{-# INLINE decode #-}
-
--- | Efficiently deserialize a JSON value from a strict 'B.ByteString'.
--- If this fails due to incomplete or invalid input, 'Nothing' is
--- returned.
---
--- The input must consist solely of a JSON document, with no trailing
--- data except for whitespace.
---
--- This function parses immediately, but defers conversion.  See
--- 'json' for details.
-decodeStrict :: (FromJSON a) => B.ByteString -> Maybe a
-decodeStrict = decodeStrictWith jsonEOF fromJSON
-{-# INLINE decodeStrict #-}
 
 -- | Efficiently deserialize a JSON value from a file.
 -- If this fails due to incomplete or invalid input, 'Nothing' is
@@ -222,54 +193,28 @@ decodeFileStrict = fmap decodeStrict . B.readFile
 -- If this fails due to incomplete or invalid input, 'Nothing' is
 -- returned.
 --
--- The input must consist solely of a JSON document, with no trailing
--- data except for whitespace.
+-- Since @2.2.0.0@ an alias for 'decode'.
 --
--- This function parses and performs conversion immediately.  See
--- 'json'' for details.
 decode' :: (FromJSON a) => L.ByteString -> Maybe a
-decode' = decodeWith jsonEOF' fromJSON
+decode' = decode
 {-# INLINE decode' #-}
 
 -- | Efficiently deserialize a JSON value from a strict 'B.ByteString'.
 -- If this fails due to incomplete or invalid input, 'Nothing' is
 -- returned.
 --
--- The input must consist solely of a JSON document, with no trailing
--- data except for whitespace.
+-- Since @2.2.0.0@ an alias for 'decodeStrict'.
 --
--- This function parses and performs conversion immediately.  See
--- 'json'' for details.
 decodeStrict' :: (FromJSON a) => B.ByteString -> Maybe a
-decodeStrict' = decodeStrictWith jsonEOF' fromJSON
+decodeStrict' = decodeStrict
 {-# INLINE decodeStrict' #-}
 
 -- | Efficiently deserialize a JSON value from a file.
 -- If this fails due to incomplete or invalid input, 'Nothing' is
 -- returned.
 --
--- The input file's content must consist solely of a JSON document,
--- with no trailing data except for whitespace.
---
--- This function parses and performs conversion immediately.  See
--- 'json'' for details.
 decodeFileStrict' :: (FromJSON a) => FilePath -> IO (Maybe a)
-decodeFileStrict' = fmap decodeStrict' . B.readFile
-
-eitherFormatError :: Either (JSONPath, String) a -> Either String a
-eitherFormatError = either (Left . uncurry formatError) Right
-{-# INLINE eitherFormatError #-}
-
--- | Like 'decode' but returns an error message when decoding fails.
-eitherDecode :: (FromJSON a) => L.ByteString -> Either String a
-eitherDecode = eitherFormatError . eitherDecodeWith jsonEOF ifromJSON
-{-# INLINE eitherDecode #-}
-
--- | Like 'decodeStrict' but returns an error message when decoding fails.
-eitherDecodeStrict :: (FromJSON a) => B.ByteString -> Either String a
-eitherDecodeStrict =
-  eitherFormatError . eitherDecodeStrictWith jsonEOF ifromJSON
-{-# INLINE eitherDecodeStrict #-}
+decodeFileStrict' = decodeFileStrict
 
 -- | Like 'decodeFileStrict' but returns an error message when decoding fails.
 eitherDecodeFileStrict :: (FromJSON a) => FilePath -> IO (Either String a)
@@ -279,57 +224,25 @@ eitherDecodeFileStrict =
 
 -- | Like 'decode'' but returns an error message when decoding fails.
 eitherDecode' :: (FromJSON a) => L.ByteString -> Either String a
-eitherDecode' = eitherFormatError . eitherDecodeWith jsonEOF' ifromJSON
+eitherDecode' = eitherDecode
 {-# INLINE eitherDecode' #-}
 
 -- | Like 'decodeStrict'' but returns an error message when decoding fails.
 eitherDecodeStrict' :: (FromJSON a) => B.ByteString -> Either String a
-eitherDecodeStrict' =
-  eitherFormatError . eitherDecodeStrictWith jsonEOF' ifromJSON
+eitherDecodeStrict' = eitherDecodeStrict
 {-# INLINE eitherDecodeStrict' #-}
 
 -- | Like 'decodeFileStrict'' but returns an error message when decoding fails.
 eitherDecodeFileStrict' :: (FromJSON a) => FilePath -> IO (Either String a)
-eitherDecodeFileStrict' =
-  fmap eitherDecodeStrict' . B.readFile
+eitherDecodeFileStrict' = eitherDecodeFileStrict
 {-# INLINE eitherDecodeFileStrict' #-}
-
-throwFormatError :: MonadThrow m => Either (JSONPath, String) a -> m a
-throwFormatError = either (throwM . AesonException . uncurry formatError) return
-{-# INLINE throwFormatError #-}
-
--- | Like 'decode' but throws an 'AesonException' when decoding fails.
---
--- >>> throwDecode "42" :: Maybe Int
--- Just 42
---
--- >>> throwDecode "42" :: IO Int
--- 42
---
--- >>> throwDecode "true" :: IO Int
--- ...Exception: AesonException...
---
--- @since 2.1.2.0
---
-throwDecode :: forall a m. (FromJSON a, MonadThrow m) => L.ByteString -> m a
-throwDecode = throwFormatError . eitherDecodeWith jsonEOF ifromJSON
-{-# INLINE throwDecode #-}
-
--- | Like 'decodeStrict' but throws an 'AesonException' when decoding fails.
---
--- @since 2.1.2.0
---
-throwDecodeStrict :: forall a m. (FromJSON a, MonadThrow m) => B.ByteString -> m a
-throwDecodeStrict =
-  throwFormatError . eitherDecodeStrictWith jsonEOF ifromJSON
-{-# INLINE throwDecodeStrict #-}
 
 -- | Like 'decode'' but throws an 'AesonException' when decoding fails.
 --
 -- @since 2.1.2.0
 --
 throwDecode' :: forall a m. (FromJSON a, MonadThrow m) => L.ByteString -> m a
-throwDecode' = throwFormatError . eitherDecodeWith jsonEOF' ifromJSON
+throwDecode' = throwDecode
 {-# INLINE throwDecode' #-}
 
 -- | Like 'decodeStrict'' but throws an 'AesonException' when decoding fails.
@@ -337,18 +250,8 @@ throwDecode' = throwFormatError . eitherDecodeWith jsonEOF' ifromJSON
 -- @since 2.1.2.0
 --
 throwDecodeStrict' :: forall a m. (FromJSON a, MonadThrow m) => B.ByteString -> m a
-throwDecodeStrict' =
-  throwFormatError . eitherDecodeStrictWith jsonEOF' ifromJSON
+throwDecodeStrict' = throwDecodeStrict
 {-# INLINE throwDecodeStrict' #-}
-
--- | Exception thrown by 'throwDecode' and variants.
---
--- @since 2.1.2.0
-newtype AesonException = AesonException String
-  deriving (Show)
-
-instance Exception AesonException where
-    displayException (AesonException str) = "aeson: " ++ str
 
 -- $use
 --

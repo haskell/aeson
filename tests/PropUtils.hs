@@ -31,7 +31,6 @@ import Prelude.Compat
 
 import Data.Aeson (eitherDecode, encode)
 import Data.Aeson.Encoding (encodingToLazyByteString)
-import Data.Aeson.Parser (value)
 import Data.Aeson.Types
 import qualified Data.Aeson.Key as Key
 import qualified Data.Aeson.KeyMap as KM
@@ -43,7 +42,6 @@ import Instances ()
 import Test.QuickCheck (Arbitrary(..), Property, Testable, (===), (.&&.), counterexample)
 import Types
 import Text.Read (readMaybe)
-import qualified Data.Attoparsec.Lazy as L
 import qualified Data.ByteString.Lazy.Char8 as L
 import qualified Data.Vector as V
 import qualified Data.Aeson.Decoding as Dec
@@ -80,10 +78,9 @@ toParseJSON1 parsejson1 tojson1 = toParseJSON parsejson tojson
 roundTripEnc :: (FromJSON a, ToJSON a, Show a) =>
              (a -> a -> Property) -> a -> Property
 roundTripEnc eq i =
-    case fmap ifromJSON . L.parse value . encode $ i of
-      L.Done _ (ISuccess v)      -> v `eq` i
-      L.Done _ (IError path err) -> failure "fromJSON" (formatError path err) i
-      L.Fail _ _ err             -> failure "parse" err i
+    case eitherDecode . encode $ i of
+      Right v  -> v `eq` i
+      Left err -> failure "parsing" err i
 
 roundTripDecEnc :: (FromJSON a, ToJSON a, Show a) =>
              (a -> a -> Property) -> a -> Property

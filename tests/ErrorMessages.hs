@@ -9,9 +9,8 @@ module ErrorMessages
 
 import Prelude.Compat
 
-import Data.Aeson (FromJSON(..), Value, json)
-import Data.Aeson.Types (Parser, formatError, iparse)
-import Data.Aeson.Parser (eitherDecodeWith)
+import Data.Aeson (FromJSON(..), Value, eitherDecode)
+import Data.Aeson.Types (Parser, parseEither)
 import Data.Algorithm.Diff (PolyDiff (..), getGroupedDiff)
 import Data.Proxy (Proxy(..))
 import Data.Semigroup ((<>))
@@ -209,8 +208,8 @@ testWith :: Show a => String -> (Value -> Parser a) -> [L.ByteString] -> Output
 testWith name parser ts =
   outputLine name <>
   foldMap (\s ->
-    case eitherDecodeWith json (iparse parser) s of
-      Left err -> outputLine $ uncurry formatError err
+    case eitherDecode s >>= parseEither parser of
+      Left err -> outputLine err
       Right a -> outputLine $ show a) ts
 
 testFor :: forall a proxy. (FromJSON a, Show a)

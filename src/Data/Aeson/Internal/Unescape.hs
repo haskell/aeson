@@ -2,7 +2,7 @@
 {-# LANGUAGE CPP          #-}
 {-# LANGUAGE MultiWayIf   #-}
 
-module Data.Aeson.Parser.UnescapePure
+module Data.Aeson.Internal.Unescape
   ( unescapeText
   ) where
 
@@ -27,7 +27,9 @@ import Data.Aeson.Internal.ByteString
 import           Data.Word                (Word16)
 #endif
 
-
+-- | Unescape JSON text literal.
+--
+-- This function is exporeted mostly for testing and benchmarking purposes.
 unescapeText :: ByteString -> Either UnicodeException Text
 unescapeText = unsafeDupablePerformIO . try . unescapeTextIO
 

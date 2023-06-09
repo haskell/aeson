@@ -19,9 +19,9 @@ Error in $: When parsing Types.SomeType expected an Object with a single tag/con
 Error in $: When parsing Types.SomeType expected an Object with a single tag/contents pair but got 2 pairs.
 Error in $: When parsing Types.SomeType expected an Object with a single tag/contents pair but got 0 pairs.
 Error in $: When parsing Types.SomeType expected Object but got Array.
-Error in $: not enough input. Expecting ':'
-Error in $: not enough input. Expecting object value
-Error in $: not enough input. Expecting ',' or '}'
+Unexpected end-of-input, expecting :
+Unexpected end-of-input, expecting JSON value
+Unexpected end-of-input, expecting , or }
 SomeType (two-element array)
 Error in $: parsing Int failed, expected Number, but encountered Boolean
 Error in $: When parsing the constructor Record of type Types.SomeType expected Object but got Null.
@@ -29,8 +29,8 @@ Error in $: When parsing Types.SomeType expected a 2-element Array with a tag an
 Error in $: When parsing Types.SomeType expected an Array of 2 elements where the first element is a String but got Null at the first element.
 Error in $: When parsing Types.SomeType expected an Array of 2 elements but got 0 elements
 Error in $: When parsing Types.SomeType expected Array but got Object.
-Error in $: not enough input. Expecting ',' or ']'
-Error in $: not enough input. Expecting json list value
+Unexpected end-of-input, expecting , or ]
+Unexpected end-of-input, expecting JSON value
 SomeType (reject unknown fields)
 Error in $: Unknown fields: ["testZero"]
 Error in $: key "tag" not found
