@@ -49,8 +49,8 @@ decode' s = fromMaybe (error "fail to parse via Aeson") $ A.decode' s
 decodeS :: BS.ByteString -> A.Value
 decodeS s = fromMaybe (error "fail to parse via Aeson") $ A.decodeStrict' s
 
-decodeIP :: BL.ByteString -> A.Value
-decodeIP s = fromMaybe (error "fail to parse via Parser.decodeWith") $
+decodeAtto :: BL.ByteString -> A.Value
+decodeAtto s = fromMaybe (error "fail to parse via Parser.decodeWith") $
     I.decodeWith I.jsonEOF A.fromJSON s
 
 encodeJ :: J.JSValue -> BL.ByteString
@@ -73,11 +73,11 @@ benchmark =
   bgroup "compare-json" [
       bgroup "decode" [
         bgroup "en" [
-          bench "aeson/lazy"     $ nf decode enA
-        , bench "aeson/strict"   $ nf decode' enA
-        , bench "aeson/stricter" $ nf decodeS enS
-        , bench "aeson/parser"   $ nf decodeIP enA
-        , bench "json"           $ nf decodeJ enJ
+          bench "aeson/lazy"       $ nf decode enA
+        , bench "aeson/strict"     $ nf decode' enA
+        , bench "aeson/stricter"   $ nf decodeS enS
+        , bench "aeson/attoparsec" $ nf decodeAtto enA
+        , bench "json"             $ nf decodeJ enJ
         ]
       , bgroup "jp" [
           bench "aeson"          $ nf decode jpA

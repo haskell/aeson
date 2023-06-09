@@ -149,6 +149,9 @@ module Data.Aeson.Types
     , keyModifier
     , defaultJSONKeyOptions
 
+    -- * Parsing exceptions
+    , AesonException (..)
+
     -- * Parsing context
     , (<?>)
     , JSONPath

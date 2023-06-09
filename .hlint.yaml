@@ -30,6 +30,7 @@
 - ignore:
     name: "Unused LANGUAGE pragma"
     within:
+      - Data.Aeson.Internal.ByteString
       - Data.Aeson.Internal.Text
       - Compare.JsonBench
 

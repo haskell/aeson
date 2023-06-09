@@ -73,6 +73,9 @@ module Data.Aeson.Types.Internal
     , camelTo
     , camelTo2
 
+    -- * Aeson Exception
+    , AesonException (..)
+
     -- * Other types
     , DotNetTime(..)
     ) where
@@ -80,6 +83,7 @@ module Data.Aeson.Types.Internal
 import Data.Aeson.Internal.Prelude
 
 import Control.DeepSeq (NFData(..))
+import Control.Exception (Exception (..))
 import Control.Monad (MonadPlus(..), ap)
 import Data.Char (isLower, isUpper, toLower, isAlpha, isAlphaNum)
 import Data.Aeson.Key (Key)
@@ -936,3 +940,16 @@ camelTo2 c = map toLower . go2 . go1
           go2 "" = ""
           go2 (l:u:xs) | isLower l && isUpper u = l : c : u : go2 xs
           go2 (x:xs) = x : go2 xs
+
+-------------------------------------------------------------------------------
+-- AesonException
+-------------------------------------------------------------------------------
+
+-- | Exception thrown by 'throwDecode' and variants.
+--
+-- @since 2.1.2.0
+newtype AesonException = AesonException String
+  deriving (Show)
+
+instance Exception AesonException where
+    displayException (AesonException str) = "aeson: " ++ str

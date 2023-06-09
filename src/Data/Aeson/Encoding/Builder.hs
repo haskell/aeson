@@ -39,7 +39,6 @@ module Data.Aeson.Encoding.Builder
 
 import Data.Aeson.Internal.Prelude
 
-import Data.Attoparsec.Time.Internal
 import Data.Aeson.Types.Internal (Value (..), Key)
 import qualified Data.Aeson.Key as Key
 import qualified Data.Aeson.KeyMap as KM
@@ -49,6 +48,7 @@ import Data.ByteString.Builder.Prim ((>$<), (>*<))
 import qualified Data.ByteString.Builder.Prim as BP
 import Data.ByteString.Builder.Scientific (scientificBuilder)
 import Data.Char (chr, ord)
+import Data.Fixed (Fixed (..))
 import Data.Scientific (base10Exponent, coefficient)
 import Data.Text.Encoding (encodeUtf8BuilderEscaped)
 import Data.Time (UTCTime(..))
@@ -56,6 +56,7 @@ import Data.Time.Calendar (Day(..), toGregorian)
 import Data.Time.Calendar.Month.Compat (Month, toYearMonth)
 import Data.Time.Calendar.Quarter.Compat (Quarter, toYearQuarter, QuarterOfYear (..))
 import Data.Time.LocalTime (LocalTime (..), TimeZone (..), ZonedTime (..), TimeOfDay (..))
+import Data.Time.Clock.Compat (DiffTime, diffTimeToPicoseconds)
 import qualified Data.Text as T
 import qualified Data.Vector as V
 
@@ -290,3 +291,28 @@ twoDigits a     = T (digit hi) (digit lo)
 
 digit :: Int -> Char
 digit x = chr (x + 48)
+
+-------------------------------------------------------------------------------
+-- TimeOfDay64
+-------------------------------------------------------------------------------
+
+-- | Like TimeOfDay, but using a fixed-width integer for seconds.
+data TimeOfDay64 = TOD {-# UNPACK #-} !Int
+                       {-# UNPACK #-} !Int
+                       {-# UNPACK #-} !Int64
+
+toTimeOfDay64 :: TimeOfDay -> TimeOfDay64
+toTimeOfDay64 (TimeOfDay h m (MkFixed s)) = TOD h m (fromIntegral s)
+
+posixDayLength :: DiffTime
+posixDayLength = 86400
+
+diffTimeOfDay64 :: DiffTime -> TimeOfDay64
+diffTimeOfDay64 t
+  | t >= posixDayLength = TOD 23 59 (60000000000000 + pico (t - posixDayLength))
+  | otherwise = TOD (fromIntegral h) (fromIntegral m) s
+    where (h,mp) = pico t `quotRem` 3600000000000000
+          (m,s)  = mp `quotRem` 60000000000000
+          pico   = fromIntegral . diffTimeToPicoseconds
+
+

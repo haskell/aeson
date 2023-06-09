@@ -22,8 +22,8 @@ import qualified Data.Scientific              as Sci
 import           Data.Aeson.Decoding.Internal
 import           Data.Aeson.Decoding.Tokens
 import           Data.Aeson.Internal.Text     (unsafeDecodeASCII)
+import           Data.Aeson.Internal.Unescape (unescapeText)
 import           Data.Aeson.Internal.Word8
-import           Data.Aeson.Parser.Unescape   (unescapeText)
 
 -- | Lex (and parse) strict 'ByteString' into 'Tokens' stream.
 --

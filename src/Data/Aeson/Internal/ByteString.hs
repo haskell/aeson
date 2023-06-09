@@ -5,27 +5,36 @@
 module Data.Aeson.Internal.ByteString (
     mkBS, 
     withBS,
+#ifdef MIN_VERSION_template_haskell
     liftSBS,
+#endif
 ) where
 
 import Data.ByteString.Internal (ByteString (..))
 import Data.Word (Word8)
 import Foreign.ForeignPtr (ForeignPtr)
-import Data.ByteString.Short (ShortByteString, fromShort)
-import GHC.Exts (Addr#, Ptr (Ptr))
-import Data.ByteString.Short.Internal (createFromPtr)
-import System.IO.Unsafe (unsafeDupablePerformIO)
-
-import qualified Language.Haskell.TH.Lib as TH
-import qualified Language.Haskell.TH.Syntax as TH
 
 #if !MIN_VERSION_bytestring(0,11,0)
 import GHC.ForeignPtr (plusForeignPtr)
 #endif
 
+#ifdef MIN_VERSION_template_haskell
+import Data.ByteString.Short (ShortByteString, fromShort)
+import Data.ByteString.Short.Internal (createFromPtr)
+import GHC.Exts (Addr#, Ptr (Ptr))
+import System.IO.Unsafe (unsafeDupablePerformIO)
+
+import qualified Language.Haskell.TH.Lib as TH
+import qualified Language.Haskell.TH.Syntax as TH
+
 #if !MIN_VERSION_template_haskell(2,16,0)
 import qualified Data.ByteString as BS
 #endif
+#endif
+
+-------------------------------------------------------------------------------
+-- bytestring-0.11 compat
+-------------------------------------------------------------------------------
 
 mkBS :: ForeignPtr Word8 -> Int -> ByteString
 #if MIN_VERSION_bytestring(0,11,0)
@@ -43,6 +52,11 @@ withBS (PS !sfp !soff !slen) kont = kont (plusForeignPtr sfp soff) slen
 #endif
 {-# INLINE withBS #-}
 
+-------------------------------------------------------------------------------
+-- Template Haskell
+-------------------------------------------------------------------------------
+
+#ifdef MIN_VERSION_template_haskell
 liftSBS :: ShortByteString -> TH.ExpQ
 #if MIN_VERSION_template_haskell(2,16,0)
 liftSBS sbs = withBS bs $ \ptr len -> [| unsafePackLenLiteral |]
@@ -62,3 +76,4 @@ liftSBS sbs = withBS bs $ \_ len -> [| unsafePackLenLiteral |]
 unsafePackLenLiteral :: Int -> Addr# -> ShortByteString
 unsafePackLenLiteral len addr# =
     unsafeDupablePerformIO $ createFromPtr (Ptr addr#) len
+#endif

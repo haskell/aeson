@@ -213,6 +213,7 @@ jobs:
           touch cabal.project
           echo "packages: $GITHUB_WORKSPACE/source/." >> cabal.project
           echo "packages: $GITHUB_WORKSPACE/source/attoparsec-iso8601" >> cabal.project
+          echo "packages: $GITHUB_WORKSPACE/source/attoparsec-aeson" >> cabal.project
           echo "packages: $GITHUB_WORKSPACE/source/text-iso8601" >> cabal.project
           echo "packages: $GITHUB_WORKSPACE/source/examples" >> cabal.project
           echo "packages: $GITHUB_WORKSPACE/source/benchmarks" >> cabal.project
@@ -231,6 +232,8 @@ jobs:
           echo "PKGDIR_aeson=${PKGDIR_aeson}" >> "$GITHUB_ENV"
           PKGDIR_attoparsec_iso8601="$(find "$GITHUB_WORKSPACE/unpacked" -maxdepth 1 -type d -regex '.*/attoparsec-iso8601-[0-9.]*')"
           echo "PKGDIR_attoparsec_iso8601=${PKGDIR_attoparsec_iso8601}" >> "$GITHUB_ENV"
+          PKGDIR_attoparsec_aeson="$(find "$GITHUB_WORKSPACE/unpacked" -maxdepth 1 -type d -regex '.*/attoparsec-aeson-[0-9.]*')"
+          echo "PKGDIR_attoparsec_aeson=${PKGDIR_attoparsec_aeson}" >> "$GITHUB_ENV"
           PKGDIR_text_iso8601="$(find "$GITHUB_WORKSPACE/unpacked" -maxdepth 1 -type d -regex '.*/text-iso8601-[0-9.]*')"
           echo "PKGDIR_text_iso8601=${PKGDIR_text_iso8601}" >> "$GITHUB_ENV"
           PKGDIR_aeson_examples="$(find "$GITHUB_WORKSPACE/unpacked" -maxdepth 1 -type d -regex '.*/aeson-examples-[0-9.]*')"
@@ -242,12 +245,15 @@ jobs:
           touch cabal.project.local
           echo "packages: ${PKGDIR_aeson}" >> cabal.project
           echo "packages: ${PKGDIR_attoparsec_iso8601}" >> cabal.project
+          echo "packages: ${PKGDIR_attoparsec_aeson}" >> cabal.project
           echo "packages: ${PKGDIR_text_iso8601}" >> cabal.project
           echo "packages: ${PKGDIR_aeson_examples}" >> cabal.project
           echo "packages: ${PKGDIR_aeson_benchmarks}" >> cabal.project
           echo "package aeson" >> cabal.project
           echo "    ghc-options: -Werror=missing-methods" >> cabal.project
           echo "package attoparsec-iso8601" >> cabal.project
+          echo "    ghc-options: -Werror=missing-methods" >> cabal.project
+          echo "package attoparsec-aeson" >> cabal.project
           echo "    ghc-options: -Werror=missing-methods" >> cabal.project
           echo "package text-iso8601" >> cabal.project
           echo "    ghc-options: -Werror=missing-methods" >> cabal.project
@@ -258,7 +264,7 @@ jobs:
           cat >> cabal.project <<EOF
           allow-newer: hermes-json:attoparsec-iso8601
           EOF
-          $HCPKG list --simple-output --names-only | perl -ne 'for (split /\s+/) { print "constraints: $_ installed\n" unless /^(aeson|aeson-benchmarks|aeson-examples|attoparsec-iso8601|text-iso8601)$/; }' >> cabal.project.local
+          $HCPKG list --simple-output --names-only | perl -ne 'for (split /\s+/) { print "constraints: $_ installed\n" unless /^(aeson|aeson-benchmarks|aeson-examples|attoparsec-aeson|attoparsec-iso8601|text-iso8601)$/; }' >> cabal.project.local
           cat cabal.project
           cat cabal.project.local
       - name: dump install plan
@@ -286,8 +292,9 @@ jobs:
           cabal-docspec $ARG_COMPILER
       - name: hlint
         run: |
-          if [ $((HCNUMVER >= 90200 && HCNUMVER < 90400)) -ne 0 ] ; then (cd ${PKGDIR_aeson} && hlint -h ${GITHUB_WORKSPACE}/source/.hlint.yaml -XHaskell2010 src attoparsec-iso8601/src src-pure) ; fi
+          if [ $((HCNUMVER >= 90200 && HCNUMVER < 90400)) -ne 0 ] ; then (cd ${PKGDIR_aeson} && hlint -h ${GITHUB_WORKSPACE}/source/.hlint.yaml -XHaskell2010 src) ; fi
           if [ $((HCNUMVER >= 90200 && HCNUMVER < 90400)) -ne 0 ] ; then (cd ${PKGDIR_attoparsec_iso8601} && hlint -h ${GITHUB_WORKSPACE}/source/.hlint.yaml -XHaskell2010 src) ; fi
+          if [ $((HCNUMVER >= 90200 && HCNUMVER < 90400)) -ne 0 ] ; then (cd ${PKGDIR_attoparsec_aeson} && hlint -h ${GITHUB_WORKSPACE}/source/.hlint.yaml -XHaskell2010 src) ; fi
           if [ $((HCNUMVER >= 90200 && HCNUMVER < 90400)) -ne 0 ] ; then (cd ${PKGDIR_text_iso8601} && hlint -h ${GITHUB_WORKSPACE}/source/.hlint.yaml -XHaskell2010 src) ; fi
           if [ $((HCNUMVER >= 90200 && HCNUMVER < 90400)) -ne 0 ] ; then (cd ${PKGDIR_aeson_examples} && hlint -h ${GITHUB_WORKSPACE}/source/.hlint.yaml -XHaskell2010 src/) ; fi
           if [ $((HCNUMVER >= 90200 && HCNUMVER < 90400)) -ne 0 ] ; then (cd ${PKGDIR_aeson_benchmarks} && hlint -h ${GITHUB_WORKSPACE}/source/.hlint.yaml -XHaskell2010 .) ; fi

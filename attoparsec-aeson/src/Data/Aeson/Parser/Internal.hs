@@ -44,25 +44,36 @@ module Data.Aeson.Parser.Internal
     , unescapeText
     ) where
 
-import Data.Aeson.Internal.Prelude
-
-import Data.Aeson.Types.Internal (IResult(..), JSONPath, Object, Result(..), Value(..), Key)
-import qualified Data.Aeson.KeyMap as KM
-import qualified Data.Aeson.Key as Key
+import Control.Applicative ((<|>))
+import Control.Monad (when, void)
 import Data.Attoparsec.ByteString.Char8 (Parser, char, decimal, endOfInput, isDigit_w8, signed, string)
+import Data.Function (fix)
+import Data.Functor (($>))
 import Data.Integer.Conversion (byteStringToInteger)
-import qualified Data.Vector as Vector (empty, fromList, fromListN, reverse)
+import Data.Scientific (Scientific)
+import Data.Text (Text)
+import Data.Vector (Vector)
+
+#if !MIN_VERSION_base(4,11,0)
+import Data.Semigroup ((<>))
+#endif
+
+import qualified Data.Aeson.Key as Key
+import qualified Data.Aeson.KeyMap as KM
 import qualified Data.Attoparsec.ByteString as A
 import qualified Data.Attoparsec.Lazy as L
 import qualified Data.ByteString as B
-import qualified Data.ByteString.Unsafe as B
-import qualified Data.ByteString.Lazy as L
-import qualified Data.ByteString.Lazy as BSL
-import qualified Data.ByteString.Lazy.Char8 as C
 import qualified Data.ByteString.Builder as B
+import qualified Data.ByteString.Lazy as BSL
+import qualified Data.ByteString.Lazy as L
+import qualified Data.ByteString.Lazy.Char8 as C
+import qualified Data.ByteString.Unsafe as B
 import qualified Data.Scientific as Sci
-import Data.Aeson.Parser.Unescape (unescapeText)
+import qualified Data.Vector as Vector (empty, fromList, fromListN, reverse)
+
+import Data.Aeson.Types (IResult(..), JSONPath, Object, Result(..), Value(..), Key)
 import Data.Aeson.Internal.Text
+import Data.Aeson.Decoding (unescapeText)
 import Data.Aeson.Internal.Word8
 
 -- $setup

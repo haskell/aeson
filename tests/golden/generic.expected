@@ -19,9 +19,9 @@ Error in $: parsing Types.SomeType failed, expected an Object with a single pair
 Error in $: parsing Types.SomeType failed, expected an Object with a single pair, but found 2 pairs
 Error in $: parsing Types.SomeType failed, expected an Object with a single pair, but found 0 pairs
 Error in $: parsing Types.SomeType failed, expected Object, but encountered Array
-Error in $: not enough input. Expecting ':'
-Error in $: not enough input. Expecting object value
-Error in $: not enough input. Expecting ',' or '}'
+Unexpected end-of-input, expecting :
+Unexpected end-of-input, expecting JSON value
+Unexpected end-of-input, expecting , or }
 SomeType (two-element array)
 Error in $[1]: parsing Int failed, expected Number, but encountered Boolean
 Error in $[1]: parsing Types.SomeType(Record) failed, expected Object, but encountered Null
@@ -29,8 +29,8 @@ Error in $[0]: parsing Types.SomeType failed, expected tag of the 2-element Arra
 Error in $[0]: parsing Types.SomeType failed, tag element is not a String
 Error in $: parsing Types.SomeType failed, expected a 2-element Array, but encountered an Array of length 0
 Error in $: parsing Types.SomeType failed, expected Array, but encountered Object
-Error in $: not enough input. Expecting ',' or ']'
-Error in $: not enough input. Expecting json list value
+Unexpected end-of-input, expecting , or ]
+Unexpected end-of-input, expecting JSON value
 SomeType (reject unknown fields)
 Error in $: parsing Types.SomeType(Record) failed, unknown fields: ["testZero"]
 Error in $: parsing Types.SomeType failed, expected Object with key "tag" containing one of ["nullary","unary","product","record","list"], key "tag" not found

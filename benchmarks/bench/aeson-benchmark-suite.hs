@@ -11,7 +11,7 @@ import           Prelude.Compat
 import           Bench                      (Benchmark, bench, bgroup,
                                              defaultMain, env, nf, whnf)
 import           Control.DeepSeq            (NFData)
-import           Data.Aeson.Parser.Internal (unescapeText)
+import           Data.Aeson.Decoding        (unescapeText)
 import           Data.Proxy                 (Proxy (..))
 import           Data.Vector                (Vector)
 import qualified Data.Aeson.Decoding        as Dec
