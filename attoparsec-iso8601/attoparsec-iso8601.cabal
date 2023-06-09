@@ -12,7 +12,7 @@ copyright:
 author:             Bryan O'Sullivan <bos@serpentine.com>
 maintainer:         Adam Bergmark <adam@bergmark.nl>
 stability:          experimental
-cabal-version:      >=1.10
+cabal-version:      1.12
 homepage:           https://github.com/haskell/aeson
 bug-reports:        https://github.com/haskell/aeson/issues
 build-type:         Simple
