@@ -160,11 +160,10 @@ module Data.Aeson
 
 import Control.Exception (Exception (..))
 import Control.Monad.Catch (MonadThrow (..))
-import Data.Aeson.Types.FromJSON (ifromJSON, parseIndexedJSON)
+import Data.Aeson.Types.FromJSON (parseIndexedJSON)
 import Data.Aeson.Encoding (encodingToLazyByteString)
 import Data.Aeson.Parser.Internal (decodeWith, decodeStrictWith, eitherDecodeWith, eitherDecodeStrictWith, jsonEOF, json, jsonEOF', json')
 import Data.Aeson.Types
-import Data.Aeson.Types.Internal (formatError)
 import qualified Data.ByteString as B
 import qualified Data.ByteString.Lazy as L
 
