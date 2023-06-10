@@ -1,7 +1,14 @@
+{-# LANGUAGE CPP #-}
+{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE TypeApplications #-}
 {-# OPTIONS_GHC -Wno-orphans #-}
 
-module UnitTests.OptionalFields.Generics (omitGenerics) where
+module UnitTests.OptionalFields.Manual (omitManual) where
+
+#if !MIN_VERSION_base(4,11,0)
+import Data.Semigroup ((<>))
+#endif
 
 import UnitTests.OptionalFields.Common
 
@@ -9,71 +16,92 @@ import UnitTests.OptionalFields.Common
 -- Ordinary
 -------------------------------------------------------------------------------
 
+-- lax
 instance ToJSON RecordA where
-  toJSON = genericToJSON omittingOptions
-  toEncoding = genericToEncoding omittingOptions
+  toJSON     RecordA {..} = Object $ "required" .?= required <> "optional" .?= optional <> "default_" .?= default_
+  toEncoding RecordA {..} = pairs  $ "required" .?= required <> "optional" .?= optional <> "default_" .?= default_
 
 instance FromJSON RecordA where
-  parseJSON = genericParseJSON omittingOptions
+    parseJSON = withObject "RecordA" $ \obj -> pure RecordA
+        <*> obj .:!= "required"
+        <*> obj .:!= "optional"
+        <*> obj .:!= "default_"
 
+-- strict
 instance ToJSON RecordB where
-  toJSON = genericToJSON nonOmittingOptions
-  toEncoding = genericToEncoding nonOmittingOptions
+  toJSON     RecordB {..} = Object $ "required" .= required <> "optional" .= optional <> "default_" .= default_
+  toEncoding RecordB {..} = pairs  $ "required" .= required <> "optional" .= optional <> "default_" .= default_
 
 instance FromJSON RecordB where
-  parseJSON = genericParseJSON nonOmittingOptions
+    parseJSON = withObject "RecordB" $ \obj -> pure RecordB
+        <*> obj .: "required"
+        <*> obj .: "optional"
+        <*> obj .: "default_"
 
+-- default: encoding strict, decoding lax
 instance ToJSON RecordC where
-  toJSON = genericToJSON defaultOptions
-  toEncoding = genericToEncoding defaultOptions
+  toJSON     RecordC {..} = Object $ "required" .= required <> "optional" .= optional <> "default_" .= default_
+  toEncoding RecordC {..} = pairs  $ "required" .= required <> "optional" .= optional <> "default_" .= default_
 
 instance FromJSON RecordC where
-  parseJSON = genericParseJSON defaultOptions
+    parseJSON = withObject "RecordC" $ \obj -> pure RecordC
+        <*> obj .:!= "required"
+        <*> obj .:!= "optional"
+        <*> obj .:!= "default_"
 
 -------------------------------------------------------------------------------
 -- Higher
 -------------------------------------------------------------------------------
 
 instance ToJSON1 HRecordA where
-  liftToJSON = genericLiftToJSON omittingOptions
-  liftToEncoding = genericLiftToEncoding omittingOptions
-
-instance FromJSON1 HRecordA where
-  liftParseJSON = genericLiftParseJSON omittingOptions
+  liftToJSON     o f _ HRecordA {..} = Object $ "required" .?= required <> explicitToFieldOmit o f "optional" optional <> "default_" .?= default_
+  liftToEncoding o f _ HRecordA {..} = pairs  $ "required" .?= required <> explicitToFieldOmit o f "optional" optional <> "default_" .?= default_
 
 instance ToJSON a => ToJSON (HRecordA a) where
   toJSON = toJSON1
   toEncoding = toEncoding1
+
+instance FromJSON1 HRecordA where
+  liftParseJSON o f _ = withObject "HRecordA" $ \obj -> pure HRecordA
+    <*> obj .:!= "required"
+    <*> explicitParseFieldOmit o f obj "optional"
+    <*> obj .:!= "default_"
 
 instance FromJSON a => FromJSON (HRecordA a) where
     parseJSON = parseJSON1
 
 
 instance ToJSON1 HRecordB where
-  liftToJSON = genericLiftToJSON nonOmittingOptions
-  liftToEncoding = genericLiftToEncoding nonOmittingOptions
-
-instance FromJSON1 HRecordB where
-  liftParseJSON = genericLiftParseJSON nonOmittingOptions
+  liftToJSON     _o f _ HRecordB {..} = Object $ "required" .= required <> explicitToField f "optional" optional <> "default_" .= default_
+  liftToEncoding _o f _ HRecordB {..} = pairs  $ "required" .= required <> explicitToField f "optional" optional <> "default_" .= default_
 
 instance ToJSON a => ToJSON (HRecordB a) where
   toJSON = toJSON1
   toEncoding = toEncoding1
+
+instance FromJSON1 HRecordB where
+  liftParseJSON _o f _ = withObject "HRecordB" $ \obj -> pure HRecordB
+    <*> obj .: "required"
+    <*> explicitParseField f obj "optional"
+    <*> obj .: "default_"
 
 instance FromJSON a => FromJSON (HRecordB a) where
     parseJSON = parseJSON1
 
 
 instance ToJSON1 HRecordC where
-  liftToJSON = genericLiftToJSON defaultOptions
-  liftToEncoding = genericLiftToEncoding defaultOptions
-
-instance FromJSON1 HRecordC where
-  liftParseJSON = genericLiftParseJSON defaultOptions
+  liftToJSON     _o f _ HRecordC {..} = Object $ "required" .= required <> explicitToField f "optional" optional <> "default_" .= default_
+  liftToEncoding _o f _ HRecordC {..} = pairs  $ "required" .= required <> explicitToField f "optional" optional <> "default_" .= default_
 
 instance ToJSON a => ToJSON (HRecordC a) where
   toJSON = toJSON1
   toEncoding = toEncoding1
+
+instance FromJSON1 HRecordC where
+  liftParseJSON o f _ = withObject "HRecordC" $ \obj -> pure HRecordC
+    <*> obj .:!= "required"
+    <*> explicitParseFieldOmit o f obj "optional"
+    <*> obj .:!= "default_"
 
 instance FromJSON a => FromJSON (HRecordC a) where
     parseJSON = parseJSON1
@@ -82,8 +110,8 @@ instance FromJSON a => FromJSON (HRecordC a) where
 -- Tests
 -------------------------------------------------------------------------------
 
-omitGenerics :: TestTree
-omitGenerics = testGroup "Omit optional fields (Generics)"
+omitManual :: TestTree
+omitManual = testGroup "Omit optional fields (Manual)"
   [ testGroup "ordinary"
     [ testGroup "omitNothingFields = True"
       [ testCase "JSON should include non-optional value." $ encodeCase helloWorldRecA helloWorldObj

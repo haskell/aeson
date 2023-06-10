@@ -26,14 +26,18 @@ module Data.Aeson.Types.Class
     -- * Liftings to unary and binary type constructors
     , FromJSON1(..)
     , parseJSON1
+    , omittedField1
     , FromJSON2(..)
     , parseJSON2
+    , omittedField2
     , ToJSON1(..)
     , toJSON1
     , toEncoding1
+    , omitField1
     , ToJSON2(..)
     , toJSON2
     , toEncoding2
+    , omitField2
     -- * Generic JSON classes
     , GFromJSON(..)
     , FromArgs(..)
@@ -67,6 +71,7 @@ module Data.Aeson.Types.Class
     , genericFromJSONKey
     -- * Object key-value pairs
     , KeyValue(..)
+    , KeyValueOmit(..)
 
     -- * List functions
     , listEncoding
@@ -89,14 +94,20 @@ module Data.Aeson.Types.Class
     , parseField
     , parseFieldMaybe
     , parseFieldMaybe'
+    , parseFieldOmit
+    , parseFieldOmit'
     , explicitParseField
     , explicitParseFieldMaybe
     , explicitParseFieldMaybe'
+    , explicitParseFieldOmit
+    , explicitParseFieldOmit'
     -- ** Operators
     , (.:)
     , (.:?)
     , (.:!)
     , (.!=)
+    , (.:?=)
+    , (.:!=)
     ) where
 
 

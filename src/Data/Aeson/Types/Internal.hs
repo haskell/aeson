@@ -57,6 +57,7 @@ module Data.Aeson.Types.Internal
         , constructorTagModifier
         , allNullaryToStringTag
         , omitNothingFields
+        , allowOmittedFields
         , sumEncoding
         , unwrapUnaryRecords
         , tagSingleConstructors
@@ -718,50 +719,16 @@ data Options = Options
       -- omitted from the resulting object. If 'False', the resulting
       -- object will include those fields mapping to @null@.
       --
+      -- In @aeson-2.2@ this flag is generalised to omit all values with @'Data.Aeson.Types.omitField' x = True@.
+      -- If 'False', the resulting object will include those fields encoded as specified. 
+      --
       -- Note that this /does not/ affect parsing: 'Maybe' fields are
-      -- optional regardless of the value of 'omitNothingFields', subject
-      -- to the note below.
-      --
-      -- === Note
-      --
-      -- Setting 'omitNothingFields' to 'True' only affects fields which are of
-      -- type 'Maybe' /uniformly/ in the 'ToJSON' instance.
-      -- In particular, if the type of a field is declared as a type variable, it
-      -- will not be omitted from the JSON object, unless the field is
-      -- specialized upfront in the instance.
-      --
-      -- The same holds for 'Maybe' fields being optional in the 'FromJSON' instance.
-      --
-      -- ==== __Example__
-      --
-      -- The generic instance for the following type @Fruit@ depends on whether
-      -- the instance head is @Fruit a@ or @Fruit (Maybe a)@.
-      --
-      -- @
-      -- data Fruit a = Fruit
-      --   { apples :: a  -- A field whose type is a type variable.
-      --   , oranges :: 'Maybe' Int
-      --   } deriving 'Generic'
-      --
-      -- -- apples required, oranges optional
-      -- -- Even if 'Data.Aeson.fromJSON' is then specialized to (Fruit ('Maybe' a)).
-      -- instance 'Data.Aeson.FromJSON' a => 'Data.Aeson.FromJSON' (Fruit a)
-      --
-      -- -- apples optional, oranges optional
-      -- -- In this instance, the field apples is uniformly of type ('Maybe' a).
-      -- instance 'Data.Aeson.FromJSON' a => 'Data.Aeson.FromJSON' (Fruit ('Maybe' a))
-      --
-      -- options :: 'Options'
-      -- options = 'defaultOptions' { 'omitNothingFields' = 'True' }
-      --
-      -- -- apples always present in the output, oranges is omitted if 'Nothing'
-      -- instance 'Data.Aeson.ToJSON' a => 'Data.Aeson.ToJSON' (Fruit a) where
-      --   'Data.Aeson.toJSON' = 'Data.Aeson.genericToJSON' options
-      --
-      -- -- both apples and oranges are omitted if 'Nothing'
-      -- instance 'Data.Aeson.ToJSON' a => 'Data.Aeson.ToJSON' (Fruit ('Maybe' a)) where
-      --   'Data.Aeson.toJSON' = 'Data.Aeson.genericToJSON' options
-      -- @
+      -- optional regardless of the value of 'omitNothingFields'.
+      -- 'allowOmittedFieds' controls parsing behavior.
+    , allowOmittedFields :: Bool
+      -- ^ If 'True', missing fields of a record will be filled
+      -- with 'omittedField' values (if they are 'Just').
+      -- If 'False', all fields will required to present in the record object.
     , sumEncoding :: SumEncoding
       -- ^ Specifies how to encode constructors of a sum datatype.
     , unwrapUnaryRecords :: Bool
@@ -777,13 +744,14 @@ data Options = Options
     }
 
 instance Show Options where
-  show (Options f c a o s u t r) =
+  show (Options f c a o q s u t r) =
        "Options {"
     ++ intercalate ", "
       [ "fieldLabelModifier =~ " ++ show (f "exampleField")
       , "constructorTagModifier =~ " ++ show (c "ExampleConstructor")
       , "allNullaryToStringTag = " ++ show a
       , "omitNothingFields = " ++ show o
+      , "allowOmittedFields = " ++ show q
       , "sumEncoding = " ++ show s
       , "unwrapUnaryRecords = " ++ show u
       , "tagSingleConstructors = " ++ show t
@@ -866,6 +834,7 @@ data JSONKeyOptions = JSONKeyOptions
 -- , 'constructorTagModifier'  = id
 -- , 'allNullaryToStringTag'   = True
 -- , 'omitNothingFields'       = False
+-- , 'allowOmittedFields'      = True
 -- , 'sumEncoding'             = 'defaultTaggedObject'
 -- , 'unwrapUnaryRecords'      = False
 -- , 'tagSingleConstructors'   = False
@@ -878,6 +847,7 @@ defaultOptions = Options
                  , constructorTagModifier  = id
                  , allNullaryToStringTag   = True
                  , omitNothingFields       = False
+                 , allowOmittedFields      = True
                  , sumEncoding             = defaultTaggedObject
                  , unwrapUnaryRecords      = False
                  , tagSingleConstructors   = False

@@ -1,101 +1,214 @@
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE DuplicateRecordFields #-}
-{-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE UndecidableInstances #-}
+{-# LANGUAGE OverloadedStrings #-}
 
 module UnitTests.OptionalFields.Common
   ( module UnitTests.OptionalFields.Common
   , module Data.Aeson
+  , module Data.Aeson.Types
   , module Data.Aeson.TH
-  , module GHC.Generics
   , module Test.Tasty
   , module Test.Tasty.HUnit
+  , module Data.Proxy
   ) where
 
 import Data.Aeson
+import Data.Aeson.Types
 import Data.Aeson.TH
 import Data.Maybe (isNothing)
-import Data.Semigroup (Semigroup (..))
-import GHC.Generics
+import GHC.Generics (Generic, Generic1)
+import Data.Proxy
 import Test.Tasty
 import Test.Tasty.HUnit
-import qualified Data.Aeson.Key as K
-import qualified Data.Aeson.KeyMap as KM
 import qualified Data.Text as T
 
+-------------------------------------------------------------------------------
+-- Field types
+-------------------------------------------------------------------------------
+
 newtype NullableNonEmptyString = NullableNonEmptyString (Maybe String)
-  deriving (Eq, Ord, Show, Generic, Semigroup, Monoid)
+  deriving (Eq, Show)
+
+defaultNullableNonEmptyString :: NullableNonEmptyString
+defaultNullableNonEmptyString = NullableNonEmptyString Nothing
 
 instance ToJSON NullableNonEmptyString where
   toJSON (NullableNonEmptyString x) = toJSON x
+  toEncoding (NullableNonEmptyString x) = toEncoding x
   omitField (NullableNonEmptyString x) = isNothing x
 
 instance FromJSON NullableNonEmptyString where
-  parseJSON Null = pure mempty
+  parseJSON Null = pure defaultNullableNonEmptyString
   parseJSON (String x) = pure (nne $ T.unpack x)
   parseJSON _ = fail "NullableNonEmptyString.parseJSON: expected String or Null"
 
-  omittedField = Just mempty
+  omittedField = Just defaultNullableNonEmptyString
+
+
 
 nne :: String -> NullableNonEmptyString
 nne str = case filter (/= ' ') str of
   "" -> NullableNonEmptyString Nothing
   _ -> NullableNonEmptyString (Just str)
 
-obj :: [(Key, Value)] -> Value
-obj = Object . KM.fromList
+newtype Default = Default Int
+  deriving (Eq, Show)
 
-prop :: ToJSON a => String -> a -> (Key, Value)
-prop k v = (K.fromString k, toJSON v)
+instance ToJSON Default where
+    toJSON (Default i) = toJSON i
+    toEncoding (Default i) = toEncoding i
+    omitField (Default i) = i == 0
 
+instance FromJSON Default where
+    parseJSON = fmap Default . parseJSON
+    omittedField = Just (Default 0)
+
+-------------------------------------------------------------------------------
+-- Records
+-------------------------------------------------------------------------------
+
+-- lax
 data RecordA = RecordA
   { required :: String
   , optional :: NullableNonEmptyString
+  , default_ :: Default
   }
-  deriving Generic
+  deriving (Eq, Show, Generic)
 
+-- strict
 data RecordB = RecordB
   { required :: String
   , optional :: NullableNonEmptyString
+  , default_ :: Default
   }
-  deriving Generic
+  deriving (Eq, Show, Generic)
+
+-- default
+data RecordC = RecordC
+  { required :: String
+  , optional :: NullableNonEmptyString
+  , default_ :: Default
+  }
+  deriving (Eq, Show, Generic)
+
+data HRecordA a = HRecordA
+  { required :: String
+  , optional :: a
+  , default_ :: Default
+  }
+  deriving (Eq, Show, Generic1)
+
+data HRecordB a = HRecordB
+  { required :: String
+  , optional :: a
+  , default_ :: Default
+  }
+  deriving (Eq, Show, Generic1)
+
+data HRecordC a = HRecordC
+  { required :: String
+  , optional :: a
+  , default_ :: Default
+  }
+  deriving (Eq, Show, Generic1)
+
+type HRecordA' = HRecordA NullableNonEmptyString
+type HRecordB' = HRecordB NullableNonEmptyString
+type HRecordC' = HRecordC NullableNonEmptyString
+
+-------------------------------------------------------------------------------
+-- Options
+-------------------------------------------------------------------------------
+
+nonOmittingOptions :: Options
+nonOmittingOptions = defaultOptions { omitNothingFields = False, allowOmittedFields = False }
+
+omittingOptions :: Options
+omittingOptions = defaultOptions { omitNothingFields = True, allowOmittedFields = True }
+
+-------------------------------------------------------------------------------
+-- Test utils
+-------------------------------------------------------------------------------
 
 encodeCase :: HasCallStack => ToJSON a => a -> Value -> IO ()
-encodeCase record object' = decode @Value (encode record) @?= Just object'
+encodeCase record obj = do
+  decode @Value (encode record)          @?= Just obj
+  decode @Value (encode (toJSON record)) @?= Just obj
 
-decodeCase :: forall a. HasCallStack => (FromJSON a, ToJSON a) => a -> Value -> IO ()
-decodeCase record object' = (fmap encode . decode @a . encode) object' @?= Just (encode record)
+decodeCase :: forall a. HasCallStack => (FromJSON a, Eq a, Show a) => a -> Value -> IO ()
+decodeCase record obj = do
+  decode @a (encode obj) @?= Just record
 
-counterCase :: forall a proxy. HasCallStack => (FromJSON a, ToJSON a) => proxy a -> Value -> IO ()
-counterCase _ object' = assertBool "decode should fail" $ (null . decode @a . encode) object'
+counterCase :: forall a proxy. HasCallStack => (FromJSON a, ToJSON a, Show a) => proxy a -> Value -> IO ()
+counterCase _ obj = case decode @a (encode obj) of
+  Nothing -> return ()
+  Just v  -> assertFailure $ "decode should fail, got: " ++ show v
+
+-------------------------------------------------------------------------------
+-- Test inputs
+-------------------------------------------------------------------------------
 
 helloWorldRecA :: RecordA
-helloWorldRecA = RecordA "hello" (nne "world")
+helloWorldRecA = RecordA "hello" (nne "world") (Default 42)
 
 helloWorldRecB :: RecordB
-helloWorldRecB = RecordB "hello" (nne "world")
+helloWorldRecB = RecordB "hello" (nne "world") (Default 42)
+
+helloWorldRecC :: RecordC
+helloWorldRecC = RecordC "hello" (nne "world") (Default 42)
+
+helloWorldHRecA :: HRecordA NullableNonEmptyString
+helloWorldHRecA = HRecordA "hello" (nne "world") (Default 42)
+
+helloWorldHRecB :: HRecordB NullableNonEmptyString
+helloWorldHRecB = HRecordB "hello" (nne "world") (Default 42)
+
+helloWorldHRecC :: HRecordC NullableNonEmptyString
+helloWorldHRecC = HRecordC "hello" (nne "world") (Default 42)
 
 helloWorldObj :: Value
-helloWorldObj = obj
-  [ prop "required" "hello"
-  , prop "optional" "world"
+helloWorldObj = object
+  [ "required" .= String "hello"
+  , "optional" .= String "world"
+  , "default_" .= Number 42
   ]
 
 helloRecA :: RecordA
-helloRecA = RecordA "hello" mempty
+helloRecA = RecordA "hello" defaultNullableNonEmptyString (Default 0)
 
 helloRecB :: RecordB
-helloRecB = RecordB "hello" mempty
+helloRecB = RecordB "hello" defaultNullableNonEmptyString (Default 0)
+
+helloRecC :: RecordC
+helloRecC = RecordC "hello" defaultNullableNonEmptyString (Default 0)
+
+helloHRecA :: HRecordA NullableNonEmptyString
+helloHRecA = HRecordA "hello" defaultNullableNonEmptyString (Default 0)
+
+helloHRecB :: HRecordB NullableNonEmptyString
+helloHRecB = HRecordB "hello" defaultNullableNonEmptyString (Default 0)
+
+helloHRecC :: HRecordC NullableNonEmptyString
+helloHRecC = HRecordC "hello" defaultNullableNonEmptyString (Default 0)
 
 helloObj :: Value
-helloObj = obj
-  [ prop "required" "hello"
+helloObj = object
+  [ "required" .= String "hello"
   ]
 
 helloNullObj :: Value
-helloNullObj = obj
-  [ prop "required" "hello"
-  , prop "optional" Null
+helloNullObj = object
+  [ "required" .= String "hello"
+  , "optional" .= Null
+  , "default_" .= Number 0
+  ]
+
+helloNullObj2 :: Value
+helloNullObj2 = object
+  [ "required" .= String "hello"
+  , "optional" .= Null
+  , "default_" .= Null
   ]

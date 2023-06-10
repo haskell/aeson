@@ -66,7 +66,7 @@ monadFixParserA = withObject "Rec" $ \obj -> mdo
 
     let p' :: Value -> Data.Aeson.Types.Parser [Char]
         p' v = do
-            (c, cs) <- liftParseJSON p'' (listParser p'') v
+            (c, cs) <- liftParseJSON Nothing p'' (listParser p'') v
             return (c : cs)
 
     foo <- explicitParseField p' obj "foo"
@@ -90,7 +90,7 @@ monadFixParserB = withObject "Rec" $ \obj -> mdo
 
     let p' :: Value -> Data.Aeson.Types.Parser [Char]
         p' v = do
-            (c, cs) <- liftParseJSON p'' (listParser p'') v
+            (c, cs) <- liftParseJSON Nothing p'' (listParser p'') v
             return (c : cs)
 
     refs <- traverse p' (KM.toMap obj)

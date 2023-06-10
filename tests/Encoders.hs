@@ -3,6 +3,7 @@
 {-# LANGUAGE GADTs #-}
 {-# LANGUAGE NoImplicitPrelude #-}
 {-# LANGUAGE TemplateHaskell #-}
+{-# OPTIONS_GHC -ddump-splices -ddump-to-file #-}
 
 module Encoders (module Encoders) where
 
@@ -117,11 +118,11 @@ gNullaryFromJSONKey t = case genericFromJSONKey keyOptions of
 
 -- Unary types
 type LiftToJSON f a =
-    (a -> Value) -> ([a] -> Value) -> f a -> Value
+    (a -> Bool) -> (a -> Value) -> ([a] -> Value) -> f a -> Value
 type LiftToEncoding f a =
-    (a -> Encoding) -> ([a] -> Encoding) -> f a -> Encoding
+    (a -> Bool) -> (a -> Encoding) -> ([a] -> Encoding) -> f a -> Encoding
 type LiftParseJSON f a =
-    (Value -> Parser a) -> (Value -> Parser [a]) -> Value -> Parser (f a)
+    Maybe a -> (Value -> Parser a) -> (Value -> Parser [a]) -> Value -> Parser (f a)
 
 thSomeTypeToJSON2ElemArray :: SomeType Int -> Value
 thSomeTypeToJSON2ElemArray = $(mkToJSON opts2ElemArray ''SomeType)
