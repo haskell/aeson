@@ -45,6 +45,7 @@ import qualified Data.Aeson.KeyMap as KM
 import Data.Char (toUpper, GeneralCategory(Control,Surrogate), generalCategory)
 import Data.Hashable (hash)
 import Data.HashMap.Strict (HashMap)
+import Data.Kind (Type)
 import Data.List (isSuffixOf)
 import Data.Maybe (fromMaybe)
 import Data.Scientific (Scientific, scientific)
@@ -53,7 +54,9 @@ import Data.Text (Text)
 import Data.Time (UTCTime, ZonedTime)
 import Data.Time.Format.Compat (parseTimeM, defaultTimeLocale)
 import GHC.Generics (Generic)
+#if __GLASGOW_HASKELL__ >= 806
 import GHC.Generics.Generically (Generically (..))
+#endif
 import Instances ()
 import Numeric.Natural (Natural)
 import Test.Tasty (TestTree, testGroup)
@@ -78,8 +81,9 @@ roundTripCamel2 :: String -> Assertion
 roundTripCamel2 name = assertEqual "" name (camelFrom '_' $ camelTo2 '_' name)
 
 camelFrom :: Char -> String -> String
-camelFrom c s = let (p:ps) = split c s
-                in concat $ p : map capitalize ps
+camelFrom c s = case split c s of
+  p:ps ->  concat $ p : map capitalize ps
+  _    -> s -- shouldn't happen?
   where
     split c' s' = map L.unpack $ L.split c' $ L.pack s'
     capitalize t = toUpper (head t) : tail t
@@ -115,38 +119,33 @@ goodProducer = assertEqual "partial encoding should not explode on undefined"
     arch32bit     = (maxBound :: Int) == 2147483647
 
 -- Test decoding various UTC time formats
---
--- Note: the incomplete pattern matches for UTCTimes are completely
--- intentional.  The test expects these parses to succeed.  If the
--- pattern matches fails, there's a bug in either the test or in aeson
--- and needs to be investigated.
 utcTimeGood :: Assertion
 utcTimeGood = do
-  let ts1 = "2015-01-01T12:13:00.00Z" :: LT.Text
-  let ts2 = "2015-01-01T12:13:00Z" :: LT.Text
+  let ts1 = "2015-01-01T12:13:00.00Z"
+  let ts2 = "2015-01-01T12:13:00Z"
   -- 'T' between date and time is not required, can be space
-  let ts3 = "2015-01-03 12:13:00.00Z" :: LT.Text
-  let ts4 = "2015-01-03 12:13:00.125Z" :: LT.Text
-  let (Just (t1 ::  UTCTime)) = parseWithAeson ts1
-  let (Just (t2 ::  UTCTime)) = parseWithAeson ts2
-  let (Just (t3 ::  UTCTime)) = parseWithAeson ts3
-  let (Just (t4 ::  UTCTime)) = parseWithAeson ts4
+  let ts3 = "2015-01-03 12:13:00.00Z"
+  let ts4 = "2015-01-03 12:13:00.125Z"
+  t1 <- parseWithAeson ts1
+  t2 <- parseWithAeson ts2
+  t3 <- parseWithAeson ts3
+  t4 <- parseWithAeson ts4
   assertEqual "utctime" (parseWithRead "%FT%T%QZ" ts1) t1
   assertEqual "utctime" (parseWithRead "%FT%T%QZ" ts2) t2
   assertEqual "utctime" (parseWithRead "%F %T%QZ" ts3) t3
   assertEqual "utctime" (parseWithRead "%F %T%QZ" ts4) t4
   -- Time zones.  Both +HHMM and +HH:MM are allowed for timezone
   -- offset, and MM may be omitted.
-  let ts5 = "2015-01-01T12:30:00.00+00" :: LT.Text
-  let ts6 = "2015-01-01T12:30:00.00+01:15" :: LT.Text
-  let ts7 = "2015-01-01T12:30:00.00-02" :: LT.Text
-  let ts8 = "2015-01-01T22:00:00.00-03" :: LT.Text
-  let ts9 = "2015-01-01T22:00:00.00-04:30" :: LT.Text
-  let (Just (t5 ::  UTCTime)) = parseWithAeson ts5
-  let (Just (t6 ::  UTCTime)) = parseWithAeson ts6
-  let (Just (t7 ::  UTCTime)) = parseWithAeson ts7
-  let (Just (t8 ::  UTCTime)) = parseWithAeson ts8
-  let (Just (t9 ::  UTCTime)) = parseWithAeson ts9
+  let ts5 = "2015-01-01T12:30:00.00+00"
+  let ts6 = "2015-01-01T12:30:00.00+01:15"
+  let ts7 = "2015-01-01T12:30:00.00-02"
+  let ts8 = "2015-01-01T22:00:00.00-03"
+  let ts9 = "2015-01-01T22:00:00.00-04:30"
+  t5 <- parseWithAeson ts5
+  t6 <- parseWithAeson ts6
+  t7 <- parseWithAeson ts7
+  t8 <- parseWithAeson ts8
+  t9 <- parseWithAeson ts9
   assertEqual "utctime" (parseWithRead "%FT%T%QZ" "2015-01-01T12:30:00.00Z") t5
   assertEqual "utctime" (parseWithRead "%FT%T%QZ" "2015-01-01T11:15:00.00Z") t6
   assertEqual "utctime" (parseWithRead "%FT%T%QZ" "2015-01-01T14:30:00Z") t7
@@ -155,30 +154,31 @@ utcTimeGood = do
   assertEqual "utctime" (parseWithRead "%FT%T%QZ" "2015-01-02T02:30:00Z") t9
 
   -- Seconds in Time can be omitted
-  let ts10 = "2015-01-03T12:13Z" :: LT.Text
-  let ts11 = "2015-01-03 12:13Z" :: LT.Text
-  let ts12 = "2015-01-01T12:30-02" :: LT.Text
-  let (Just (t10 ::  UTCTime)) = parseWithAeson ts10
-  let (Just (t11 ::  UTCTime)) = parseWithAeson ts11
-  let (Just (t12 ::  UTCTime)) = parseWithAeson ts12
+  let ts10 = "2015-01-03T12:13Z"
+  let ts11 = "2015-01-03 12:13Z"
+  let ts12 = "2015-01-01T12:30-02"
+  t10 <- parseWithAeson ts10
+  t11 <- parseWithAeson ts11
+  t12 <- parseWithAeson ts12
   assertEqual "utctime" (parseWithRead "%FT%H:%MZ" ts10) t10
   assertEqual "utctime" (parseWithRead "%F %H:%MZ" ts11) t11
   assertEqual "utctime" (parseWithRead "%FT%T%QZ" "2015-01-01T14:30:00Z") t12
 
   -- leap seconds are included correctly
-  let ts13 = "2015-08-23T23:59:60.128+00" :: LT.Text
-  let (Just (t13 ::  UTCTime)) = parseWithAeson ts13
+  let ts13 = "2015-08-23T23:59:60.128+00"
+  t13 <- parseWithAeson ts13
   assertEqual "utctime" (parseWithRead "%FT%T%QZ" "2015-08-23T23:59:60.128Z") t13
-  let ts14 = "2015-08-23T23:59:60.999999999999+00" :: LT.Text
-  let (Just (t14 ::  UTCTime)) = parseWithAeson ts14
+  let ts14 = "2015-08-23T23:59:60.999999999999+00"
+  t14 <- parseWithAeson ts14
   assertEqual "utctime" (parseWithRead "%FT%T%QZ" "2015-08-23T23:59:60.999999999999Z") t14
 
   where
     parseWithRead :: String -> LT.Text -> UTCTime
     parseWithRead f s =
       fromMaybe (error "parseTime input malformed") . parseTimeM True defaultTimeLocale f . LT.unpack $ s
-    parseWithAeson :: LT.Text -> Maybe UTCTime
-    parseWithAeson s = decode . LT.encodeUtf8 $ LT.concat ["\"", s, "\""]
+
+    parseWithAeson :: LT.Text -> IO UTCTime
+    parseWithAeson s = either fail return . eitherDecode . LT.encodeUtf8 $ LT.concat ["\"", s, "\""]
 
 -- Test that a few non-timezone qualified timestamp formats get
 -- rejected if decoding to UTCTime.
@@ -659,7 +659,7 @@ bigNaturalKeyDecoding =
     ((eitherDecode :: L.ByteString -> Either String (HashMap Natural Value)) "{ \"1e2000\": null }")
 
 -- A regression test for: https://github.com/bos/aeson/issues/757
-type family Fam757 :: * -> *
+type family Fam757 :: Type -> Type
 type instance Fam757 = Maybe
 newtype Newtype757 a = MkNewtype757 (Fam757 a)
 deriveToJSON1 defaultOptions ''Newtype757
