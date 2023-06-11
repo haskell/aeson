@@ -13,7 +13,6 @@ module Types (module Types) where
 import Prelude.Compat
 
 import Math.NumberTheory.Logarithms (intLog2)
-import Control.Applicative ((<$>))
 import Data.Data
 import Data.Functor.Compose (Compose (..))
 import Data.Functor.Identity (Identity (..))

@@ -1,6 +1,7 @@
 {-# LANGUAGE NoImplicitPrelude #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE CPP #-}
 
 module ErrorMessages
   (
@@ -13,7 +14,7 @@ import Data.Aeson (FromJSON(..), Value, eitherDecode)
 import Data.Aeson.Types (Parser, parseEither)
 import Data.Algorithm.Diff (PolyDiff (..), getGroupedDiff)
 import Data.Proxy (Proxy(..))
-import Data.Semigroup ((<>))
+
 import Data.Sequence (Seq)
 import Instances ()
 import Numeric.Natural (Natural)
@@ -21,6 +22,10 @@ import Test.Tasty (TestTree, TestName)
 import Test.Tasty.Golden.Advanced (goldenTest)
 import qualified Data.ByteString.Lazy.Char8 as L
 import qualified Data.HashMap.Strict as HM
+
+#if !MIN_VERSION_base(4,11,0)
+import Data.Semigroup ((<>))
+#endif
 
 import Encoders
 import Types
