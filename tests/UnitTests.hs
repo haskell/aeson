@@ -7,7 +7,6 @@
 {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE QuasiQuotes #-}
-{-# LANGUAGE RecursiveDo #-}
 
 #if __GLASGOW_HASKELL__ >= 806
 {-# LANGUAGE DerivingVia #-}
@@ -28,9 +27,8 @@ module UnitTests
 
 import Prelude.Compat
 
-import Control.Applicative (Const)
 import Control.Monad (forM, forM_, when)
-import Data.Aeson ((.=), (.:), (.:?), (.:!), FromJSON(..), FromJSONKeyFunction(..), FromJSONKey(..), ToJSON1(..), decode, eitherDecode, encode, fromJSON, genericParseJSON, genericToEncoding, genericToJSON, object, withObject, withEmbeddedJSON)
+import Data.Aeson ((.=), (.:), (.:?), (.:!), FromJSON(..), ToJSON1(..), decode, eitherDecode, encode, fromJSON, genericParseJSON, genericToEncoding, genericToJSON, object, withObject, withEmbeddedJSON)
 import Data.Aeson.Types (JSONPathElement(..), formatError)
 import Data.Aeson.QQ.Simple (aesonQQ)
 import Data.Aeson.TH (deriveJSON, deriveToJSON, deriveToJSON1)
@@ -38,21 +36,12 @@ import Data.Aeson.Text (encodeToTextBuilder)
 import Data.Aeson.Types
   ( Options(..), Result(Success, Error), ToJSON(..)
   , Value(..), camelTo, camelTo2
-  , explicitParseField, liftParseJSON, listParser
-  , defaultOptions, formatPath, formatRelativePath, omitNothingFields, parse, parseMaybe)
-import qualified Data.Aeson.Types
-import qualified Data.Aeson.KeyMap as KM
+  , defaultOptions, formatPath, formatRelativePath, omitNothingFields, parse)
 import Data.Char (toUpper, GeneralCategory(Control,Surrogate), generalCategory)
-import Data.Hashable (hash)
 import Data.HashMap.Strict (HashMap)
 import Data.Kind (Type)
 import Data.List (isSuffixOf)
-import Data.Maybe (fromMaybe)
 import Data.Scientific (Scientific, scientific)
-import Data.Tagged (Tagged(..))
-import Data.Text (Text)
-import Data.Time (UTCTime, ZonedTime)
-import Data.Time.Format.Compat (parseTimeM, defaultTimeLocale)
 import GHC.Generics (Generic)
 #if __GLASGOW_HASKELL__ >= 806
 import GHC.Generics.Generically (Generically (..))
@@ -60,9 +49,8 @@ import GHC.Generics.Generically (Generically (..))
 import Instances ()
 import Numeric.Natural (Natural)
 import Test.Tasty (TestTree, testGroup)
-import Test.Tasty.HUnit (Assertion, assertFailure, assertEqual, testCase, testCaseSteps, (@?=))
+import Test.Tasty.HUnit (Assertion, assertFailure, assertEqual, testCase)
 import Text.Printf (printf)
-import UnitTests.NullaryConstructors (nullaryConstructors)
 import qualified Data.ByteString.Base16.Lazy as LBase16
 import qualified Data.ByteString.Lazy.Char8 as L
 import qualified Data.Text.Lazy as LT
@@ -71,9 +59,16 @@ import qualified Data.Text.Lazy.Encoding as LT
 import qualified Data.Text.Lazy.Encoding as TLE
 import qualified ErrorMessages
 import qualified SerializationFormatSpec
-import qualified Data.Map as Map -- Lazy!
+
+import UnitTests.NullaryConstructors (nullaryConstructors)
+import Regression.Issue351
 import Regression.Issue571
 import Regression.Issue967
+import UnitTests.Hashable
+import UnitTests.FromJSONKey
+import UnitTests.UTCTime
+import UnitTests.MonadFix
+import UnitTests.KeyMapInsertWith
 
 roundTripCamel :: String -> Assertion
 roundTripCamel name = assertEqual "" name (camelFrom '_' $ camelTo '_' name)
@@ -118,97 +113,6 @@ goodProducer = assertEqual "partial encoding should not explode on undefined"
     k | arch32bit = 4047
       | otherwise = 4030
     arch32bit     = (maxBound :: Int) == 2147483647
-
--- Test decoding various UTC time formats
-utcTimeGood :: Assertion
-utcTimeGood = do
-  let ts1 = "2015-01-01T12:13:00.00Z"
-  let ts2 = "2015-01-01T12:13:00Z"
-  -- 'T' between date and time is not required, can be space
-  let ts3 = "2015-01-03 12:13:00.00Z"
-  let ts4 = "2015-01-03 12:13:00.125Z"
-  t1 <- parseWithAeson ts1
-  t2 <- parseWithAeson ts2
-  t3 <- parseWithAeson ts3
-  t4 <- parseWithAeson ts4
-  assertEqual "utctime" (parseWithRead "%FT%T%QZ" ts1) t1
-  assertEqual "utctime" (parseWithRead "%FT%T%QZ" ts2) t2
-  assertEqual "utctime" (parseWithRead "%F %T%QZ" ts3) t3
-  assertEqual "utctime" (parseWithRead "%F %T%QZ" ts4) t4
-  -- Time zones.  Both +HHMM and +HH:MM are allowed for timezone
-  -- offset, and MM may be omitted.
-  let ts5 = "2015-01-01T12:30:00.00+00"
-  let ts6 = "2015-01-01T12:30:00.00+01:15"
-  let ts7 = "2015-01-01T12:30:00.00-02"
-  let ts8 = "2015-01-01T22:00:00.00-03"
-  let ts9 = "2015-01-01T22:00:00.00-04:30"
-  t5 <- parseWithAeson ts5
-  t6 <- parseWithAeson ts6
-  t7 <- parseWithAeson ts7
-  t8 <- parseWithAeson ts8
-  t9 <- parseWithAeson ts9
-  assertEqual "utctime" (parseWithRead "%FT%T%QZ" "2015-01-01T12:30:00.00Z") t5
-  assertEqual "utctime" (parseWithRead "%FT%T%QZ" "2015-01-01T11:15:00.00Z") t6
-  assertEqual "utctime" (parseWithRead "%FT%T%QZ" "2015-01-01T14:30:00Z") t7
-  -- ts8 wraps around to the next day in UTC
-  assertEqual "utctime" (parseWithRead "%FT%T%QZ" "2015-01-02T01:00:00Z") t8
-  assertEqual "utctime" (parseWithRead "%FT%T%QZ" "2015-01-02T02:30:00Z") t9
-
-  -- Seconds in Time can be omitted
-  let ts10 = "2015-01-03T12:13Z"
-  let ts11 = "2015-01-03 12:13Z"
-  let ts12 = "2015-01-01T12:30-02"
-  t10 <- parseWithAeson ts10
-  t11 <- parseWithAeson ts11
-  t12 <- parseWithAeson ts12
-  assertEqual "utctime" (parseWithRead "%FT%H:%MZ" ts10) t10
-  assertEqual "utctime" (parseWithRead "%F %H:%MZ" ts11) t11
-  assertEqual "utctime" (parseWithRead "%FT%T%QZ" "2015-01-01T14:30:00Z") t12
-
-  -- leap seconds are included correctly
-  let ts13 = "2015-08-23T23:59:60.128+00"
-  t13 <- parseWithAeson ts13
-  assertEqual "utctime" (parseWithRead "%FT%T%QZ" "2015-08-23T23:59:60.128Z") t13
-  let ts14 = "2015-08-23T23:59:60.999999999999+00"
-  t14 <- parseWithAeson ts14
-  assertEqual "utctime" (parseWithRead "%FT%T%QZ" "2015-08-23T23:59:60.999999999999Z") t14
-
-  where
-    parseWithRead :: String -> LT.Text -> UTCTime
-    parseWithRead f s =
-      fromMaybe (error "parseTime input malformed") . parseTimeM True defaultTimeLocale f . LT.unpack $ s
-
-    parseWithAeson :: LT.Text -> IO UTCTime
-    parseWithAeson s = either fail return . eitherDecode . LT.encodeUtf8 $ LT.concat ["\"", s, "\""]
-
--- Test that a few non-timezone qualified timestamp formats get
--- rejected if decoding to UTCTime.
-utcTimeBad :: (String -> IO ()) -> Assertion
-utcTimeBad info = do
-  verifyFailParse "2000-01-01T12:13:00" -- missing Zulu time not allowed (some TZ required)
-  verifyFailParse "2000-01-01 12:13:00" -- missing Zulu time not allowed (some TZ required)
-  verifyFailParse "2000-01-01"          -- date only not OK
-  verifyFailParse "2000-01-01Z"         -- date only not OK
-  verifyFailParse "2015-01-01T12:30:00.00+00Z" -- no Zulu if offset given
-  verifyFailParse "2015-01-01T12:30:00.00+00:00Z" -- no Zulu if offset given
-  verifyFailParse "2015-01-03 12:13:00.Z" -- decimal at the end but no digits
-  verifyFailParse "2015-01-03 12:13.000Z" -- decimal at the end, but no seconds
-  verifyFailParse "2015-01-03 23:59:61Z"  -- exceeds allowed seconds per day
-  verifyFailParse "2015-01-03 12:13:00 Z" -- space before Zulu
-  verifyFailParse "2015-01-03 12:13:00 +00:00" -- space before offset
-  where
-    verifyFailParse :: LT.Text -> Assertion
-    verifyFailParse s = do
-      info (LT.unpack s)
-      let bs = LT.encodeUtf8 $ LT.concat ["\"", s, "\""]
-      let decU = decode bs :: Maybe UTCTime
-      let decZ = decode bs :: Maybe ZonedTime
-      assertIsNothing "verify failure UTCTime"   decU
-      assertIsNothing "verify failure ZonedTime"   decZ
-
-assertIsNothing :: Show a => String -> Maybe a -> Assertion
-assertIsNothing _    Nothing = return ()
-assertIsNothing err (Just a) = assertFailure $ err ++ " " ++ show a
 
 -- Non identifier keys should be escaped & enclosed in brackets
 formatErrorExample :: Assertion
@@ -260,18 +164,6 @@ dotColonMark = [
         ex3 = "{\"value\": null }"
 
 ------------------------------------------------------------------------------
--- Check that the hashes of two equal Value are the same
-------------------------------------------------------------------------------
-
-hashableLaws :: [Assertion]
-hashableLaws = [
-    assertEqual "Hashable Object" (hash a) (hash b)
-  ]
-  where
-  a = object ["223" .= False, "807882556" .= True]
-  b = object ["807882556" .= True, "223" .= False]
-
-------------------------------------------------------------------------------
 -- Check that an alternative way to construct objects works
 ------------------------------------------------------------------------------
 
@@ -283,66 +175,9 @@ objectConstruction = [
     recommended = object ["foo" .= True, "bar" .= (-1 :: Int)]
     notRecommended = Object (mconcat ["foo" .= True, "bar" .= (-1 :: Int)])
 
--------------------------------------------------------------------------------
--- ToJSONKey
--------------------------------------------------------------------------------
-
-newtype MyText = MyText Text
-    deriving (FromJSONKey)
-
-newtype MyText' = MyText' Text
-
-instance FromJSONKey MyText' where
-    fromJSONKey = fmap MyText' fromJSONKey
-    fromJSONKeyList = error "not used"
-
-fromJSONKeyAssertions :: [Assertion]
-fromJSONKeyAssertions =
-    [ assertIsCoerce  "Text"            (fromJSONKey :: FromJSONKeyFunction Text)
-    , assertIsCoerce  "Tagged Int Text" (fromJSONKey :: FromJSONKeyFunction (Tagged Int Text))
-    , assertIsCoerce  "MyText"          (fromJSONKey :: FromJSONKeyFunction MyText)
-
-    , assertIsCoerce' "MyText'"         (fromJSONKey :: FromJSONKeyFunction MyText')
-    , assertIsCoerce  "Const Text"      (fromJSONKey :: FromJSONKeyFunction (Const Text ()))
-    ]
-  where
-    assertIsCoerce :: String -> FromJSONKeyFunction a -> Assertion
-    assertIsCoerce _ FromJSONKeyCoerce = pure ()
-    assertIsCoerce n _                 = assertFailure n
-
-    assertIsCoerce' :: String -> FromJSONKeyFunction a -> Assertion
-    assertIsCoerce' _ FromJSONKeyCoerce = pure ()
-    assertIsCoerce' n _                 = pickWithRules (assertFailure n) (pure ())
-
--- | Pick the first when RULES are enabled, e.g. optimisations are on
-pickWithRules
-    :: a -- ^ Pick this when RULES are on
-    -> a -- ^ use this otherwise
-    -> a
-pickWithRules _ = id
-{-# NOINLINE pickWithRules #-}
-{-# RULES "pickWithRules/rule" [0] forall x. pickWithRules x = const x #-}
-
-------------------------------------------------------------------------------
--- Regressions
-------------------------------------------------------------------------------
-
--- A regression test for: https://github.com/bos/aeson/issues/351
-overlappingRegression :: FromJSON a => L.ByteString -> [a]
-overlappingRegression bs = fromMaybe [] $ decode bs
-
-issue351 :: [Assertion]
-issue351 = [
-    assertEqual "Int"  ([1, 2, 3] :: [Int])  $ overlappingRegression "[1, 2, 3]"
-  , assertEqual "Char" ("abc"     :: String) $ overlappingRegression "\"abc\""
-  , assertEqual "Char" (""        :: String) $ overlappingRegression "[\"a\", \"b\", \"c\"]"
-  ]
-
 ------------------------------------------------------------------------------
 -- Comparison between bytestring and text encoders
 ------------------------------------------------------------------------------
-
-
 
 encoderComparisonTests :: IO TestTree
 encoderComparisonTests = do
@@ -666,106 +501,6 @@ newtype Newtype757 a = MkNewtype757 (Fam757 a)
 deriveToJSON1 defaultOptions ''Newtype757
 
 -------------------------------------------------------------------------------
--- MonadFix
--------------------------------------------------------------------------------
-
-monadFixDecoding1 :: (Value -> Data.Aeson.Types.Parser [Char]) -> Assertion
-monadFixDecoding1 p = do
-    fmap (take 10) (parseMaybe p value) @?= Just "xyzxyzxyzx"
-  where
-    value = object
-        [ "foo" .= ('x', "bar" :: String)
-        , "bar" .= ('y', "quu" :: String)
-        , "quu" .= ('z', "foo" :: String)
-        ]
-
-monadFixDecoding2 :: (Value -> Data.Aeson.Types.Parser [Char]) -> Assertion
-monadFixDecoding2 p = do
-    fmap (take 10) (parseMaybe p value) @?= Nothing
-  where
-    value = object
-        [ "foo" .= ('x', "bar" :: String)
-        , "bar" .= ('y', "???" :: String)
-        , "quu" .= ('z', "foo" :: String)
-        ]
-
-monadFixDecoding3 :: (Value -> Data.Aeson.Types.Parser [Char]) -> Assertion
-monadFixDecoding3 p =
-    fmap (take 10) (parseMaybe p value) @?= Nothing
-  where
-    value = object
-        [ "foo" .= ('x', "bar" :: String)
-        , "bar" .= Null
-        , "quu" .= ('z', "foo" :: String)
-        ]
-
-monadFixDecoding4 :: (Value -> Data.Aeson.Types.Parser [Char]) -> Assertion
-monadFixDecoding4 p =
-    fmap (take 10) (parseMaybe p value) @?= Nothing
-  where
-    value = object
-        [ "els" .= ('x', "bar" :: String)
-        , "bar" .= Null
-        , "quu" .= ('z', "foo" :: String)
-        ]
-
--- Parser with explicit references
-monadFixParserA :: Value -> Data.Aeson.Types.Parser [Char]
-monadFixParserA = withObject "Rec" $ \obj -> mdo
-    let p'' :: Value -> Data.Aeson.Types.Parser String
-        p'' "foo" = return foo
-        p'' "bar" = return bar
-        p'' "quu" = return quu
-        p'' _     = fail "Invalid reference"
-
-    let p' :: Value -> Data.Aeson.Types.Parser [Char]
-        p' v = do
-            (c, cs) <- liftParseJSON p'' (listParser p'') v
-            return (c : cs)
-
-    foo <- explicitParseField p' obj "foo"
-    bar <- explicitParseField p' obj "bar"
-    quu <- explicitParseField p' obj "quu"
-    return foo
-
--- Parser with arbitrary references!
-monadFixParserB :: Value -> Data.Aeson.Types.Parser [Char]
-monadFixParserB = withObject "Rec" $ \obj -> mdo
-    let p'' :: Value -> Data.Aeson.Types.Parser String
-        p'' key' = do
-            key <- parseJSON key'
-            -- this is ugly: we look whether key is in original obj
-            -- but then query from refs.
-            --
-            -- This way we are lazier. Map.traverse isn't lazy enough.
-            case KM.lookup key obj of
-                Just _  -> return (refs Map.! key)
-                Nothing -> fail "Invalid reference"
-
-    let p' :: Value -> Data.Aeson.Types.Parser [Char]
-        p' v = do
-            (c, cs) <- liftParseJSON p'' (listParser p'') v
-            return (c : cs)
-
-    refs <- traverse p' (KM.toMap obj)
-    case Map.lookup "foo" refs of
-        Nothing   -> fail "No foo node"
-        Just root -> return root
-
-monadFixTests :: TestTree
-monadFixTests = testGroup "MonadFix"
-    [ testCase "Example1a" $ monadFixDecoding1 monadFixParserA
-    , testCase "Example2a" $ monadFixDecoding2 monadFixParserA
-    , testCase "Example3a" $ monadFixDecoding3 monadFixParserA
-    , testCase "Example4a" $ monadFixDecoding4 monadFixParserA
-
-    , testCase "Example1b" $ monadFixDecoding1 monadFixParserB
-    , testCase "Example2b" $ monadFixDecoding2 monadFixParserB
-    , testCase "Example3b" $ monadFixDecoding3 monadFixParserB
-    , testCase "Example4b" $ monadFixDecoding4 monadFixParserB
-    ]
-
--------------------------------------------------------------------------------
 -- Tests trees
 -------------------------------------------------------------------------------
 
@@ -793,19 +528,15 @@ tests = testGroup "unit" [
   , testGroup "encoding" [
       testCase "goodProducer" goodProducer
     ]
-  , testGroup "utctime" [
-      testCase "good" utcTimeGood
-    , testCaseSteps "bad"  utcTimeBad
-    ]
+  , utcTimeTests
   , testGroup "formatError" [
       testCase "example 1" formatErrorExample
     ]
   , testGroup ".:, .:?, .:!" $ fmap (testCase "-") dotColonMark
-  , testGroup "Hashable laws" $ fmap (testCase "-") hashableLaws
+  , hashableLaws
   , testGroup "Object construction" $ fmap (testCase "-") objectConstruction
-  , testGroup "Issue #351" $ fmap (testCase "-") issue351
   , testGroup "Nullary constructors" $ fmap (testCase "-") nullaryConstructors
-  , testGroup "FromJSONKey" $ fmap (testCase "-") fromJSONKeyAssertions
+  , fromJSONKeyTests
   , testCase "PR #455" pr455
   , testCase "Unescape string (PR #477)" unescapeString
   , testCase "Show Options" showOptions
@@ -827,11 +558,8 @@ tests = testGroup "unit" [
       assertEqual "" (object ["foo" .= True]) [aesonQQ| {"foo": true } |]
     ]
   , monadFixTests
+  , issue351
   , issue571
   , issue967
-  , testCase "KeyMap.insertWith" $ do
-      KM.insertWith (-)        "a" 2 (KM.fromList [("a", 1)]) @?= KM.fromList [("a",1 :: Int)]
-      KM.insertWith (flip (-)) "a" 2 (KM.fromList [("a", 1)]) @?= KM.fromList [("a",-1 :: Int)]
-      KM.insertWith (-)        "b" 2 (KM.fromList [("a", 1)]) @?= KM.fromList [("a",1),("b",2 :: Int)]
-      KM.insertWith (-)        "b" 2 KM.empty                 @?= KM.fromList [("b",2 :: Int)]
+  , keyMapInsertWithTests
   ]
