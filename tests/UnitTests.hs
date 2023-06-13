@@ -72,6 +72,7 @@ import qualified Data.Text.Lazy.Encoding as TLE
 import qualified ErrorMessages
 import qualified SerializationFormatSpec
 import qualified Data.Map as Map -- Lazy!
+import Regression.Issue571
 import Regression.Issue967
 
 roundTripCamel :: String -> Assertion
@@ -826,6 +827,7 @@ tests = testGroup "unit" [
       assertEqual "" (object ["foo" .= True]) [aesonQQ| {"foo": true } |]
     ]
   , monadFixTests
+  , issue571
   , issue967
   , testCase "KeyMap.insertWith" $ do
       KM.insertWith (-)        "a" 2 (KM.fromList [("a", 1)]) @?= KM.fromList [("a",1 :: Int)]

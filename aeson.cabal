@@ -163,6 +163,7 @@ test-suite aeson-tests
     PropertyRTFunctors
     PropertyTH
     PropUtils
+    Regression.Issue571
     Regression.Issue967
     SerializationFormatSpec
     Types
