@@ -163,12 +163,18 @@ test-suite aeson-tests
     PropertyRTFunctors
     PropertyTH
     PropUtils
+    Regression.Issue351
     Regression.Issue571
     Regression.Issue967
     SerializationFormatSpec
     Types
     UnitTests
+    UnitTests.FromJSONKey
+    UnitTests.Hashable
+    UnitTests.KeyMapInsertWith
+    UnitTests.MonadFix
     UnitTests.NullaryConstructors
+    UnitTests.UTCTime
 
   build-depends:
       aeson
