@@ -79,6 +79,7 @@ import Data.Functor.These (These1 (..))
 import Data.List (intersperse)
 import Data.List.NonEmpty (NonEmpty(..))
 import Data.Maybe (isNothing)
+import Data.Ord (Down (..))
 import Data.Ratio (Ratio, denominator, numerator)
 import Data.Tagged (Tagged(..))
 import Data.These (These (..))
@@ -2068,6 +2069,20 @@ toEncodingQuarterOfYear Q4 = E.unsafeToEncoding "\"q4\""
 
 instance ToJSONKey QuarterOfYear where
     toJSONKey = toJSONKeyTextEnc toEncodingQuarterOfYear
+
+-------------------------------------------------------------------------------
+-- base Down
+-------------------------------------------------------------------------------
+
+instance ToJSON1 Down where
+    liftToJSON _ t _ = coerce t
+    liftToEncoding _ t _ = coerce t
+    liftOmitField = coerce
+
+instance ToJSON a => ToJSON (Down a) where
+    toJSON = toJSON1
+    toEncoding = toEncoding1
+    omitField = omitField1
 
 -------------------------------------------------------------------------------
 -- base Monoid/Semigroup
