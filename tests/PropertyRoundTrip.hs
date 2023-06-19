@@ -27,6 +27,7 @@ import Numeric.Natural (Natural)
 import Test.Tasty (TestTree, testGroup)
 import Test.Tasty.QuickCheck (testProperty)
 import Types
+import qualified Data.Monoid as Monoid
 import qualified Data.Text as T
 import qualified Data.Text.Lazy as LT
 import qualified Data.Text.Short as ST
@@ -41,8 +42,9 @@ import Instances ()
 
 roundTripTests :: TestTree
 roundTripTests =
-  testGroup "roundTrip" [
-      testProperty "Value" $ roundTripEq @Value
+  testGroup "roundTrip"
+    [ testProperty "()" $ roundTripEq @()
+    , testProperty "Value" $ roundTripEq @Value
     , testProperty "Bool" $ roundTripEq @Bool
     , testProperty "Double" $ roundTripEq @(Approx Double)
     , testProperty "Int" $ roundTripEq @Int
@@ -82,6 +84,8 @@ roundTripTests =
     , testProperty "Fix" $ roundTripEq @(F.Fix (These Char))
     , testProperty "Mu" $ roundTripEq @(F.Mu (These Char))
     , testProperty "Nu" $ roundTripEq @(F.Nu (These Char))
+    , testProperty "Maybe" $ roundTripEq @(Maybe Int)
+    , testProperty "Monoid.First" $ roundTripEq @(Monoid.First Int)
     , testProperty "Strict Pair" $ roundTripEq @(S.Pair Int Char)
     , testProperty "Strict Either" $ roundTripEq @(S.Either Int Char)
     , testProperty "Strict These" $ roundTripEq @(S.These Int Char)

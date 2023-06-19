@@ -76,6 +76,7 @@ module Data.Aeson
     , fromJSON
     , ToJSON(..)
     , KeyValue(..)
+    , KeyValueOmit(..)
     , (<?>)
     , JSONPath
     -- ** Keys for maps
@@ -91,14 +92,18 @@ module Data.Aeson
     -- ** Liftings to unary and binary type constructors
     , FromJSON1(..)
     , parseJSON1
+    , omittedField1
     , FromJSON2(..)
     , parseJSON2
+    , omittedField2
     , ToJSON1(..)
     , toJSON1
     , toEncoding1
+    , omitField1
     , ToJSON2(..)
     , toJSON2
     , toEncoding2
+    , omitField2
     -- ** Generic JSON classes and options
     , GFromJSON
     , FromArgs
@@ -123,6 +128,7 @@ module Data.Aeson
     , constructorTagModifier
     , allNullaryToStringTag
     , omitNothingFields
+    , allowOmittedFields
     , sumEncoding
     , unwrapUnaryRecords
     , tagSingleConstructors
@@ -151,6 +157,8 @@ module Data.Aeson
     , (.:?)
     , (.:!)
     , (.!=)
+    , (.:?=)
+    , (.:!=)
     , object
     -- * Parsing
     , parseIndexedJSON

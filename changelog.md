@@ -1,12 +1,36 @@
 For the latest version of this document, please see [https://github.com/haskell/aeson/blob/master/changelog.md](https://github.com/haskell/aeson/blob/master/changelog.md).
 
-### 2.2
+### 2.2.0.0
 
-* Use `Data.Aeson.Decoding` parsing functions as default in `Data.Aeson`.
-* Move `Data.Aeson.Parser` module into separate `attoparsec-aeson` package, as these parsers are not used by `aeson` itself anymore.
-* Remove `cffi` flag. Then the C implementation for string unescaping was used for `text <2` versions.
-  The new native Haskell implementation introduced in version 2.0.3.0 is at least as fast.
-* Drop instances for `attoparsec.Number`.
+* Rework how `omitNothingFields` works. Add `allowOmittedFields` as a parsing counterpart.
+
+  New type-class members were added: `omitField :: a -> Bool` to `ToJSON` and `omittedField :: Maybe a` to `FromJSON`.
+  These control which fields can be omitted.
+  The `.:?=`, `.:!=` and `.?=` operators were added to make use of these new members.
+
+  GHC.Generics and Template Haskell deriving has been updated accordingly.
+  Note: They behave as the parsers have been written with `.:!=`, i.e.
+  if the field value is `null` it's passed to the underlying parser.
+  This doesn't make difference for `Maybe` or `Option`, but does make for
+  types which parser doesn't accept `null`.
+  (`()` parser accepts everything and `Proxy` accepts `null).
+
+  In addition to `Maybe` (and `Option`) fields the `Data.Monoid.First` and `Data.Monoid.Last` are also omitted,
+  as well as the most newtype wrappers, when their wrap omittable type (e.g. newtypes in `Data.Monoid` and `Data.Semigroup`, `Identity`, `Const`, `Tagged`, `Compose`).
+  Additionall "boring" types like `()` and `Proxy` are omitted as well.
+  As the omitting is now uniform, type arguments are also omitted (also in `Generic1` derived instance).
+
+  Resolves issues
+    [#687](https://github.com/haskell/aeson/issues/687),
+    [#571](https://github.com/haskell/aeson/issues/571),
+    [#792](https://github.com/haskell/aeson/issues/792).
+
+* Use `Data.Aeson.Decoding` parsing functions (introduced in version 2.1.2.0) as default in `Data.Aeson`.
+* Move `Data.Aeson.Parser` module into separate [`attoparsec-aeson`](https://hackage.haskell.org/package/attoparsec-aeson) package, as these parsers are not used by `aeson` itself anymore.
+* Use [`text-iso8601`](https://hackage.haskell.org/package/text-iso8601) package for parsing `time` types. These are slightly faster than previously used (copy of) `attoparsec-iso8601`.
+* Remove `cffi` flag. Toggling the flag made `aeson` use a C implementation for string unescaping (used for `text <2` versions).
+  The new native Haskell implementation (introduced in version 2.0.3.0) is at least as fast.
+* Drop instances for `Number` from `attoparsec` package.
 * Improve `Arbitrary Value` instance.
 
 ### 2.1.2.1

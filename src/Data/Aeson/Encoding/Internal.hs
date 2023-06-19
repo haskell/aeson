@@ -115,7 +115,7 @@ instance Ord (Encoding' a) where
     compare (Encoding a) (Encoding b) =
       compare (toLazyByteString a) (toLazyByteString b)
 
--- | @since 2.2
+-- | @since 2.2.0.0
 instance IsString (Encoding' a) where
   fromString = string
 

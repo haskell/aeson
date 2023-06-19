@@ -60,15 +60,18 @@ import qualified Data.Text.Lazy.Encoding as TLE
 import qualified ErrorMessages
 import qualified SerializationFormatSpec
 
-import UnitTests.NullaryConstructors (nullaryConstructors)
 import Regression.Issue351
 import Regression.Issue571
+import Regression.Issue687
 import Regression.Issue967
-import UnitTests.Hashable
+import UnitTests.OmitNothingFieldsNote
 import UnitTests.FromJSONKey
-import UnitTests.UTCTime
-import UnitTests.MonadFix
+import UnitTests.Hashable
 import UnitTests.KeyMapInsertWith
+import UnitTests.MonadFix
+import UnitTests.NullaryConstructors (nullaryConstructors)
+import UnitTests.OptionalFields (optionalFields)
+import UnitTests.UTCTime
 
 roundTripCamel :: String -> Assertion
 roundTripCamel name = assertEqual "" name (camelFrom '_' $ camelTo '_' name)
@@ -260,7 +263,7 @@ deriveToJSON1 defaultOptions ''Foo
 
 pr455 :: Assertion
 pr455 = assertEqual "FooCons FooNil"
-          (toJSON foo) (liftToJSON undefined undefined foo)
+          (toJSON foo) (liftToJSON undefined undefined undefined foo)
   where
     foo :: Foo Int
     foo = FooCons FooNil
@@ -274,6 +277,7 @@ showOptions =
         ++ ", constructorTagModifier =~ \"ExampleConstructor\""
         ++ ", allNullaryToStringTag = True"
         ++ ", omitNothingFields = False"
+        ++ ", allowOmittedFields = True"
         ++ ", sumEncoding = TaggedObject {tagFieldName = \"tag\", contentsFieldName = \"contents\"}"
         ++ ", unwrapUnaryRecords = False"
         ++ ", tagSingleConstructors = False"
@@ -537,6 +541,7 @@ tests = testGroup "unit" [
   , testGroup "Object construction" $ fmap (testCase "-") objectConstruction
   , testGroup "Nullary constructors" $ fmap (testCase "-") nullaryConstructors
   , fromJSONKeyTests
+  , optionalFields
   , testCase "PR #455" pr455
   , testCase "Unescape string (PR #477)" unescapeString
   , testCase "Show Options" showOptions
@@ -560,6 +565,8 @@ tests = testGroup "unit" [
   , monadFixTests
   , issue351
   , issue571
+  , issue687
   , issue967
   , keyMapInsertWithTests
+  , omitNothingFieldsNoteTests
   ]

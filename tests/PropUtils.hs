@@ -39,7 +39,7 @@ import Data.Hashable (Hashable)
 import Data.Map (Map)
 import Encoders
 import Instances ()
-import Test.QuickCheck (Arbitrary(..), Property, Testable, (===), (.&&.), counterexample)
+import Test.QuickCheck (Arbitrary(..), Property, Testable, (===), (.&&.), counterexample, property)
 import Types
 import Text.Read (readMaybe)
 import qualified Data.ByteString.Lazy.Char8 as L
@@ -72,8 +72,8 @@ toParseJSON1
     -> Property
 toParseJSON1 parsejson1 tojson1 = toParseJSON parsejson tojson
   where
-    parsejson = parsejson1 parseJSON (listParser parseJSON)
-    tojson    = tojson1 toJSON (listValue toJSON)
+    parsejson = parsejson1 omittedField parseJSON (listParser parseJSON)
+    tojson    = tojson1 omitField toJSON (listValue toJSON)
 
 roundTripEnc :: (FromJSON a, ToJSON a, Show a) =>
              (a -> a -> Property) -> a -> Property
@@ -96,8 +96,23 @@ roundTripNoEnc eq i =
       (ISuccess v)      -> v `eq` i
       (IError path err) -> failure "fromJSON" (formatError path err) i
 
+roundTripOmit :: (FromJSON a, ToJSON a, Show a) =>
+             (Maybe a -> Maybe a -> Property) -> a -> Property
+roundTripOmit eq i
+    | omitField i = omf `eq` Just i
+    | otherwise   = case fmap omitField omf of
+        Nothing -> property True
+        Just True -> property True
+        Just False -> counterexample (show omf) False
+  where
+    omf = omittedField
+
 roundTripEq :: (Eq a, FromJSON a, ToJSON a, Show a) => a -> Property
-roundTripEq y = roundTripEnc (===) y .&&. roundTripNoEnc (===) y .&&. roundTripDecEnc (===) y
+roundTripEq y =
+  roundTripEnc (===) y .&&.
+  roundTripNoEnc (===) y .&&.
+  roundTripDecEnc (===) y .&&.
+  roundTripOmit (===) y
 
 roundtripReadShow :: Value -> Property
 roundtripReadShow v = readMaybe (show v) === Just v
@@ -161,9 +176,9 @@ sameAs1
     -> Property
 sameAs1 toVal1 toEnc1 v = lhs === rhs
   where
-    rhs = Right $ toVal1 toJSON (listValue toJSON) v
+    rhs = Right $ toVal1 omitField toJSON (listValue toJSON) v
     lhs = eitherDecode . encodingToLazyByteString $
-        toEnc1 toEncoding (listEncoding toEncoding) v
+        toEnc1 omitField toEncoding (listEncoding toEncoding) v
 
 sameAs1Agree
     :: ToJSON a
@@ -174,7 +189,7 @@ sameAs1Agree
 sameAs1Agree toEnc toEnc1 v = rhs === lhs
   where
     rhs = encodingToLazyByteString $ toEnc v
-    lhs = encodingToLazyByteString $ toEnc1 toEncoding (listEncoding toEncoding) v
+    lhs = encodingToLazyByteString $ toEnc1 omitField toEncoding (listEncoding toEncoding) v
 
 --------------------------------------------------------------------------------
 -- Value properties
