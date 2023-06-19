@@ -69,6 +69,7 @@ import UnitTests.FromJSONKey
 import UnitTests.Hashable
 import UnitTests.KeyMapInsertWith
 import UnitTests.MonadFix
+import UnitTests.NoThunks
 import UnitTests.NullaryConstructors (nullaryConstructors)
 import UnitTests.OptionalFields (optionalFields)
 import UnitTests.UTCTime
@@ -569,4 +570,5 @@ tests = testGroup "unit" [
   , issue967
   , keyMapInsertWithTests
   , omitNothingFieldsNoteTests
+  , noThunksTests
   ]

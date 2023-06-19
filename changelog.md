@@ -26,6 +26,11 @@ For the latest version of this document, please see [https://github.com/haskell/
     [#792](https://github.com/haskell/aeson/issues/792).
 
 * Use `Data.Aeson.Decoding` parsing functions (introduced in version 2.1.2.0) as default in `Data.Aeson`.
+  As one side-effect, `decode` and `decode'` etc pair functions are operationally the same.
+  All variants use an intermediate `Value` in normal form.
+
+  The lazier variant could had `Value` thunks inside `Array` (i.e. `Vector`), but the record had been value strict since version `0.4.0.0` (before that the lazy `Data.Map` was used as `Object`).
+
 * Move `Data.Aeson.Parser` module into separate [`attoparsec-aeson`](https://hackage.haskell.org/package/attoparsec-aeson) package, as these parsers are not used by `aeson` itself anymore.
 * Use [`text-iso8601`](https://hackage.haskell.org/package/text-iso8601) package for parsing `time` types. These are slightly faster than previously used (copy of) `attoparsec-iso8601`.
 * Remove `cffi` flag. Toggling the flag made `aeson` use a C implementation for string unescaping (used for `text <2` versions).
