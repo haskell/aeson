@@ -2074,11 +2074,13 @@ instance ToJSONKey QuarterOfYear where
 -- base Down
 -------------------------------------------------------------------------------
 
+-- | @since 2.2.0.0
 instance ToJSON1 Down where
     liftToJSON _ t _ = coerce t
     liftToEncoding _ t _ = coerce t
     liftOmitField = coerce
 
+-- | @since 2.2.0.0
 instance ToJSON a => ToJSON (Down a) where
     toJSON = toJSON1
     toEncoding = toEncoding1
