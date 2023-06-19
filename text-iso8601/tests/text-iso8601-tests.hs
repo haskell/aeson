@@ -57,6 +57,10 @@ main = defaultMain $ testGroup "text-iso8601"
         -- ISO8601 allows various offsets, while RFC3339 only +-HH:MM
         , accepts T.parseUTCTime "1990-12-31T15:59:60-0800" -- no colon
         , accepts T.parseUTCTime "1990-12-31T15:59:60-08"   -- just hour
+
+        -- accepts +23:59
+        , accepts T.parseUTCTime "1937-01-01T12:00:00+23:59"
+        , accepts T.parseUTCTime "1937-01-01T12:00:00-23:59"
         ]
 
     , testGroup "rejected"
@@ -70,6 +74,10 @@ main = defaultMain $ testGroup "text-iso8601"
         -- RFC3339 says we MAY limit, i.e. requiring they should be uppercase.
         , rejects T.parseUTCTime "2023-06-09T02:35:33z"
         , rejects T.parseUTCTime "2023-06-09t02:35:33Z"
+
+        -- accepts +23:59, but not 24 or 60
+        , rejects T.parseUTCTime "1937-01-01T12:00:00+24:59"
+        , rejects T.parseUTCTime "1937-01-01T12:00:00-23:60"
         ]
     ]
 
@@ -91,13 +99,13 @@ roundtrip eq build parse = testProperty (show (typeRep (Proxy :: Proxy a))) $ \x
        property (liftEq eq y (Right x))
 
 rejects :: forall a. (Typeable a, Show a) => (Text -> Either String a) -> String -> TestTree
-rejects parse inp = testCase (show (typeRep (Proxy :: Proxy a)) ++ " accepts " ++ show inp) $ do
+rejects parse inp = testCase (show (typeRep (Proxy :: Proxy a)) ++ " rejects " ++ show inp) $ do
     case parse (T.pack inp) of
         Left _  -> return ()
         Right a -> assertFailure $ "Unexpectedly accepted: " ++ show a
 
 accepts :: forall a. (Typeable a, Show a) => (Text -> Either String a) -> String -> TestTree
-accepts parse inp = testCase (show (typeRep (Proxy :: Proxy a)) ++ " rejects " ++ show inp) $ do
+accepts parse inp = testCase (show (typeRep (Proxy :: Proxy a)) ++ " accepts " ++ show inp) $ do
     case parse (T.pack inp) of
         Left err -> assertFailure $ "Unexpectedly rejected: " ++ err
         Right _  -> return ()
