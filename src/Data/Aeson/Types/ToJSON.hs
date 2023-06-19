@@ -124,6 +124,7 @@ import qualified Data.Vector.Mutable as VM
 import qualified Data.Vector.Primitive as VP
 import qualified Data.Vector.Storable as VS
 import qualified Data.Vector.Unboxed as VU
+import qualified Network.URI as URI
 
 import qualified Data.Aeson.Encoding.Builder as EB
 import qualified Data.ByteString.Builder as B
@@ -2187,6 +2188,22 @@ instance (ToJSON1 f, Functor f) => ToJSON (F.Mu f) where
 instance (ToJSON1 f, Functor f) => ToJSON (F.Nu f) where
     toJSON     = F.foldNu (liftToJSON (const False) id (listValue id))
     toEncoding = F.foldNu (liftToEncoding (const False) id (listEncoding id))
+
+-------------------------------------------------------------------------------
+-- network-uri
+-------------------------------------------------------------------------------
+
+-- | @since 2.2.0.0
+instance ToJSON URI.URI where
+    toJSON uri = toJSON (URI.uriToString id uri "")
+    toEncoding = encodeURI
+
+-- | @since 2.2.0.0
+instance ToJSONKey URI.URI where
+    toJSONKey = toJSONKeyTextEnc encodeURI
+
+encodeURI :: URI.URI -> Encoding' a
+encodeURI uri = E.string (URI.uriToString id uri "")
 
 -------------------------------------------------------------------------------
 -- strict

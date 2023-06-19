@@ -32,6 +32,7 @@ For the latest version of this document, please see [https://github.com/haskell/
   The new native Haskell implementation (introduced in version 2.0.3.0) is at least as fast.
 * Drop instances for `Number` from `attoparsec` package.
 * Improve `Arbitrary Value` instance.
+* Add instances for `URI` from `network-uri`.
 
 ### 2.1.2.1
 

@@ -151,6 +151,7 @@ import qualified Data.Vector.Generic as VG
 import qualified Data.Vector.Primitive as VP
 import qualified Data.Vector.Storable as VS
 import qualified Data.Vector.Unboxed as VU
+import qualified Network.URI as URI
 
 import qualified GHC.Exts as Exts
 import qualified Data.Primitive.Array as PM
@@ -2422,6 +2423,23 @@ instance (FromJSON1 f, Functor f) => FromJSON (F.Mu f) where
 -- | @since 1.5.3.0
 instance (FromJSON1 f, Functor f) => FromJSON (F.Nu f) where
     parseJSON = fmap (F.unfoldNu F.unFix) . parseJSON
+
+-------------------------------------------------------------------------------
+-- network-uri
+-------------------------------------------------------------------------------
+
+-- | @since 2.2.0.0
+instance FromJSON URI.URI where
+    parseJSON = withText "URI" parseURI
+
+-- | @since 2.2.0.0
+instance FromJSONKey URI.URI where
+    fromJSONKey = FromJSONKeyTextParser parseURI
+
+parseURI :: Text -> Parser URI.URI
+parseURI t = case URI.parseURI (T.unpack t) of
+    Nothing -> fail "Invalid URI"
+    Just x  -> return x
 
 -------------------------------------------------------------------------------
 -- strict

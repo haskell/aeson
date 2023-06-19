@@ -23,6 +23,7 @@ import Data.Time.Calendar.Compat (CalendarDiffDays, DayOfWeek)
 import Data.Time.LocalTime.Compat (CalendarDiffTime)
 import Data.Time.Clock.System.Compat (SystemTime)
 import Data.Tuple.Solo (Solo)
+import Network.URI (URI)
 import Numeric.Natural (Natural)
 import Test.Tasty (TestTree, testGroup)
 import Test.Tasty.QuickCheck (testProperty)
@@ -92,6 +93,7 @@ roundTripTests =
     , testProperty "Strict Maybe" $ roundTripEq @(S.Maybe Int)
     , testProperty "Solo Int" $ roundTripEq @(Solo Int)
     , testProperty "ShortText" $ roundTripEq @ST.ShortText
+    , testProperty "URI" $ roundTripEq @URI
     , roundTripFunctorsTests
     , testGroup "ghcGenerics" [
         testProperty "OneConstructor" $ roundTripEq OneConstructor
