@@ -33,6 +33,7 @@ For the latest version of this document, please see [https://github.com/haskell/
 * Drop instances for `Number` from `attoparsec` package.
 * Improve `Arbitrary Value` instance.
 * Add instances for `URI` from `network-uri`.
+* add instances for `Down` from `Data.Ord`.
 
 ### 2.1.2.1
 

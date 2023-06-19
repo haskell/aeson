@@ -101,6 +101,7 @@ import Data.Functor.Sum (Sum(..))
 import Data.Functor.These (These1 (..))
 import Data.Hashable (Hashable(..))
 import Data.List.NonEmpty (NonEmpty(..))
+import Data.Ord (Down (..))
 import Data.Ratio ((%), Ratio)
 import Data.Scientific (base10Exponent)
 import Data.Tagged (Tagged(..))
@@ -2306,6 +2307,20 @@ instance FromJSON Month where
 
 instance FromJSONKey Month where
     fromJSONKey = FromJSONKeyTextParser (Time.run Time.parseMonth)
+
+-------------------------------------------------------------------------------
+-- base Down
+-------------------------------------------------------------------------------
+
+-- | @since 2.2.0.0
+instance FromJSON1 Down where
+    liftParseJSON _ p _ = coerce p
+
+    liftOmittedField = coerce
+
+-- | @since 2.2.0.0
+instance FromJSON a => FromJSON (Down a) where
+    parseJSON = parseJSON1
 
 -------------------------------------------------------------------------------
 -- base Monoid/Semigroup
