@@ -183,11 +183,13 @@ test-suite aeson-tests
     UnitTests.OptionalFields.Manual
     UnitTests.OptionalFields.TH
     UnitTests.UTCTime
+    UnitTests.NoThunks
 
   build-depends:
       aeson
     , base
     , base-compat
+    , deepseq
     , base-orphans          >=0.5.3  && <0.10
     , base16-bytestring
     , bytestring
@@ -224,6 +226,9 @@ test-suite aeson-tests
     , unordered-containers
     , uuid-types
     , vector
+
+  if impl(ghc >=9.2 && <9.7)
+    build-depends: nothunks >=0.1.4 && <0.2
 
 source-repository head
   type:     git

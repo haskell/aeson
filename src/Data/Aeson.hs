@@ -221,6 +221,8 @@ decodeStrict' = decodeStrict
 -- If this fails due to incomplete or invalid input, 'Nothing' is
 -- returned.
 --
+-- Since @2.2.0.0@ an alias for 'decodeFileStrict'.
+--
 decodeFileStrict' :: (FromJSON a) => FilePath -> IO (Maybe a)
 decodeFileStrict' = decodeFileStrict
 
@@ -231,21 +233,29 @@ eitherDecodeFileStrict =
 {-# INLINE eitherDecodeFileStrict #-}
 
 -- | Like 'decode'' but returns an error message when decoding fails.
+--
+-- Since @2.2.0.0@ an alias for 'eitherDecode'.
 eitherDecode' :: (FromJSON a) => L.ByteString -> Either String a
 eitherDecode' = eitherDecode
 {-# INLINE eitherDecode' #-}
 
 -- | Like 'decodeStrict'' but returns an error message when decoding fails.
+--
+-- Since @2.2.0.0@ an alias for 'eitherDecodeStrict'.
 eitherDecodeStrict' :: (FromJSON a) => B.ByteString -> Either String a
 eitherDecodeStrict' = eitherDecodeStrict
 {-# INLINE eitherDecodeStrict' #-}
 
 -- | Like 'decodeFileStrict'' but returns an error message when decoding fails.
+--
+-- Since @2.2.0.0@ an alias for 'eitherDecodeFileStrict''.
 eitherDecodeFileStrict' :: (FromJSON a) => FilePath -> IO (Either String a)
 eitherDecodeFileStrict' = eitherDecodeFileStrict
 {-# INLINE eitherDecodeFileStrict' #-}
 
 -- | Like 'decode'' but throws an 'AesonException' when decoding fails.
+--
+-- Since @2.2.0.0@ an alias for 'throwDecode'.
 --
 -- @since 2.1.2.0
 --
@@ -254,6 +264,8 @@ throwDecode' = throwDecode
 {-# INLINE throwDecode' #-}
 
 -- | Like 'decodeStrict'' but throws an 'AesonException' when decoding fails.
+--
+-- Since @2.2.0.0@ an alias for 'throwDecodeStrict'.
 --
 -- @since 2.1.2.0
 --
