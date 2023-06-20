@@ -131,6 +131,9 @@ parseTimeOfDay = parseTimeOfDay_ kontEOF $ \_ _ _ c _ -> unexpectedChar c "end-o
 --
 -- The accepted formats are @Z@, @+HH@, @+HHMM@, or @+HH:MM@. (@+@ can be @-@).
 --
+-- Accepts @-23:59..23:59@ range, i.e. @HH < 24@ and @MM < 59@.
+-- (This is consistent with grammar, and with what Python, Clojure, joda-time do).
+--
 parseTimeZone :: Text -> Either String Local.TimeZone
 parseTimeZone = parseTimeZone_ Right
 
@@ -485,11 +488,9 @@ parseTimeZone__ x kont c t0 = case c of
 
     withResult :: (Int -> Int) -> Int -> Int -> (Local.TimeZone -> Either String b) -> Either String b
     withResult posNeg hh mm kontR =
-        let off = posNeg (hh * 60 + mm)
-        in if off < (-720) || off > 840 || mm > 59
-           then Left $ "Invalid TimeZone:" ++ show (hh, mm)
-           else kontR (Local.minutesToTimeZone off)
-
+        if hh < 24 && mm < 60
+        then kontR (Local.minutesToTimeZone (posNeg (hh * 60 + mm)))
+        else Left $ "Invalid TimeZone:" ++ show (hh, mm)
 
 {-# INLINE parseLocalTime_ #-}
 parseLocalTime_
