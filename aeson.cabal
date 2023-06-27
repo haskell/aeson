@@ -1,5 +1,5 @@
 name:               aeson
-version:            2.2
+version:            2.2.0.0
 license:            BSD3
 license-file:       LICENSE
 category:           Text, Web, JSON
@@ -112,7 +112,7 @@ library
   build-depends:
       data-fix              >=0.3.2    && <0.4
     , dlist                 >=1.0      && <1.1
-    , hashable              >=1.3.5.0  && <1.5
+    , hashable              >=1.4.2.0  && <1.5
     , indexed-traversable   >=0.1.2    && <0.2
     , integer-conversion    >=0.1      && <0.2
     , network-uri           >=2.6.4.1  && <2.7
@@ -129,7 +129,7 @@ library
     , these                 >=1.2      && <1.3
     , unordered-containers  >=0.2.10.0 && <0.3
     , uuid-types            >=1.0.5    && <1.1
-    , vector                >=0.12.0.1 && <0.14
+    , vector                >=0.13.0.0 && <0.14
     , witherable            >=0.4.2    && <0.5
 
   ghc-options:      -Wall

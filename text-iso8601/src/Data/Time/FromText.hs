@@ -488,6 +488,11 @@ parseTimeZone__ x kont c t0 = case c of
 
     withResult :: (Int -> Int) -> Int -> Int -> (Local.TimeZone -> Either String b) -> Either String b
     withResult posNeg hh mm kontR =
+        -- we accept hours <24 and minutes <60
+        -- this is how grammar implies, and also how python, joda-time
+        -- and clojure #inst literals seem to work.
+        -- Java's java.time seems to restrict to -18..18: https://docs.oracle.com/javase/8/docs/api/java/time/ZoneOffset.html
+        -- but that seems more arbitrary.
         if hh < 24 && mm < 60
         then kontR (Local.minutesToTimeZone (posNeg (hh * 60 + mm)))
         else Left $ "Invalid TimeZone:" ++ show (hh, mm)
