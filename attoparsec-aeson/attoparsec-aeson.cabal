@@ -1,6 +1,6 @@
 cabal-version: 1.12
 name:          attoparsec-aeson
-version:       2.2
+version:       2.2.0.0
 synopsis:      Parsing of aeson's Value with attoparsec
 description:
   Parsing of aeson's Value with attoparsec, originally from aeson.
@@ -43,7 +43,7 @@ library
     Data.Aeson.Internal.Word8
 
   build-depends:
-      aeson               >=2.2      && <2.3
+      aeson               >=2.2.0.0  && <2.3
     , attoparsec          >=0.14.2   && <0.15
     , base                >=4.10.0.0 && <5
     , bytestring          >=0.10.8.2 && <0.12
