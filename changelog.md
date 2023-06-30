@@ -38,6 +38,7 @@ For the latest version of this document, please see [https://github.com/haskell/
   - The space between time and timezone offset (in `UTCTime` and `ZonedTime`) is disallowed. ISO8601 explictly forbidds it.
   - The timezone offsets can be in range -23:59..23:59. This is how Python, joda-time etc seems to do. (Previously the range was -12..+14)
 
+* Remove internal `Data.Aeson.Internal` and `Data.Aeson.Internal.Time` modules. Everything from the former is exported elsewhere (`Data.Aeson.Types`), the latter was truly internal.
 * Remove `cffi` flag. Toggling the flag made `aeson` use a C implementation for string unescaping (used for `text <2` versions).
   The new native Haskell implementation (introduced in version 2.0.3.0) is at least as fast.
 * Drop instances for `Number` from `attoparsec` package.
