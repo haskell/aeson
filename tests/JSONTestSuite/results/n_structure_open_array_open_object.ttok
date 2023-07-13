@@ -1,0 +1,4 @@
+TkArrayOpen
+TkItem
+TkRecordOpen
+TkRecordErr "Unexpected end-of-input, expecting record key literal or }"

@@ -1,0 +1,4 @@
+TkArrayOpen
+TkItem
+TkText "x"
+TkArrayErr "Unexpected end-of-input, expecting , or ]"

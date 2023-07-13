@@ -1,0 +1,4 @@
+TkRecordOpen
+TkPair "x"
+TkLit LitTrue
+TkRecordErr "Unexpected end-of-input, expecting key literal"

@@ -1,0 +1,4 @@
+TkArrayOpen
+TkItem
+TkNumber NumInteger 0
+TkArrayErr "Unexpected \"x42]\", expecting , or ]"

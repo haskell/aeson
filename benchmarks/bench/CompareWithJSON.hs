@@ -16,6 +16,8 @@ import qualified Data.Aeson.Text as A
 import qualified Data.Aeson.Parser.Internal as I
 import qualified Data.ByteString as BS
 import qualified Data.ByteString.Lazy as BL
+import qualified Data.Text as T
+import qualified Data.Text.Encoding as TE
 import qualified Data.Text.Lazy          as TL
 import qualified Data.Text.Lazy.Builder  as TLB
 import qualified Data.Text.Lazy.Encoding as TLE
@@ -52,6 +54,12 @@ decodeS s = fromMaybe (error "fail to parse via Aeson") $ A.decodeStrict s
 decodeS' :: BS.ByteString -> A.Value
 decodeS' s = fromMaybe (error "fail to parse via Aeson") $ A.decodeStrict' s
 
+decodeT :: T.Text -> A.Value
+decodeT t = fromMaybe (error "fail to parse via Aeson") $ A.decodeStrictText t
+
+decodeTviaBS :: T.Text -> A.Value
+decodeTviaBS t = fromMaybe (error "fail to parse via Aeson") $ A.decodeStrict $ TE.encodeUtf8 t
+
 decodeAtto :: BL.ByteString -> A.Value
 decodeAtto s = fromMaybe (error "fail to parse via Parser.decodeWith") $
     I.decodeWith I.jsonEOF A.fromJSON s
@@ -82,9 +90,11 @@ benchmark =
   env (readL enFile) $ \enA ->
   env (readS enFile) $ \enS ->
   env (readStr enFile) $ \enJ ->
+  env (readT enFile) $ \enT ->
   env (readL jpFile) $ \jpA ->
   env (readS jpFile) $ \jpS ->
   env (readStr jpFile) $ \jpJ ->
+  env (readT jpFile) $ \jpT ->
   bgroup "compare-json" [
       bgroup "decode" [
         bgroup "whnf" [
@@ -94,6 +104,8 @@ benchmark =
         , bench "aeson/normal'"     $ whnf decode' enA
         , bench "aeson/strict"      $ whnf decodeS enS
         , bench "aeson/strict'"     $ whnf decodeS' enS
+        , bench "aeson/text"        $ whnf decodeT enT
+        , bench "aeson/text-via-bs" $ whnf decodeTviaBS enT
 
           -- attoparsec-aeson package
         , bench "aeson/atto"        $ whnf decodeAtto enA
@@ -123,6 +135,8 @@ benchmark =
       , bgroup "jp" [
           bench "aeson/normal"      $ whnf decode jpA
         , bench "aeson/strict"      $ whnf decodeS jpS
+        , bench "aeson/text"        $ whnf decodeT jpT
+        , bench "aeson/text-via-bs" $ whnf decodeTviaBS jpT
         , bench "json"              $ whnf decodeJ jpJ
         ]
       ]
