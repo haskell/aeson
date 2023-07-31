@@ -8,7 +8,7 @@ import           Data.ByteString                (ByteString)
 import qualified Data.Text                      as T
 
 #if MIN_VERSION_text(2,0,0)
-import           Data.Text.Array                (Array (..))
+import qualified Data.Text.Array                as A
 import qualified Data.Text.Internal             as T (Text (..))
 
 import qualified Data.ByteString.Short.Internal as SBS
@@ -27,7 +27,7 @@ unsafeDecodeASCII :: ByteString -> T.Text
 
 #if MIN_VERSION_text(2,0,0)
 unsafeDecodeASCII bs = withBS bs $ \_fp len -> if len == 0 then T.empty else
-  let !(SBS.SBS arr) = SBS.toShort bs in T.Text (ByteArray arr) 0 len
+  let !(SBS.SBS arr) = SBS.toShort bs in T.Text (A.ByteArray arr) 0 len
 
 #else
 unsafeDecodeASCII = TE.decodeLatin1
