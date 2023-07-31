@@ -268,7 +268,7 @@ toAscList = M.toAscList . unKeyMap
 difference :: KeyMap v -> KeyMap v' -> KeyMap v
 difference tm1 tm2 = KeyMap (M.difference (unKeyMap tm1) (unKeyMap tm2))
 
--- The (left-biased) union of two maps. It prefers the first map when duplicate
+-- | The (left-biased) union of two maps. It prefers the first map when duplicate
 -- keys are encountered, i.e. ('union' == 'unionWith' 'const').
 union :: KeyMap v -> KeyMap v -> KeyMap v
 union (KeyMap x) (KeyMap y) = KeyMap (M.union x y)
