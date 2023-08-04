@@ -69,7 +69,7 @@ decode bs = unResult (toResultValue (lbsToTokens bs)) (\_ -> Nothing) $ \v bs' -
         | otherwise    -> Nothing
     A.IError _ _       -> Nothing
 
--- | Like 'decodeStrict' but returns an error message when decoding fails.
+-- | Like 'decode' but returns an error message when decoding fails.
 eitherDecode :: (A.FromJSON a) => L.ByteString -> Either String a
 eitherDecode bs = unResult (toResultValue (lbsToTokens bs)) Left $ \v bs' -> case A.ifromJSON v of
     A.ISuccess x
