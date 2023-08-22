@@ -1,4 +1,3 @@
-{-# LANGUAGE NoImplicitPrelude #-}
 -- |
 -- Module:      Data.Aeson.Types
 -- Copyright:   (c) 2011-2016 Bryan O'Sullivan
@@ -29,6 +28,7 @@ module Data.Aeson.Types
     , typeMismatch
     , unexpected
     -- * Type conversion
+    -- ** Parsing
     , Parser
     , Result(..)
     , FromJSON(..)
@@ -37,12 +37,20 @@ module Data.Aeson.Types
     , parseEither
     , parseMaybe
     , parseFail
-    , ToJSON(..)
-    , KeyValue(..)
+    -- ** Parser error handling
     , modifyFailure
     , prependFailure
     , parserThrowError
     , parserCatchError
+    -- ** Parsing with paths
+    , IResult (..)
+    , ifromJSON
+    , iparse
+    , iparseEither
+    -- ** Encoding
+    , ToJSON(..)
+    , KeyValue(..)
+    , KeyValueOmit(..)
 
     -- ** Keys for maps
     , ToJSONKey(..)
@@ -65,14 +73,18 @@ module Data.Aeson.Types
     -- ** Liftings to unary and binary type constructors
     , FromJSON1(..)
     , parseJSON1
+    , omittedField1
     , FromJSON2(..)
     , parseJSON2
+    , omittedField2
     , ToJSON1(..)
     , toJSON1
     , toEncoding1
+    , omitField1
     , ToJSON2(..)
     , toJSON2
     , toEncoding2
+    , omitField2
 
     -- ** Generic JSON classes
     , GFromJSON
@@ -104,13 +116,19 @@ module Data.Aeson.Types
     , (.:?)
     , (.:!)
     , (.!=)
+    , (.:?=)
+    , (.:!=)
     , object
     , parseField
     , parseFieldMaybe
     , parseFieldMaybe'
+    , parseFieldOmit
+    , parseFieldOmit'
     , explicitParseField
     , explicitParseFieldMaybe
     , explicitParseFieldMaybe'
+    , explicitParseFieldOmit
+    , explicitParseFieldOmit'
 
     , listEncoding
     , listValue
@@ -126,6 +144,7 @@ module Data.Aeson.Types
     , allNullaryToStringTag
     , nullaryToObject
     , omitNothingFields
+    , allowOmittedFields
     , sumEncoding
     , unwrapUnaryRecords
     , tagSingleConstructors
@@ -143,15 +162,17 @@ module Data.Aeson.Types
     , keyModifier
     , defaultJSONKeyOptions
 
+    -- * Parsing exceptions
+    , AesonException (..)
+
     -- * Parsing context
     , (<?>)
     , JSONPath
     , JSONPathElement(..)
     , formatPath
     , formatRelativePath
+    , formatError
     ) where
-
-import Prelude.Compat
 
 import Data.Aeson.Encoding (Encoding, unsafeToEncoding, fromEncoding, Series, pairs)
 import Data.Aeson.Types.Class

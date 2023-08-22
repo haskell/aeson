@@ -8,9 +8,9 @@
 #
 # For more information, see https://github.com/haskell-CI/haskell-ci
 #
-# version: 0.13.20211226
+# version: 0.16.4
 #
-# REGENDATA ("0.13.20211226",["github","cabal.project"])
+# REGENDATA ("0.16.4",["github","cabal.project"])
 #
 name: Haskell-CI
 on:
@@ -23,7 +23,7 @@ on:
 jobs:
   linux:
     name: Haskell-CI - Linux - ${{ matrix.compiler }}
-    runs-on: ubuntu-18.04
+    runs-on: ubuntu-20.04
     timeout-minutes:
       60
     container:
@@ -32,15 +32,30 @@ jobs:
     strategy:
       matrix:
         include:
-          - compiler: ghc-9.0.1
+          - compiler: ghc-9.6.2
             compilerKind: ghc
-            compilerVersion: 9.0.1
-            setup-method: hvr-ppa
+            compilerVersion: 9.6.2
+            setup-method: ghcup
             allow-failure: false
-          - compiler: ghc-8.10.4
+          - compiler: ghc-9.4.5
             compilerKind: ghc
-            compilerVersion: 8.10.4
-            setup-method: hvr-ppa
+            compilerVersion: 9.4.5
+            setup-method: ghcup
+            allow-failure: false
+          - compiler: ghc-9.2.8
+            compilerKind: ghc
+            compilerVersion: 9.2.8
+            setup-method: ghcup
+            allow-failure: false
+          - compiler: ghc-9.0.2
+            compilerKind: ghc
+            compilerVersion: 9.0.2
+            setup-method: ghcup
+            allow-failure: false
+          - compiler: ghc-8.10.7
+            compilerKind: ghc
+            compilerVersion: 8.10.7
+            setup-method: ghcup
             allow-failure: false
           - compiler: ghc-8.8.4
             compilerKind: ghc
@@ -62,24 +77,27 @@ jobs:
             compilerVersion: 8.2.2
             setup-method: hvr-ppa
             allow-failure: false
-          - compiler: ghc-8.0.2
-            compilerKind: ghc
-            compilerVersion: 8.0.2
-            setup-method: hvr-ppa
-            allow-failure: false
       fail-fast: false
     steps:
       - name: apt
         run: |
           apt-get update
           apt-get install -y --no-install-recommends gnupg ca-certificates dirmngr curl git software-properties-common libtinfo5
-          apt-add-repository -y 'ppa:hvr/ghc'
-          apt-get update
-          apt-get install -y "$HCNAME"
-          mkdir -p "$HOME/.ghcup/bin"
-          curl -sL https://downloads.haskell.org/ghcup/0.1.17.3/x86_64-linux-ghcup-0.1.17.3 > "$HOME/.ghcup/bin/ghcup"
-          chmod a+x "$HOME/.ghcup/bin/ghcup"
-          "$HOME/.ghcup/bin/ghcup" install cabal 3.6.2.0
+          if [ "${{ matrix.setup-method }}" = ghcup ]; then
+            mkdir -p "$HOME/.ghcup/bin"
+            curl -sL https://downloads.haskell.org/ghcup/0.1.19.2/x86_64-linux-ghcup-0.1.19.2 > "$HOME/.ghcup/bin/ghcup"
+            chmod a+x "$HOME/.ghcup/bin/ghcup"
+            "$HOME/.ghcup/bin/ghcup" install ghc "$HCVER" || (cat "$HOME"/.ghcup/logs/*.* && false)
+            "$HOME/.ghcup/bin/ghcup" install cabal 3.10.1.0 || (cat "$HOME"/.ghcup/logs/*.* && false)
+          else
+            apt-add-repository -y 'ppa:hvr/ghc'
+            apt-get update
+            apt-get install -y "$HCNAME"
+            mkdir -p "$HOME/.ghcup/bin"
+            curl -sL https://downloads.haskell.org/ghcup/0.1.19.2/x86_64-linux-ghcup-0.1.19.2 > "$HOME/.ghcup/bin/ghcup"
+            chmod a+x "$HOME/.ghcup/bin/ghcup"
+            "$HOME/.ghcup/bin/ghcup" install cabal 3.10.1.0 || (cat "$HOME"/.ghcup/logs/*.* && false)
+          fi
         env:
           HCKIND: ${{ matrix.compilerKind }}
           HCNAME: ${{ matrix.compiler }}
@@ -91,11 +109,20 @@ jobs:
           echo "CABAL_DIR=$HOME/.cabal" >> "$GITHUB_ENV"
           echo "CABAL_CONFIG=$HOME/.cabal/config" >> "$GITHUB_ENV"
           HCDIR=/opt/$HCKIND/$HCVER
-          HC=$HCDIR/bin/$HCKIND
-          echo "HC=$HC" >> "$GITHUB_ENV"
-          echo "HCPKG=$HCDIR/bin/$HCKIND-pkg" >> "$GITHUB_ENV"
-          echo "HADDOCK=$HCDIR/bin/haddock" >> "$GITHUB_ENV"
-          echo "CABAL=$HOME/.ghcup/bin/cabal-3.6.2.0 -vnormal+nowrap" >> "$GITHUB_ENV"
+          if [ "${{ matrix.setup-method }}" = ghcup ]; then
+            HC=$HOME/.ghcup/bin/$HCKIND-$HCVER
+            echo "HC=$HC" >> "$GITHUB_ENV"
+            echo "HCPKG=$HOME/.ghcup/bin/$HCKIND-pkg-$HCVER" >> "$GITHUB_ENV"
+            echo "HADDOCK=$HOME/.ghcup/bin/haddock-$HCVER" >> "$GITHUB_ENV"
+            echo "CABAL=$HOME/.ghcup/bin/cabal-3.10.1.0 -vnormal+nowrap" >> "$GITHUB_ENV"
+          else
+            HC=$HCDIR/bin/$HCKIND
+            echo "HC=$HC" >> "$GITHUB_ENV"
+            echo "HCPKG=$HCDIR/bin/$HCKIND-pkg" >> "$GITHUB_ENV"
+            echo "HADDOCK=$HCDIR/bin/haddock" >> "$GITHUB_ENV"
+            echo "CABAL=$HOME/.ghcup/bin/cabal-3.10.1.0 -vnormal+nowrap" >> "$GITHUB_ENV"
+          fi
+
           HCNUMVER=$(${HC} --numeric-version|perl -ne '/^(\d+)\.(\d+)\.(\d+)(\.(\d+))?$/; print(10000 * $1 + 100 * $2 + ($3 == 0 ? $5 != 1 : $3))')
           echo "HCNUMVER=$HCNUMVER" >> "$GITHUB_ENV"
           echo "ARG_TESTS=--enable-tests" >> "$GITHUB_ENV"
@@ -143,21 +170,42 @@ jobs:
         run: |
           $CABAL v2-update -v
       - name: cache (tools)
-        uses: actions/cache@v2
+        uses: actions/cache/restore@v3
         with:
-          key: ${{ runner.os }}-${{ matrix.compiler }}-tools-f55e2677
+          key: ${{ runner.os }}-${{ matrix.compiler }}-tools-cb947dfc
           path: ~/.haskell-ci-tools
       - name: install cabal-plan
         run: |
           mkdir -p $HOME/.cabal/bin
-          curl -sL https://github.com/haskell-hvr/cabal-plan/releases/download/v0.6.2.0/cabal-plan-0.6.2.0-x86_64-linux.xz > cabal-plan.xz
-          echo 'de73600b1836d3f55e32d80385acc055fd97f60eaa0ab68a755302685f5d81bc  cabal-plan.xz' | sha256sum -c -
+          curl -sL https://github.com/haskell-hvr/cabal-plan/releases/download/v0.7.3.0/cabal-plan-0.7.3.0-x86_64-linux.xz > cabal-plan.xz
+          echo 'f62ccb2971567a5f638f2005ad3173dba14693a45154c1508645c52289714cb2  cabal-plan.xz' | sha256sum -c -
           xz -d < cabal-plan.xz > $HOME/.cabal/bin/cabal-plan
           rm -f cabal-plan.xz
           chmod a+x $HOME/.cabal/bin/cabal-plan
           cabal-plan --version
+      - name: install cabal-docspec
+        run: |
+          mkdir -p $HOME/.cabal/bin
+          curl -sL https://github.com/phadej/cabal-extras/releases/download/cabal-docspec-0.0.0.20230517/cabal-docspec-0.0.0.20230517-x86_64-linux.xz > cabal-docspec.xz
+          echo '3b31bbe463ad4d671abbc103db49628562ec48a6604cab278207b5b6acd21ed7  cabal-docspec.xz' | sha256sum -c -
+          xz -d < cabal-docspec.xz > $HOME/.cabal/bin/cabal-docspec
+          rm -f cabal-docspec.xz
+          chmod a+x $HOME/.cabal/bin/cabal-docspec
+          cabal-docspec --version
+      - name: install hlint
+        run: |
+          if [ $((HCNUMVER >= 90200 && HCNUMVER < 90400)) -ne 0 ] ; then HLINTVER=$(cd /tmp && (${CABAL} v2-install -v $ARG_COMPILER --dry-run hlint  --constraint='hlint >=3.5 && <3.6' |  perl -ne 'if (/\bhlint-(\d+(\.\d+)*)\b/) { print "$1"; last; }')); echo "HLint version $HLINTVER" ; fi
+          if [ $((HCNUMVER >= 90200 && HCNUMVER < 90400)) -ne 0 ] ; then if [ ! -e $HOME/.haskell-ci-tools/hlint-$HLINTVER/hlint ]; then echo "Downloading HLint version $HLINTVER"; mkdir -p $HOME/.haskell-ci-tools; curl --write-out 'Status Code: %{http_code} Redirects: %{num_redirects} Total time: %{time_total} Total Dsize: %{size_download}\n' --silent --location --output $HOME/.haskell-ci-tools/hlint-$HLINTVER.tar.gz "https://github.com/ndmitchell/hlint/releases/download/v$HLINTVER/hlint-$HLINTVER-x86_64-linux.tar.gz"; tar -xzv -f $HOME/.haskell-ci-tools/hlint-$HLINTVER.tar.gz -C $HOME/.haskell-ci-tools; fi ; fi
+          if [ $((HCNUMVER >= 90200 && HCNUMVER < 90400)) -ne 0 ] ; then mkdir -p $CABAL_DIR/bin && ln -sf "$HOME/.haskell-ci-tools/hlint-$HLINTVER/hlint" $CABAL_DIR/bin/hlint ; fi
+          if [ $((HCNUMVER >= 90200 && HCNUMVER < 90400)) -ne 0 ] ; then hlint --version ; fi
+      - name: save cache (tools)
+        uses: actions/cache/save@v3
+        if: always()
+        with:
+          key: ${{ runner.os }}-${{ matrix.compiler }}-tools-cb947dfc
+          path: ~/.haskell-ci-tools
       - name: checkout
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
         with:
           path: source
       - name: initial cabal.project for sdist
@@ -165,7 +213,10 @@ jobs:
           touch cabal.project
           echo "packages: $GITHUB_WORKSPACE/source/." >> cabal.project
           echo "packages: $GITHUB_WORKSPACE/source/attoparsec-iso8601" >> cabal.project
+          echo "packages: $GITHUB_WORKSPACE/source/attoparsec-aeson" >> cabal.project
+          echo "packages: $GITHUB_WORKSPACE/source/text-iso8601" >> cabal.project
           echo "packages: $GITHUB_WORKSPACE/source/examples" >> cabal.project
+          echo "packages: $GITHUB_WORKSPACE/source/benchmarks" >> cabal.project
           cat cabal.project
       - name: sdist
         run: |
@@ -181,39 +232,51 @@ jobs:
           echo "PKGDIR_aeson=${PKGDIR_aeson}" >> "$GITHUB_ENV"
           PKGDIR_attoparsec_iso8601="$(find "$GITHUB_WORKSPACE/unpacked" -maxdepth 1 -type d -regex '.*/attoparsec-iso8601-[0-9.]*')"
           echo "PKGDIR_attoparsec_iso8601=${PKGDIR_attoparsec_iso8601}" >> "$GITHUB_ENV"
+          PKGDIR_attoparsec_aeson="$(find "$GITHUB_WORKSPACE/unpacked" -maxdepth 1 -type d -regex '.*/attoparsec-aeson-[0-9.]*')"
+          echo "PKGDIR_attoparsec_aeson=${PKGDIR_attoparsec_aeson}" >> "$GITHUB_ENV"
+          PKGDIR_text_iso8601="$(find "$GITHUB_WORKSPACE/unpacked" -maxdepth 1 -type d -regex '.*/text-iso8601-[0-9.]*')"
+          echo "PKGDIR_text_iso8601=${PKGDIR_text_iso8601}" >> "$GITHUB_ENV"
           PKGDIR_aeson_examples="$(find "$GITHUB_WORKSPACE/unpacked" -maxdepth 1 -type d -regex '.*/aeson-examples-[0-9.]*')"
           echo "PKGDIR_aeson_examples=${PKGDIR_aeson_examples}" >> "$GITHUB_ENV"
+          PKGDIR_aeson_benchmarks="$(find "$GITHUB_WORKSPACE/unpacked" -maxdepth 1 -type d -regex '.*/aeson-benchmarks-[0-9.]*')"
+          echo "PKGDIR_aeson_benchmarks=${PKGDIR_aeson_benchmarks}" >> "$GITHUB_ENV"
           rm -f cabal.project cabal.project.local
           touch cabal.project
           touch cabal.project.local
           echo "packages: ${PKGDIR_aeson}" >> cabal.project
           echo "packages: ${PKGDIR_attoparsec_iso8601}" >> cabal.project
+          echo "packages: ${PKGDIR_attoparsec_aeson}" >> cabal.project
+          echo "packages: ${PKGDIR_text_iso8601}" >> cabal.project
           echo "packages: ${PKGDIR_aeson_examples}" >> cabal.project
-          if [ $((HCNUMVER >= 80200)) -ne 0 ] ; then echo "package aeson" >> cabal.project ; fi
-          if [ $((HCNUMVER >= 80200)) -ne 0 ] ; then echo "    ghc-options: -Werror=missing-methods" >> cabal.project ; fi
-          if [ $((HCNUMVER >= 80200)) -ne 0 ] ; then echo "package attoparsec-iso8601" >> cabal.project ; fi
-          if [ $((HCNUMVER >= 80200)) -ne 0 ] ; then echo "    ghc-options: -Werror=missing-methods" >> cabal.project ; fi
-          if [ $((HCNUMVER >= 80200)) -ne 0 ] ; then echo "package aeson-examples" >> cabal.project ; fi
-          if [ $((HCNUMVER >= 80200)) -ne 0 ] ; then echo "    ghc-options: -Werror=missing-methods" >> cabal.project ; fi
+          echo "packages: ${PKGDIR_aeson_benchmarks}" >> cabal.project
+          echo "package aeson" >> cabal.project
+          echo "    ghc-options: -Werror=missing-methods" >> cabal.project
+          echo "package attoparsec-iso8601" >> cabal.project
+          echo "    ghc-options: -Werror=missing-methods" >> cabal.project
+          echo "package attoparsec-aeson" >> cabal.project
+          echo "    ghc-options: -Werror=missing-methods" >> cabal.project
+          echo "package text-iso8601" >> cabal.project
+          echo "    ghc-options: -Werror=missing-methods" >> cabal.project
+          echo "package aeson-examples" >> cabal.project
+          echo "    ghc-options: -Werror=missing-methods" >> cabal.project
+          echo "package aeson-benchmarks" >> cabal.project
+          echo "    ghc-options: -Werror=missing-methods" >> cabal.project
           cat >> cabal.project <<EOF
+          allow-newer: hermes-json:attoparsec-iso8601
           EOF
-          $HCPKG list --simple-output --names-only | perl -ne 'for (split /\s+/) { print "constraints: $_ installed\n" unless /^(aeson|aeson-examples|attoparsec-iso8601)$/; }' >> cabal.project.local
+          $HCPKG list --simple-output --names-only | perl -ne 'for (split /\s+/) { print "constraints: $_ installed\n" unless /^(aeson|aeson-benchmarks|aeson-examples|attoparsec-aeson|attoparsec-iso8601|text-iso8601)$/; }' >> cabal.project.local
           cat cabal.project
           cat cabal.project.local
       - name: dump install plan
         run: |
           $CABAL v2-build $ARG_COMPILER $ARG_TESTS $ARG_BENCH --dry-run all
           cabal-plan
-      - name: cache
-        uses: actions/cache@v2
+      - name: restore cache
+        uses: actions/cache/restore@v3
         with:
           key: ${{ runner.os }}-${{ matrix.compiler }}-${{ github.sha }}
           path: ~/.cabal/store
           restore-keys: ${{ runner.os }}-${{ matrix.compiler }}-
-      - name: install dependencies
-        run: |
-          $CABAL v2-build $ARG_COMPILER --disable-tests --disable-benchmarks --dependencies-only -j2 all
-          $CABAL v2-build $ARG_COMPILER $ARG_TESTS $ARG_BENCH --dependencies-only -j2 all
       - name: build w/o tests
         run: |
           $CABAL v2-build $ARG_COMPILER --disable-tests --disable-benchmarks all
@@ -223,9 +286,22 @@ jobs:
       - name: tests
         run: |
           $CABAL v2-test $ARG_COMPILER $ARG_TESTS $ARG_BENCH all --test-show-details=direct
+      - name: docspec
+        run: |
+          $CABAL v2-build $ARG_COMPILER $ARG_TESTS $ARG_BENCH all
+          cabal-docspec $ARG_COMPILER
+      - name: hlint
+        run: |
+          if [ $((HCNUMVER >= 90200 && HCNUMVER < 90400)) -ne 0 ] ; then (cd ${PKGDIR_aeson} && hlint -h ${GITHUB_WORKSPACE}/source/.hlint.yaml -XHaskell2010 src) ; fi
+          if [ $((HCNUMVER >= 90200 && HCNUMVER < 90400)) -ne 0 ] ; then (cd ${PKGDIR_attoparsec_iso8601} && hlint -h ${GITHUB_WORKSPACE}/source/.hlint.yaml -XHaskell2010 src) ; fi
+          if [ $((HCNUMVER >= 90200 && HCNUMVER < 90400)) -ne 0 ] ; then (cd ${PKGDIR_attoparsec_aeson} && hlint -h ${GITHUB_WORKSPACE}/source/.hlint.yaml -XHaskell2010 src) ; fi
+          if [ $((HCNUMVER >= 90200 && HCNUMVER < 90400)) -ne 0 ] ; then (cd ${PKGDIR_text_iso8601} && hlint -h ${GITHUB_WORKSPACE}/source/.hlint.yaml -XHaskell2010 src) ; fi
+          if [ $((HCNUMVER >= 90200 && HCNUMVER < 90400)) -ne 0 ] ; then (cd ${PKGDIR_aeson_examples} && hlint -h ${GITHUB_WORKSPACE}/source/.hlint.yaml -XHaskell2010 src/) ; fi
+          if [ $((HCNUMVER >= 90200 && HCNUMVER < 90400)) -ne 0 ] ; then (cd ${PKGDIR_aeson_benchmarks} && hlint -h ${GITHUB_WORKSPACE}/source/.hlint.yaml -XHaskell2010 .) ; fi
+          if [ $((HCNUMVER >= 90200 && HCNUMVER < 90400)) -ne 0 ] ; then (cd ${PKGDIR_aeson_benchmarks} && hlint -h ${GITHUB_WORKSPACE}/source/.hlint.yaml -XHaskell2010 bench examples/src) ; fi
       - name: haddock
         run: |
-          if [ $((HCNUMVER >= 80600)) -ne 0 ] ; then $CABAL v2-haddock $ARG_COMPILER --with-haddock $HADDOCK $ARG_TESTS $ARG_BENCH all ; fi
+          if [ $((HCNUMVER >= 80600)) -ne 0 ] ; then $CABAL v2-haddock --disable-documentation --haddock-all $ARG_COMPILER --with-haddock $HADDOCK $ARG_TESTS $ARG_BENCH all ; fi
       - name: unconstrained build
         run: |
           rm -f cabal.project.local
@@ -235,30 +311,26 @@ jobs:
           rm -f cabal.project.local
       - name: constraint set text-2.0
         run: |
-          $CABAL v2-build $ARG_COMPILER --enable-tests --disable-benchmarks --constraint='text ^>=2.0' --dependencies-only -j2 all
           $CABAL v2-build $ARG_COMPILER --enable-tests --disable-benchmarks --constraint='text ^>=2.0' all
           $CABAL v2-test $ARG_COMPILER --enable-tests --disable-benchmarks --constraint='text ^>=2.0' all
       - name: constraint set text-1.2
         run: |
-          $CABAL v2-build $ARG_COMPILER --enable-tests --disable-benchmarks --constraint='text ^>=1.2.3.0' --dependencies-only -j2 all
-          $CABAL v2-build $ARG_COMPILER --enable-tests --disable-benchmarks --constraint='text ^>=1.2.3.0' all
-          $CABAL v2-test $ARG_COMPILER --enable-tests --disable-benchmarks --constraint='text ^>=1.2.3.0' all
+          if [ $((HCNUMVER < 90400)) -ne 0 ] ; then $CABAL v2-build $ARG_COMPILER --enable-tests --disable-benchmarks --constraint='text ^>=1.2.3.0' all ; fi
+          if [ $((HCNUMVER < 90400)) -ne 0 ] ; then $CABAL v2-test $ARG_COMPILER --enable-tests --disable-benchmarks --constraint='text ^>=1.2.3.0' all ; fi
       - name: constraint set bytestring-0.11.2.0
         run: |
-          $CABAL v2-build $ARG_COMPILER --disable-tests --disable-benchmarks --constraint='bytestring >= 0.11.2.0' --dependencies-only -j2 all
           $CABAL v2-build $ARG_COMPILER --disable-tests --disable-benchmarks --constraint='bytestring >= 0.11.2.0' all
       - name: constraint set ordered-keymap-off
         run: |
-          $CABAL v2-build $ARG_COMPILER --enable-tests --disable-benchmarks --constraint='aeson -ordered-keymap' --dependencies-only -j2 all
           $CABAL v2-build $ARG_COMPILER --enable-tests --disable-benchmarks --constraint='aeson -ordered-keymap' all
           $CABAL v2-test $ARG_COMPILER --enable-tests --disable-benchmarks --constraint='aeson -ordered-keymap' all
       - name: constraint set ordered-keymap-on
         run: |
-          $CABAL v2-build $ARG_COMPILER --enable-tests --disable-benchmarks --constraint='aeson +ordered-keymap' --dependencies-only -j2 all
           $CABAL v2-build $ARG_COMPILER --enable-tests --disable-benchmarks --constraint='aeson +ordered-keymap' all
           $CABAL v2-test $ARG_COMPILER --enable-tests --disable-benchmarks --constraint='aeson +ordered-keymap' all
-      - name: constraint set cffi
-        run: |
-          $CABAL v2-build $ARG_COMPILER --enable-tests --disable-benchmarks --constraint='aeson +cffi' --dependencies-only -j2 all
-          $CABAL v2-build $ARG_COMPILER --enable-tests --disable-benchmarks --constraint='aeson +cffi' all
-          $CABAL v2-test $ARG_COMPILER --enable-tests --disable-benchmarks --constraint='aeson +cffi' all
+      - name: save cache
+        uses: actions/cache/save@v3
+        if: always()
+        with:
+          key: ${{ runner.os }}-${{ matrix.compiler }}-${{ github.sha }}
+          path: ~/.cabal/store

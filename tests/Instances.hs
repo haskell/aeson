@@ -13,15 +13,17 @@ import Prelude.Compat
 
 import Control.Applicative (empty)
 import Control.Monad
+import Data.Maybe (mapMaybe)
 import Data.Aeson.Types
 import Data.Function (on)
 import Data.Time (ZonedTime(..), TimeZone(..))
 import Data.Time.Clock (UTCTime(..))
 import Functions
-import Test.QuickCheck (Arbitrary(..), elements,  oneof)
+import Test.QuickCheck (Arbitrary(..), elements, oneof)
 import Types
 import qualified Data.DList as DList
 import qualified Data.HashMap.Strict as HM
+import qualified Network.URI as URI
 
 import Data.Orphans ()
 import Test.QuickCheck.Instances ()
@@ -167,3 +169,9 @@ instance (ApproxEq a) => ApproxEq [a] where
 
 instance Arbitrary a => Arbitrary (DList.DList a) where
     arbitrary = DList.fromList <$> arbitrary
+
+instance Arbitrary URI.URI where
+    arbitrary = elements $ mapMaybe URI.parseURI
+        [ "https://haskell.org"
+        , "foo://anonymous@www.haskell.org:42/ghc?query#frag"
+        ]

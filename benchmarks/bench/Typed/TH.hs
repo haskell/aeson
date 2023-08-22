@@ -3,9 +3,11 @@
 module Typed.TH (benchmarks, decodeBenchmarks) where
 
 import Prelude.Compat
+import Bench
 
 import Data.Aeson hiding (Result)
-import Criterion
+import qualified Data.Aeson.Decoding as Dec
+import qualified Data.ByteString as B
 import Data.ByteString.Lazy as L
 import Twitter.TH
 import Utils
@@ -30,15 +32,20 @@ benchmarks =
       ]
     ]
 
-decodeDirect :: L.ByteString -> Maybe Result
-decodeDirect = decode
+decodeDirect :: B.ByteString -> Maybe Result
+decodeDirect = decodeStrict
+
+decodeTokens :: B.ByteString -> Maybe Result
+decodeTokens = Dec.decodeStrict
 
 decodeBenchmarks :: Benchmark
 decodeBenchmarks =
-  env ((,) <$> readL "twitter100.json" <*> readL "jp100.json") $ \ ~(twitter100, jp100) ->
+  env ((,) <$> readS "twitter100.json" <*> readS "jp100.json") $ \ ~(twitter100, jp100) ->
   bgroup "TH"
     [ bgroup "direct"
-      [ bench "twitter100" $ nf decodeDirect twitter100
-      , bench "jp100"      $ nf decodeDirect jp100
+      [ bench "twitter100"  $ nf decodeDirect twitter100
+      , bench "jp100"       $ nf decodeDirect jp100
+      , bench "twitter100t" $ nf decodeTokens twitter100
+      , bench "jp100t"      $ nf decodeTokens jp100
       ]
     ]

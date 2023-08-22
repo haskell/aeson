@@ -5,11 +5,11 @@
 module CompareWithJSON (benchmark) where
 
 import Prelude.Compat
+import Bench
 
 import Blaze.ByteString.Builder (toLazyByteString)
 import Blaze.ByteString.Builder.Char.Utf8 (fromString)
 import Control.DeepSeq (NFData(rnf))
-import Criterion.Main
 import Data.Maybe (fromMaybe)
 import qualified Data.Aeson as A
 import qualified Data.Aeson.Text as A
@@ -47,11 +47,26 @@ decode' :: BL.ByteString -> A.Value
 decode' s = fromMaybe (error "fail to parse via Aeson") $ A.decode' s
 
 decodeS :: BS.ByteString -> A.Value
-decodeS s = fromMaybe (error "fail to parse via Aeson") $ A.decodeStrict' s
+decodeS s = fromMaybe (error "fail to parse via Aeson") $ A.decodeStrict s
 
-decodeIP :: BL.ByteString -> A.Value
-decodeIP s = fromMaybe (error "fail to parse via Parser.decodeWith") $
+decodeS' :: BS.ByteString -> A.Value
+decodeS' s = fromMaybe (error "fail to parse via Aeson") $ A.decodeStrict' s
+
+decodeAtto :: BL.ByteString -> A.Value
+decodeAtto s = fromMaybe (error "fail to parse via Parser.decodeWith") $
     I.decodeWith I.jsonEOF A.fromJSON s
+
+decodeAtto' :: BL.ByteString -> A.Value
+decodeAtto' s = fromMaybe (error "fail to parse via Parser.decodeWith") $
+    I.decodeWith I.jsonEOF' A.fromJSON s
+
+decodeAttoS :: BS.ByteString -> A.Value
+decodeAttoS s = fromMaybe (error "fail to parse via Parser.decodeWith") $
+    I.decodeStrictWith I.jsonEOF A.fromJSON s
+
+decodeAttoS' :: BS.ByteString -> A.Value
+decodeAttoS' s = fromMaybe (error "fail to parse via Parser.decodeWith") $
+    I.decodeStrictWith I.jsonEOF' A.fromJSON s
 
 encodeJ :: J.JSValue -> BL.ByteString
 encodeJ = toLazyByteString . fromString . J.encode
@@ -72,17 +87,43 @@ benchmark =
   env (readStr jpFile) $ \jpJ ->
   bgroup "compare-json" [
       bgroup "decode" [
-        bgroup "en" [
-          bench "aeson/lazy"     $ nf decode enA
-        , bench "aeson/strict"   $ nf decode' enA
-        , bench "aeson/stricter" $ nf decodeS enS
-        , bench "aeson/parser"   $ nf decodeIP enA
-        , bench "json"           $ nf decodeJ enJ
+        bgroup "whnf" [
+          -- Note: we use whnf to only force the outer constructor,
+          -- which may force different amount of value substructure.
+          bench "aeson/normal"      $ whnf decode enA
+        , bench "aeson/normal'"     $ whnf decode' enA
+        , bench "aeson/strict"      $ whnf decodeS enS
+        , bench "aeson/strict'"     $ whnf decodeS' enS
+
+          -- attoparsec-aeson package
+        , bench "aeson/atto"        $ whnf decodeAtto enA
+        , bench "aeson/atto'"       $ whnf decodeAtto' enA
+        , bench "aeson/attoS"       $ whnf decodeAttoS enS
+        , bench "aeson/attoS'"      $ whnf decodeAttoS' enS
+
+          -- json package
+        , bench "json"              $ whnf decodeJ enJ
+        ]
+
+      , bgroup "nf" [
+          bench "aeson/normal"      $ nf decode enA
+        , bench "aeson/normal"      $ nf decode' enA
+        , bench "aeson/strict"      $ nf decodeS enS
+        , bench "aeson/strict'"     $ nf decodeS' enS
+
+          -- attoparsec-aeson package
+        , bench "aeson/atto"        $ nf decodeAtto enA
+        , bench "aeson/atto'"       $ nf decodeAtto' enA
+        , bench "aeson/attoS"       $ nf decodeAttoS enS
+        , bench "aeson/attoS'"      $ nf decodeAttoS' enS
+
+          -- json package
+        , bench "json"              $ nf decodeJ enJ
         ]
       , bgroup "jp" [
-          bench "aeson"          $ nf decode jpA
-        , bench "aeson/stricter" $ nf decodeS jpS
-        , bench "json"           $ nf decodeJ jpJ
+          bench "aeson/normal"      $ whnf decode jpA
+        , bench "aeson/strict"      $ whnf decodeS jpS
+        , bench "json"              $ whnf decodeJ jpJ
         ]
       ]
     , bgroup "encode" [

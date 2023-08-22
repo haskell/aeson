@@ -1,0 +1,4 @@
+TkRecordOpen
+TkPair "a"
+TkText "b"
+TkRecordErr "Unexpected \",,\\\"c\\\":\\\"d\\\"}\", expecting key literal"

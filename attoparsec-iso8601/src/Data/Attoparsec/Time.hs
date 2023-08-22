@@ -1,5 +1,4 @@
 {-# LANGUAGE BangPatterns #-}
-{-# LANGUAGE NoImplicitPrelude #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 -- |
 -- Module:      Data.Aeson.Parser.Time
@@ -19,22 +18,21 @@ module Data.Attoparsec.Time
     , timeZone
     , utcTime
     , zonedTime
+    , year
     , month
     , quarter
     ) where
 
-import Prelude.Compat
-
 import Control.Applicative ((<|>))
-import Control.Monad (void, when)
-import Data.Attoparsec.Text (Parser, char, decimal, digit, option, anyChar, peekChar, peekChar', takeWhile1, satisfy)
-import Data.Attoparsec.Time.Internal (toPico)
+import Data.Attoparsec.Text (Parser, char, digit, option, anyChar, peekChar, takeWhile1, satisfy)
 import Data.Bits ((.&.))
 import Data.Char (isDigit, ord)
-import Data.Fixed (Pico)
+import Data.Fixed (Pico, Fixed (..))
 import Data.Int (Int64)
+import Data.Integer.Conversion (textToInteger)
 import Data.Maybe (fromMaybe)
 import Data.Time.Calendar (Day, fromGregorianValid)
+import Data.Time.Calendar.Compat (Year)
 import Data.Time.Calendar.Quarter.Compat (Quarter, QuarterOfYear (..), fromYearQuarter)
 import Data.Time.Calendar.Month.Compat (Month, fromYearMonthValid)
 import Data.Time.Clock (UTCTime(..))
@@ -42,27 +40,37 @@ import qualified Data.Text as T
 import qualified Data.Time.LocalTime as Local
 
 -- | Parse a date of the form @[+,-]YYYY-MM-DD@.
+--
+-- The year must contain at least 4 digits, to avoid the Y2K problem:
+-- a two-digit year @YY@ may mean @YY@, @19YY@, or @20YY@, and we make it
+-- an error to prevent the ambiguity.
+-- Years from @0000@ to @0999@ must thus be zero-padded.
+-- The year may have more than 4 digits.
 day :: Parser Day
 day = do
   absOrNeg <- negate <$ char '-' <|> id <$ char '+' <|> pure id
-  y <- (decimal <* char '-') <|> fail "date must be of form [+,-]YYYY-MM-DD"
+  y <- (year <* char '-') <|> fail "date must be of form [+,-]YYYY-MM-DD"
   m <- (twoDigits <* char '-') <|> fail "date must be of form [+,-]YYYY-MM-DD"
   d <- twoDigits <|> fail "date must be of form [+,-]YYYY-MM-DD"
   maybe (fail "invalid date") return (fromGregorianValid (absOrNeg y) m d)
 
 -- | Parse a month of the form @[+,-]YYYY-MM@.
+--
+-- See also 'day' for details about the year format.
 month :: Parser Month
 month = do
   absOrNeg <- negate <$ char '-' <|> id <$ char '+' <|> pure id
-  y <- (decimal <* char '-') <|> fail "month must be of form [+,-]YYYY-MM"
+  y <- (year <* char '-') <|> fail "month must be of form [+,-]YYYY-MM"
   m <- twoDigits <|> fail "month must be of form [+,-]YYYY-MM"
   maybe (fail "invalid month") return (fromYearMonthValid (absOrNeg y) m)
 
 -- | Parse a quarter of the form @[+,-]YYYY-QN@.
+--
+-- See also 'day' for details about the year format.
 quarter :: Parser Quarter
 quarter = do
   absOrNeg <- negate <$ char '-' <|> id <$ char '+' <|> pure id
-  y <- (decimal <* char '-') <|> fail "month must be of form [+,-]YYYY-MM"
+  y <- (year <* char '-') <|> fail "month must be of form [+,-]YYYY-MM"
   _ <- char 'q' <|> char 'Q'
   q <- parseQ
   return $! fromYearQuarter (absOrNeg y) q
@@ -71,6 +79,19 @@ quarter = do
       <|> Q2 <$ char '2'
       <|> Q3 <$ char '3'
       <|> Q4 <$ char '4'
+
+-- | Parse a year @YYYY@, with at least 4 digits. Does not include any sign.
+--
+-- Note: 'Year' is a type synonym for 'Integer'.
+--
+-- @since 1.1.0.0
+year :: Parser Year
+year = do
+  ds <- takeWhile1 isDigit
+  if T.length ds < 4 then
+    fail "expected year with at least 4 digits"
+  else
+    pure (textToInteger ds)
 
 -- | Parse a two-digit integer (e.g. day of month, hour).
 twoDigits :: Parser Int
@@ -104,7 +125,7 @@ seconds = do
       return $! parsePicos real t
     _ -> return $! fromIntegral real
  where
-  parsePicos a0 t = toPico (fromIntegral (t' * 10^n))
+  parsePicos a0 t = MkFixed (fromIntegral (t' * 10^n))
     where T n t'  = T.foldl' step (T 12 (fromIntegral a0)) t
           step ma@(T m a) c
               | m <= 0    = ma
@@ -112,10 +133,11 @@ seconds = do
 
 -- | Parse a time zone, and return 'Nothing' if the offset from UTC is
 -- zero. (This makes some speedups possible.)
+--
+-- The accepted formats are @Z@, @+HH@, @+HHMM@, or @+HH:MM@.
+--
 timeZone :: Parser (Maybe Local.TimeZone)
 timeZone = do
-  let maybeSkip c = do ch <- peekChar'; when (ch == c) (void anyChar)
-  maybeSkip ' '
   ch <- satisfy $ \c -> c == 'Z' || c == '+' || c == '-'
   if ch == 'Z'
     then return Nothing
@@ -155,6 +177,7 @@ utcTime = do
     Nothing -> let !tt = Local.timeOfDayToTime t
                in return (UTCTime d tt)
     Just tz -> return $! Local.localTimeToUTC tz lt
+
 
 -- | Parse a date with time zone info. Acceptable formats:
 --

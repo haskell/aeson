@@ -1,17 +1,16 @@
 branches: master
 cabal-check: False
+docspec: True
+
+-- due hermes-json depending on attoparsec-iso8601
+install-dependencies: False
 
 -- GADT docs
 haddock: >=8.6
 
 hlint: True
-hlint-job: 8.8.3
+hlint-job: 9.2.8
 hlint-yaml: .hlint.yaml
-
-constraint-set cffi
-  constraints: aeson +cffi
-  tests:       True
-  run-tests:   True
 
 constraint-set ordered-keymap-on
   constraints: aeson +ordered-keymap
@@ -27,6 +26,7 @@ constraint-set bytestring-0.11.2.0
   constraints: bytestring >= 0.11.2.0
 
 constraint-set text-1.2
+  ghc:         <9.4
   constraints: text ^>=1.2.3.0
   tests: True
   run-tests: True

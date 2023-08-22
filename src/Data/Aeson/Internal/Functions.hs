@@ -1,4 +1,3 @@
-{-# LANGUAGE NoImplicitPrelude #-}
 -- |
 -- Module:      Data.Aeson.Functions
 -- Copyright:   (c) 2011-2016 Bryan O'Sullivan
@@ -14,8 +13,6 @@ module Data.Aeson.Internal.Functions
     , mapKeyValO
     , mapKeyO
     ) where
-
-import Prelude.Compat
 
 import Data.Hashable (Hashable)
 import qualified Data.HashMap.Strict as H

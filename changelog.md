@@ -1,5 +1,89 @@
 For the latest version of this document, please see [https://github.com/haskell/aeson/blob/master/changelog.md](https://github.com/haskell/aeson/blob/master/changelog.md).
 
+### 2.2.0.0
+
+* Rework how `omitNothingFields` works. Add `allowOmittedFields` as a parsing counterpart.
+
+  New type-class members were added: `omitField :: a -> Bool` to `ToJSON` and `omittedField :: Maybe a` to `FromJSON`.
+  These control which fields can be omitted.
+  The `.:?=`, `.:!=` and `.?=` operators were added to make use of these new members.
+
+  GHC.Generics and Template Haskell deriving has been updated accordingly.
+  Note: They behave as the parsers have been written with `.:!=`, i.e.
+  if the field value is `null` it's passed to the underlying parser.
+  This doesn't make difference for `Maybe` or `Option`, but does make for
+  types which parser doesn't accept `null`.
+  (`()` parser accepts everything and `Proxy` accepts `null).
+
+  In addition to `Maybe` (and `Option`) fields the `Data.Monoid.First` and `Data.Monoid.Last` are also omitted,
+  as well as the most newtype wrappers, when their wrap omittable type (e.g. newtypes in `Data.Monoid` and `Data.Semigroup`, `Identity`, `Const`, `Tagged`, `Compose`).
+  Additionall "boring" types like `()` and `Proxy` are omitted as well.
+  As the omitting is now uniform, type arguments are also omitted (also in `Generic1` derived instance).
+
+  Resolves issues:
+
+  -  [#687](https://github.com/haskell/aeson/issues/687) Derived ToJSON1 instance does not respect omitNothingFields = True,
+  -  [#571](https://github.com/haskell/aeson/issues/571) omitNothingFields not used in Generic Decode,
+  -  [#792](https://github.com/haskell/aeson/issues/792) Make Proxy fields optional.
+
+* Use `Data.Aeson.Decoding` parsing functions (introduced in version 2.1.2.0) as default in `Data.Aeson`.
+  As one side-effect, `decode` and `decode'` etc pair functions are operationally the same.
+  All variants use an intermediate `Value` in normal form.
+
+  The lazier variant could had `Value` thunks inside `Array` (i.e. `Vector`), but the record had been value strict since version `0.4.0.0` (before that the lazy `Data.Map` was used as `Object`).
+
+* Move `Data.Aeson.Parser` module into separate [`attoparsec-aeson`](https://hackage.haskell.org/package/attoparsec-aeson) package, as these parsers are not used by `aeson` itself anymore.
+* Use [`text-iso8601`](https://hackage.haskell.org/package/text-iso8601) package for parsing `time` types. These are slightly faster than previously used (copy of) `attoparsec-iso8601`.
+  Formats accepted is slightly changed:
+  - The space between time and timezone offset (in `UTCTime` and `ZonedTime`) is disallowed. ISO8601 explictly forbidds it.
+  - The timezone offsets can be in range -23:59..23:59. This is how Python, joda-time etc seems to do. (Previously the range was -12..+14)
+
+* Remove internal `Data.Aeson.Internal` and `Data.Aeson.Internal.Time` modules. Everything from the former is exported elsewhere (`Data.Aeson.Types`), the latter was truly internal.
+* Remove `cffi` flag. Toggling the flag made `aeson` use a C implementation for string unescaping (used for `text <2` versions).
+  The new native Haskell implementation (introduced in version 2.0.3.0) is at least as fast.
+* Drop instances for `Number` from `attoparsec` package.
+* Improve `Arbitrary Value` instance.
+* Add instances for `URI` from `network-uri`.
+* add instances for `Down` from `Data.Ord`.
+* Use `integer-conversion` for converting `Text` and `ByteString`s into `Integer`s.
+* Bump lower bounds of non GHC-boot lib dependencies.
+
+### 2.1.2.1
+
+* Support `th-abstraction-0.5`
+
+### 2.1.2.0
+
+* Add `throwDecode :: (MonadThrow m, FromJSON a) => ByteString -> m a`
+  and variants.
+* Add `Data.Aeson.Decoding` which uses new underlying tokenizer / parser.
+  This parser seems to be faster, and the intermediate `Tokens` streams
+  allow to differentiate more than `Value` if needed.
+  If no critical issues is found, this parser will become the default
+  in next major `aeson` version.
+* Support deriving for empty datatypes (such as `Void` and `V1`)
+  in `FromJSON` and `ToJSON`.
+* Add `To/FromJSONKey Void` instances
+* Fix `FromJSONKey Double` handling of infinities
+
+### 2.1.1.0
+
+- Add `Data.Aeson.KeyMap.!?` (flipped) alias to `Data.Aeson.KeyMap.lookup`.
+- Add `Data.Aeson.KeyMap.insertWith` function.
+- Use `unsafeDupablePerformIO` instead of incorrect `accursedUnutterablePerformIO` in creation of keys in TH serialisation.
+  This fixes a bug in TH deriving, e.g. when `Strict` pragma was enabled.
+
+### 2.1.0.0
+
+- Change time instances of types with year (`Day`, `UTCTime`) to require years with at least 4 digits.
+- Change `KeyValue` instances to be more general (and use equality to constraint them) instead of being more lax flexible instances.
+- Export `Key` type also from `Data.Aeson.KeyMap` module.
+- Export `mapWithKey` from `Data.Aeson.KeyMap` module.
+- Export `ifromJSON` and `iparse` from `Data.Aeson.Types`. Add `iparseEither`.
+- Add `MonadFix Parser` instance.
+- Make `Semigroup Series` slightly lazier
+- Add instances for `Generically` type
+
 ### 2.0.3.0
 
 * `text-2.0` support

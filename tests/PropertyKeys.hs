@@ -1,4 +1,5 @@
 {-# LANGUAGE NoImplicitPrelude #-}
+{-# LANGUAGE TypeApplications #-}
 
 module PropertyKeys ( keysTests ) where
 
@@ -24,26 +25,26 @@ import PropUtils
 keysTests :: TestTree
 keysTests =
   testGroup "roundTrip Key"
-    [ testProperty "Bool" $ roundTripKey True
-    , testProperty "Text" $ roundTripKey (undefined :: T.Text)
-    , testProperty "String" $ roundTripKey (undefined :: String)
-    , testProperty "Int" $ roundTripKey (undefined :: Int)
-    , testProperty "[Text]" $ roundTripKey (undefined :: LogScaled [T.Text])
-    , testProperty "(Int,Char)" $ roundTripKey (undefined :: (Int,Char))
-    , testProperty "Integer" $ roundTripKey (undefined :: Integer)
-    , testProperty "Natural" $ roundTripKey (undefined :: Natural)
-    , testProperty "Float" $ roundTripKey (undefined :: Float)
-    , testProperty "Double" $ roundTripKey (undefined :: Double)
-    , testProperty "Day" $ roundTripKey (undefined :: Day)
-    , testProperty "DayOfWeek" $ roundTripKey (undefined :: DayOfWeek)
-    , testProperty "Month" $ roundTripKey (undefined :: Month)
-    , testProperty "Quarter" $ roundTripKey (undefined :: Quarter)
-    , testProperty "QuarterOfYear" $ roundTripKey (undefined :: QuarterOfYear)
-    , testProperty "LocalTime" $ roundTripKey (undefined :: LocalTime)
-    , testProperty "TimeOfDay" $ roundTripKey (undefined :: TimeOfDay)
-    , testProperty "UTCTime" $ roundTripKey (undefined :: UTCTime)
-    , testProperty "Version" $ roundTripKey (undefined :: Version)
-    , testProperty "Lazy Text" $ roundTripKey (undefined :: LT.Text)
-    , testProperty "UUID" $ roundTripKey UUID.nil
-    , testProperty "Const Text" $ roundTripKey (undefined :: Const T.Text ())
+    [ testProperty "Bool"          $ roundTripKey @Bool
+    , testProperty "Text"          $ roundTripKey @T.Text
+    , testProperty "String"        $ roundTripKey @String
+    , testProperty "Int"           $ roundTripKey @Int
+    , testProperty "[Text]"        $ roundTripKey @(LogScaled [T.Text])
+    , testProperty "(Int,Char)"    $ roundTripKey @(Int,Char)
+    , testProperty "Integer"       $ roundTripKey @Integer
+    , testProperty "Natural"       $ roundTripKey @Natural
+    , testProperty "Float"         $ roundTripKey @Float
+    , testProperty "Double"        $ roundTripKey @Double
+    , testProperty "Day"           $ roundTripKey @Day
+    , testProperty "DayOfWeek"     $ roundTripKey @DayOfWeek
+    , testProperty "Month"         $ roundTripKey @Month
+    , testProperty "Quarter"       $ roundTripKey @Quarter
+    , testProperty "QuarterOfYear" $ roundTripKey @QuarterOfYear
+    , testProperty "LocalTime"     $ roundTripKey @LocalTime
+    , testProperty "TimeOfDay"     $ roundTripKey @TimeOfDay
+    , testProperty "UTCTime"       $ roundTripKey @UTCTime
+    , testProperty "Version"       $ roundTripKey @Version
+    , testProperty "Lazy Text"     $ roundTripKey @LT.Text
+    , testProperty "UUID"          $ roundTripKey @UUID.UUID
+    , testProperty "Const Text"    $ roundTripKey @(Const T.Text ())
     ]

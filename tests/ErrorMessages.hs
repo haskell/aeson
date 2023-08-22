@@ -1,6 +1,7 @@
 {-# LANGUAGE NoImplicitPrelude #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE CPP #-}
 
 module ErrorMessages
   (
@@ -9,13 +10,11 @@ module ErrorMessages
 
 import Prelude.Compat
 
-import Data.Aeson (FromJSON(..), Value, json)
-import Data.Aeson.Types (Parser)
-import Data.Aeson.Parser (eitherDecodeWith)
-import Data.Aeson.Internal (formatError, iparse)
+import Data.Aeson (FromJSON(..), Value, eitherDecode)
+import Data.Aeson.Types (Parser, parseEither)
 import Data.Algorithm.Diff (PolyDiff (..), getGroupedDiff)
 import Data.Proxy (Proxy(..))
-import Data.Semigroup ((<>))
+
 import Data.Sequence (Seq)
 import Instances ()
 import Numeric.Natural (Natural)
@@ -23,6 +22,10 @@ import Test.Tasty (TestTree, TestName)
 import Test.Tasty.Golden.Advanced (goldenTest)
 import qualified Data.ByteString.Lazy.Char8 as L
 import qualified Data.HashMap.Strict as HM
+
+#if !MIN_VERSION_base(4,11,0)
+import Data.Semigroup ((<>))
+#endif
 
 import Encoders
 import Types
@@ -210,8 +213,8 @@ testWith :: Show a => String -> (Value -> Parser a) -> [L.ByteString] -> Output
 testWith name parser ts =
   outputLine name <>
   foldMap (\s ->
-    case eitherDecodeWith json (iparse parser) s of
-      Left err -> outputLine $ uncurry formatError err
+    case eitherDecode s >>= parseEither parser of
+      Left err -> outputLine err
       Right a -> outputLine $ show a) ts
 
 testFor :: forall a proxy. (FromJSON a, Show a)

@@ -13,9 +13,36 @@
     name: "Use <=<"
     within:
       - Data.Aeson.Types.FromJSON
+- ignore:
+    name: "Avoid lambda"
+    within:
+      - Data.Time.FromText
+      - Data.Aeson.Internal.Scientific
+- ignore:
+    name: "Use isDigit"
+    within:
+      - Data.Time.FromText
 
 # CPP confuses
 - ignore:
     name: "Use fewer imports"
     within:
       - Data.Aeson.Types.Internal
+- ignore:
+    name: "Unused LANGUAGE pragma"
+    within:
+      - Data.Aeson.Internal.ByteString
+      - Data.Aeson.Internal.Text
+      - Compare.JsonBench
+
+- ignore: { name: "Use fewer imports" }
+- ignore: { name: "Use lambda-case" }
+- ignore: { name: "Use camelCase" }
+- ignore: { name: "Redundant multi-way if" }
+
+- ignore: { name: "Use <$>" }
+- ignore: { name: "Use fmap" }
+- ignore: { name: "Use curry" }
+- ignore: { name: "Use const" }
+- ignore: { name: "Use -" }
+- ignore: { name: "Use /=" }

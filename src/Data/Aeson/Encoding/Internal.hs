@@ -1,6 +1,4 @@
-{-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE EmptyDataDecls #-}
-{-# LANGUAGE NoImplicitPrelude #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RankNTypes #-}
 
@@ -62,20 +60,15 @@ module Data.Aeson.Encoding.Internal
     , comma, colon, openBracket, closeBracket, openCurly, closeCurly
     ) where
 
-import Prelude.Compat
+import Data.Aeson.Internal.Prelude hiding (empty)
 
 import Data.Aeson.Types.Internal (Value, Key)
 import Data.ByteString.Builder (Builder, char7, toLazyByteString)
 import Data.ByteString.Short (ShortByteString)
 import qualified Data.Aeson.Key as Key
-import Data.Int (Int8, Int16, Int32, Int64)
-import Data.Scientific (Scientific)
-import Data.Text (Text)
-import Data.Time (Day, LocalTime, TimeOfDay, UTCTime, ZonedTime)
+import Data.Time (Day, LocalTime, TimeOfDay, ZonedTime)
 import Data.Time.Calendar.Month.Compat (Month)
 import Data.Time.Calendar.Quarter.Compat (Quarter)
-import Data.Typeable (Typeable)
-import Data.Word (Word8, Word16, Word32, Word64)
 import qualified Data.Aeson.Encoding.Builder as EB
 import qualified Data.ByteString.Builder as B
 import qualified Data.ByteString.Lazy as BSL
@@ -122,6 +115,10 @@ instance Ord (Encoding' a) where
     compare (Encoding a) (Encoding b) =
       compare (toLazyByteString a) (toLazyByteString b)
 
+-- | @since 2.2.0.0
+instance IsString (Encoding' a) where
+  fromString = string
+
 -- | A series of values that, when encoded, should be separated by
 -- commas. Since 0.11.0.0, the '.=' operator is overloaded to create
 -- either @(Text, Value)@ or 'Series'. You can use Series when
@@ -158,9 +155,10 @@ unsafePairSBS k v = Value $ retagEncoding $ Encoding (B.shortByteString k) >< v
 {-# INLINE unsafePairSBS #-}
 
 instance Semigroup Series where
-    Empty   <> a       = a
-    a       <> Empty   = a
-    Value a <> Value b = Value (a >< comma >< b)
+    Empty   <> a = a
+    Value a <> b = Value $ a >< case b of
+        Empty   -> empty
+        Value x -> comma >< x
 
 instance Monoid Series where
     mempty  = Empty

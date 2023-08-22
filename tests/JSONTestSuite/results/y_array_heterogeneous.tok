@@ -1,0 +1,11 @@
+TkArrayOpen
+TkItem
+TkLit LitNull
+TkItem
+TkNumber NumInteger 1
+TkItem
+TkText "1"
+TkItem
+TkRecordOpen
+TkRecordEnd
+TkArrayEnd

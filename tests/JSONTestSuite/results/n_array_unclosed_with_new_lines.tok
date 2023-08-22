@@ -1,0 +1,8 @@
+TkArrayOpen
+TkItem
+TkNumber NumInteger 1
+TkItem
+TkNumber NumInteger 1
+TkItem
+TkNumber NumInteger 1
+TkArrayErr "Unexpected end-of-input, expecting , or ]"

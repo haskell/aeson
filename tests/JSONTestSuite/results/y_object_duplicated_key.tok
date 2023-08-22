@@ -1,0 +1,6 @@
+TkRecordOpen
+TkPair "a"
+TkText "b"
+TkPair "a"
+TkText "c"
+TkRecordEnd

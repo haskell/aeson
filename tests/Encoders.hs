@@ -1,7 +1,9 @@
 {-# LANGUAGE CPP #-}
+{-# LANGUAGE EmptyCase #-}
 {-# LANGUAGE GADTs #-}
 {-# LANGUAGE NoImplicitPrelude #-}
 {-# LANGUAGE TemplateHaskell #-}
+{-# OPTIONS_GHC -ddump-splices -ddump-to-file #-}
 
 module Encoders (module Encoders) where
 
@@ -116,11 +118,11 @@ gNullaryFromJSONKey t = case genericFromJSONKey keyOptions of
 
 -- Unary types
 type LiftToJSON f a =
-    (a -> Value) -> ([a] -> Value) -> f a -> Value
+    (a -> Bool) -> (a -> Value) -> ([a] -> Value) -> f a -> Value
 type LiftToEncoding f a =
-    (a -> Encoding) -> ([a] -> Encoding) -> f a -> Encoding
+    (a -> Bool) -> (a -> Encoding) -> ([a] -> Encoding) -> f a -> Encoding
 type LiftParseJSON f a =
-    (Value -> Parser a) -> (Value -> Parser [a]) -> Value -> Parser (f a)
+    Maybe a -> (Value -> Parser a) -> (Value -> Parser [a]) -> Value -> Parser (f a)
 
 thSomeTypeToJSON2ElemArray :: SomeType Int -> Value
 thSomeTypeToJSON2ElemArray = $(mkToJSON opts2ElemArray ''SomeType)
@@ -295,31 +297,6 @@ gOptionFieldParseJSON = genericParseJSON optsOptionField
 thMaybeFieldToJSON :: MaybeField -> Value
 thMaybeFieldToJSON = $(mkToJSON optsOptionField 'MaybeField)
 
-
---------------------------------------------------------------------------------
--- IncoherentInstancesNeeded
---------------------------------------------------------------------------------
-
--- | This test demonstrates the need for IncoherentInstances. See the definition
--- of 'IncoherentInstancesNeeded' for a discussion of the issue.
---
--- NOTE 1: We only need to compile this test. We do not need to run it.
---
--- NOTE 2: We actually only use the INCOHERENT pragma on specific instances
--- instead of the IncoherentInstances language extension. Therefore, this is
--- only supported on GHC versions >= 7.10.
-#if __GLASGOW_HASKELL__ >= 710
-incoherentInstancesNeededParseJSONString :: FromJSON a => Value -> Parser (IncoherentInstancesNeeded a)
-incoherentInstancesNeededParseJSONString = case () of
-  _ | True  -> $(mkParseJSON defaultOptions ''IncoherentInstancesNeeded)
-    | False -> genericParseJSON defaultOptions
-
-incoherentInstancesNeededToJSON :: ToJSON a => IncoherentInstancesNeeded a -> Value
-incoherentInstancesNeededToJSON = case () of
-  _ | True  -> $(mkToJSON defaultOptions ''IncoherentInstancesNeeded)
-    | False -> genericToJSON defaultOptions
-#endif
-
 -------------------------------------------------------------------------------
 -- EitherTextInt encoders/decodes
 -------------------------------------------------------------------------------
@@ -407,6 +384,29 @@ thGADTToEncodingDefault = $(mkToEncoding defaultOptions ''GADT)
 
 thGADTParseJSONDefault :: Value -> Parser (GADT String)
 thGADTParseJSONDefault = $(mkParseJSON defaultOptions ''GADT)
+
+--------------------------------------------------------------------------------
+-- NoConstructors encoders/decoders
+--------------------------------------------------------------------------------
+
+thNoConstructorsToJSONDefault :: NoConstructors -> Value
+thNoConstructorsToJSONDefault = $(mkToJSON defaultOptions ''NoConstructors)
+
+thNoConstructorsToEncodingDefault :: NoConstructors -> Encoding
+thNoConstructorsToEncodingDefault = $(mkToEncoding defaultOptions ''NoConstructors)
+
+thNoConstructorsParseJSONDefault :: Value -> Parser NoConstructors
+thNoConstructorsParseJSONDefault = $(mkParseJSON defaultOptions ''NoConstructors)
+
+
+gNoConstructorsToJSONDefault :: NoConstructors -> Value
+gNoConstructorsToJSONDefault = genericToJSON defaultOptions
+
+gNoConstructorsToEncodingDefault :: NoConstructors -> Encoding
+gNoConstructorsToEncodingDefault = genericToEncoding defaultOptions
+
+gNoConstructorsParseJSONDefault :: Value -> Parser NoConstructors
+gNoConstructorsParseJSONDefault = genericParseJSON defaultOptions
 
 --------------------------------------------------------------------------------
 -- OneConstructor encoders/decoders

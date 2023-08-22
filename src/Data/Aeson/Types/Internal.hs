@@ -2,17 +2,9 @@
 {-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
-{-# LANGUAGE NoImplicitPrelude #-}
 {-# LANGUAGE Rank2Types #-}
 {-# LANGUAGE StandaloneDeriving #-}
-#if __GLASGOW_HASKELL__ >= 800
--- a) THQ works on cross-compilers and unregisterised GHCs
--- b) may make compilation faster as no dynamic loading is ever needed (not sure about this)
--- c) removes one hindrance to have code inferred as SafeHaskell safe
 {-# LANGUAGE TemplateHaskellQuotes #-}
-#else
-{-# LANGUAGE TemplateHaskell #-}
-#endif
 
 -- |
 -- Module:      Data.Aeson.Types.Internal
@@ -43,6 +35,7 @@ module Data.Aeson.Types.Internal
     , JSONPathElement(..)
     , JSONPath
     , iparse
+    , iparseEither
     , parse
     , parseEither
     , parseMaybe
@@ -65,6 +58,7 @@ module Data.Aeson.Types.Internal
         , allNullaryToStringTag
         , nullaryToObject
         , omitNothingFields
+        , allowOmittedFields
         , sumEncoding
         , unwrapUnaryRecords
         , tagSingleConstructors
@@ -81,29 +75,24 @@ module Data.Aeson.Types.Internal
     , camelTo
     , camelTo2
 
+    -- * Aeson Exception
+    , AesonException (..)
+
     -- * Other types
     , DotNetTime(..)
     ) where
 
-import Prelude.Compat
+import Data.Aeson.Internal.Prelude
 
-import Control.Applicative (Alternative(..))
 import Control.DeepSeq (NFData(..))
+import Control.Exception (Exception (..))
 import Control.Monad (MonadPlus(..), ap)
 import Data.Char (isLower, isUpper, toLower, isAlpha, isAlphaNum)
 import Data.Aeson.Key (Key)
-import Data.Data (Data)
-import Data.Foldable (foldl')
 import Data.Hashable (Hashable(..))
 import Data.List (intercalate)
-import Data.Scientific (Scientific)
-import Data.String (IsString(..))
-import Data.Text (Text, pack, unpack)
-import Data.Time (UTCTime)
+import Data.Text (pack, unpack)
 import Data.Time.Format (FormatTime)
-import Data.Typeable (Typeable)
-import Data.Vector (Vector)
-import GHC.Generics (Generic)
 import Data.Aeson.KeyMap (KeyMap)
 import qualified Control.Monad as Monad
 import qualified Control.Monad.Fail as Fail
@@ -307,6 +296,19 @@ instance Monad.Monad Parser where
     {-# INLINE fail #-}
 #endif
 
+-- |
+--
+-- @since 2.1.0.0
+instance MonadFix Parser where
+    mfix f = Parser $ \path kf ks -> let x = runParser (f (fromISuccess x)) path IError ISuccess in
+        case x of
+            IError p e -> kf p e
+            ISuccess y -> ks y
+      where
+        fromISuccess :: IResult a -> a
+        fromISuccess (ISuccess x)      = x
+        fromISuccess (IError path msg) = error $ "mfix @Aeson.Parser: " ++ formatPath path ++ ": " ++ msg
+
 instance Fail.MonadFail Parser where
     fail msg = Parser $ \path kf _ks -> kf (reverse path) msg
     {-# INLINE fail #-}
@@ -439,11 +441,13 @@ type RepValue
 
 arbValue :: Int -> QC.Gen Value
 arbValue n
-    | n <= 0 = QC.oneof
+    | n <= 1 = QC.oneof
         [ pure Null
         , Bool <$> QC.arbitrary
         , String <$> arbText
         , Number <$> arbScientific
+        , pure emptyObject
+        , pure emptyArray
         ]
 
     | otherwise = QC.oneof
@@ -581,6 +585,14 @@ parseEither m v = runParser (m v) [] onError Right
   where onError path msg = Left (formatError path msg)
 {-# INLINE parseEither #-}
 
+-- | Run a 'Parser' with an 'Either' result type.
+-- If the parse fails, the 'Left' payload will contain an error message and a json path to failed element.
+--
+-- @since 2.1.0.0
+iparseEither :: (a -> Parser b) -> a -> Either (JSONPath, String) b
+iparseEither m v = runParser (m v) [] (\path msg -> Left (path, msg)) Right
+{-# INLINE iparseEither #-}
+
 -- | Annotate an error message with a
 -- <http://goessner.net/articles/JsonPath/ JSONPath> error location.
 formatError :: JSONPath -> String -> String
@@ -711,50 +723,16 @@ data Options = Options
       -- omitted from the resulting object. If 'False', the resulting
       -- object will include those fields mapping to @null@.
       --
+      -- In @aeson-2.2@ this flag is generalised to omit all values with @'Data.Aeson.Types.omitField' x = True@.
+      -- If 'False', the resulting object will include those fields encoded as specified. 
+      --
       -- Note that this /does not/ affect parsing: 'Maybe' fields are
-      -- optional regardless of the value of 'omitNothingFields', subject
-      -- to the note below.
-      --
-      -- === Note
-      --
-      -- Setting 'omitNothingFields' to 'True' only affects fields which are of
-      -- type 'Maybe' /uniformly/ in the 'ToJSON' instance.
-      -- In particular, if the type of a field is declared as a type variable, it
-      -- will not be omitted from the JSON object, unless the field is
-      -- specialized upfront in the instance.
-      --
-      -- The same holds for 'Maybe' fields being optional in the 'FromJSON' instance.
-      --
-      -- ==== __Example__
-      --
-      -- The generic instance for the following type @Fruit@ depends on whether
-      -- the instance head is @Fruit a@ or @Fruit (Maybe a)@.
-      --
-      -- @
-      -- data Fruit a = Fruit
-      --   { apples :: a  -- A field whose type is a type variable.
-      --   , oranges :: 'Maybe' Int
-      --   } deriving 'Generic'
-      --
-      -- -- apples required, oranges optional
-      -- -- Even if 'Data.Aeson.fromJSON' is then specialized to (Fruit ('Maybe' a)).
-      -- instance 'Data.Aeson.FromJSON' a => 'Data.Aeson.FromJSON' (Fruit a)
-      --
-      -- -- apples optional, oranges optional
-      -- -- In this instance, the field apples is uniformly of type ('Maybe' a).
-      -- instance 'Data.Aeson.FromJSON' a => 'Data.Aeson.FromJSON' (Fruit ('Maybe' a))
-      --
-      -- options :: 'Options'
-      -- options = 'defaultOptions' { 'omitNothingFields' = 'True' }
-      --
-      -- -- apples always present in the output, oranges is omitted if 'Nothing'
-      -- instance 'Data.Aeson.ToJSON' a => 'Data.Aeson.ToJSON' (Fruit a) where
-      --   'Data.Aeson.toJSON' = 'Data.Aeson.genericToJSON' options
-      --
-      -- -- both apples and oranges are omitted if 'Nothing'
-      -- instance 'Data.Aeson.ToJSON' a => 'Data.Aeson.ToJSON' (Fruit ('Maybe' a)) where
-      --   'Data.Aeson.toJSON' = 'Data.Aeson.genericToJSON' options
-      -- @
+      -- optional regardless of the value of 'omitNothingFields'.
+      -- 'allowOmittedFieds' controls parsing behavior.
+    , allowOmittedFields :: Bool
+      -- ^ If 'True', missing fields of a record will be filled
+      -- with 'omittedField' values (if they are 'Just').
+      -- If 'False', all fields will required to present in the record object.
     , sumEncoding :: SumEncoding
       -- ^ Specifies how to encode constructors of a sum datatype.
     , unwrapUnaryRecords :: Bool
@@ -770,7 +748,7 @@ data Options = Options
     }
 
 instance Show Options where
-  show (Options f c a n o s u t r) =
+  show (Options f c a n o q s u t r) =
        "Options {"
     ++ intercalate ", "
       [ "fieldLabelModifier =~ " ++ show (f "exampleField")
@@ -778,6 +756,7 @@ instance Show Options where
       , "allNullaryToStringTag = " ++ show a
       , "nullaryToObject = " ++ show n
       , "omitNothingFields = " ++ show o
+      , "allowOmittedFields = " ++ show q
       , "sumEncoding = " ++ show s
       , "unwrapUnaryRecords = " ++ show u
       , "tagSingleConstructors = " ++ show t
@@ -860,6 +839,7 @@ data JSONKeyOptions = JSONKeyOptions
 -- , 'constructorTagModifier'  = id
 -- , 'allNullaryToStringTag'   = True
 -- , 'omitNothingFields'       = False
+-- , 'allowOmittedFields'      = True
 -- , 'sumEncoding'             = 'defaultTaggedObject'
 -- , 'unwrapUnaryRecords'      = False
 -- , 'tagSingleConstructors'   = False
@@ -873,6 +853,7 @@ defaultOptions = Options
                  , allNullaryToStringTag   = True
                  , nullaryToObject         = False
                  , omitNothingFields       = False
+                 , allowOmittedFields      = True
                  , sumEncoding             = defaultTaggedObject
                  , unwrapUnaryRecords      = False
                  , tagSingleConstructors   = False
@@ -937,3 +918,16 @@ camelTo2 c = map toLower . go2 . go1
           go2 "" = ""
           go2 (l:u:xs) | isLower l && isUpper u = l : c : u : go2 xs
           go2 (x:xs) = x : go2 xs
+
+-------------------------------------------------------------------------------
+-- AesonException
+-------------------------------------------------------------------------------
+
+-- | Exception thrown by 'throwDecode' and variants.
+--
+-- @since 2.1.2.0
+newtype AesonException = AesonException String
+  deriving (Show)
+
+instance Exception AesonException where
+    displayException (AesonException str) = "aeson: " ++ str

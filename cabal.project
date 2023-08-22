@@ -1,6 +1,14 @@
 with-compiler: ghc
 packages: .
 packages: attoparsec-iso8601
+packages: attoparsec-aeson
+packages: text-iso8601
 packages: examples
+packages: benchmarks
 tests: true
--- constraints: aeson +cffi
+benchmarks: true
+
+allow-newer: hermes-json:attoparsec-iso8601
+
+-- packages: https://hackage.haskell.org/package/libperf-0.1/candidate/libperf-0.1.tar.gz
+-- packages: https://hackage.haskell.org/package/tasty-perfbench-0.1/candidate/tasty-perfbench-0.1.tar.gz

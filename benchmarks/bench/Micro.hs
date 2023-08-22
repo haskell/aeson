@@ -3,8 +3,7 @@
 module Micro (benchmark) where
 
 import Prelude.Compat
-
-import Criterion.Main
+import Bench
 
 -- Encoding is a newtype wrapper around Builder
 import Data.Aeson.Encoding (text, string, encodingToLazyByteString)

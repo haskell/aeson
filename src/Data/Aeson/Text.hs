@@ -1,5 +1,4 @@
 {-# LANGUAGE BangPatterns #-}
-{-# LANGUAGE NoImplicitPrelude #-}
 {-# LANGUAGE OverloadedStrings #-}
 -- |
 -- Module:      Data.Aeson.Text
@@ -22,12 +21,12 @@ module Data.Aeson.Text
     , encodeToTextBuilder
     ) where
 
-import Prelude.Compat
+import Data.Aeson.Internal.Prelude
 
 import Data.Aeson.Types (Value(..), ToJSON(..))
 import Data.Aeson.Encoding (encodingToLazyByteString)
 import qualified Data.Aeson.KeyMap as KM
-import Data.Scientific (FPFormat(..), Scientific, base10Exponent)
+import Data.Scientific (FPFormat(..), base10Exponent)
 import Data.Text.Lazy.Builder (Builder)
 import qualified Data.Text.Lazy.Builder as TB
 import Data.Text.Lazy.Builder.Scientific (formatScientificBuilder)
@@ -56,18 +55,18 @@ encodeToTextBuilder :: ToJSON a => a -> Builder
 encodeToTextBuilder =
     go . toJSON
   where
-    go Null       = {-# SCC "go/Null" #-} "null"
-    go (Bool b)   = {-# SCC "go/Bool" #-} if b then "true" else "false"
-    go (Number s) = {-# SCC "go/Number" #-} fromScientific s
-    go (String s) = {-# SCC "go/String" #-} string s
+    go Null       = "null"
+    go (Bool b)   = if b then "true" else "false"
+    go (Number s) = fromScientific s
+    go (String s) = string s
     go (Array v)
-        | V.null v = {-# SCC "go/Array" #-} "[]"
-        | otherwise = {-# SCC "go/Array" #-}
+        | V.null v = "[]"
+        | otherwise = 
                       TB.singleton '[' <>
                       go (V.unsafeHead v) <>
                       V.foldr f (TB.singleton ']') (V.unsafeTail v)
       where f a z = TB.singleton ',' <> go a <> z
-    go (Object m) = {-# SCC "go/Object" #-}
+    go (Object m) = 
         case KM.toList m of
           (x:xs) -> TB.singleton '{' <> one x <> foldr f (TB.singleton '}') xs
           _      -> "{}"
@@ -75,12 +74,12 @@ encodeToTextBuilder =
             one (k,v) = string (Key.toText k) <> TB.singleton ':' <> go v
 
 string :: T.Text -> Builder
-string s = {-# SCC "string" #-} TB.singleton '"' <> quote s <> TB.singleton '"'
+string s = TB.singleton '"' <> quote s <> TB.singleton '"'
   where
     quote q = case T.uncons t of
                 Nothing      -> TB.fromText h
                 Just (!c,t') -> TB.fromText h <> escape c <> quote t'
-        where (h,t) = {-# SCC "break" #-} T.break isEscape q
+        where (h,t) = T.break isEscape q
     isEscape c = c == '\"' ||
                  c == '\\' ||
                  c < '\x20'

@@ -1,0 +1,3 @@
+TkRecordOpen
+TkPair "a"
+TkErr "Unexpected \"/*comment*/\\\"b\\\"}\", expecting JSON value"

@@ -31,8 +31,8 @@ import Data.Scientific (Scientific)
 import Data.Tagged (Tagged(..))
 import Data.Text (Text)
 import Data.These (These (..))
-import Data.Time (fromGregorian)
-import Data.Time.Calendar.Month.Compat (fromYearMonth)
+import Data.Time (Day, fromGregorian)
+import Data.Time.Calendar.Month.Compat (Month, fromYearMonth)
 import Data.Time.Calendar.Quarter.Compat (fromYearQuarter, QuarterOfYear (..))
 import Data.Time.Calendar.Compat (CalendarDiffDays (..), DayOfWeek (..))
 import Data.Time.LocalTime.Compat (CalendarDiffTime (..))
@@ -159,12 +159,14 @@ jsonExamples =
   , example "Maybe String" "\"foo\""          (pure "foo" :: Maybe String)
   , example "Maybe [Identity Char]" "\"xy\""  (pure [pure 'x', pure 'y'] :: Maybe [Identity Char])
 
+  , example "Day; year >= 10000" "\"10000-01-01\""      (fromGregorian 10000   1  1)
   , example "Day; year >= 1000" "\"1999-10-12\""        (fromGregorian 1999    10 12)
   , example "Day; year > 0 && < 1000" "\"0500-03-04\""  (fromGregorian 500     3  4)
   , example "Day; year == 0" "\"0000-02-20\""           (fromGregorian 0       2  20)
   , example "Day; year < 0" "\"-0234-01-01\""           (fromGregorian (-234)  1  1)
   , example "Day; year < -1000" "\"-1234-01-01\""       (fromGregorian (-1234) 1  1)
 
+  , example "Month; year >= 10000" "\"10000-01\""      (fromYearMonth 10000   1)
   , example "Month; year >= 1000" "\"1999-10\""        (fromYearMonth 1999    10)
   , example "Month; year > 0 && < 1000" "\"0500-03\""  (fromYearMonth 500     3)
   , example "Month; year == 0" "\"0000-02\""           (fromYearMonth 0       2)
@@ -297,6 +299,8 @@ jsonDecodingExamples = [
   , MaybeExample "Word8 300"  "300"  (Nothing :: Maybe Word8)
   -- Negative zero year, encoding never produces such:
   , MaybeExample "Day -0000-02-03" "\"-0000-02-03\"" (Just (fromGregorian 0 2 3))
+  , MaybeExample "Day; year too short" "\"10-10-10\"" (Nothing :: Maybe Day)
+  , MaybeExample "Month; year too short" "\"10-10\"" (Nothing :: Maybe Month)
   ]
 
 data Example where

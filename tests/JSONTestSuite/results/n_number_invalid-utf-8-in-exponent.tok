@@ -1,0 +1,4 @@
+TkArrayOpen
+TkItem
+TkNumber NumScientific 10.0
+TkArrayErr "Unexpected \"\\229]\", expecting , or ]"

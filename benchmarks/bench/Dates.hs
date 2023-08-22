@@ -3,8 +3,8 @@
 module Dates (benchmark) where
 
 import Prelude.Compat
+import Bench
 
-import Criterion.Main
 import Data.Aeson (decode, encode)
 import Data.Time.Clock (UTCTime)
 import Data.Time.LocalTime (ZonedTime)

@@ -1,4 +1,3 @@
-{-# LANGUAGE NoImplicitPrelude #-}
 -- |
 -- Module:      Data.Aeson.Internal.Time
 -- Copyright:   (c) 2015-2016 Bryan O'Sullivan
@@ -16,7 +15,6 @@ module Data.Attoparsec.Time.Internal
     , toTimeOfDay64
     ) where
 
-import Prelude.Compat
 
 import Data.Fixed (Fixed(MkFixed), Pico)
 import Data.Int (Int64)
@@ -25,9 +23,11 @@ import Data.Time.Clock.Compat (DiffTime, diffTimeToPicoseconds)
 
 toPico :: Integer -> Pico
 toPico = MkFixed
+{-# DEPRECATED toPico "Use MkFixed" #-}
 
 fromPico :: Pico -> Integer
 fromPico (MkFixed i) = i
+{-# DEPRECATED fromPico "Use MkFixed" #-}
 
 -- | Like TimeOfDay, but using a fixed-width integer for seconds.
 data TimeOfDay64 = TOD {-# UNPACK #-} !Int
@@ -46,4 +46,4 @@ diffTimeOfDay64 t
           pico   = fromIntegral . diffTimeToPicoseconds
 
 toTimeOfDay64 :: TimeOfDay -> TimeOfDay64
-toTimeOfDay64 (TimeOfDay h m s) = TOD h m (fromIntegral (fromPico s))
+toTimeOfDay64 (TimeOfDay h m (MkFixed s)) = TOD h m (fromIntegral s)

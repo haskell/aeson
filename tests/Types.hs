@@ -13,7 +13,6 @@ module Types (module Types) where
 import Prelude.Compat
 
 import Math.NumberTheory.Logarithms (intLog2)
-import Control.Applicative ((<$>))
 import Data.Data
 import Data.Functor.Compose (Compose (..))
 import Data.Functor.Identity (Identity (..))
@@ -46,6 +45,8 @@ data UFoo = UFoo {
       _UFooInt :: Int
     , uFooInt :: Int
     } deriving (Show, Eq, Data, Typeable)
+
+data NoConstructors
 
 data OneConstructor = OneConstructor
                       deriving (Show, Eq, Typeable, Data)
@@ -80,18 +81,6 @@ data SomeType a = Nullary
                 | List [a]
   deriving (Eq, Show)
 
--- | This type requires IncoherentInstances for the instances of the type
--- classes Data.Aeson.TH.LookupField and Data.Aeson.Types.FromJSON.FromRecord.
---
--- The minimum known requirements for this type are:
--- * Record type with at least two fields
--- * One field type is either a type parameter or a type/data family
--- * Another field type is a @Maybe@ of the above field type
-data IncoherentInstancesNeeded a = IncoherentInstancesNeeded
-  { incoherentInstancesNeededMaybeNot :: a
-  , incoherentInstancesNeededMaybeYes :: Maybe a
-  } deriving Generic
-
 -- Used for testing UntaggedValue SumEncoding
 data EitherTextInt
     = LeftBool Bool
@@ -116,6 +105,7 @@ newtype OptionField = OptionField { optionField :: Option Int }
 
 deriving instance Generic Foo
 deriving instance Generic UFoo
+deriving instance Generic NoConstructors
 deriving instance Generic OneConstructor
 deriving instance Generic (Product2 a b)
 deriving instance Generic (Product6 a b c d e f)

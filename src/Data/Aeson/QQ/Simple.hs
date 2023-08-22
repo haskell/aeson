@@ -7,9 +7,6 @@ import qualified Data.Text.Encoding         as TE
 import           Language.Haskell.TH
 import           Language.Haskell.TH.Quote
 import           Language.Haskell.TH.Syntax (Lift (..))
-import           Prelude                    ()
-import           Prelude.Compat
-
 
 -- | Converts a string representation of a JSON value into 'Data.Aeson.Value' at compile-time.
 --
