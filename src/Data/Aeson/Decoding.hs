@@ -59,7 +59,7 @@ throwDecodeStrict bs = unResult (toResultValue (bsToTokens bs)) (throwM . AesonE
 -- Decoding: lazy bytestring
 -------------------------------------------------------------------------------
 
--- | Efficiently deserialize a JSON value from a strict 'B.ByteString'.
+-- | Efficiently deserialize a JSON value from a lazy 'L.ByteString'.
 -- If this fails due to incomplete or invalid input, 'Nothing' is
 -- returned.
 decode :: (A.FromJSON a) => L.ByteString -> Maybe a
