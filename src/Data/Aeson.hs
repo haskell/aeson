@@ -281,7 +281,7 @@ throwDecodeStrict' = throwDecodeStrict
 --
 -- The most common way to use the library is to define a data type,
 -- corresponding to some JSON data you want to work with, and then
--- write either a 'FromJSON' instance, a to 'ToJSON' instance, or both
+-- write either a 'FromJSON' instance, a 'ToJSON' instance, or both
 -- for that type.
 --
 -- For example, given this JSON data:
