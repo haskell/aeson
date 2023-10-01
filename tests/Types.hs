@@ -20,13 +20,15 @@ import Data.Hashable (Hashable (..))
 #if !MIN_VERSION_base(4,16,0)
 import Data.Semigroup (Option)
 #endif
-import Data.Text
+import Data.Text (Text)
 import Data.Time (Day (..), fromGregorian)
 import GHC.Generics
 import Test.QuickCheck (Arbitrary (..), Property, counterexample, scale)
+import Test.QuickCheck.Gen (chooseUpTo)
 import qualified Data.Map as Map
 import Data.Aeson
 import Data.Aeson.Types
+import Data.Word (Word64)
 
 type I = Identity
 type Compose3  f g h = Compose (Compose f g) h
@@ -164,3 +166,13 @@ instance (ToJSONKey a) => ToJSONKey (LogScaled a) where
 instance (FromJSONKey a) => FromJSONKey (LogScaled a) where
     fromJSONKey = fmap LogScaled fromJSONKey
     fromJSONKeyList = coerceFromJSONKeyFunction (fromJSONKeyList :: FromJSONKeyFunction [a])
+
+newtype UniformWord64 = U64 Word64
+  deriving (Eq, Ord)
+
+instance Show UniformWord64 where
+    showsPrec d (U64 w) = showsPrec d w
+
+instance Arbitrary UniformWord64 where
+    arbitrary = U64 <$> chooseUpTo maxBound
+    shrink (U64 w) = map U64 (shrink w)
