@@ -4,6 +4,18 @@ For the latest version of this document, please see [https://github.com/haskell/
 
 * Add `Data.Aeson.RFC8785`, a JSON Canonicalization Scheme implementation
   https://datatracker.ietf.org/doc/html/rfc8785
+* Add Data.Aeson.Decoding.Text, decodeStrictText :: Text -> ...
+
+  We avoid intermediate `ByteString` copy by not doing
+  `decode .  TE.encodeUtf8`, but instead working on `Text` value directly.
+  As we know that the stream is valid Unicode (UTF8 or UTF16),
+  we can also take some shortcuts.
+
+  One gotcha is that internal `Text` values (in `Key`s or `Value` `String`s)
+  will most likely retain the original input `Text` value (its underlying `Array`).
+  It shouldn't be an issue if the `Value` is then decoded to something else so these
+  `Text` values disapper, but if not (e.g. `Object` keys survive)
+  then users might want to use `Data.Text.copy`.
 
 ### 2.2.0.0
 
