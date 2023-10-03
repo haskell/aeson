@@ -55,10 +55,14 @@ module Data.Aeson
     , eitherDecodeFileStrict
     , eitherDecodeStrict'
     , eitherDecodeFileStrict'
+    -- ** Variants for strict text
+    , decodeStrictText
+    , eitherDecodeStrictText
     -- ** Exception throwing variants
     , AesonException (..)
     , throwDecode
     , throwDecodeStrict
+    , throwDecodeStrictText
     , throwDecode'
     , throwDecodeStrict'
     -- * Core JSON types
@@ -171,6 +175,7 @@ import Data.Aeson.Types
 import qualified Data.ByteString as B
 import qualified Data.ByteString.Lazy as L
 import Data.Aeson.Decoding (decode, eitherDecode, throwDecode, decodeStrict, eitherDecodeStrict, throwDecodeStrict)
+import Data.Aeson.Decoding (decodeStrictText, eitherDecodeStrictText, throwDecodeStrictText)
 
 -- $setup
 -- >>> :set -XOverloadedStrings

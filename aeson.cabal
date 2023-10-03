@@ -59,6 +59,7 @@ library
     Data.Aeson.Decoding
     Data.Aeson.Decoding.ByteString
     Data.Aeson.Decoding.ByteString.Lazy
+    Data.Aeson.Decoding.Text
     Data.Aeson.Decoding.Tokens
     Data.Aeson.Encoding
     Data.Aeson.Encoding.Internal
@@ -81,7 +82,9 @@ library
     Data.Aeson.Internal.Text
     Data.Aeson.Internal.TH
     Data.Aeson.Internal.Unescape
+    Data.Aeson.Internal.UnescapeFromText
     Data.Aeson.Internal.Word8
+    Data.Aeson.Internal.Word16
     Data.Aeson.Parser.Time
     Data.Aeson.Types.Class
     Data.Aeson.Types.FromJSON

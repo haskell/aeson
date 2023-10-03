@@ -13,12 +13,14 @@ import qualified Data.ByteString as B
 import qualified Data.ByteString.Lazy as L
 import qualified Data.ByteString.Lazy.Char8 as LBS8
 import qualified Data.HashSet as HashSet
+import qualified Data.Text.Encoding as TE
 
 import Data.Aeson
 import qualified Data.Aeson.Decoding as D
 import Data.Aeson.Decoding.Tokens
 import qualified Data.Aeson.Decoding.ByteString as D
 import qualified Data.Aeson.Decoding.ByteString.Lazy as D
+import qualified Data.Aeson.Decoding.Text as D
 
 
 jsonTestSuiteTest :: FilePath -> TestTree
@@ -57,6 +59,13 @@ jsonTestSuiteTest path = case take 2 fileName of
             let result = D.lbsToTokens payload
             return (LBS8.pack (unlines (showTokens (const []) result)))
 
+        , goldenVsStringDiff "tokens text" diff ("tests" </>  "JSONTestSuite" </> "results" </> fileName -<.> "tok") $ do
+            payload' <- B.readFile path
+            case TE.decodeUtf8' payload' of
+                Left exc -> fail $ show exc -- successful test shouldn't fail.
+                Right payload -> do 
+                    let result = D.textToTokens payload
+                    return (LBS8.pack (unlines (showTokens (const []) result)))
         ]
 
     negative = testGroup fileName
@@ -74,6 +83,12 @@ jsonTestSuiteTest path = case take 2 fileName of
             let result3 = D.eitherDecode payloadL :: Either String Value
             assertBool ("lazy:" ++ show result3) (isLeft result3)
 
+            case TE.decodeUtf8' payload of
+                Left _exc -> return ()
+                Right payloadT -> do
+                    let result4 = D.eitherDecodeStrictText payloadT :: Either String Value
+                    assertBool ("text:" ++ show result4) (isLeft result4)
+
         , goldenVsStringDiff "tokens bs" diff ("tests" </>  "JSONTestSuite" </> "results" </> fileName -<.> "tok") $ do
             payload <- B.readFile path
             let result = D.bsToTokens payload
@@ -84,6 +99,15 @@ jsonTestSuiteTest path = case take 2 fileName of
             let result = D.lbsToTokens payload
             return (LBS8.pack (unlines (showTokens (const []) result)))
 
+        , goldenVsStringDiff "tokens text" diff ("tests" </>  "JSONTestSuite" </> "results" </> fileName -<.> "ttok") $ do
+            payload' <- B.readFile path
+            case TE.decodeUtf8' payload' of
+                Left _exc -> do
+                    -- some failing cases are invalid UTF8
+                    return (LBS8.pack "Invalid UTF8")
+                Right payload -> do 
+                    let result = D.textToTokens payload
+                    return (LBS8.pack (unlines (showTokens (const []) result)))
         ]
 
 showTokens :: Show e => (k -> [String]) -> Tokens k e -> [String]

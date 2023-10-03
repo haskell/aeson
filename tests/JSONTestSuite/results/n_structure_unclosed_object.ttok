@@ -1,0 +1,4 @@
+TkRecordOpen
+TkPair "asd"
+TkText "asd"
+TkRecordErr "Unexpected end-of-input, expecting , or }"
