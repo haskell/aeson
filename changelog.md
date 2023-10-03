@@ -1,5 +1,10 @@
 For the latest version of this document, please see [https://github.com/haskell/aeson/blob/master/changelog.md](https://github.com/haskell/aeson/blob/master/changelog.md).
 
+### 2.2.1.0
+
+* Add `Data.Aeson.RFC8785`, a JSON Canonicalization Scheme implementation
+  https://datatracker.ietf.org/doc/html/rfc8785
+
 ### 2.2.0.0
 
 * Rework how `omitNothingFields` works. Add `allowOmittedFields` as a parsing counterpart.
