@@ -8,9 +8,9 @@
 #
 # For more information, see https://github.com/haskell-CI/haskell-ci
 #
-# version: 0.16.4
+# version: 0.17.20230929
 #
-# REGENDATA ("0.16.4",["github","cabal.project"])
+# REGENDATA ("0.17.20230929",["github","cabal.project"])
 #
 name: Haskell-CI
 on:
@@ -85,7 +85,7 @@ jobs:
           apt-get install -y --no-install-recommends gnupg ca-certificates dirmngr curl git software-properties-common libtinfo5
           if [ "${{ matrix.setup-method }}" = ghcup ]; then
             mkdir -p "$HOME/.ghcup/bin"
-            curl -sL https://downloads.haskell.org/ghcup/0.1.19.2/x86_64-linux-ghcup-0.1.19.2 > "$HOME/.ghcup/bin/ghcup"
+            curl -sL https://downloads.haskell.org/ghcup/0.1.19.5/x86_64-linux-ghcup-0.1.19.5 > "$HOME/.ghcup/bin/ghcup"
             chmod a+x "$HOME/.ghcup/bin/ghcup"
             "$HOME/.ghcup/bin/ghcup" install ghc "$HCVER" || (cat "$HOME"/.ghcup/logs/*.* && false)
             "$HOME/.ghcup/bin/ghcup" install cabal 3.10.1.0 || (cat "$HOME"/.ghcup/logs/*.* && false)
@@ -94,7 +94,7 @@ jobs:
             apt-get update
             apt-get install -y "$HCNAME"
             mkdir -p "$HOME/.ghcup/bin"
-            curl -sL https://downloads.haskell.org/ghcup/0.1.19.2/x86_64-linux-ghcup-0.1.19.2 > "$HOME/.ghcup/bin/ghcup"
+            curl -sL https://downloads.haskell.org/ghcup/0.1.19.5/x86_64-linux-ghcup-0.1.19.5 > "$HOME/.ghcup/bin/ghcup"
             chmod a+x "$HOME/.ghcup/bin/ghcup"
             "$HOME/.ghcup/bin/ghcup" install cabal 3.10.1.0 || (cat "$HOME"/.ghcup/logs/*.* && false)
           fi
@@ -110,10 +110,12 @@ jobs:
           echo "CABAL_CONFIG=$HOME/.cabal/config" >> "$GITHUB_ENV"
           HCDIR=/opt/$HCKIND/$HCVER
           if [ "${{ matrix.setup-method }}" = ghcup ]; then
-            HC=$HOME/.ghcup/bin/$HCKIND-$HCVER
+            HC=$("$HOME/.ghcup/bin/ghcup" whereis ghc "$HCVER")
+            HCPKG=$(echo "$HC" | sed 's#ghc$#ghc-pkg#')
+            HADDOCK=$(echo "$HC" | sed 's#ghc$#haddock#')
             echo "HC=$HC" >> "$GITHUB_ENV"
-            echo "HCPKG=$HOME/.ghcup/bin/$HCKIND-pkg-$HCVER" >> "$GITHUB_ENV"
-            echo "HADDOCK=$HOME/.ghcup/bin/haddock-$HCVER" >> "$GITHUB_ENV"
+            echo "HCPKG=$HCPKG" >> "$GITHUB_ENV"
+            echo "HADDOCK=$HADDOCK" >> "$GITHUB_ENV"
             echo "CABAL=$HOME/.ghcup/bin/cabal-3.10.1.0 -vnormal+nowrap" >> "$GITHUB_ENV"
           else
             HC=$HCDIR/bin/$HCKIND
@@ -309,23 +311,16 @@ jobs:
       - name: prepare for constraint sets
         run: |
           rm -f cabal.project.local
-      - name: constraint set text-2.0
-        run: |
-          $CABAL v2-build $ARG_COMPILER --enable-tests --disable-benchmarks --constraint='text ^>=2.0' all
-          $CABAL v2-test $ARG_COMPILER --enable-tests --disable-benchmarks --constraint='text ^>=2.0' all
-      - name: constraint set text-1.2
-        run: |
-          if [ $((HCNUMVER < 90400)) -ne 0 ] ; then $CABAL v2-build $ARG_COMPILER --enable-tests --disable-benchmarks --constraint='text ^>=1.2.3.0' all ; fi
-          if [ $((HCNUMVER < 90400)) -ne 0 ] ; then $CABAL v2-test $ARG_COMPILER --enable-tests --disable-benchmarks --constraint='text ^>=1.2.3.0' all ; fi
-      - name: constraint set bytestring-0.11.2.0
-        run: |
-          $CABAL v2-build $ARG_COMPILER --disable-tests --disable-benchmarks --constraint='bytestring >= 0.11.2.0' all
       - name: constraint set ordered-keymap-off
         run: |
+          $CABAL v2-build $ARG_COMPILER --enable-tests --disable-benchmarks --constraint='aeson -ordered-keymap' all --dry-run
+          cabal-plan topo | sort
           $CABAL v2-build $ARG_COMPILER --enable-tests --disable-benchmarks --constraint='aeson -ordered-keymap' all
           $CABAL v2-test $ARG_COMPILER --enable-tests --disable-benchmarks --constraint='aeson -ordered-keymap' all
       - name: constraint set ordered-keymap-on
         run: |
+          $CABAL v2-build $ARG_COMPILER --enable-tests --disable-benchmarks --constraint='aeson +ordered-keymap' all --dry-run
+          cabal-plan topo | sort
           $CABAL v2-build $ARG_COMPILER --enable-tests --disable-benchmarks --constraint='aeson +ordered-keymap' all
           $CABAL v2-test $ARG_COMPILER --enable-tests --disable-benchmarks --constraint='aeson +ordered-keymap' all
       - name: save cache
