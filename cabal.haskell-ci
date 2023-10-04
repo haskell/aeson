@@ -1,6 +1,7 @@
 branches: master
 cabal-check: False
 docspec: True
+head-hackage: False
 
 -- due hermes-json depending on attoparsec-iso8601
 install-dependencies: False
