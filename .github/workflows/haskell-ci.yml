@@ -8,9 +8,9 @@
 #
 # For more information, see https://github.com/haskell-CI/haskell-ci
 #
-# version: 0.17.20230929
+# version: 0.17.20231004
 #
-# REGENDATA ("0.17.20230929",["github","cabal.project"])
+# REGENDATA ("0.17.20231004",["github","cabal.project"])
 #
 name: Haskell-CI
 on:
@@ -32,14 +32,19 @@ jobs:
     strategy:
       matrix:
         include:
-          - compiler: ghc-9.6.2
+          - compiler: ghc-9.8.0.20230929
             compilerKind: ghc
-            compilerVersion: 9.6.2
+            compilerVersion: 9.8.0.20230929
             setup-method: ghcup
             allow-failure: false
-          - compiler: ghc-9.4.5
+          - compiler: ghc-9.6.3
             compilerKind: ghc
-            compilerVersion: 9.4.5
+            compilerVersion: 9.6.3
+            setup-method: ghcup
+            allow-failure: false
+          - compiler: ghc-9.4.7
+            compilerKind: ghc
+            compilerVersion: 9.4.7
             setup-method: ghcup
             allow-failure: false
           - compiler: ghc-9.2.8
@@ -87,6 +92,7 @@ jobs:
             mkdir -p "$HOME/.ghcup/bin"
             curl -sL https://downloads.haskell.org/ghcup/0.1.19.5/x86_64-linux-ghcup-0.1.19.5 > "$HOME/.ghcup/bin/ghcup"
             chmod a+x "$HOME/.ghcup/bin/ghcup"
+            "$HOME/.ghcup/bin/ghcup" config add-release-channel https://raw.githubusercontent.com/haskell/ghcup-metadata/master/ghcup-prereleases-0.0.7.yaml;
             "$HOME/.ghcup/bin/ghcup" install ghc "$HCVER" || (cat "$HOME"/.ghcup/logs/*.* && false)
             "$HOME/.ghcup/bin/ghcup" install cabal 3.10.1.0 || (cat "$HOME"/.ghcup/logs/*.* && false)
           else
@@ -96,6 +102,7 @@ jobs:
             mkdir -p "$HOME/.ghcup/bin"
             curl -sL https://downloads.haskell.org/ghcup/0.1.19.5/x86_64-linux-ghcup-0.1.19.5 > "$HOME/.ghcup/bin/ghcup"
             chmod a+x "$HOME/.ghcup/bin/ghcup"
+            "$HOME/.ghcup/bin/ghcup" config add-release-channel https://raw.githubusercontent.com/haskell/ghcup-metadata/master/ghcup-prereleases-0.0.7.yaml;
             "$HOME/.ghcup/bin/ghcup" install cabal 3.10.1.0 || (cat "$HOME"/.ghcup/logs/*.* && false)
           fi
         env:
@@ -265,6 +272,8 @@ jobs:
           echo "    ghc-options: -Werror=missing-methods" >> cabal.project
           cat >> cabal.project <<EOF
           allow-newer: hermes-json:attoparsec-iso8601
+          allow-newer: network-uri:deepseq
+          allow-newer: attoparsec:ghc-prim
           EOF
           $HCPKG list --simple-output --names-only | perl -ne 'for (split /\s+/) { print "constraints: $_ installed\n" unless /^(aeson|aeson-benchmarks|aeson-examples|attoparsec-aeson|attoparsec-iso8601|text-iso8601)$/; }' >> cabal.project.local
           cat cabal.project
