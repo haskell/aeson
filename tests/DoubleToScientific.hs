@@ -12,6 +12,7 @@ import Data.Foldable (foldl')
 import Data.Word (Word64)
 import Data.Scientific (Scientific)
 import GHC.Integer (quotRemInteger)
+import Data.Aeson.RFC8785 (encodeCanonical)
 
 import qualified Data.Scientific as Sci
 
@@ -20,6 +21,7 @@ import Types (UniformWord64 (..))
 
 import Test.Tasty (TestTree, testGroup)
 import Test.Tasty.QuickCheck (testProperty, counterexample, (===), (==>))
+import Test.Tasty.Golden (goldenVsString)
 
 -------------------------------------------------------------------------------
 -- tests
@@ -35,6 +37,31 @@ doubleToScientificTests = testGroup "doubleToScientific"
         in counterexample (show d) $
             not (isInfinite d || isNaN d) ==>
             Sci.toRealFloat (doubleToScientific d) === d
+
+    , goldenVsString "examples" "tests/doubles.json" $ do
+        let lowerBoundaryIsCloser =
+                [ castWord64ToDouble $ shiftL e 52
+                | e <- [ 1 .. 2046 ]
+                ]
+
+        let otherNumbers =
+                [ castWord64ToDouble $ shiftL e 52 .|. shiftL 1 b
+                | e <- [ 1 .. 2046 ]
+                , b <-  [ 0 .. 51 ]
+                ]
+
+        let denormalNumbers =
+                [ castWord64ToDouble $ shiftL 1 b
+                | b <-  [ 0 .. 51 ]
+                ]
+
+        let doubles = concat
+                [ lowerBoundaryIsCloser
+                , otherNumbers
+                , denormalNumbers
+                ]
+
+        return $ encodeCanonical $ map doubleToScientific doubles
     ]
 
 -------------------------------------------------------------------------------
