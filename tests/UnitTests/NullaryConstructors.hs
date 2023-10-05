@@ -26,6 +26,8 @@ nullaryConstructors =
   , dec "\"C1\""           @=? gNullaryToJSONString C1
   , dec "{\"c1\":[]}"      @=? thNullaryToJSONObjectWithSingleField C1
   , dec "{\"c1\":[]}"      @=? gNullaryToJSONObjectWithSingleField C1
+  , dec "{\"c1\":{}}"      @=? gNullaryToJSONOWSFNullaryToObject C1
+  , dec "{\"c1\":{}}"      @=? thNullaryToJSONOWSFNullaryToObject C1
   , dec "[\"c1\",[]]"      @=? gNullaryToJSON2ElemArray C1
   , dec "[\"c1\",[]]"      @=? thNullaryToJSON2ElemArray C1
   , dec "{\"tag\":\"c1\"}" @=? thNullaryToJSONTaggedObject C1
@@ -37,6 +39,8 @@ nullaryConstructors =
   , decE "[\"c1\",[]]"      @=? enc (thNullaryToEncoding2ElemArray C1)
   , decE "{\"c1\":[]}"      @=? enc (thNullaryToEncodingObjectWithSingleField C1)
   , decE "{\"c1\":[]}"      @=? enc (gNullaryToEncodingObjectWithSingleField C1)
+  , decE "{\"c1\":{}}"      @=? enc (gNullaryToEncodingOWSFNullaryToObject C1)
+  , decE "{\"c1\":{}}"      @=? enc (thNullaryToEncodingOWSFNullaryToObject C1)
   , decE "{\"tag\":\"c1\"}" @=? enc (thNullaryToEncodingTaggedObject C1)
   , decE "{\"tag\":\"c1\"}" @=? enc (gNullaryToEncodingTaggedObject C1)
 
@@ -49,9 +53,13 @@ nullaryConstructors =
   , ISuccess C1 @=? parse gNullaryParseJSON2ElemArray             (dec  "[\"c1\",[]]")
   , ISuccess C1 @=? parse thNullaryParseJSONObjectWithSingleField (dec  "{\"c1\":[]}")
   , ISuccess C1 @=? parse gNullaryParseJSONObjectWithSingleField  (dec  "{\"c1\":[]}")
-    -- Make sure that the old `"contents" : []' is still allowed
+  , ISuccess C1 @=? parse gNullaryParseJSONOWSFNullaryToObject    (dec  "{\"c1\":{}}")
+  -- TODO , ISuccess C1 @=? parse thNullaryParseJSONOWSFNullaryToObject       (dec  "{\"c1\":{}}")
+    -- Make sure that the old `"contents" : []` is still allowed (and also `"contents" : {}`)
   , ISuccess C1 @=? parse thNullaryParseJSONTaggedObject          (dec "{\"tag\":\"c1\",\"contents\":[]}")
   , ISuccess C1 @=? parse gNullaryParseJSONTaggedObject           (dec "{\"tag\":\"c1\",\"contents\":[]}")
+  , ISuccess C1 @=? parse thNullaryParseJSONTaggedObject          (dec "{\"tag\":\"c1\",\"contents\":{}}")
+  , ISuccess C1 @=? parse gNullaryParseJSONTaggedObject           (dec "{\"tag\":\"c1\",\"contents\":{}}")
 
   , for_ [("kC1", C1), ("kC2", C2), ("kC3", C3)] $ \(jkey, key) -> do
       Right   jkey @=? gNullaryToJSONKey key

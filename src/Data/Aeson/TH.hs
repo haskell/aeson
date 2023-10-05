@@ -115,7 +115,7 @@ module Data.Aeson.TH
 import Data.Aeson.Internal.Prelude
 
 import Data.Char (ord)
-import Data.Aeson (Object, (.:), FromJSON(..), FromJSON1(..), FromJSON2(..), ToJSON(..), ToJSON1(..), ToJSON2(..))
+import Data.Aeson (Object, (.:), FromJSON(..), FromJSON1(..), FromJSON2(..), ToJSON(..), ToJSON1(..), ToJSON2(..), object)
 import Data.Aeson.Types (Options(..), Parser, SumEncoding(..), Value(..), defaultOptions, defaultTaggedObject)
 import Data.Aeson.Types.Internal ((<?>), JSONPathElement(Key))
 import Data.Aeson.Types.ToJSON (fromPairs, pair)
@@ -438,7 +438,9 @@ argsToValue letInsert target jc tvMap opts multiCons
                -- Single argument is directly converted.
                [e] -> e
                -- Zero and multiple arguments are converted to a JSON array.
-               es -> array target es
+               es
+                 | nullaryToObject opts && null es -> objectE letInsert target []
+                 | otherwise -> array target es
 
     match (conP conName $ map varP args)
           (normalB $ opaqueSumToValue letInsert target opts multiCons (null argTys') conName js)

@@ -34,6 +34,13 @@ optsObjectWithSingleField = optsDefault
                             , sumEncoding           = ObjectWithSingleField
                             }
 
+optsOWSFNullaryToObject :: Options
+optsOWSFNullaryToObject = optsDefault
+                            { allNullaryToStringTag = False
+                            , sumEncoding           = ObjectWithSingleField
+                            , nullaryToObject       = True
+                            }
+
 optsOmitNothingFields :: Options
 optsOmitNothingFields = optsDefault
                         { omitNothingFields = True
