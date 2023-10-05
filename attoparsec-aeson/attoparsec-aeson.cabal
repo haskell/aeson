@@ -1,7 +1,6 @@
 cabal-version: 1.12
 name:          attoparsec-aeson
-version:       2.2.0.0
-x-revision:    1
+version:       2.2.0.1
 synopsis:      Parsing of aeson's Value with attoparsec
 description:
   Parsing of aeson's Value with attoparsec, originally from aeson.
