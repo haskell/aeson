@@ -1,5 +1,5 @@
 name:               aeson
-version:            2.2.0.0
+version:            2.2.1.0
 license:            BSD3
 license-file:       LICENSE
 category:           Text, Web, JSON
@@ -18,8 +18,9 @@ tested-with:
    || ==8.10.7
    || ==9.0.2
    || ==9.2.8
-   || ==9.4.5
-   || ==9.6.2
+   || ==9.4.7
+   || ==9.6.3
+   || ==9.8.1
 
 synopsis:           Fast JSON parsing and encoding
 cabal-version:      1.12
@@ -59,12 +60,14 @@ library
     Data.Aeson.Decoding
     Data.Aeson.Decoding.ByteString
     Data.Aeson.Decoding.ByteString.Lazy
+    Data.Aeson.Decoding.Text
     Data.Aeson.Decoding.Tokens
     Data.Aeson.Encoding
     Data.Aeson.Encoding.Internal
     Data.Aeson.Key
     Data.Aeson.KeyMap
     Data.Aeson.QQ.Simple
+    Data.Aeson.RFC8785
     Data.Aeson.Text
     Data.Aeson.TH
     Data.Aeson.Types
@@ -80,7 +83,9 @@ library
     Data.Aeson.Internal.Text
     Data.Aeson.Internal.TH
     Data.Aeson.Internal.Unescape
+    Data.Aeson.Internal.UnescapeFromText
     Data.Aeson.Internal.Word8
+    Data.Aeson.Internal.Word16
     Data.Aeson.Parser.Time
     Data.Aeson.Types.Class
     Data.Aeson.Types.FromJSON
@@ -91,13 +96,13 @@ library
   -- GHC bundled libs
   build-depends:
       base              >=4.10.0.0 && <5
-    , bytestring        >=0.10.8.2 && <0.12
+    , bytestring        >=0.10.8.2 && <0.13
     , containers        >=0.5.10.2 && <0.7
-    , deepseq           >=1.4.3.0  && <1.5
+    , deepseq           >=1.4.3.0  && <1.6
     , exceptions        >=0.10.4   && <0.11
-    , ghc-prim          >=0.5.0.0  && <0.11
-    , template-haskell  >=2.12.0.0 && <2.21
-    , text              >=1.2.3.0  && <1.3  || >=2.0 && <2.1
+    , ghc-prim          >=0.5.0.0  && <0.12
+    , template-haskell  >=2.12.0.0 && <2.22
+    , text              >=1.2.3.0  && <1.3  || >=2.0 && <2.2
     , time              >=1.8.0.2  && <1.13
 
   -- Compat
@@ -108,6 +113,9 @@ library
   if !impl(ghc >=8.6)
     build-depends: contravariant >=1.4.1 && <1.6
 
+  if !impl(ghc >=9.0)
+    build-depends: integer-gmp
+
   -- Other dependencies
   build-depends:
       data-fix              >=0.3.2    && <0.4
@@ -115,6 +123,7 @@ library
     , hashable              >=1.4.2.0  && <1.5
     , indexed-traversable   >=0.1.2    && <0.2
     , integer-conversion    >=0.1      && <0.2
+    , integer-logarithms    >=1.0.3.1  && <1.1
     , network-uri           >=2.6.4.1  && <2.7
     , OneTuple              >=0.4.1.1  && <0.5
     , primitive             >=0.8.0.0  && <0.9
@@ -125,7 +134,7 @@ library
     , tagged                >=0.8.7    && <0.9
     , text-iso8601          >=0.1      && <0.2
     , text-short            >=0.1.5    && <0.2
-    , th-abstraction        >=0.5.0.0  && <0.6
+    , th-abstraction        >=0.5.0.0  && <0.7
     , these                 >=1.2      && <1.3
     , unordered-containers  >=0.2.10.0 && <0.3
     , uuid-types            >=1.0.5    && <1.1
@@ -146,10 +155,12 @@ test-suite aeson-tests
   main-is:          Tests.hs
   ghc-options:      -Wall -threaded -rtsopts
   other-modules:
+    CastFloat
     DataFamilies.Encoders
     DataFamilies.Instances
     DataFamilies.Properties
     DataFamilies.Types
+    DoubleToScientific
     Encoders
     ErrorMessages
     Functions
@@ -168,6 +179,7 @@ test-suite aeson-tests
     Regression.Issue571
     Regression.Issue687
     Regression.Issue967
+    RFC8785
     SerializationFormatSpec
     Types
     UnitTests
@@ -175,6 +187,7 @@ test-suite aeson-tests
     UnitTests.Hashable
     UnitTests.KeyMapInsertWith
     UnitTests.MonadFix
+    UnitTests.NoThunks
     UnitTests.NullaryConstructors
     UnitTests.OmitNothingFieldsNote
     UnitTests.OptionalFields
@@ -183,18 +196,17 @@ test-suite aeson-tests
     UnitTests.OptionalFields.Manual
     UnitTests.OptionalFields.TH
     UnitTests.UTCTime
-    UnitTests.NoThunks
 
   build-depends:
       aeson
     , base
     , base-compat
-    , deepseq
     , base-orphans          >=0.5.3  && <0.10
     , base16-bytestring
     , bytestring
     , containers
     , data-fix
+    , deepseq
     , Diff                  >=0.4    && <0.5
     , directory
     , dlist
@@ -226,6 +238,9 @@ test-suite aeson-tests
     , unordered-containers
     , uuid-types
     , vector
+
+  if !impl(ghc >=9.0)
+    build-depends: integer-gmp
 
   if impl(ghc >=9.2 && <9.7)
     build-depends: nothunks >=0.1.4 && <0.2

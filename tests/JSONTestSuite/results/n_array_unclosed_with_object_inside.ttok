@@ -1,0 +1,5 @@
+TkArrayOpen
+TkItem
+TkRecordOpen
+TkRecordEnd
+TkArrayErr "Unexpected end-of-input, expecting , or ]"

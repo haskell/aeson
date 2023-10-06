@@ -10,8 +10,9 @@ tested-with:
    || ==8.10.7
    || ==9.0.2
    || ==9.2.8
-   || ==9.4.5
-   || ==9.6.2
+   || ==9.4.7
+   || ==9.6.3
+   || ==9.8.1
 
 flag tasty-bench
   description: Use tasty-bench, otherwise criterion

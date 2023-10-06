@@ -55,10 +55,14 @@ module Data.Aeson
     , eitherDecodeFileStrict
     , eitherDecodeStrict'
     , eitherDecodeFileStrict'
+    -- ** Variants for strict text
+    , decodeStrictText
+    , eitherDecodeStrictText
     -- ** Exception throwing variants
     , AesonException (..)
     , throwDecode
     , throwDecodeStrict
+    , throwDecodeStrictText
     , throwDecode'
     , throwDecodeStrict'
     -- * Core JSON types
@@ -172,6 +176,7 @@ import Data.Aeson.Types
 import qualified Data.ByteString as B
 import qualified Data.ByteString.Lazy as L
 import Data.Aeson.Decoding (decode, eitherDecode, throwDecode, decodeStrict, eitherDecodeStrict, throwDecodeStrict)
+import Data.Aeson.Decoding (decodeStrictText, eitherDecodeStrictText, throwDecodeStrictText)
 
 -- $setup
 -- >>> :set -XOverloadedStrings
@@ -282,7 +287,7 @@ throwDecodeStrict' = throwDecodeStrict
 --
 -- The most common way to use the library is to define a data type,
 -- corresponding to some JSON data you want to work with, and then
--- write either a 'FromJSON' instance, a to 'ToJSON' instance, or both
+-- write either a 'FromJSON' instance, a 'ToJSON' instance, or both
 -- for that type.
 --
 -- For example, given this JSON data:

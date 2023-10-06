@@ -3,6 +3,8 @@
 module Data.Aeson.Decoding.Conversion (
     bsSpace,
     lbsSpace,
+    textSpace,
+    ltextSpace,
     toEitherValue,
     toResultValue,
     Result (..),
@@ -16,6 +18,8 @@ import qualified Data.Aeson.Types.Internal  as A
 import qualified Data.ByteString            as B
 import qualified Data.ByteString.Lazy       as L
 import qualified Data.Vector                as V
+import qualified Data.Text as T
+import qualified Data.Text.Lazy as LT
 
 import           Data.Aeson.Decoding.Tokens
 
@@ -24,6 +28,12 @@ bsSpace = B.all (\w -> w == 0x20 || w == 0x0a || w == 0x0d || w == 0x09)
 
 lbsSpace :: L.ByteString -> Bool
 lbsSpace = L.all (\w -> w == 0x20 || w == 0x0a || w == 0x0d || w == 0x09)
+
+textSpace :: T.Text -> Bool
+textSpace = T.all (\c -> c == ' ' || c == '\r' || c == '\n' || c == '\t')
+
+ltextSpace :: LT.Text -> Bool
+ltextSpace = LT.all (\c -> c == ' ' || c == '\r' || c == '\n' || c == '\t')
 
 -- | Convert 'Tokens' to 'A.Value'.
 --
