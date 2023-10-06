@@ -1346,21 +1346,20 @@ instance {-# OVERLAPPING #-}
          ConsFromJSON' arity U1 False where
     -- Empty constructors are expected to be encoded as an empty array or an object,
     -- depending on nullaryToObject option (default is array)
-    -- TODO probably, with rejectUnknownFields option, the object should be empty to pass.
     consParseJSON' (cname :* tname :* opts :* _) v =
-        Tagged . contextCons cname tname $
-            if nullaryToObject opts
-                then case v of
-                    Object _ -> pure U1
-                    _ -> typeMismatch "Object" v
-                else case v of
-                    Array a | V.null a -> pure U1
-                            | otherwise -> fail_ a
-                    _ -> typeMismatch "Array" v
+        Tagged . contextCons cname tname $ case v of
+            Array a | V.null a -> pure U1
+                    | otherwise -> failArr_ a
+            Object o | KM.null o || not (rejectUnknownFields opts) -> pure U1
+                     | otherwise -> failObj_ o
+            _ -> typeMismatch "Array" v
       where
-        fail_ a = fail $
+        failArr_ a = fail $
             "expected an empty Array, but encountered an Array of length " ++
             show (V.length a)
+        failObj_ o = fail $
+            "expected an empty Object but encountered Object of size " ++
+            show (KM.size o)
     {-# INLINE consParseJSON' #-}
 
 instance {-# OVERLAPPING #-}

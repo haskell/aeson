@@ -875,8 +875,8 @@ consFromJSON jc tName opts instTys cons = do
                       []
               ]
 
-parseNullaryMatches :: Name -> Name -> [Q Match]
-parseNullaryMatches tName conName =
+parseNullaryMatches :: Name -> Name -> Options -> [Q Match]
+parseNullaryMatches tName conName opts =
     [ do arr <- newName "arr"
          match (conP 'Array [varP arr])
                (guardedB
@@ -893,8 +893,27 @@ parseNullaryMatches tName conName =
                 ]
                )
                []
+    , do obj <- newName "obj"
+         match (conP 'Object [varP obj])
+               (if rejectUnknownFields opts then matchEmptyObject obj else matchAnyObject)
+               []               
     , matchFailed tName conName "Array"
     ]
+  where
+    matchAnyObject = normalB $ [|pure|] `appE` conE conName
+    matchEmptyObject obj =
+        guardedB
+            [ liftM2 (,) (normalG $ [|KM.null|] `appE` varE obj)
+                         ([|pure|] `appE` conE conName)
+            , liftM2 (,) (normalG [|otherwise|])
+                         (parseTypeMismatch tName conName
+                             (litE $ stringL "an empty Object")
+                             (infixApp (litE $ stringL "Object of size ")
+                                       [|(++)|]
+                                       ([|show . KM.size|] `appE` varE obj)
+                             )
+                         )
+            ]
 
 parseUnaryMatches :: JSONClass -> TyVarMap -> Type -> Name -> [Q Match]
 parseUnaryMatches jc tvMap argTy conName =
@@ -988,12 +1007,12 @@ parseArgs _ _ _ _
                   , constructorFields  = [] }
   (Left _) =
     [|pure|] `appE` conE conName
-parseArgs _ _ tName _
+parseArgs _ _ tName opts
   ConstructorInfo { constructorName    = conName
                   , constructorVariant = NormalConstructor
                   , constructorFields  = [] }
   (Right valName) =
-    caseE (varE valName) $ parseNullaryMatches tName conName
+    caseE (varE valName) $ parseNullaryMatches tName conName opts
 
 -- Unary constructors.
 parseArgs jc tvMap _ _

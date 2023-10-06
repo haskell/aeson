@@ -34,12 +34,27 @@ optsObjectWithSingleField = optsDefault
                             , sumEncoding           = ObjectWithSingleField
                             }
 
+optsOWSFRejectUnknown :: Options
+optsOWSFRejectUnknown = optsDefault
+                        { allNullaryToStringTag = False
+                        , rejectUnknownFields = True
+                        , sumEncoding           = ObjectWithSingleField
+                        }
+
 optsOWSFNullaryToObject :: Options
 optsOWSFNullaryToObject = optsDefault
-                            { allNullaryToStringTag = False
-                            , sumEncoding           = ObjectWithSingleField
-                            , nullaryToObject       = True
-                            }
+                          { allNullaryToStringTag = False
+                          , sumEncoding           = ObjectWithSingleField
+                          , nullaryToObject       = True
+                          }
+
+optsOWSFNullaryToObjectRejectUnknown :: Options
+optsOWSFNullaryToObjectRejectUnknown = optsDefault
+                                       { allNullaryToStringTag = False
+                                       , rejectUnknownFields = True
+                                       , sumEncoding           = ObjectWithSingleField
+                                       , nullaryToObject       = True
+                                       }
 
 optsOmitNothingFields :: Options
 optsOmitNothingFields = optsDefault

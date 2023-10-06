@@ -60,6 +60,17 @@ thNullaryToEncodingObjectWithSingleField =
 thNullaryParseJSONObjectWithSingleField :: Value -> Parser Nullary
 thNullaryParseJSONObjectWithSingleField = $(mkParseJSON optsObjectWithSingleField ''Nullary)
 
+
+thNullaryToJSONOWSFRejectUnknown :: Nullary -> Value
+thNullaryToJSONOWSFRejectUnknown = $(mkToJSON optsOWSFRejectUnknown ''Nullary)
+
+thNullaryToEncodingOWSFRejectUnknown :: Nullary -> Encoding
+thNullaryToEncodingOWSFRejectUnknown = $(mkToEncoding optsOWSFRejectUnknown ''Nullary)
+
+thNullaryParseJSONOWSFRejectUnknown :: Value -> Parser Nullary
+thNullaryParseJSONOWSFRejectUnknown = $(mkParseJSON optsOWSFRejectUnknown ''Nullary)
+
+
 thNullaryToJSONOWSFNullaryToObject :: Nullary -> Value
 thNullaryToJSONOWSFNullaryToObject = $(mkToJSON optsOWSFNullaryToObject ''Nullary)
 
@@ -68,6 +79,17 @@ thNullaryToEncodingOWSFNullaryToObject = $(mkToEncoding optsOWSFNullaryToObject 
 
 thNullaryParseJSONOWSFNullaryToObject :: Value -> Parser Nullary
 thNullaryParseJSONOWSFNullaryToObject = $(mkParseJSON optsOWSFNullaryToObject ''Nullary)
+
+
+thNullaryToJSONOWSFNullaryToObjectRejectUnknown :: Nullary -> Value
+thNullaryToJSONOWSFNullaryToObjectRejectUnknown = $(mkToJSON optsOWSFNullaryToObjectRejectUnknown ''Nullary)
+
+thNullaryToEncodingOWSFNullaryToObjectRejectUnknown :: Nullary -> Encoding
+thNullaryToEncodingOWSFNullaryToObjectRejectUnknown = $(mkToEncoding optsOWSFNullaryToObjectRejectUnknown ''Nullary)
+
+thNullaryParseJSONOWSFNullaryToObjectRejectUnknown :: Value -> Parser Nullary
+thNullaryParseJSONOWSFNullaryToObjectRejectUnknown = $(mkParseJSON optsOWSFNullaryToObjectRejectUnknown ''Nullary)
+
 
 gNullaryToJSONString :: Nullary -> Value
 gNullaryToJSONString = genericToJSON defaultOptions
@@ -108,6 +130,17 @@ gNullaryToEncodingObjectWithSingleField = genericToEncoding optsObjectWithSingle
 gNullaryParseJSONObjectWithSingleField :: Value -> Parser Nullary
 gNullaryParseJSONObjectWithSingleField = genericParseJSON optsObjectWithSingleField
 
+
+gNullaryToJSONOWSFRejectUnknown :: Nullary -> Value
+gNullaryToJSONOWSFRejectUnknown = genericToJSON optsOWSFRejectUnknown
+
+gNullaryToEncodingOWSFRejectUnknown :: Nullary -> Encoding
+gNullaryToEncodingOWSFRejectUnknown = genericToEncoding optsOWSFRejectUnknown
+
+gNullaryParseJSONOWSFRejectUnknown :: Value -> Parser Nullary
+gNullaryParseJSONOWSFRejectUnknown = genericParseJSON optsOWSFRejectUnknown
+
+
 gNullaryToJSONOWSFNullaryToObject :: Nullary -> Value
 gNullaryToJSONOWSFNullaryToObject = genericToJSON optsOWSFNullaryToObject
 
@@ -116,6 +149,17 @@ gNullaryToEncodingOWSFNullaryToObject = genericToEncoding optsOWSFNullaryToObjec
 
 gNullaryParseJSONOWSFNullaryToObject :: Value -> Parser Nullary
 gNullaryParseJSONOWSFNullaryToObject = genericParseJSON optsOWSFNullaryToObject
+
+
+gNullaryToJSONOWSFNullaryToObjectRejectUnknown :: Nullary -> Value
+gNullaryToJSONOWSFNullaryToObjectRejectUnknown = genericToJSON optsOWSFNullaryToObjectRejectUnknown
+
+gNullaryToEncodingOWSFNullaryToObjectRejectUnknown :: Nullary -> Encoding
+gNullaryToEncodingOWSFNullaryToObjectRejectUnknown = genericToEncoding optsOWSFNullaryToObjectRejectUnknown
+
+gNullaryParseJSONOWSFNullaryToObjectRejectUnknown :: Value -> Parser Nullary
+gNullaryParseJSONOWSFNullaryToObjectRejectUnknown = genericParseJSON optsOWSFNullaryToObjectRejectUnknown
+
 
 keyOptions :: JSONKeyOptions
 keyOptions = defaultJSONKeyOptions { keyModifier = ('k' :) }
