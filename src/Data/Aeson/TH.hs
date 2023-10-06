@@ -893,27 +893,33 @@ parseNullaryMatches tName conName opts =
                 ]
                )
                []
-    , do obj <- newName "obj"
-         match (conP 'Object [varP obj])
-               (if rejectUnknownFields opts then matchEmptyObject obj else matchAnyObject)
-               []               
+    , if rejectUnknownFields opts then matchEmptyObject else matchAnyObject
     , matchFailed tName conName "Array"
     ]
   where
-    matchAnyObject = normalB $ [|pure|] `appE` conE conName
-    matchEmptyObject obj =
-        guardedB
-            [ liftM2 (,) (normalG $ [|KM.null|] `appE` varE obj)
-                         ([|pure|] `appE` conE conName)
-            , liftM2 (,) (normalG [|otherwise|])
-                         (parseTypeMismatch tName conName
-                             (litE $ stringL "an empty Object")
-                             (infixApp (litE $ stringL "Object of size ")
-                                       [|(++)|]
-                                       ([|show . KM.size|] `appE` varE obj)
-                             )
-                         )
-            ]
+    matchAnyObject = do
+        match
+            (conP 'Object [wildP])
+            (normalB $ [|pure|] `appE` conE conName)
+            []
+    matchEmptyObject = do
+        obj <- newName "obj"
+        match
+            (conP 'Object [varP obj])
+            (guardedB
+                [ liftM2 (,) (normalG $ [|KM.null|] `appE` varE obj)
+                            ([|pure|] `appE` conE conName)
+                , liftM2 (,) (normalG [|otherwise|])
+                            (parseTypeMismatch tName conName
+                                (litE $ stringL "an empty Object")
+                                (infixApp (litE $ stringL "Object of size ")
+                                        [|(++)|]
+                                        ([|show . KM.size|] `appE` varE obj)
+                                )
+                            )
+                ]
+            )
+            []
 
 parseUnaryMatches :: JSONClass -> TyVarMap -> Type -> Name -> [Q Match]
 parseUnaryMatches jc tvMap argTy conName =
