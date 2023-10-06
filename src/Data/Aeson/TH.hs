@@ -876,10 +876,21 @@ consFromJSON jc tName opts instTys cons = do
               ]
 
 parseNullaryMatches :: Name -> Name -> Options -> [Q Match]
-parseNullaryMatches tName conName opts =
-    [ do arr <- newName "arr"
-         match (conP 'Array [varP arr])
-               (guardedB
+parseNullaryMatches tName conName opts
+    | nullaryToObject opts =
+        [ if rejectUnknownFields opts then matchEmptyObject else matchAnyObject
+        , matchFailed tName conName "Object"
+        ]
+    | otherwise =
+        [ matchEmptyArray
+        , matchFailed tName conName "Array"
+        ]
+  where
+    matchEmptyArray = do
+        arr <- newName "arr"
+        match
+            (conP 'Array [varP arr])
+            (guardedB
                 [ liftM2 (,) (normalG $ [|V.null|] `appE` varE arr)
                              ([|pure|] `appE` conE conName)
                 , liftM2 (,) (normalG [|otherwise|])
@@ -891,12 +902,8 @@ parseNullaryMatches tName conName opts =
                                 )
                              )
                 ]
-               )
-               []
-    , if rejectUnknownFields opts then matchEmptyObject else matchAnyObject
-    , matchFailed tName conName "Array"
-    ]
-  where
+            )
+            []
     matchAnyObject = do
         match
             (conP 'Object [wildP])

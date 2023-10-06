@@ -1348,12 +1348,16 @@ instance {-# OVERLAPPING #-}
     -- independent of nullaryToObject option.
     -- With rejectUnknownFields an object must be empty.
     consParseJSON' (cname :* tname :* opts :* _) v =
-        Tagged . contextCons cname tname $ case v of
-            Array a | V.null a -> pure U1
-                    | otherwise -> fail_ a
-            Object o | KM.null o || not (rejectUnknownFields opts) -> pure U1
-                     | otherwise -> failObj_ o
-            _ -> typeMismatch "Array" v
+        Tagged . contextCons cname tname $
+            if nullaryToObject opts
+                then case v of
+                    Object o | KM.null o || not (rejectUnknownFields opts) -> pure U1
+                             | otherwise -> failObj_ o
+                    _ -> typeMismatch "Object" v
+                else case v of
+                    Array a | V.null a -> pure U1
+                            | otherwise -> fail_ a
+                    _ -> typeMismatch "Array" v
       where
         fail_ a = fail $
             "expected an empty Array, but encountered an Array of length " ++

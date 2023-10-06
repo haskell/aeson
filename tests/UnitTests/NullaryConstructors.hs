@@ -54,12 +54,10 @@ nullaryConstructors =
     -- both object and empty array are accepted irrespective of the nullaryToObject flag option
   , ISuccess C1 @=? parse thNullaryParseJSONObjectWithSingleField (dec  "{\"c1\":[]}")
   , ISuccess C1 @=? parse gNullaryParseJSONObjectWithSingleField  (dec  "{\"c1\":[]}")
-  , ISuccess C1 @=? parse thNullaryParseJSONObjectWithSingleField (dec  "{\"c1\":{}}")
-  , ISuccess C1 @=? parse gNullaryParseJSONObjectWithSingleField  (dec  "{\"c1\":{}}")
-  , ISuccess C1 @=? parse thNullaryParseJSONObjectWithSingleField (dec  "{\"c1\":{\"extra\":1}}")
-  , ISuccess C1 @=? parse gNullaryParseJSONObjectWithSingleField  (dec  "{\"c1\":{\"extra\":1}}")
-  , ISuccess C1 @=? parse thNullaryParseJSONOWSFNullaryToObject   (dec  "{\"c1\":[]}")
-  , ISuccess C1 @=? parse gNullaryParseJSONOWSFNullaryToObject    (dec  "{\"c1\":[]}")
+  , thErrObject @=? parse thNullaryParseJSONObjectWithSingleField (dec  "{\"c1\":{}}")
+  , gErrObject @=? parse gNullaryParseJSONObjectWithSingleField   (dec  "{\"c1\":{}}")
+  , thErrArray @=? parse thNullaryParseJSONOWSFNullaryToObject    (dec  "{\"c1\":[]}")
+  , gErrArray @=? parse gNullaryParseJSONOWSFNullaryToObject      (dec  "{\"c1\":[]}")
   , ISuccess C1 @=? parse thNullaryParseJSONOWSFNullaryToObject   (dec  "{\"c1\":{}}")
   , ISuccess C1 @=? parse gNullaryParseJSONOWSFNullaryToObject    (dec  "{\"c1\":{}}")
   , ISuccess C1 @=? parse thNullaryParseJSONOWSFNullaryToObject   (dec  "{\"c1\":{\"extra\":1}}")
@@ -70,18 +68,16 @@ nullaryConstructors =
   , ISuccess C1 @=? parse thNullaryParseJSONTaggedObject          (dec "{\"tag\":\"c1\",\"contents\":{}}")
   , ISuccess C1 @=? parse gNullaryParseJSONTaggedObject           (dec "{\"tag\":\"c1\",\"contents\":{}}")
   -- with rejectUnknownFields object must be empty
-  , ISuccess C1 @=? parse thNullaryParseJSONOWSFRejectUnknown                              (dec  "{\"c1\":[]}")
-  , ISuccess C1 @=? parse gNullaryParseJSONOWSFRejectUnknown                               (dec  "{\"c1\":[]}")
-  , ISuccess C1 @=? parse thNullaryParseJSONOWSFRejectUnknown                              (dec  "{\"c1\":{}}")
-  , ISuccess C1 @=? parse gNullaryParseJSONOWSFRejectUnknown                               (dec  "{\"c1\":{}}")
-  , IError [] thUnknown @=? parse thNullaryParseJSONOWSFRejectUnknown                      (dec  "{\"c1\":{\"extra\":1}}")
-  , IError [Key "c1"] gUnknown @=? parse gNullaryParseJSONOWSFRejectUnknown                (dec  "{\"c1\":{\"extra\":1}}")
-  , ISuccess C1 @=? parse thNullaryParseJSONOWSFNullaryToObjectRejectUnknown               (dec  "{\"c1\":[]}")
-  , ISuccess C1 @=? parse gNullaryParseJSONOWSFNullaryToObjectRejectUnknown                (dec  "{\"c1\":[]}")
-  , ISuccess C1 @=? parse thNullaryParseJSONOWSFNullaryToObjectRejectUnknown               (dec  "{\"c1\":{}}")
-  , ISuccess C1 @=? parse gNullaryParseJSONOWSFNullaryToObjectRejectUnknown                (dec  "{\"c1\":{}}")
-  , IError [] thUnknown @=? parse thNullaryParseJSONOWSFNullaryToObjectRejectUnknown       (dec  "{\"c1\":{\"extra\":1}}")
-  , IError [Key "c1"] gUnknown @=? parse gNullaryParseJSONOWSFNullaryToObjectRejectUnknown (dec  "{\"c1\":{\"extra\":1}}")
+  , ISuccess C1 @=? parse thNullaryParseJSONOWSFRejectUnknown                 (dec  "{\"c1\":[]}")
+  , ISuccess C1 @=? parse gNullaryParseJSONOWSFRejectUnknown                  (dec  "{\"c1\":[]}")
+  , thErrObject @=? parse thNullaryParseJSONOWSFRejectUnknown                 (dec  "{\"c1\":{}}")
+  , gErrObject @=? parse gNullaryParseJSONOWSFRejectUnknown                   (dec  "{\"c1\":{}}")
+  , thErrArray @=? parse thNullaryParseJSONOWSFNullaryToObjectRejectUnknown   (dec  "{\"c1\":[]}")
+  , gErrArray @=? parse gNullaryParseJSONOWSFNullaryToObjectRejectUnknown     (dec  "{\"c1\":[]}")
+  , ISuccess C1 @=? parse thNullaryParseJSONOWSFNullaryToObjectRejectUnknown  (dec  "{\"c1\":{}}")
+  , ISuccess C1 @=? parse gNullaryParseJSONOWSFNullaryToObjectRejectUnknown   (dec  "{\"c1\":{}}")
+  , thErrUnknown @=? parse thNullaryParseJSONOWSFNullaryToObjectRejectUnknown (dec  "{\"c1\":{\"extra\":1}}")
+  , gErrUnknown @=? parse gNullaryParseJSONOWSFNullaryToObjectRejectUnknown   (dec  "{\"c1\":{\"extra\":1}}")
 
   , for_ [("kC1", C1), ("kC2", C2), ("kC3", C3)] $ \(jkey, key) -> do
       Right   jkey @=? gNullaryToJSONKey key
@@ -95,7 +91,9 @@ nullaryConstructors =
     decE = eitherDecode
     parse :: (a -> Parser b) -> a -> IResult b
     parse parsejson v = iparse parsejson v
-    thUnknown :: String
-    thUnknown = "When parsing the constructor C1 of type Types.Nullary expected an empty Object but got Object of size 1."
-    gUnknown :: String
-    gUnknown = "parsing Types.Nullary(C1) failed, expected an empty Object but encountered Object of size 1"
+    thErrObject = IError [] "When parsing the constructor C1 of type Types.Nullary expected Array but got Object."
+    gErrObject = IError [Key "c1"] "parsing Types.Nullary(C1) failed, expected Array, but encountered Object"
+    thErrArray = IError [] "When parsing the constructor C1 of type Types.Nullary expected Object but got Array."
+    gErrArray = IError [Key "c1"] "parsing Types.Nullary(C1) failed, expected Object, but encountered Array"
+    thErrUnknown = IError [] "When parsing the constructor C1 of type Types.Nullary expected an empty Object but got Object of size 1."
+    gErrUnknown = IError [Key "c1"] "parsing Types.Nullary(C1) failed, expected an empty Object but encountered Object of size 1"
