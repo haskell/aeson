@@ -1,7 +1,7 @@
+cabal-version:      2.2
 name:               aeson
-version:            2.2.1.0
-x-revision:         1
-license:            BSD3
+version:            2.2.2.0
+license:            BSD-3-Clause
 license-file:       LICENSE
 category:           Text, Web, JSON
 copyright:
@@ -24,7 +24,6 @@ tested-with:
    || ==9.8.1
 
 synopsis:           Fast JSON parsing and encoding
-cabal-version:      1.12
 homepage:           https://github.com/haskell/aeson
 bug-reports:        https://github.com/haskell/aeson/issues
 build-type:         Simple
@@ -85,8 +84,6 @@ library
     Data.Aeson.Internal.TH
     Data.Aeson.Internal.Unescape
     Data.Aeson.Internal.UnescapeFromText
-    Data.Aeson.Internal.Word8
-    Data.Aeson.Internal.Word16
     Data.Aeson.Parser.Time
     Data.Aeson.Types.Class
     Data.Aeson.Types.FromJSON
@@ -119,7 +116,8 @@ library
 
   -- Other dependencies
   build-depends:
-      data-fix              >=0.3.2    && <0.4
+    , character-ps          ^>=0.1
+    , data-fix              >=0.3.2    && <0.4
     , dlist                 >=1.0      && <1.1
     , hashable              >=1.4.2.0  && <1.5
     , indexed-traversable   >=0.1.2    && <0.2

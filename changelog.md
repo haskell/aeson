@@ -1,5 +1,9 @@
 For the latest version of this document, please see [https://github.com/haskell/aeson/blob/master/changelog.md](https://github.com/haskell/aeson/blob/master/changelog.md).
 
+### next
+
+* Depend on `character-ps` instead of defining own Word8 pattern synonyms
+
 ### 2.2.1.0
 
 * Add `Data.Aeson.RFC8785`, a JSON Canonicalization Scheme implementation

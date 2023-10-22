@@ -1,11 +1,11 @@
-cabal-version: 1.12
+cabal-version: 2.2
 name:          attoparsec-aeson
-version:       2.2.0.1
+version:       2.2.1.0
 synopsis:      Parsing of aeson's Value with attoparsec
 description:
   Parsing of aeson's Value with attoparsec, originally from aeson.
 
-license:       BSD3
+license:       BSD-3-Clause
 license-file:  LICENSE
 category:      Parsing
 copyright:
@@ -41,13 +41,13 @@ library
   other-modules:
     Data.Aeson.Internal.ByteString
     Data.Aeson.Internal.Text
-    Data.Aeson.Internal.Word8
 
   build-depends:
-      aeson               >=2.2.0.0  && <2.3
+    , aeson               >=2.2.0.0  && <2.3
     , attoparsec          >=0.14.2   && <0.15
     , base                >=4.10.0.0 && <5
     , bytestring          >=0.10.8.2 && <0.13
+    , character-ps        ^>=0.1
     , integer-conversion  >=0.1      && <0.2
     , primitive           >=0.8.0.0  && <0.10
     , scientific          >=0.3.7.0  && <0.4
