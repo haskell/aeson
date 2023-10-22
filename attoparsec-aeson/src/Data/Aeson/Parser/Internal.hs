@@ -70,11 +70,11 @@ import qualified Data.ByteString.Lazy.Char8 as C
 import qualified Data.ByteString.Unsafe as B
 import qualified Data.Scientific as Sci
 import qualified Data.Vector as Vector (empty, fromList, fromListN, reverse)
+import qualified Data.Word8.Patterns as W8
 
 import Data.Aeson.Types (IResult(..), JSONPath, Object, Result(..), Value(..), Key)
 import Data.Aeson.Internal.Text
 import Data.Aeson.Decoding (unescapeText)
-import Data.Aeson.Internal.Word8
 
 -- $setup
 -- >>> :set -XOverloadedStrings
@@ -142,7 +142,7 @@ objectValues :: ([(Key, Value)] -> Either String Object)
 objectValues mkObject str val = do
   skipSpace
   w <- A.peekWord8'
-  if w == W8_CLOSE_CURLY
+  if w == W8.RIGHT_CURLY
     then A.anyWord8 >> return KM.empty
     else loop []
  where
@@ -153,9 +153,9 @@ objectValues mkObject str val = do
   loop acc = do
     k <- (str A.<?> "object key") <* skipSpace <* (char ':' A.<?> "':'")
     v <- (val A.<?> "object value") <* skipSpace
-    ch <- A.satisfy (\w -> w == W8_COMMA || w == W8_CLOSE_CURLY) A.<?> "',' or '}'"
+    ch <- A.satisfy (\w -> w == W8.COMMA || w == W8.RIGHT_CURLY) A.<?> "',' or '}'"
     let acc' = (k, v) : acc
-    if ch == W8_COMMA
+    if ch == W8.COMMA
       then skipSpace >> loop acc'
       else case mkObject acc' of
         Left err -> fail err
@@ -176,14 +176,14 @@ arrayValues :: Parser Value -> Parser (Vector Value)
 arrayValues val = do
   skipSpace
   w <- A.peekWord8'
-  if w == W8_CLOSE_SQUARE
+  if w == W8.RIGHT_SQUARE
     then A.anyWord8 >> return Vector.empty
     else loop [] 1
   where
     loop acc !len = do
       v <- (val A.<?> "json list value") <* skipSpace
-      ch <- A.satisfy (\w -> w == W8_COMMA || w == W8_CLOSE_SQUARE) A.<?> "',' or ']'"
-      if ch == W8_COMMA
+      ch <- A.satisfy (\w -> w == W8.COMMA || w == W8.RIGHT_SQUARE) A.<?> "',' or ']'"
+      if ch == W8.COMMA
         then skipSpace >> loop (v:acc) (len+1)
         else return (Vector.reverse (Vector.fromListN len (v:acc)))
 {-# INLINE arrayValues #-}
@@ -230,13 +230,13 @@ jsonWith mkObject = fix $ \value_ -> do
   skipSpace
   w <- A.peekWord8'
   case w of
-    W8_DOUBLE_QUOTE  -> A.anyWord8 *> (String <$> jstring_)
-    W8_OPEN_CURLY    -> A.anyWord8 *> object_ mkObject value_
-    W8_OPEN_SQUARE   -> A.anyWord8 *> array_ value_
-    W8_f             -> string "false" $> Bool False
-    W8_t             -> string "true" $> Bool True
-    W8_n             -> string "null" $> Null
-    _                 | w >= W8_0 && w <= W8_9 || w == W8_MINUS
+    W8.DOUBLE_QUOTE  -> A.anyWord8 *> (String <$> jstring_)
+    W8.LEFT_CURLY    -> A.anyWord8 *> object_ mkObject value_
+    W8.LEFT_SQUARE   -> A.anyWord8 *> array_ value_
+    W8.LOWER_F       -> string "false" $> Bool False
+    W8.LOWER_T       -> string "true" $> Bool True
+    W8.LOWER_N       -> string "null" $> Null
+    _                 | w >= W8.DIGIT_0 && w <= W8.DIGIT_9 || w == W8.HYPHEN
                      -> Number <$> scientific
       | otherwise    -> fail "not a valid json value"
 {-# INLINE jsonWith #-}
@@ -282,15 +282,15 @@ jsonWith' mkObject = fix $ \value_ -> do
   skipSpace
   w <- A.peekWord8'
   case w of
-    W8_DOUBLE_QUOTE  -> do
+    W8.DOUBLE_QUOTE  -> do
                        !s <- A.anyWord8 *> jstring_
                        return (String s)
-    W8_OPEN_CURLY    -> A.anyWord8 *> object_' mkObject value_
-    W8_OPEN_SQUARE   -> A.anyWord8 *> array_' value_
-    W8_f             -> string "false" $> Bool False
-    W8_t             -> string "true" $> Bool True
-    W8_n             -> string "null" $> Null
-    _                 | w >= W8_0 && w <= W8_9 || w == W8_MINUS
+    W8.LEFT_CURLY    -> A.anyWord8 *> object_' mkObject value_
+    W8.LEFT_SQUARE   -> A.anyWord8 *> array_' value_
+    W8.LOWER_F       -> string "false" $> Bool False
+    W8.LOWER_T       -> string "true" $> Bool True
+    W8.LOWER_N       -> string "null" $> Null
+    _                 | w >= W8.DIGIT_0 && w <= W8.DIGIT_9 || w == W8.HYPHEN
                      -> do
                        !n <- scientific
                        return (Number n)
@@ -312,7 +312,7 @@ jsonNoDup' = jsonWith' parseListNoDup
 
 -- | Parse a quoted JSON string.
 jstring :: Parser Text
-jstring = A.word8 W8_DOUBLE_QUOTE *> jstring_
+jstring = A.word8 W8.DOUBLE_QUOTE *> jstring_
 
 -- | Parse a JSON Key
 key :: Parser Key
@@ -322,11 +322,11 @@ key = Key.fromText <$> jstring
 jstring_ :: Parser Text
 {-# INLINE jstring_ #-}
 jstring_ = do
-  s <- A.takeWhile (\w -> w /= W8_DOUBLE_QUOTE && w /= W8_BACKSLASH && w >= 0x20 && w < 0x80)
+  s <- A.takeWhile (\w -> w /= W8.DOUBLE_QUOTE && w /= W8.BACKSLASH && w >= 0x20 && w < 0x80)
   mw <- A.peekWord8
   case mw of
     Nothing              -> fail "string without end"
-    Just W8_DOUBLE_QUOTE -> A.anyWord8 $> unsafeDecodeASCII s
+    Just W8.DOUBLE_QUOTE -> A.anyWord8 $> unsafeDecodeASCII s
     Just w | w < 0x20    -> fail "unescaped control character"
     _                    -> jstringSlow s
 
@@ -341,8 +341,8 @@ jstringSlow s' = do
     startState                = False
     go a c
       | a                     = Just False
-      | c == W8_DOUBLE_QUOTE  = Nothing
-      | otherwise = let a' = c == W8_BACKSLASH
+      | c == W8.DOUBLE_QUOTE  = Nothing
+      | otherwise = let a' = c == W8.BACKSLASH
                     in Just a'
 
 decodeWith :: Parser Value -> (Value -> Result a) -> L.ByteString -> Maybe a
@@ -438,7 +438,7 @@ jsonEOF' = json' <* skipSpace <* endOfInput
 -- | The only valid whitespace in a JSON document is space, newline,
 -- carriage return, and tab.
 skipSpace :: Parser ()
-skipSpace = A.skipWhile $ \w -> w == W8_SPACE || w == W8_NL || w == W8_CR || w == W8_TAB
+skipSpace = A.skipWhile $ \w -> w == W8.SPACE || w == W8.LF || w == W8.CR || w == W8.TAB
 {-# INLINE skipSpace #-}
 
 ------------------ Copy-pasted and adapted from attoparsec ------------------
@@ -449,7 +449,7 @@ data SP = SP !Integer {-# UNPACK #-}!Int
 decimal0 :: Parser Integer
 decimal0 = do
   digits <- A.takeWhile1 isDigit_w8
-  if B.length digits > 1 && B.unsafeHead digits == W8_0
+  if B.length digits > 1 && B.unsafeHead digits == W8.DIGIT_0
     then fail "leading zero"
     else return (byteStringToInteger digits)
 
@@ -457,25 +457,25 @@ decimal0 = do
 scientific :: Parser Scientific
 scientific = do
   sign <- A.peekWord8'
-  let !positive = not (sign == W8_MINUS)
-  when (sign == W8_PLUS || sign == W8_MINUS) $
+  let !positive = not (sign == W8.HYPHEN)
+  when (sign == W8.PLUS || sign == W8.HYPHEN) $
     void A.anyWord8
 
   n <- decimal0
 
   let f fracDigits = SP (B.foldl' step n fracDigits)
                         (negate $ B.length fracDigits)
-      step a w = a * 10 + fromIntegral (w - W8_0)
+      step a w = a * 10 + fromIntegral (w - W8.DIGIT_0)
 
   dotty <- A.peekWord8
   SP c e <- case dotty of
-              Just W8_DOT -> A.anyWord8 *> (f <$> A.takeWhile1 isDigit_w8)
-              _           -> pure (SP n 0)
+              Just W8.PERIOD -> A.anyWord8 *> (f <$> A.takeWhile1 isDigit_w8)
+              _              -> pure (SP n 0)
 
   let !signedCoeff | positive  =  c
                    | otherwise = -c
 
-  (A.satisfy (\ex -> case ex of W8_e -> True; W8_E -> True; _ -> False) *>
+  (A.satisfy (\ex -> case ex of W8.LOWER_E -> True; W8.UPPER_E -> True; _ -> False) *>
       fmap (Sci.scientific signedCoeff . (e +)) (signed decimal)) <|>
     return (Sci.scientific signedCoeff    e)
 {-# INLINE scientific #-}

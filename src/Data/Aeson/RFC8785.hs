@@ -13,7 +13,6 @@ import Data.Aeson
 import Data.Aeson.Encoding
 import Data.Aeson.Encoding.Internal
 import Data.Aeson.Internal.Prelude
-import Data.Aeson.Internal.Word8
 
 import qualified Data.Aeson.Key as Key
 import qualified Data.Aeson.KeyMap as KM
@@ -24,6 +23,7 @@ import qualified Data.ByteString.Lazy as LBS
 import qualified Data.Scientific as Sci
 import qualified Data.Text.Encoding as TE
 import qualified Data.Vector as V
+import qualified Data.Word8.Patterns as W8
 
 -- $setup
 -- >>> import Data.Aeson
@@ -94,8 +94,8 @@ canonicalString = text
 -- RFC8785 Appendix D says "don't use bignums".
 canonicalNumber :: Scientific -> Encoding
 canonicalNumber m = case compare m 0 of
-    EQ -> Encoding (B.word8 W8_0)
-    LT -> Encoding (B.word8 W8_MINUS <> fromEncoding (canonicalNumber' (negate m)))
+    EQ -> Encoding (B.word8 W8.DIGIT_0)
+    LT -> Encoding (B.word8 W8.HYPHEN <> fromEncoding (canonicalNumber' (negate m)))
     GT -> canonicalNumber' m
 
 -- input: Positive number
@@ -104,36 +104,36 @@ canonicalNumber' m
     | k <= n, n <= 21
     = Encoding $
         BP.primMapListFixed BP.word8 ds <>
-        BP.primMapListFixed BP.word8 (replicate (n - k) W8_0)
+        BP.primMapListFixed BP.word8 (replicate (n - k) W8.DIGIT_0)
 
     | 0 < n, n <= 21
     , let (pfx, sfx) = splitAt n ds
     = Encoding $
         BP.primMapListFixed BP.word8 pfx <>
-        B.word8 W8_DOT <>
+        B.word8 W8.PERIOD <>
         BP.primMapListFixed BP.word8 sfx
 
     | -6 < n, n <= 0
     = Encoding $
-        B.word8 W8_0 <>
-        B.word8 W8_DOT <>
-        BP.primMapListFixed BP.word8 (replicate (negate n) W8_0) <>
+        B.word8 W8.DIGIT_0 <>
+        B.word8 W8.PERIOD <>
+        BP.primMapListFixed BP.word8 (replicate (negate n) W8.DIGIT_0) <>
         BP.primMapListFixed BP.word8 ds
 
     | k == 1, [d] <- ds
     = Encoding $
         B.word8 d <>
-        B.word8 W8_e <>
-        B.word8 (if (n - 1) >= 0 then W8_PLUS else W8_MINUS) <>
+        B.word8 W8.LOWER_E <>
+        B.word8 (if (n - 1) >= 0 then W8.PLUS else W8.HYPHEN) <>
         BP.primMapListFixed BP.word8 (integerToDecimalDigits (abs (toInteger n - 1)))
 
     | (d:ds') <- ds
     = Encoding $
         B.word8 d <>
-        B.word8 W8_DOT <>
+        B.word8 W8.PERIOD <>
         BP.primMapListFixed BP.word8 ds' <>
-        B.word8 W8_e <>
-        B.word8 (if (n - 1) >= 0 then W8_PLUS else W8_MINUS) <>
+        B.word8 W8.LOWER_E <>
+        B.word8 (if (n - 1) >= 0 then W8.PLUS else W8.HYPHEN) <>
         BP.primMapListFixed BP.word8 (integerToDecimalDigits (abs (toInteger n - 1)))
 
     | otherwise
@@ -166,4 +166,4 @@ integerToDecimalDigits :: Integer -> [Word8]
 integerToDecimalDigits = go [] where
     go acc 0 = acc
     go acc i = case quotRemInteger i 10 of
-        (# q, r #) -> go (d:acc) q where !d = fromIntegral r + W8_0
+        (# q, r #) -> go (d:acc) q where !d = fromIntegral r + W8.DIGIT_0

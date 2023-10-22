@@ -24,9 +24,9 @@ import           Data.Aeson.Internal.Prelude
 import           Data.Aeson.Internal.UnescapeFromText (unescapeFromText)
 
 #if MIN_VERSION_text(2,0,0)
-import           Data.Aeson.Internal.Word8
+import qualified Data.Word8.Patterns as W
 #else
-import           Data.Aeson.Internal.Word16
+import qualified Data.Word16.Patterns as W
 #endif
 
 #if MIN_VERSION_text(2,0,0)
@@ -53,51 +53,50 @@ textToTokens bs0 = goT bs0 id where
         -> Text               -- whole input, needed for number parsing
         -> (Text -> k)        -- continuation
         -> Tokens k String
-    tokenCase W8_OPEN_CURLY   !bs !_   k      = TkRecordOpen (goR bs k)
-    tokenCase W8_OPEN_SQUARE   bs  _   k      = TkArrayOpen (goA bs k)
-    tokenCase W8_DOUBLE_QUOTE  bs  _   k      = scanStringLiteral (\t bs' -> TkText t (k bs')) tkErr bs
-    tokenCase W8_MINUS         bs  _   k      = scanNumberLiteral (\n bs' -> TkNumber (negateNumber n) (k bs')) tkErr bs
+    tokenCase W.LEFT_CURLY   !bs !_   k       = TkRecordOpen (goR bs k)
+    tokenCase W.LEFT_SQUARE   bs  _   k       = TkArrayOpen (goA bs k)
+    tokenCase W.DOUBLE_QUOTE  bs  _   k       = scanStringLiteral (\t bs' -> TkText t (k bs')) tkErr bs
+    tokenCase W.HYPHEN        bs  _   k       = scanNumberLiteral (\n bs' -> TkNumber (negateNumber n) (k bs')) tkErr bs
     tokenCase w                _   wbs k
-        | W8_0 <= w, w <= W8_9                = scanNumberLiteral (\n bs' -> TkNumber n (k bs')) tkErr wbs
-    tokenCase W8_n             bs  _   k
+        | W.DIGIT_0 <= w, w <= W.DIGIT_9      = scanNumberLiteral (\n bs' -> TkNumber n (k bs')) tkErr wbs
+    tokenCase W.LOWER_N       bs  _   k
         | Just bs1 <- stripPrefix "ull" 3 bs  = TkLit LitNull (k bs1)
-    tokenCase W8_t             bs  _   k
+    tokenCase W.LOWER_T       bs  _   k
         | Just bs1 <- stripPrefix "rue" 3 bs  = TkLit LitTrue (k bs1)
-    tokenCase W8_f             bs  _   k
+    tokenCase W.LOWER_F       bs  _   k
         | Just bs1 <- stripPrefix "alse" 4 bs = TkLit LitFalse (k bs1)
-    tokenCase _                _   wbs _      = tkErr $ "Unexpected " ++ showBeginning wbs ++ ", expecting JSON value"
-
+    tokenCase _          _   wbs _            = tkErr $ "Unexpected " ++ showBeginning wbs ++ ", expecting JSON value"
     -- Array
     goA :: Parser TkArray k
     goA (skipSpace -> bs) k = case unconsPoint bs of
         Nothing         -> tkErrEOF "JSON value or ]"
-        Just (W8_CLOSE_SQUARE, !bs1) -> TkArrayEnd (k bs1)
+        Just (W.RIGHT_SQUARE, !bs1) -> TkArrayEnd (k bs1)
         Just (w,  !bs1) -> TkItem $ tokenCase w bs1 bs $ \bs2 -> goA1 bs2 k
 
     goA1 :: Parser TkArray k
     goA1 (skipSpace -> bs) k = case unconsPoint bs of
         Nothing                      -> tkErrEOF ", or ]"
-        Just (W8_CLOSE_SQUARE, !bs1) -> TkArrayEnd (k bs1)
-        Just (W8_COMMA, !bs1)        -> TkItem $ goT bs1 $ \bs2 -> goA1 bs2 k
+        Just (W.RIGHT_SQUARE, !bs1) -> TkArrayEnd (k bs1)
+        Just (W.COMMA, !bs1)        -> TkItem $ goT bs1 $ \bs2 -> goA1 bs2 k
         _                            -> tkErrBS bs ", or ]"
 
     -- Record
     goR :: Parser TkRecord k
     goR (skipSpace -> bs) k = case unconsPoint bs of
         Nothing                       -> tkErrEOF "record key literal or }"
-        Just (W8_DOUBLE_QUOTE,  !bs1) -> goRK bs1 k           -- "
-        Just (W8_CLOSE_CURLY, !bs1)   -> TkRecordEnd (k bs1)  -- }
+        Just (W.DOUBLE_QUOTE,  !bs1) -> goRK bs1 k           -- "
+        Just (W.RIGHT_CURLY, !bs1)   -> TkRecordEnd (k bs1)  -- }
         Just _                        -> tkErrBS bs "record key literal or }"
 
     -- after record pair, expecting ," or }
     goR1 :: Parser TkRecord k
     goR1 (skipSpace -> bs) k = case unconsPoint bs of
         Nothing                           -> tkErr "Unexpected end-of-input, expecting , or }"
-        Just (W8_COMMA, !bs1) -> case unconsPoint (skipSpace bs1) of
+        Just (W.COMMA, !bs1) -> case unconsPoint (skipSpace bs1) of
             Nothing                      -> tkErrEOF "key literal"
-            Just (W8_DOUBLE_QUOTE, !bs2) -> goRK bs2 k
+            Just (W.DOUBLE_QUOTE, !bs2) -> goRK bs2 k
             Just _                       -> tkErrBS bs "key literal"
-        Just (W8_CLOSE_CURLY, !bs1)       -> TkRecordEnd (k bs1)
+        Just (W.RIGHT_CURLY, !bs1)       -> TkRecordEnd (k bs1)
         _                                 -> tkErr $ "Unexpected " ++ showBeginning bs ++ ", expecting , or }"
 
     -- key of record (after double quote)
@@ -196,46 +195,46 @@ scanNumberLiteral
 scanNumberLiteral kont err bs0 = state_start bs0 where
     state_start :: Text -> r
     state_start !bs = case unconsPoint bs of
-        Nothing                      -> errEnd
+        Nothing                                   -> errEnd
         Just (w8, bs')
-            | W8_0 < w8, w8 <= W8_9  -> state_i1 1 bs'
-            | W8_0 == w8             -> state_after0 bs'
-            | otherwise              -> errUnx w8
+            | W.DIGIT_0 < w8, w8 <= W.DIGIT_9     -> state_i1 1 bs'
+            | W.DIGIT_0 == w8                     -> state_after0 bs'
+            | otherwise                           -> errUnx w8
 
     state_after0 :: Text -> r
     state_after0 !bs = case unconsPoint bs of
-        Nothing                         -> kont (NumInteger 0) bs
+        Nothing                                   -> kont (NumInteger 0) bs
         Just (w8, bs')
-            | W8_0 <= w8, w8 <= W8_9    -> err "Number literal with leading zero"
-            | W8_DOT == w8              -> go_dec 0 bs'
-            | W8_e == w8 || W8_E == w8  -> go_sci 0 0 bs'
-            | otherwise                 -> kont (NumInteger 0) bs
+            | W.DIGIT_0 <= w8, w8 <= W.DIGIT_9    -> err "Number literal with leading zero"
+            | W.PERIOD == w8                      -> go_dec 0 bs'
+            | W.LOWER_E == w8 || W.UPPER_E == w8  -> go_sci 0 0 bs'
+            | otherwise                           -> kont (NumInteger 0) bs
 
     state_i1 :: Int -> Text -> r
     state_i1 !n !bs = case unconsPoint bs of
-        Nothing                         -> kont (NumInteger int) bs
+        Nothing                                   -> kont (NumInteger int) bs
         Just (w8, bs')
-            | W8_0 <= w8, w8 <= W8_9    -> state_i1 (n + 1) bs'
-            | W8_DOT == w8              -> go_dec int bs'
-            | W8_e == w8 || W8_E == w8  -> go_sci int 0 bs'
-            | otherwise                 -> kont (NumInteger int) bs
+            | W.DIGIT_0 <= w8, w8 <= W.DIGIT_9    -> state_i1 (n + 1) bs'
+            | W.PERIOD == w8                      -> go_dec int bs'
+            | W.LOWER_E == w8 || W.UPPER_E == w8  -> go_sci int 0 bs'
+            | otherwise                           -> kont (NumInteger int) bs
       where
         int = textToInteger (unsafeTakePoints n bs0)
 
     go_dec :: Integer -> Text -> r
     go_dec !int !bs1 = case unconsPoint bs1 of
-        Nothing                       -> errEnd
+        Nothing                                   -> errEnd
         Just (w8, bs')
-            | W8_0 <= w8, w8 <= W8_9  -> state_dec 1 bs'
-            | otherwise               -> errUnx w8
+            | W.DIGIT_0 <= w8, w8 <= W.DIGIT_9    -> state_dec 1 bs'
+            | otherwise                           -> errUnx w8
       where
         state_dec :: Int -> Text -> r
         state_dec !n !bs = case unconsPoint bs of
-            Nothing                         -> kont (NumDecimal dec) bs
+            Nothing                                   -> kont (NumDecimal dec) bs
             Just (w8, bs')
-                | W8_0 <= w8, w8 <= W8_9    -> state_dec (n + 1) bs'
-                | W8_e == w8 || W8_E == w8  -> go_sci coef (negate n) bs'
-                | otherwise                 -> kont (NumDecimal dec) bs
+                | W.DIGIT_0 <= w8, w8 <= W.DIGIT_9    -> state_dec (n + 1) bs'
+                | W.LOWER_E == w8 || W.UPPER_E == w8  -> go_sci coef (negate n) bs'
+                | otherwise                           -> kont (NumDecimal dec) bs
           where
             frac = textToInteger (unsafeTakePoints n bs1)
             coef = int * 10 ^ n + frac
@@ -243,37 +242,37 @@ scanNumberLiteral kont err bs0 = state_start bs0 where
 
     go_sci :: Integer -> Int -> Text -> r
     go_sci !coef !exp10 !bs2 = case unconsPoint bs2 of
-        Nothing                       -> errEnd
+        Nothing                                           -> errEnd
         Just (w8, bs')
-            | W8_0 <= w8, w8 <= W8_9  -> go_sci_pos coef exp10 bs2 1 bs'
-            | W8_PLUS == w8           -> case unconsPoint bs' of
-                Nothing               -> errEnd
+            | W.DIGIT_0 <= w8, w8 <= W.DIGIT_9            -> go_sci_pos coef exp10 bs2 1 bs'
+            | W.PLUS == w8 -> case unconsPoint bs' of
+                Nothing                                   -> errEnd
                 Just (w8', bs'')
-                    | W8_0 <= w8', w8' <= W8_9  -> go_sci_pos coef exp10 bs' 1 bs''
-                    | otherwise       ->  errUnx w8'
-            | W8_MINUS == w8          -> case unconsPoint bs' of
-                Nothing               -> errEnd
+                    | W.DIGIT_0 <= w8', w8' <= W.DIGIT_9  -> go_sci_pos coef exp10 bs' 1 bs''
+                    | otherwise                           -> errUnx w8'
+            | W.HYPHEN == w8 -> case unconsPoint bs' of
+                Nothing                                   -> errEnd
                 Just (w8', bs'')
-                    | W8_0 <= w8', w8' <= W8_9  -> go_sci_neg coef exp10 bs' 1 bs''
-                    | otherwise       ->  errUnx w8'
-            | otherwise               -> errUnx w8
+                    | W.DIGIT_0 <= w8', w8' <= W.DIGIT_9  -> go_sci_neg coef exp10 bs' 1 bs''
+                    | otherwise                           -> errUnx w8'
+            | otherwise                                   -> errUnx w8
 
     go_sci_pos :: Integer -> Int -> Text -> Int -> Text -> r
     go_sci_pos !coef !exp10 !bs2 !n !bs = case unconsPoint bs of
-        Nothing                       -> kont (NumScientific sci) bs
+        Nothing                                 -> kont (NumScientific sci) bs
         Just (w8, bs')
-            | W8_0 <= w8, w8 <= W8_9  -> go_sci_pos coef exp10 bs2 (n + 1) bs'
-            | otherwise               -> kont (NumScientific sci) bs
+            | W.DIGIT_0 <= w8, w8 <= W.DIGIT_9  -> go_sci_pos coef exp10 bs2 (n + 1) bs'
+            | otherwise                         -> kont (NumScientific sci) bs
       where
         exp10' = fromInteger (textToInteger (unsafeTakePoints n bs2))
         sci = Sci.scientific coef (exp10 + exp10')
 
     go_sci_neg :: Integer -> Int -> Text -> Int -> Text -> r
     go_sci_neg !coef !exp10 !bs2 !n !bs = case unconsPoint bs of
-        Nothing                       -> kont (NumScientific sci) bs
+        Nothing                                 -> kont (NumScientific sci) bs
         Just (w8, bs')
-            | W8_0 <= w8, w8 <= W8_9  -> go_sci_neg coef exp10 bs2 (n + 1) bs'
-            | otherwise               -> kont (NumScientific sci) bs
+            | W.DIGIT_0 <= w8, w8 <= W.DIGIT_9  -> go_sci_neg coef exp10 bs2 (n + 1) bs'
+            | otherwise                         -> kont (NumScientific sci) bs
       where
         exp10' = fromInteger (textToInteger (unsafeTakePoints n bs2))
         sci = Sci.scientific coef (exp10 - exp10')
