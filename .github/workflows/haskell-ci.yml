@@ -270,8 +270,6 @@ jobs:
           echo "    ghc-options: -Werror=missing-methods" >> cabal.project
           cat >> cabal.project <<EOF
           allow-newer: hermes-json:attoparsec-iso8601
-          allow-newer: network-uri:deepseq
-          allow-newer: attoparsec:ghc-prim
           EOF
           $HCPKG list --simple-output --names-only | perl -ne 'for (split /\s+/) { print "constraints: $_ installed\n" unless /^(aeson|aeson-benchmarks|aeson-examples|attoparsec-aeson|attoparsec-iso8601|text-iso8601)$/; }' >> cabal.project.local
           cat cabal.project

@@ -12,9 +12,3 @@ allow-newer: hermes-json:attoparsec-iso8601
 
 -- packages: https://hackage.haskell.org/package/libperf-0.1/candidate/libperf-0.1.tar.gz
 -- packages: https://hackage.haskell.org/package/tasty-perfbench-0.1/candidate/tasty-perfbench-0.1.tar.gz
-
--- https://github.com/haskell/network-uri
-allow-newer: network-uri:deepseq
-
--- https://github.com/haskell/attoparsec/issues/223
-allow-newer: attoparsec:ghc-prim
