@@ -865,7 +865,7 @@ ifromJSON = iparse parseJSON
 (.:!) = explicitParseFieldMaybe' parseJSON
 
 -- | Retrieve the value associated with the given key of an 'Object'.
--- If the key is not present and the 'omittedField' is @'Just' x@ for some @x@,
+-- If the key is not present or the field is @null@ and the 'omittedField' is @'Just' x@ for some @x@,
 -- the result will be that @x@.
 --
 -- @since 2.2.0.0
@@ -873,7 +873,7 @@ ifromJSON = iparse parseJSON
 (.:?=) = explicitParseFieldOmit omittedField parseJSON
 
 -- | Retrieve the value associated with the given key of an 'Object'.
--- If the key is not present or the field is @null@ and the 'omittedField' is @'Just' x@ for some @x@,
+-- If the key is not present and the 'omittedField' is @'Just' x@ for some @x@,
 -- the result will be that @x@.
 --
 -- This differs from '.:?=' by attempting to parse 'Null' the same as any
