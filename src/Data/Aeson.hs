@@ -557,5 +557,5 @@ throwDecodeStrict' = throwDecodeStrict
 --
 -- For more information, see <https://en.wikipedia.org/wiki/ISO_8601 ISO 8601>
 -- <https://hackage.haskell.org/package/time time>,
--- and <https://hackage.haskell.org/package/attoparsec-iso8601 attoparsec-iso8601>
+-- and <https://hackage.haskell.org/package/text-iso8601 text-iso8601>
 -- (where the relevant parsers are defined).
