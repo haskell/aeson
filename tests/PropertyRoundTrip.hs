@@ -7,6 +7,7 @@ import Prelude.Compat
 
 import Control.Applicative (Const)
 import Data.Aeson.Types
+import Data.Complex (Complex(..))
 import Data.DList (DList)
 import Data.List.NonEmpty (NonEmpty)
 import Data.Map (Map)
@@ -80,6 +81,8 @@ roundTripTests =
     , testProperty "Seq" $ roundTripEq @(Seq Int)
     , testProperty "Rational" $ roundTripEq @Rational
     , testProperty "Ratio Int" $ roundTripEq @(Ratio Int)
+    , testProperty "Complex Float" $ roundTripEq @(Complex Float)
+    , testProperty "Complex Double" $ roundTripEq @(Complex Double)
     , testProperty "UUID" $ roundTripEq @UUID.UUID
     , testProperty "These" $ roundTripEq @(These Char Bool)
     , testProperty "Fix" $ roundTripEq @(F.Fix (These Char))

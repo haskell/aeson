@@ -93,6 +93,7 @@ import Data.Aeson.Types.Internal
 import Data.Aeson.Decoding.ByteString.Lazy
 import Data.Aeson.Decoding.Conversion (unResult, toResultValue, lbsSpace)
 import Data.Bits (unsafeShiftR)
+import Data.Complex (Complex(..))
 import Data.Fixed (Fixed, HasResolution (resolution), Nano)
 import Data.Functor.Compose (Compose(..))
 import Data.Functor.Identity (Identity(..))
@@ -1719,6 +1720,14 @@ instance (FromJSON a, Integral a) => FromJSON (Ratio a) where
             if denominator == 0
             then fail "Ratio denominator was 0"
             else pure $ numerator % denominator
+
+instance FromJSON a => FromJSON (Complex a) where
+    parseJSON = withArray "Complex" $ \c ->
+        let n = V.length c
+        in if n == 2
+           then (:+) <$> parseJSONElemAtIndex parseJSON 0 c
+                     <*> parseJSONElemAtIndex parseJSON 1 c
+           else fail $ "cannot unpack array of length " ++ show n ++ "into a Complex"
 
 -- | This instance includes a bounds check to prevent maliciously
 -- large inputs to fill up the memory of the target system. You can

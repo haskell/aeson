@@ -67,6 +67,7 @@ import Data.Aeson.Types.Internal
 import qualified Data.Aeson.Key as Key
 import qualified Data.Aeson.KeyMap as KM
 import Data.Bits (unsafeShiftR)
+import Data.Complex (Complex(..))
 import Data.DList (DList)
 import Data.Fixed (Fixed, HasResolution, Nano)
 import Data.Foldable (toList)
@@ -1421,6 +1422,16 @@ instance (ToJSON a, Integral a) => ToJSON (Ratio a) where
         "numerator" .= numerator r <>
         "denominator" .= denominator r
 
+instance ToJSON a => ToJSON (Complex a) where
+    toJSON (i :+ q) = Array $ V.create $ do
+        mv <- VM.unsafeNew 2
+        VM.unsafeWrite mv 0 (toJSON i)
+        VM.unsafeWrite mv 1 (toJSON q)
+        return mv
+    toEncoding (i :+ q) = E.list id
+        [ toEncoding i
+        , toEncoding q
+        ]
 
 instance HasResolution a => ToJSON (Fixed a) where
     toJSON = Number . realToFrac
