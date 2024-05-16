@@ -3,16 +3,15 @@ name:          aeson-benchmarks
 version:       0
 build-type:    Simple
 tested-with:
-  GHC ==8.2.2
-   || ==8.4.4
-   || ==8.6.5
+  GHC ==8.6.5
    || ==8.8.4
    || ==8.10.7
    || ==9.0.2
    || ==9.2.8
-   || ==9.4.7
-   || ==9.6.3
-   || ==9.8.1
+   || ==9.4.8
+   || ==9.6.5
+   || ==9.8.2
+   || ==9.10.1
 
 flag tasty-bench
   description: Use tasty-bench, otherwise criterion

@@ -9,16 +9,15 @@ synopsis:      Aeson examples
 description:   Various aeson examples, also used in benchmarks
 maintainer:    Adam Bergmark <adam@bergmark.nl>
 tested-with:
-  GHC ==8.2.2
-   || ==8.4.4
-   || ==8.6.5
+  GHC ==8.6.5
    || ==8.8.4
    || ==8.10.7
    || ==9.0.2
    || ==9.2.8
-   || ==9.4.7
-   || ==9.6.3
-   || ==9.8.1
+   || ==9.4.8
+   || ==9.6.5
+   || ==9.8.2
+   || ==9.10.1
 
 library twitter-generic
   default-language: Haskell2010
@@ -31,7 +30,7 @@ library twitter-generic
 
   build-depends:
       aeson
-    , base         >=0 && <5
+    , base         <5
     , base-compat
     , deepseq
     , text
@@ -47,7 +46,7 @@ library twitter-th
 
   build-depends:
       aeson
-    , base         >=0 && <5
+    , base         <5
     , base-compat
     , deepseq
     , text
@@ -62,7 +61,7 @@ library twitter-manual
 
   build-depends:
       aeson
-    , base                   >=0 && <5
+    , base                   <5
     , base-compat-batteries
     , deepseq
     , text
@@ -74,7 +73,7 @@ library github
   exposed-modules:  GitHub
   build-depends:
       aeson
-    , base                   >=0 && <5
+    , base                   <5
     , base-compat-batteries
     , deepseq
     , text
@@ -88,7 +87,7 @@ executable aeson-example-generic
   ghc-options:      -Wall
   build-depends:
       aeson
-    , base         >=0 && <5
+    , base         <5
     , base-compat
     , bytestring
 
@@ -99,7 +98,7 @@ executable aeson-example-simplest
   ghc-options:      -Wall
   build-depends:
       aeson
-    , base                   >=0 && <5
+    , base                   <5
     , base-compat-batteries
     , bytestring
 
@@ -110,6 +109,6 @@ executable aeson-example-th
   ghc-options:      -Wall
   build-depends:
       aeson
-    , base         >=0 && <5
+    , base         <5
     , base-compat
     , bytestring
