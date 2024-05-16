@@ -1,7 +1,8 @@
 For the latest version of this document, please see [https://github.com/haskell/aeson/blob/master/changelog.md](https://github.com/haskell/aeson/blob/master/changelog.md).
 
-### next
+### 2.2.2.0
 
+* Support GHC-8.6.5...9.10.1
 * Depend on `character-ps` instead of defining own Word8 pattern synonyms
 
 ### 2.2.1.0

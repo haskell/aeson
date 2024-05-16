@@ -1,6 +1,6 @@
 cabal-version:      2.2
 name:               aeson
-version:            2.2.2.0
+version:            2.2.3.0
 license:            BSD-3-Clause
 license-file:       LICENSE
 category:           Text, Web, JSON
@@ -12,16 +12,15 @@ author:             Bryan O'Sullivan <bos@serpentine.com>
 maintainer:         Adam Bergmark <adam@bergmark.nl>
 stability:          experimental
 tested-with:
-  GHC ==8.2.2
-   || ==8.4.4
-   || ==8.6.5
+  GHC ==8.6.5
    || ==8.8.4
    || ==8.10.7
    || ==9.0.2
    || ==9.2.8
-   || ==9.4.7
-   || ==9.6.3
-   || ==9.8.1
+   || ==9.4.8
+   || ==9.6.5
+   || ==9.8.2
+   || ==9.10.1
 
 synopsis:           Fast JSON parsing and encoding
 homepage:           https://github.com/haskell/aeson
@@ -93,13 +92,13 @@ library
 
   -- GHC bundled libs
   build-depends:
-    , base              >=4.10.0.0 && <5
+    , base              >=4.12.0.0 && <5
     , bytestring        >=0.10.8.2 && <0.13
-    , containers        >=0.5.10.2 && <0.7
-    , deepseq           >=1.4.3.0  && <1.6
+    , containers        >=0.6.0.1  && <0.8
+    , deepseq           >=1.4.4.0  && <1.6
     , exceptions        >=0.10.4   && <0.11
     , ghc-prim          >=0.5.0.0  && <0.12
-    , template-haskell  >=2.12.0.0 && <2.22
+    , template-haskell  >=2.14.0.0 && <2.23
     , text              >=1.2.3.0  && <1.3  || >=2.0 && <2.2
     , time              >=1.8.0.2  && <1.13
 
@@ -107,9 +106,6 @@ library
   build-depends:
     , generically  >=0.1   && <0.2
     , time-compat  >=1.9.6 && <1.10
-
-  if !impl(ghc >=8.6)
-    build-depends: contravariant >=1.4.1 && <1.6
 
   if !impl(ghc >=9.0)
     build-depends: integer-gmp
@@ -126,7 +122,7 @@ library
     , network-uri           ^>=2.6.4.1
     , OneTuple              ^>=0.4.1.1
     , primitive             ^>=0.8.0.0  || ^>=0.9.0.0
-    , QuickCheck            ^>=2.14.3
+    , QuickCheck            ^>=2.14.3 || ^>=2.15
     , scientific            ^>=0.3.7.0
     , semialign             ^>=1.3
     , strict                ^>=0.5
@@ -219,7 +215,7 @@ test-suite aeson-tests
     , network-uri
     , OneTuple
     , primitive
-    , QuickCheck            >=2.14.2 && <2.15
+    , QuickCheck            >=2.14.2 && <2.16
     , quickcheck-instances  >=0.3.29 && <0.4
     , scientific
     , strict

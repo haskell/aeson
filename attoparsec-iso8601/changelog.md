@@ -1,5 +1,9 @@
 For the latest version of this document, please see [https://github.com/bos/aeson/blob/master/attoparsec-iso8601/changelog.md](https://github.com/bos/aeson/blob/master/attoparsec-iso8601/changelog.md).
 
+### 1.1.1.0
+
+- Support GHC-8.6.5...9.10.1
+
 ### 1.1.0.0
 
 - Change parsers of types with year (`Day`, `UTCTime`) to require years with at least 4 digits.

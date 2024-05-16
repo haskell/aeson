@@ -9,10 +9,6 @@ install-dependencies: False
 -- GADT docs
 haddock: >=8.6
 
-hlint: True
-hlint-job: 9.2.8
-hlint-yaml: .hlint.yaml
-
 constraint-set ordered-keymap-on
   constraints: aeson +ordered-keymap
   tests:       True
