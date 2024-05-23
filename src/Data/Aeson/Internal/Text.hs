@@ -1,5 +1,6 @@
-{-# LANGUAGE BangPatterns #-}
-{-# LANGUAGE CPP          #-}
+{-# LANGUAGE BangPatterns    #-}
+{-# LANGUAGE CPP             #-}
+{-# LANGUAGE PatternSynonyms #-}
 module Data.Aeson.Internal.Text (
     unsafeDecodeASCII,
 ) where
@@ -8,7 +9,11 @@ import           Data.ByteString                (ByteString)
 import qualified Data.Text                      as T
 
 #if MIN_VERSION_text(2,0,0)
+#if MIN_VERSION_text(2,1,0)
+import           Data.Text.Array                (pattern ByteArray)
+#else
 import           Data.Text.Array                (Array (..))
+#endif
 import qualified Data.Text.Internal             as T (Text (..))
 
 import qualified Data.ByteString.Short.Internal as SBS
