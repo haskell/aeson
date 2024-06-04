@@ -2362,6 +2362,20 @@ instance (FromJSON a) => FromJSON (Monoid.Product a) where
 
     omittedField = omittedField1
 
+instance FromJSON Monoid.All where
+    parseJSON = coerce . (parseJSON :: Value -> Parser Bool)
+
+    parseJSONList = coerce . (parseJSONList :: Value -> Parser [Bool])
+
+    omittedField = coerce (omittedField :: Maybe Bool)
+
+instance FromJSON Monoid.Any where
+    parseJSON v = coerce (parseJSON v :: Parser Bool)
+
+    parseJSONList v = coerce (parseJSONList v :: Parser [Bool])
+
+    omittedField = coerce (omittedField :: Maybe Bool)
+
 
 instance FromJSON1 Monoid.First where
     liftParseJSON o = coerce (liftParseJSON @Maybe o)

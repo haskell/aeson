@@ -89,6 +89,8 @@ roundTripTests =
     , testProperty "Monoid.First" $ roundTripEq @(Monoid.First Int)
     , testProperty "Monoid.Sum" $ roundTripEq @(Monoid.Sum Int)
     , testProperty "Monoid.Product" $ roundTripEq @(Monoid.Product Int)
+    , testProperty "Monoid.All" $ roundTripEq @Monoid.All
+    , testProperty "Monoid.Any" $ roundTripEq @Monoid.Any
     , testProperty "Strict Pair" $ roundTripEq @(S.Pair Int Char)
     , testProperty "Strict Either" $ roundTripEq @(S.Either Int Char)
     , testProperty "Strict These" $ roundTripEq @(S.These Int Char)
