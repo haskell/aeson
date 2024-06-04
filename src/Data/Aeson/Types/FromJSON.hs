@@ -2334,6 +2334,34 @@ instance FromJSON1 Monoid.Dual where
 instance FromJSON a => FromJSON (Monoid.Dual a) where
     parseJSON = parseJSON1
 
+instance FromJSON1 Monoid.Sum where
+    liftParseJSON _ p _ a = coerce (p a)
+
+    liftParseJSONList _ _ p a = coerce (p a)
+
+    liftOmittedField = coerce
+
+instance (FromJSON a) => FromJSON (Monoid.Sum a) where
+    parseJSON = parseJSON1
+
+    parseJSONList = liftParseJSONList omittedField parseJSON parseJSONList
+
+    omittedField = omittedField1
+
+instance FromJSON1 Monoid.Product where
+    liftParseJSON _ p _ a = coerce (p a)
+
+    liftParseJSONList _ _ p a = coerce (p a)
+
+    liftOmittedField = coerce
+
+instance (FromJSON a) => FromJSON (Monoid.Product a) where
+    parseJSON = parseJSON1
+
+    parseJSONList = liftParseJSONList omittedField parseJSON parseJSONList
+
+    omittedField = omittedField1
+
 
 instance FromJSON1 Monoid.First where
     liftParseJSON o = coerce (liftParseJSON @Maybe o)
