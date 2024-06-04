@@ -1452,6 +1452,13 @@ instance {-# OVERLAPPING #-}
       recordParseJSONImpl (guard (allowOmittedFields opts) >> fmap Par1 o) gParseJSON args obj
     {-# INLINE recordParseJSON' #-}
 
+instance {-# OVERLAPPING #-}
+         (Selector s, GFromJSON One (f :.: Rec1 g), FromJSON1 f, FromJSON1 g) =>
+         RecordFromJSON' One (S1 s (f :.: Rec1 g)) where
+    recordParseJSON' args@(_ :* _ :* opts :* From1Args o _ _) obj = recordParseJSONImpl d gParseJSON args obj where
+      d = guard (allowOmittedFields opts) >> fmap Comp1 (liftOmittedField (fmap Rec1 (liftOmittedField o)))
+    {-# INLINE recordParseJSON' #-}
+
 
 recordParseJSONImpl :: forall s arity a f i
                      . (Selector s)

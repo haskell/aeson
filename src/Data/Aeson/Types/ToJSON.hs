@@ -1216,6 +1216,24 @@ instance ( Selector s
           in key `pair` value
     {-# INLINE recordToPairs #-}
 
+instance ( Selector s
+         , GToJSON' enc One (f :.: Rec1 g)
+         , KeyValuePair enc pairs
+         , ToJSON1 f
+         , ToJSON1 g
+         ) => RecordToPairs enc pairs One (S1 s (f :.: Rec1 g))
+  where
+    recordToPairs opts targs@(To1Args o _ _) m1
+      | omitNothingFields opts
+      , liftOmitField (liftOmitField o . unRec1) $ unComp1 $ unM1 m1
+      = mempty
+
+      | otherwise =
+        let key   = Key.fromString $ fieldLabelModifier opts (selName m1)
+            value = gToJSON opts targs (unM1 m1)
+            in key `pair` value
+    {-# INLINE recordToPairs #-}
+
 --------------------------------------------------------------------------------
 
 class WriteProduct arity f where
