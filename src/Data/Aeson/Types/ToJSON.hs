@@ -2122,14 +2122,14 @@ instance ToJSON a => ToJSON (Monoid.Product a) where
     omitField = omitField1
 
 instance ToJSON Monoid.All where
-    toJSON = toJSON . Monoid.getAll
-    toEncoding = toEncoding . Monoid.getAll
-    omitField = omitField . Monoid.getAll
+    toJSON = (toJSON :: Bool -> Value) . coerce
+    toEncoding = (toEncoding :: Bool -> Encoding) . coerce
+    omitField = (omitField :: Bool -> Bool) . coerce
 
 instance ToJSON Monoid.Any where
-    toJSON = toJSON . Monoid.getAny
-    toEncoding = toEncoding . Monoid.getAny
-    omitField = omitField . Monoid.getAny
+    toJSON = (toJSON :: Bool -> Value) . coerce
+    toEncoding = (toEncoding :: Bool -> Encoding) . coerce
+    omitField = (omitField :: Bool -> Bool) . coerce
 
 instance ToJSON1 Monoid.First where
     liftToJSON o t to' = liftToJSON o t to' . Monoid.getFirst
