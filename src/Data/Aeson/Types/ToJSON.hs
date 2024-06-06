@@ -2101,9 +2101,10 @@ instance ToJSON a => ToJSON (Monoid.Dual a) where
     omitField = omitField1
 
 instance ToJSON1 Monoid.Sum where
-    liftToJSON _ t _ = t . Monoid.getSum
-    liftToEncoding _ t _ = t . Monoid.getSum
+    liftToJSON _ t _ = coerce t
+    liftToEncoding _ t _ = coerce t
     liftOmitField = coerce
+
 
 instance ToJSON a => ToJSON (Monoid.Sum a) where
     toJSON = toJSON1
@@ -2111,8 +2112,8 @@ instance ToJSON a => ToJSON (Monoid.Sum a) where
     omitField = omitField1
 
 instance ToJSON1 Monoid.Product where
-    liftToJSON _ t _ = t . Monoid.getProduct
-    liftToEncoding _ t _ = t . Monoid.getProduct
+    liftToJSON _ t _ = coerce t
+    liftToEncoding _ t _ = coerce t
     liftOmitField = coerce
 
 instance ToJSON a => ToJSON (Monoid.Product a) where

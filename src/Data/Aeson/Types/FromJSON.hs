@@ -2335,32 +2335,20 @@ instance FromJSON a => FromJSON (Monoid.Dual a) where
     parseJSON = parseJSON1
 
 instance FromJSON1 Monoid.Sum where
-    liftParseJSON _ p _ a = coerce (p a)
-
-    liftParseJSONList _ _ p a = coerce (p a)
+    liftParseJSON _ p _ = coerce p
 
     liftOmittedField = coerce
 
 instance (FromJSON a) => FromJSON (Monoid.Sum a) where
     parseJSON = parseJSON1
 
-    parseJSONList = liftParseJSONList omittedField parseJSON parseJSONList
-
-    omittedField = omittedField1
-
 instance FromJSON1 Monoid.Product where
-    liftParseJSON _ p _ a = coerce (p a)
-
-    liftParseJSONList _ _ p a = coerce (p a)
+    liftParseJSON _ p _ = coerce p
 
     liftOmittedField = coerce
 
 instance (FromJSON a) => FromJSON (Monoid.Product a) where
     parseJSON = parseJSON1
-
-    parseJSONList = liftParseJSONList omittedField parseJSON parseJSONList
-
-    omittedField = omittedField1
 
 instance FromJSON Monoid.All where
     parseJSON = coerce . (parseJSON :: Value -> Parser Bool)
