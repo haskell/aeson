@@ -2382,66 +2382,44 @@ instance FromJSON a => FromJSON (Monoid.Last a) where
     omittedField = omittedField1
 
 instance FromJSON1 Semigroup.Min where
-    liftParseJSON _ p _ a = coerce (p a)
-
-    liftParseJSONList _ _ p a = coerce (p a)
+    liftParseJSON _ p _ = coerce p
 
     liftOmittedField = coerce
 
 instance (FromJSON a) => FromJSON (Semigroup.Min a) where
     parseJSON = parseJSON1
 
-    parseJSONList = liftParseJSONList omittedField parseJSON parseJSONList
-
-    omittedField = omittedField1
-
 instance FromJSON1 Semigroup.Max where
-    liftParseJSON _ p _ a = coerce (p a)
+    liftParseJSON _ p _ = coerce p
 
-    liftParseJSONList _ _ p a = coerce (p a)
     liftOmittedField = coerce
 
 instance (FromJSON a) => FromJSON (Semigroup.Max a) where
     parseJSON = parseJSON1
 
-    parseJSONList = liftParseJSONList omittedField parseJSON parseJSONList
-    omittedField = omittedField1
-
 instance FromJSON1 Semigroup.First where
-    liftParseJSON _ p _ a = coerce (p a)
+    liftParseJSON _ p _ = coerce p
 
-    liftParseJSONList _ _ p a = coerce (p a)
     liftOmittedField = coerce
 
 instance (FromJSON a) => FromJSON (Semigroup.First a) where
     parseJSON = parseJSON1
 
-    parseJSONList = liftParseJSONList omittedField parseJSON parseJSONList
-
-
 instance FromJSON1 Semigroup.Last where
-    liftParseJSON _ p _ a = coerce (p a)
+    liftParseJSON _ p _ = coerce p
 
-    liftParseJSONList _ _ p a = coerce (p a)
     liftOmittedField = coerce
 
 instance (FromJSON a) => FromJSON (Semigroup.Last a) where
     parseJSON = parseJSON1
 
-    parseJSONList = liftParseJSONList omittedField parseJSON parseJSONList
-    omittedField = omittedField1
-
 instance FromJSON1 Semigroup.WrappedMonoid where
-    liftParseJSON _ p _ a = coerce (p a)
+    liftParseJSON _ p _ = coerce p
 
-    liftParseJSONList _ _ p a = coerce (p a)
     liftOmittedField = coerce
 
 instance (FromJSON a) => FromJSON (Semigroup.WrappedMonoid a) where
     parseJSON = parseJSON1
-
-    parseJSONList = liftParseJSONList omittedField parseJSON parseJSONList
-    omittedField = omittedField1
 
 #if !MIN_VERSION_base(4,16,0)
 instance FromJSON1 Semigroup.Option where

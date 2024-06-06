@@ -2091,8 +2091,8 @@ instance ToJSON a => ToJSON (Down a) where
 -------------------------------------------------------------------------------
 
 instance ToJSON1 Monoid.Dual where
-    liftToJSON _ t _ = t . Monoid.getDual
-    liftToEncoding _ t _ = t . Monoid.getDual
+    liftToJSON _ t _ = coerce t
+    liftToEncoding _ t _ = coerce t
     liftOmitField = coerce
 
 instance ToJSON a => ToJSON (Monoid.Dual a) where
@@ -2155,8 +2155,8 @@ instance ToJSON a => ToJSON (Monoid.Last a) where
     omitField = omitField1
 
 instance ToJSON1 Semigroup.Min where
-    liftToJSON _ t _ (Semigroup.Min x) = t x
-    liftToEncoding _ t _ (Semigroup.Min x) = t x
+    liftToJSON _ t _ = coerce t
+    liftToEncoding _ t _ = coerce t
     liftOmitField = coerce
 
 instance ToJSON a => ToJSON (Semigroup.Min a) where
@@ -2166,8 +2166,8 @@ instance ToJSON a => ToJSON (Semigroup.Min a) where
 
 
 instance ToJSON1 Semigroup.Max where
-    liftToJSON _ t _ (Semigroup.Max x) = t x
-    liftToEncoding _ t _ (Semigroup.Max x) = t x
+    liftToJSON _ t _ = coerce t
+    liftToEncoding _ t _ = coerce t
     liftOmitField = coerce
 
 instance ToJSON a => ToJSON (Semigroup.Max a) where
@@ -2176,8 +2176,8 @@ instance ToJSON a => ToJSON (Semigroup.Max a) where
     omitField = omitField1
 
 instance ToJSON1 Semigroup.First where
-    liftToJSON _ t _ (Semigroup.First x) = t x
-    liftToEncoding _ t _ (Semigroup.First x) = t x
+    liftToJSON _ t _ = coerce t
+    liftToEncoding _ t _ = coerce t
     liftOmitField = coerce
 
 instance ToJSON a => ToJSON (Semigroup.First a) where
@@ -2186,8 +2186,8 @@ instance ToJSON a => ToJSON (Semigroup.First a) where
     omitField = omitField1
 
 instance ToJSON1 Semigroup.Last where
-    liftToJSON _ t _ (Semigroup.Last x) = t x
-    liftToEncoding _ t _ (Semigroup.Last x) = t x
+    liftToJSON _ t _ = coerce t
+    liftToEncoding _ t _ = coerce t
     liftOmitField = coerce
 
 instance ToJSON a => ToJSON (Semigroup.Last a) where
@@ -2196,8 +2196,8 @@ instance ToJSON a => ToJSON (Semigroup.Last a) where
     omitField = omitField1
 
 instance ToJSON1 Semigroup.WrappedMonoid where
-    liftToJSON _ t _ (Semigroup.WrapMonoid x) = t x
-    liftToEncoding _ t _ (Semigroup.WrapMonoid x) = t x
+    liftToJSON _ t _ = coerce t
+    liftToEncoding _ t _ = coerce t
     liftOmitField = coerce
 
 instance ToJSON a => ToJSON (Semigroup.WrappedMonoid a) where
