@@ -2316,6 +2316,8 @@ instance FromJSONKey Month where
 instance FromJSON1 Down where
     liftParseJSON _ p _ = coerce p
 
+    liftParseJSONList _ _ p = coerce p
+
     liftOmittedField = coerce
 
 -- | @since 2.2.0.0
@@ -2329,6 +2331,8 @@ instance FromJSON a => FromJSON (Down a) where
 instance FromJSON1 Monoid.Dual where
     liftParseJSON _ p _ = coerce p
 
+    liftParseJSONList _ _ p = coerce p
+
     liftOmittedField = coerce
 
 instance FromJSON a => FromJSON (Monoid.Dual a) where
@@ -2337,6 +2341,8 @@ instance FromJSON a => FromJSON (Monoid.Dual a) where
 instance FromJSON1 Monoid.Sum where
     liftParseJSON _ p _ = coerce p
 
+    liftParseJSONList _ _ p = coerce p
+
     liftOmittedField = coerce
 
 instance (FromJSON a) => FromJSON (Monoid.Sum a) where
@@ -2344,6 +2350,8 @@ instance (FromJSON a) => FromJSON (Monoid.Sum a) where
 
 instance FromJSON1 Monoid.Product where
     liftParseJSON _ p _ = coerce p
+
+    liftParseJSONList _ _ p = coerce p
 
     liftOmittedField = coerce
 
@@ -2384,6 +2392,8 @@ instance FromJSON a => FromJSON (Monoid.Last a) where
 instance FromJSON1 Semigroup.Min where
     liftParseJSON _ p _ = coerce p
 
+    liftParseJSONList _ _ p = coerce p
+
     liftOmittedField = coerce
 
 instance (FromJSON a) => FromJSON (Semigroup.Min a) where
@@ -2391,6 +2401,8 @@ instance (FromJSON a) => FromJSON (Semigroup.Min a) where
 
 instance FromJSON1 Semigroup.Max where
     liftParseJSON _ p _ = coerce p
+
+    liftParseJSONList _ _ p = coerce p
 
     liftOmittedField = coerce
 
@@ -2400,6 +2412,8 @@ instance (FromJSON a) => FromJSON (Semigroup.Max a) where
 instance FromJSON1 Semigroup.First where
     liftParseJSON _ p _ = coerce p
 
+    liftParseJSONList _ _ p = coerce p
+
     liftOmittedField = coerce
 
 instance (FromJSON a) => FromJSON (Semigroup.First a) where
@@ -2408,6 +2422,8 @@ instance (FromJSON a) => FromJSON (Semigroup.First a) where
 instance FromJSON1 Semigroup.Last where
     liftParseJSON _ p _ = coerce p
 
+    liftParseJSONList _ _ p = coerce p
+
     liftOmittedField = coerce
 
 instance (FromJSON a) => FromJSON (Semigroup.Last a) where
@@ -2415,6 +2431,8 @@ instance (FromJSON a) => FromJSON (Semigroup.Last a) where
 
 instance FromJSON1 Semigroup.WrappedMonoid where
     liftParseJSON _ p _ = coerce p
+
+    liftParseJSONList _ _ p = coerce p
 
     liftOmittedField = coerce
 
