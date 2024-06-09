@@ -3,6 +3,8 @@ For the latest version of this document, please see [https://github.com/haskell/
 ### 2.2.3.0
 
 * Support `hashable-1.4.6.0`.
+* Fix an issue where `Hashable Key` wasn't newtype instance over underlying `Text`,
+  so with `-ordered-keymap` there were correctness issues.
 
 ### 2.2.2.0
 

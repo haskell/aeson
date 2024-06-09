@@ -1,18 +1,20 @@
 {-# LANGUAGE CPP #-}
 {-# LANGUAGE DefaultSignatures #-}
+{-# LANGUAGE DerivingVia #-}
 {-# LANGUAGE EmptyCase #-}
 {-# LANGUAGE EmptyDataDecls #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE FunctionalDependencies #-}
-{-# LANGUAGE InstanceSigs #-}
 {-# LANGUAGE GADTs #-}
+{-# LANGUAGE InstanceSigs #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE PolyKinds #-}
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE TypeOperators #-}
+{-# LANGUAGE StandaloneDeriving #-}
 {-# LANGUAGE TypeApplications #-}
+{-# LANGUAGE TypeOperators #-}
 {-# LANGUAGE UndecidableInstances #-}
 
 module Data.Aeson.Types.ToJSON
@@ -76,6 +78,7 @@ import Data.Functor.Identity (Identity(..))
 import Data.Functor.Product (Product(..))
 import Data.Functor.Sum (Sum(..))
 import Data.Functor.These (These1 (..))
+import Data.Kind (Type)
 import Data.List (intersperse)
 import Data.List.NonEmpty (NonEmpty(..))
 import Data.Maybe (isNothing)
@@ -1641,14 +1644,7 @@ instance ToJSON1 Identity where
 
     liftOmitField o (Identity a) = o a
 
-instance (ToJSON a) => ToJSON (Identity a) where
-    toJSON = toJSON1
-    toJSONList = liftToJSONList omitField toJSON toJSONList
-
-    toEncoding = toEncoding1
-    toEncodingList = liftToEncodingList omitField toEncoding toEncodingList
-
-    omitField (Identity x) = omitField x
+deriving via (a :: Type) instance ToJSON a => ToJSON (Identity a)
 
 instance (ToJSONKey a) => ToJSONKey (Identity a) where
     toJSONKey = contramapToJSONKeyFunction runIdentity toJSONKey
@@ -2075,115 +2071,42 @@ instance ToJSONKey QuarterOfYear where
 -------------------------------------------------------------------------------
 
 -- | @since 2.2.0.0
-instance ToJSON1 Down where
-    liftToJSON _ t _ = coerce t
-    liftToEncoding _ t _ = coerce t
-    liftOmitField = coerce
+deriving via Identity instance ToJSON1 Down
 
 -- | @since 2.2.0.0
-instance ToJSON a => ToJSON (Down a) where
-    toJSON = toJSON1
-    toEncoding = toEncoding1
-    omitField = omitField1
+deriving via (a :: Type) instance ToJSON a => ToJSON (Down a)
 
 -------------------------------------------------------------------------------
 -- base Monoid/Semigroup
 -------------------------------------------------------------------------------
 
-instance ToJSON1 Monoid.Dual where
-    liftToJSON _ t _ = t . Monoid.getDual
-    liftToEncoding _ t _ = t . Monoid.getDual
-    liftOmitField = coerce
+deriving via Identity instance ToJSON1 Monoid.Dual
+deriving via (a :: Type) instance ToJSON a => ToJSON (Monoid.Dual a)
 
-instance ToJSON a => ToJSON (Monoid.Dual a) where
-    toJSON = toJSON1
-    toEncoding = toEncoding1
-    omitField = omitField1
+deriving via Maybe instance ToJSON1 Monoid.First
+deriving via Maybe a instance ToJSON a => ToJSON (Monoid.First a)
 
-instance ToJSON1 Monoid.First where
-    liftToJSON o t to' = liftToJSON o t to' . Monoid.getFirst
-    liftToEncoding o t to' = liftToEncoding o t to' . Monoid.getFirst
-    liftOmitField :: forall a. (a -> Bool) -> Monoid.First a -> Bool
-    liftOmitField _ = coerce (isNothing @a)
-    
-instance ToJSON a => ToJSON (Monoid.First a) where
-    toJSON = toJSON1
-    toEncoding = toEncoding1
-    omitField = omitField1
+deriving via Maybe instance ToJSON1 Monoid.Last
+deriving via Maybe a instance ToJSON a => ToJSON (Monoid.Last a)
 
-instance ToJSON1 Monoid.Last where
-    liftToJSON o t to' = liftToJSON o t to' . Monoid.getLast
-    liftToEncoding o t to' = liftToEncoding o t to' . Monoid.getLast
+deriving via Identity instance ToJSON1 Semigroup.Min
+deriving via (a :: Type) instance ToJSON a => ToJSON (Semigroup.Min a)
 
-    liftOmitField :: forall a. (a -> Bool) -> Monoid.Last a -> Bool
-    liftOmitField _ = coerce (isNothing @a)
+deriving via Identity instance ToJSON1 Semigroup.Max
+deriving via (a :: Type) instance ToJSON a => ToJSON (Semigroup.Max a)
 
-instance ToJSON a => ToJSON (Monoid.Last a) where
-    toJSON = toJSON1
-    toEncoding = toEncoding1
-    omitField = omitField1
+deriving via Identity instance ToJSON1 Semigroup.First
+deriving via (a :: Type) instance ToJSON a => ToJSON (Semigroup.First a)
 
-instance ToJSON1 Semigroup.Min where
-    liftToJSON _ t _ (Semigroup.Min x) = t x
-    liftToEncoding _ t _ (Semigroup.Min x) = t x
-    liftOmitField = coerce
+deriving via Identity instance ToJSON1 Semigroup.Last
+deriving via (a :: Type) instance ToJSON a => ToJSON (Semigroup.Last a)
 
-instance ToJSON a => ToJSON (Semigroup.Min a) where
-    toJSON = toJSON1
-    toEncoding = toEncoding1
-    omitField = omitField1
-
-
-instance ToJSON1 Semigroup.Max where
-    liftToJSON _ t _ (Semigroup.Max x) = t x
-    liftToEncoding _ t _ (Semigroup.Max x) = t x
-    liftOmitField = coerce
-
-instance ToJSON a => ToJSON (Semigroup.Max a) where
-    toJSON = toJSON1
-    toEncoding = toEncoding1
-    omitField = omitField1
-
-instance ToJSON1 Semigroup.First where
-    liftToJSON _ t _ (Semigroup.First x) = t x
-    liftToEncoding _ t _ (Semigroup.First x) = t x
-    liftOmitField = coerce
-
-instance ToJSON a => ToJSON (Semigroup.First a) where
-    toJSON = toJSON1
-    toEncoding = toEncoding1
-    omitField = omitField1
-
-instance ToJSON1 Semigroup.Last where
-    liftToJSON _ t _ (Semigroup.Last x) = t x
-    liftToEncoding _ t _ (Semigroup.Last x) = t x
-    liftOmitField = coerce
-
-instance ToJSON a => ToJSON (Semigroup.Last a) where
-    toJSON = toJSON1
-    toEncoding = toEncoding1
-    omitField = omitField1
-
-instance ToJSON1 Semigroup.WrappedMonoid where
-    liftToJSON _ t _ (Semigroup.WrapMonoid x) = t x
-    liftToEncoding _ t _ (Semigroup.WrapMonoid x) = t x
-    liftOmitField = coerce
-    
-instance ToJSON a => ToJSON (Semigroup.WrappedMonoid a) where
-    toJSON = toJSON1
-    toEncoding = toEncoding1
-    omitField = omitField1
+deriving via Identity instance ToJSON1 Semigroup.WrappedMonoid
+deriving via (a :: Type) instance ToJSON a => ToJSON (Semigroup.WrappedMonoid a)
 
 #if !MIN_VERSION_base(4,16,0)
-instance ToJSON1 Semigroup.Option where
-    liftToJSON o t to' = liftToJSON o t to' . Semigroup.getOption
-    liftToEncoding o t to' = liftToEncoding o t to' . Semigroup.getOption
-    liftOmitField _ = isNothing . Semigroup.getOption
-
-instance ToJSON a => ToJSON (Semigroup.Option a) where
-    toJSON = toJSON1
-    toEncoding = toEncoding1
-    omitField = omitField1
+deriving via Maybe instance ToJSON1 Semigroup.Option
+deriving via Maybe a instance ToJSON a => ToJSON (Semigroup.Option a)
 #endif
 
 -------------------------------------------------------------------------------
