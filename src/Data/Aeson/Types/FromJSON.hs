@@ -1,18 +1,20 @@
 {-# LANGUAGE CPP #-}
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE DefaultSignatures #-}
-{-# LANGUAGE InstanceSigs #-}
+{-# LANGUAGE DerivingVia #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE GADTs #-}
+{-# LANGUAGE InstanceSigs #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE PolyKinds #-}
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE StandaloneDeriving #-}
+{-# LANGUAGE TupleSections #-}
 {-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE TypeOperators #-}
-{-# LANGUAGE TupleSections #-}
 {-# LANGUAGE UndecidableInstances #-}
 {-# LANGUAGE ViewPatterns #-}
 
@@ -86,12 +88,12 @@ module Data.Aeson.Types.FromJSON
 import Data.Aeson.Internal.Prelude
 
 import Control.Monad (zipWithM, guard)
+import Data.Aeson.Decoding.ByteString.Lazy
+import Data.Aeson.Decoding.Conversion (unResult, toResultValue, lbsSpace)
 import Data.Aeson.Internal.Functions (mapKey, mapKeyO)
 import Data.Aeson.Internal.Scientific
 import Data.Aeson.Types.Generic
 import Data.Aeson.Types.Internal
-import Data.Aeson.Decoding.ByteString.Lazy
-import Data.Aeson.Decoding.Conversion (unResult, toResultValue, lbsSpace)
 import Data.Bits (unsafeShiftR)
 import Data.Fixed (Fixed, HasResolution (resolution), Nano)
 import Data.Functor.Compose (Compose(..))
@@ -100,6 +102,7 @@ import Data.Functor.Product (Product(..))
 import Data.Functor.Sum (Sum(..))
 import Data.Functor.These (These1 (..))
 import Data.Hashable (Hashable(..))
+import Data.Kind (Type)
 import Data.List.NonEmpty (NonEmpty(..))
 import Data.Ord (Down (..))
 import Data.Ratio ((%), Ratio)
@@ -1922,17 +1925,10 @@ instance (FromJSONKey a) => FromJSONKey (Solo a) where
 
 instance FromJSON1 Identity where
     liftParseJSON _ p _ a = coerce (p a)
-
     liftParseJSONList _ _ p a = coerce (p a)
-
     liftOmittedField = coerce
 
-instance (FromJSON a) => FromJSON (Identity a) where
-    parseJSON = parseJSON1
-
-    parseJSONList = liftParseJSONList omittedField parseJSON parseJSONList
-
-    omittedField = coerce (omittedField @a)
+deriving via (a :: Type) instance FromJSON a => FromJSON (Identity a)
 
 instance (FromJSONKey a) => FromJSONKey (Identity a) where
     fromJSONKey = coerceFromJSONKeyFunction (fromJSONKey :: FromJSONKeyFunction a)
@@ -2313,114 +2309,42 @@ instance FromJSONKey Month where
 -------------------------------------------------------------------------------
 
 -- | @since 2.2.0.0
-instance FromJSON1 Down where
-    liftParseJSON _ p _ = coerce p
-
-    liftOmittedField = coerce
+deriving via Identity instance FromJSON1 Down
 
 -- | @since 2.2.0.0
-instance FromJSON a => FromJSON (Down a) where
-    parseJSON = parseJSON1
+deriving via (a :: Type) instance FromJSON a => FromJSON (Down a)
 
 -------------------------------------------------------------------------------
 -- base Monoid/Semigroup
 -------------------------------------------------------------------------------
 
-instance FromJSON1 Monoid.Dual where
-    liftParseJSON _ p _ = coerce p
+deriving via Identity instance FromJSON1 Monoid.Dual
+deriving via (a :: Type) instance FromJSON a => FromJSON (Monoid.Dual a)
 
-    liftOmittedField = coerce
+deriving via Maybe instance FromJSON1 Monoid.First
+deriving via Maybe a instance FromJSON a => FromJSON (Monoid.First a)
 
-instance FromJSON a => FromJSON (Monoid.Dual a) where
-    parseJSON = parseJSON1
+deriving via Maybe instance FromJSON1 Monoid.Last
+deriving via Maybe a instance FromJSON a => FromJSON (Monoid.Last a)
 
+deriving via Identity instance FromJSON1 Semigroup.Min
+deriving via (a :: Type) instance FromJSON a => FromJSON (Semigroup.Min a)
 
-instance FromJSON1 Monoid.First where
-    liftParseJSON o = coerce (liftParseJSON @Maybe o)
-    liftOmittedField _ = Just (Monoid.First Nothing)
+deriving via Identity instance FromJSON1 Semigroup.Max
+deriving via (a :: Type) instance FromJSON a => FromJSON (Semigroup.Max a)
 
-instance FromJSON a => FromJSON (Monoid.First a) where
-    parseJSON = parseJSON1
-    omittedField = omittedField1
+deriving via Identity instance FromJSON1 Semigroup.First
+deriving via (a :: Type) instance FromJSON a => FromJSON (Semigroup.First a)
 
-instance FromJSON1 Monoid.Last where
-    liftParseJSON o = coerce (liftParseJSON @Maybe o)
-    liftOmittedField _ = Just (Monoid.Last Nothing)
+deriving via Identity instance FromJSON1 Semigroup.Last
+deriving via (a :: Type) instance FromJSON a => FromJSON (Semigroup.Last a)
 
-instance FromJSON a => FromJSON (Monoid.Last a) where
-    parseJSON = parseJSON1
-    omittedField = omittedField1
-
-instance FromJSON1 Semigroup.Min where
-    liftParseJSON _ p _ a = coerce (p a)
-
-    liftParseJSONList _ _ p a = coerce (p a)
-
-    liftOmittedField = coerce
-
-instance (FromJSON a) => FromJSON (Semigroup.Min a) where
-    parseJSON = parseJSON1
-
-    parseJSONList = liftParseJSONList omittedField parseJSON parseJSONList
-
-    omittedField = omittedField1
-
-instance FromJSON1 Semigroup.Max where
-    liftParseJSON _ p _ a = coerce (p a)
-
-    liftParseJSONList _ _ p a = coerce (p a)
-    liftOmittedField = coerce
-
-instance (FromJSON a) => FromJSON (Semigroup.Max a) where
-    parseJSON = parseJSON1
-
-    parseJSONList = liftParseJSONList omittedField parseJSON parseJSONList
-    omittedField = omittedField1
-
-instance FromJSON1 Semigroup.First where
-    liftParseJSON _ p _ a = coerce (p a)
-
-    liftParseJSONList _ _ p a = coerce (p a)
-    liftOmittedField = coerce
-
-instance (FromJSON a) => FromJSON (Semigroup.First a) where
-    parseJSON = parseJSON1
-
-    parseJSONList = liftParseJSONList omittedField parseJSON parseJSONList
-
-
-instance FromJSON1 Semigroup.Last where
-    liftParseJSON _ p _ a = coerce (p a)
-
-    liftParseJSONList _ _ p a = coerce (p a)
-    liftOmittedField = coerce
-
-instance (FromJSON a) => FromJSON (Semigroup.Last a) where
-    parseJSON = parseJSON1
-
-    parseJSONList = liftParseJSONList omittedField parseJSON parseJSONList
-    omittedField = omittedField1
-
-instance FromJSON1 Semigroup.WrappedMonoid where
-    liftParseJSON _ p _ a = coerce (p a)
-
-    liftParseJSONList _ _ p a = coerce (p a)
-    liftOmittedField = coerce
-
-instance (FromJSON a) => FromJSON (Semigroup.WrappedMonoid a) where
-    parseJSON = parseJSON1
-
-    parseJSONList = liftParseJSONList omittedField parseJSON parseJSONList
-    omittedField = omittedField1
+deriving via Identity instance FromJSON1 Semigroup.WrappedMonoid
+deriving via (a :: Type) instance FromJSON a => FromJSON (Semigroup.WrappedMonoid a)
 
 #if !MIN_VERSION_base(4,16,0)
-instance FromJSON1 Semigroup.Option where
-    liftParseJSON o = coerce (liftParseJSON @Maybe o)
-    liftOmittedField _ = Just (Semigroup.Option Nothing)
-
-instance FromJSON a => FromJSON (Semigroup.Option a) where
-    parseJSON = parseJSON1
-    omittedField = omittedField1
+deriving via Maybe instance FromJSON1 Semigroup.Option
+deriving via Maybe a instance FromJSON a => FromJSON (Semigroup.Option a)
 #endif
 
 -------------------------------------------------------------------------------
