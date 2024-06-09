@@ -96,7 +96,7 @@ throwDecode bs = unResult (toResultValue (lbsToTokens bs)) (throwM . AesonExcept
 -- Decoding: strict text
 -------------------------------------------------------------------------------
 
--- | Efficiently deserialize a JSON value from a strict 'B.ByteString'.
+-- | Efficiently deserialize a JSON value from a strict 'T.Text'.
 -- If this fails due to incomplete or invalid input, 'Nothing' is
 -- returned.
 --
