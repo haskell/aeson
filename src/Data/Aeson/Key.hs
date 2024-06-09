@@ -1,6 +1,9 @@
 {-# LANGUAGE CPP #-}
 {-# LANGUAGE DeriveDataTypeable #-}
+{-# LANGUAGE DerivingStrategies #-}
 {-# LANGUAGE GADTs #-}
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE StandaloneDeriving #-}
 {-# LANGUAGE TemplateHaskellQuotes #-}
 
 -- |
@@ -39,7 +42,7 @@ import qualified Language.Haskell.TH.Syntax as TH
 import qualified Test.QuickCheck as QC
 
 newtype Key = Key { unKey :: Text }
-  deriving (Eq, Ord, Typeable, Data)
+  deriving (Typeable, Data)
 
 fromString :: String -> Key
 fromString = Key . T.pack
@@ -58,7 +61,7 @@ toText = unKey
 --
 -- Using 'coercing' we can make more efficient implementations
 -- when 'Key' is backed up by 'Text' without exposing internals.
--- 
+--
 coercionToText :: Maybe (Coercion Key Text)
 coercionToText = Just Coercion
 {-# INLINE coercionToText #-}
@@ -79,13 +82,14 @@ instance Read Key where
     readPrec = fromString <$> readPrec
 
 instance Show Key where
-    showsPrec d (Key k) = showsPrec d k 
+    showsPrec d (Key k) = showsPrec d k
 
 instance Data.String.IsString Key where
     fromString = fromString
 
-instance Hashable Key where
-    hashWithSalt salt (Key k) = hashWithSalt salt k
+deriving newtype instance Eq Key
+deriving newtype instance Ord Key
+deriving newtype instance Hashable Key
 
 instance NFData Key where
     rnf (Key k) = rnf k

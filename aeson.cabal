@@ -1,7 +1,6 @@
 cabal-version:      2.2
 name:               aeson
-version:            2.2.2.0
-x-revision:         1
+version:            2.2.3.0
 license:            BSD-3-Clause
 license-file:       LICENSE
 category:           Text, Web, JSON
@@ -116,7 +115,7 @@ library
     , character-ps          ^>=0.1
     , data-fix              ^>=0.3.2
     , dlist                 ^>=1.0
-    , hashable              ^>=1.4.2.0
+    , hashable              ^>=1.4.6.0
     , indexed-traversable   ^>=0.1.2
     , integer-conversion    ^>=0.1
     , integer-logarithms    ^>=1.0.3.1
