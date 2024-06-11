@@ -29,6 +29,7 @@ import Test.Tasty (TestTree, testGroup)
 import Test.Tasty.QuickCheck (testProperty)
 import Types
 import qualified Data.Monoid as Monoid
+import qualified Data.Semigroup as Semigroup
 import qualified Data.Text as T
 import qualified Data.Text.Lazy as LT
 import qualified Data.Text.Short as ST
@@ -87,6 +88,10 @@ roundTripTests =
     , testProperty "Nu" $ roundTripEq @(F.Nu (These Char))
     , testProperty "Maybe" $ roundTripEq @(Maybe Int)
     , testProperty "Monoid.First" $ roundTripEq @(Monoid.First Int)
+    , testProperty "Semigroup.Sum" $ roundTripEq @(Semigroup.Sum Int)
+    , testProperty "Semigroup.Product" $ roundTripEq @(Semigroup.Product Int)
+    , testProperty "Semigroup.All" $ roundTripEq @Semigroup.All
+    , testProperty "Semigroup.Any" $ roundTripEq @Semigroup.Any
     , testProperty "Strict Pair" $ roundTripEq @(S.Pair Int Char)
     , testProperty "Strict Either" $ roundTripEq @(S.Either Int Char)
     , testProperty "Strict These" $ roundTripEq @(S.These Int Char)
