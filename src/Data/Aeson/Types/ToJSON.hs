@@ -2104,14 +2104,20 @@ deriving via (a :: Type) instance ToJSON a => ToJSON (Semigroup.Last a)
 deriving via Identity instance ToJSON1 Semigroup.WrappedMonoid
 deriving via (a :: Type) instance ToJSON a => ToJSON (Semigroup.WrappedMonoid a)
 
+-- | @since 2.2.3.0
 deriving via Identity instance ToJSON1 Semigroup.Sum
+-- | @since 2.2.3.0
 deriving via (a :: Type) instance ToJSON a => ToJSON (Semigroup.Sum a)
 
+-- | @since 2.2.3.0
 deriving via Identity instance ToJSON1 Semigroup.Product
+-- | @since 2.2.3.0
 deriving via (a :: Type) instance ToJSON a => ToJSON (Semigroup.Product a)
 
+-- | @since 2.2.3.0
 deriving via Bool instance ToJSON Semigroup.All
 
+-- | @since 2.2.3.0
 deriving via Bool instance ToJSON Semigroup.Any
 
 #if !MIN_VERSION_base(4,16,0)
