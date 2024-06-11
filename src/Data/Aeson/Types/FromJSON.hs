@@ -2342,6 +2342,16 @@ deriving via (a :: Type) instance FromJSON a => FromJSON (Semigroup.Last a)
 deriving via Identity instance FromJSON1 Semigroup.WrappedMonoid
 deriving via (a :: Type) instance FromJSON a => FromJSON (Semigroup.WrappedMonoid a)
 
+deriving via Identity instance FromJSON1 Semigroup.Sum
+deriving via (a :: Type) instance FromJSON a => FromJSON (Semigroup.Sum a)
+
+deriving via Identity instance FromJSON1 Semigroup.Product
+deriving via (a :: Type) instance FromJSON a => FromJSON (Semigroup.Product a)
+
+deriving via Bool instance FromJSON Semigroup.All
+
+deriving via Bool instance FromJSON Semigroup.Any
+
 #if !MIN_VERSION_base(4,16,0)
 deriving via Maybe instance FromJSON1 Semigroup.Option
 deriving via Maybe a instance FromJSON a => FromJSON (Semigroup.Option a)

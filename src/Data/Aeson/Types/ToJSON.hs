@@ -367,7 +367,7 @@ instance (key ~ Key, value ~ Value) => KeyValue Value (key, value) where
 instance value ~ Value => KeyValue Value (KM.KeyMap value) where
     (.=) = explicitToField toJSON
     {-# INLINE (.=) #-}
-    
+
     explicitToField f name value = KM.singleton name (f value)
     {-# INLINE explicitToField #-}
 
@@ -2103,6 +2103,16 @@ deriving via (a :: Type) instance ToJSON a => ToJSON (Semigroup.Last a)
 
 deriving via Identity instance ToJSON1 Semigroup.WrappedMonoid
 deriving via (a :: Type) instance ToJSON a => ToJSON (Semigroup.WrappedMonoid a)
+
+deriving via Identity instance ToJSON1 Semigroup.Sum
+deriving via (a :: Type) instance ToJSON a => ToJSON (Semigroup.Sum a)
+
+deriving via Identity instance ToJSON1 Semigroup.Product
+deriving via (a :: Type) instance ToJSON a => ToJSON (Semigroup.Product a)
+
+deriving via Bool instance ToJSON Semigroup.All
+
+deriving via Bool instance ToJSON Semigroup.Any
 
 #if !MIN_VERSION_base(4,16,0)
 deriving via Maybe instance ToJSON1 Semigroup.Option
