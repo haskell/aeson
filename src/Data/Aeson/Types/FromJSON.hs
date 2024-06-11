@@ -1016,29 +1016,17 @@ instance (FromJSON a) => GFromJSON arity (K1 i a) where
     gParseJSON _opts _ = fmap K1 . parseJSON
     {-# INLINE gParseJSON #-}
 
-instance FromJSON a => GOmitFromJSON arity (K1 i a) where
-    gOmittedField _ = fmap K1 omittedField
-    {-# INLINE gOmittedField #-}
-
 instance GFromJSON One Par1 where
     -- Direct occurrences of the last type parameter are decoded with the
     -- function passed in as an argument:
     gParseJSON _opts (From1Args _ pj _) = fmap Par1 . pj
     {-# INLINE gParseJSON #-}
 
-instance GOmitFromJSON One Par1 where
-    gOmittedField (From1Args o _ _) = fmap Par1 o
-    {-# INLINE gOmittedField #-}
-
 instance (FromJSON1 f) => GFromJSON One (Rec1 f) where
     -- Recursive occurrences of the last type parameter are decoded using their
     -- FromJSON1 instance:
     gParseJSON _opts (From1Args o pj pjl) = fmap Rec1 . liftParseJSON o pj pjl
     {-# INLINE gParseJSON #-}
-
-instance FromJSON1 f => GOmitFromJSON One (Rec1 f) where
-    gOmittedField (From1Args o _ _) = fmap Rec1 $ liftOmittedField o
-    {-# INLINE gOmittedField #-}
 
 instance (FromJSON1 f, GFromJSON One g) => GFromJSON One (f :.: g) where
     -- If an occurrence of the last type parameter is nested inside two
@@ -1051,6 +1039,18 @@ instance (FromJSON1 f, GFromJSON One g) => GFromJSON One (f :.: g) where
         let gpj = gParseJSON opts fargs
         in fmap Comp1 . liftParseJSON Nothing gpj (listParser gpj)
     {-# INLINE gParseJSON #-}
+
+instance FromJSON a => GOmitFromJSON arity (K1 i a) where
+    gOmittedField _ = fmap K1 omittedField
+    {-# INLINE gOmittedField #-}
+
+instance GOmitFromJSON One Par1 where
+    gOmittedField (From1Args o _ _) = fmap Par1 o
+    {-# INLINE gOmittedField #-}
+
+instance FromJSON1 f => GOmitFromJSON One (Rec1 f) where
+    gOmittedField (From1Args o _ _) = fmap Rec1 $ liftOmittedField o
+    {-# INLINE gOmittedField #-}
 
 instance (FromJSON1 f, GOmitFromJSON One g) => GOmitFromJSON One (f :.: g) where
     gOmittedField = fmap Comp1 . liftOmittedField . gOmittedField
