@@ -165,6 +165,9 @@ class GToJSON' enc arity f where
     -- and 'liftToEncoding' (if the @arity@ is 'One').
     gToJSON :: Options -> ToArgs enc arity a -> f a -> enc
 
+class GOmitToJSON enc arity f where
+    gOmitField :: ToArgs enc arity a -> f a -> Bool
+
 -- | A 'ToArgs' value either stores nothing (for 'ToJSON') or it stores the three
 -- function arguments that encode occurrences of the type parameter (for
 -- 'ToJSON1').
@@ -817,6 +820,22 @@ instance ( AllNullary       (a :+: b) allNullary
                        . sumToJSON opts targs
     {-# INLINE gToJSON #-}
 
+instance ToJSON a => GOmitToJSON enc arity (K1 i a) where
+    gOmitField _ = omitField . unK1
+    {-# INLINE gOmitField #-}
+
+instance GOmitToJSON enc One Par1 where
+    gOmitField (To1Args o _ _) = o . unPar1
+    {-# INLINE gOmitField #-}
+
+instance ToJSON1 f => GOmitToJSON enc One (Rec1 f) where
+    gOmitField (To1Args o _ _) = liftOmitField o . unRec1
+    {-# INLINE gOmitField #-}
+
+instance (ToJSON1 f, GOmitToJSON enc One g) => GOmitToJSON enc One (f :.: g) where
+    gOmitField targs = liftOmitField (gOmitField targs) . unComp1
+    {-# INLINE gOmitField #-}
+
 --------------------------------------------------------------------------------
 -- Generic toJSON
 
@@ -1170,47 +1189,14 @@ instance ( Monoid pairs
     {-# INLINE recordToPairs #-}
 
 instance ( Selector s
-         , GToJSON' enc arity (K1 i t)
+         , GToJSON' enc arity a
+         , GOmitToJSON enc arity a
          , KeyValuePair enc pairs
-         , ToJSON t
-         ) => RecordToPairs enc pairs arity (S1 s (K1 i t))
+         ) => RecordToPairs enc pairs arity (S1 s a)
   where
     recordToPairs opts targs m1
       | omitNothingFields opts
-      , omitField (unK1 $ unM1 m1 :: t)
-      = mempty
-
-      | otherwise =
-        let key   = Key.fromString $ fieldLabelModifier opts (selName m1)
-            value = gToJSON opts targs (unM1 m1)
-         in key `pair` value
-    {-# INLINE recordToPairs #-}
-
-instance ( Selector s
-         , GToJSON' enc One (Rec1 f)
-         , KeyValuePair enc pairs
-         , ToJSON1 f
-         ) => RecordToPairs enc pairs One (S1 s (Rec1 f))
-  where
-    recordToPairs opts targs@(To1Args o _ _) m1
-      | omitNothingFields opts
-      , liftOmitField o $ unRec1 $ unM1 m1
-      = mempty
-
-      | otherwise =
-        let key   = Key.fromString $ fieldLabelModifier opts (selName m1)
-            value = gToJSON opts targs (unM1 m1)
-            in key `pair` value
-    {-# INLINE recordToPairs #-}
-
-instance ( Selector s
-         , GToJSON' enc One Par1
-         , KeyValuePair enc pairs
-         ) => RecordToPairs enc pairs One (S1 s Par1)
-  where
-    recordToPairs opts targs@(To1Args o _ _) m1
-      | omitNothingFields opts
-      , o (unPar1 (unM1 m1))
+      , gOmitField targs $ unM1 m1
       = mempty
 
       | otherwise =
