@@ -167,7 +167,7 @@ scanStringLiteral ok err bs0 = go 0 bs0 where
         Just (_, bs') -> goEsc (n + 1) bs'
 
     errEnd = err "Unexpected end-of-input while parsing string literal"
-    errCC  = err "Unespected control character while parsing string literal"
+    errCC  = err "Unexpected control character while parsing string literal"
 
 -------------------------------------------------------------------------------
 -- Number
