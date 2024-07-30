@@ -253,7 +253,7 @@ eitherDecodeStrict' = eitherDecodeStrict
 
 -- | Like 'decodeFileStrict'' but returns an error message when decoding fails.
 --
--- Since @2.2.0.0@ an alias for 'eitherDecodeFileStrict''.
+-- Since @2.2.0.0@ an alias for 'eitherDecodeFileStrict'.
 eitherDecodeFileStrict' :: (FromJSON a) => FilePath -> IO (Either String a)
 eitherDecodeFileStrict' = eitherDecodeFileStrict
 {-# INLINE eitherDecodeFileStrict' #-}
