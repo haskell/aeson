@@ -1,6 +1,7 @@
 cabal-version:      2.2
 name:               aeson
 version:            2.2.3.0
+x-revision:         1
 license:            BSD-3-Clause
 license-file:       LICENSE
 category:           Text, Web, JSON
@@ -115,14 +116,14 @@ library
     , character-ps          ^>=0.1
     , data-fix              ^>=0.3.2
     , dlist                 ^>=1.0
-    , hashable              ^>=1.4.6.0
+    , hashable              ^>=1.4.6.0  || ^>=1.5.0.0
     , indexed-traversable   ^>=0.1.2
     , integer-conversion    ^>=0.1
     , integer-logarithms    ^>=1.0.3.1
     , network-uri           ^>=2.6.4.1
     , OneTuple              ^>=0.4.1.1
     , primitive             ^>=0.8.0.0  || ^>=0.9.0.0
-    , QuickCheck            ^>=2.14.3 || ^>=2.15
+    , QuickCheck            ^>=2.14.3   || ^>=2.15
     , scientific            ^>=0.3.7.0
     , semialign             ^>=1.3
     , strict                ^>=0.5
@@ -134,7 +135,7 @@ library
     , unordered-containers  ^>=0.2.10.0
     , uuid-types            ^>=1.0.5
     , vector                ^>=0.13.0.0
-    , witherable            ^>=0.4.2 || ^>=0.5
+    , witherable            ^>=0.4.2    || ^>=0.5
 
   ghc-options:      -Wall
 
