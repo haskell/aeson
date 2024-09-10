@@ -36,7 +36,7 @@ type Point = Word16
 #endif
 
 
--- | Lex (and parse) strict 'ByteString' into 'Tokens' stream.
+-- | Lex (and parse) strict 'Text' into 'Tokens' stream.
 --
 -- @since 2.2.1.0
 --
