@@ -10,6 +10,44 @@ benchmarks: true
 
 allow-newer: hermes-json:attoparsec-iso8601
 
+if impl (ghc >= 9.12)
+  allow-newer:
+    , aeson:time
+    , assoc:base
+    , attoparsec:ghc-prim
+    , bifunctors:template-haskell
+    , data-fix:base
+    , generically:base
+    , generic-deriving:template-haskell
+    , hashable:base
+    , integer-logarithms:base
+    , integer-logarithms:ghc-prim
+    , integer-conversion:base
+    , indexed-traversable:base
+    , indexed-traversable-instances:base
+    , OneTuple:base
+    , quickcheck-instances:base
+    , scientific:base
+    , scientific:template-haskell
+    , splitmix:base
+    , semialign:base
+    , tasty-bench:ghc-prim
+    , text:ghc-prim
+    , text:template-haskell
+    , text-iso8601:time
+    , text-short:base
+    , text-short:ghc-prim
+    , text-short:template-haskell
+    , these:base
+    , th-abstraction:template-haskell
+    , th-compat:template-haskell
+    , time-compat:base
+    , time-compat:time
+    , unix:base
+    , unix:time
+    , unordered-containers:template-haskell
+    , uuid-types:template-haskell
+
 -- packages: https://hackage.haskell.org/package/libperf-0.1/candidate/libperf-0.1.tar.gz
 -- packages: https://hackage.haskell.org/package/tasty-perfbench-0.1/candidate/tasty-perfbench-0.1.tar.gz
 

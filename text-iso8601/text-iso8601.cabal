@@ -47,7 +47,7 @@ library
       base                >=4.12.0.0 && <5
     , integer-conversion  >=0.1      && <0.2
     , text                >=1.2.3.0  && <1.3.0.0 || >=2.0 && <2.2
-    , time                >=1.8.0.2  && <1.13
+    , time                >=1.8.0.2  && <1.15
     , time-compat         >=1.9.4    && <1.10
 
 test-suite text-iso8601-tests
@@ -68,7 +68,7 @@ test-suite text-iso8601-tests
     , quickcheck-instances  >=0.3.29.1 && <0.4
     , tasty                 >=1.4.3    && <1.6
     , tasty-hunit           >=0.10.0.3 && <0.11
-    , tasty-quickcheck      >=0.10.2   && <0.11
+    , tasty-quickcheck      >=0.10.2   && <0.12
 
 benchmark text-iso8601-bench
   default-language: Haskell2010
@@ -86,4 +86,4 @@ benchmark text-iso8601-bench
   build-depends:
       attoparsec          >=0.14.4  && <0.15
     , attoparsec-iso8601  >=1.1.0.1 && <1.2
-    , tasty-bench         >=0.3.4   && <0.4
+    , tasty-bench         >=0.3.4   && <0.5
