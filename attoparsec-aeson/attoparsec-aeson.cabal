@@ -28,6 +28,7 @@ tested-with:
    || ==9.6.5
    || ==9.8.2
    || ==9.10.1
+   || ==9.12.1
 
 library
   hs-source-dirs:   src
