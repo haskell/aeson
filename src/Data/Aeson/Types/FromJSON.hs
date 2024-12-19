@@ -1440,28 +1440,18 @@ instance ( RecordFromJSON' arity a
     {-# INLINE recordParseJSON' #-}
 
 instance (Selector s, GFromJSON arity a, GOmitFromJSON arity a) => RecordFromJSON' arity (S1 s a) where
-    recordParseJSON' args@(_ :* _ :* opts :* fargs) obj =
-      recordParseJSONImpl (guard (allowOmittedFields opts) >> gOmittedField fargs) gParseJSON args obj
+    recordParseJSON' (cname :* tname :* opts :* fargs) obj =
+        handleMissingKey (M1 <$> mdef) $ do
+            fv <- contextCons cname tname (obj .: label)
+            M1 <$> gParseJSON opts fargs fv <?> Key label
+        where
+            handleMissingKey Nothing p = p
+            handleMissingKey (Just def) p = if label `KM.member` obj then p else pure def
+
+            label = Key.fromString $ fieldLabelModifier opts sname
+            sname = selName (undefined :: M1 _i s _f _p)
+            mdef = guard (allowOmittedFields opts) >> gOmittedField fargs
     {-# INLINE recordParseJSON' #-}
-
-
-recordParseJSONImpl :: forall s arity a f i
-                     . (Selector s)
-                    => Maybe (f a)
-                    -> (Options -> FromArgs arity a -> Value -> Parser (f a))
-                    -> (ConName :* TypeName :* Options :* FromArgs arity a)
-                    -> Object -> Parser (M1 i s f a)
-recordParseJSONImpl mdef parseVal (cname :* tname :* opts :* fargs) obj =
-  handleMissingKey (M1 <$> mdef) $ do
-    fv <- contextCons cname tname (obj .: label)
-    M1 <$> parseVal opts fargs fv <?> Key label
-  where
-    handleMissingKey Nothing p = p
-    handleMissingKey (Just def) p = if label `KM.member` obj then p else pure def
-
-    label = Key.fromString $ fieldLabelModifier opts sname
-    sname = selName (undefined :: M1 _i s _f _p)
-{-# INLINE recordParseJSONImpl #-}
 
 --------------------------------------------------------------------------------
 
