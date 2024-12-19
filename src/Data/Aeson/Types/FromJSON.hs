@@ -1028,16 +1028,13 @@ instance (FromJSON1 f) => GFromJSON One (Rec1 f) where
     gParseJSON _opts (From1Args o pj pjl) = fmap Rec1 . liftParseJSON o pj pjl
     {-# INLINE gParseJSON #-}
 
-instance (FromJSON1 f, GFromJSON One g) => GFromJSON One (f :.: g) where
+instance (FromJSON1 f, GFromJSON One g, GOmitFromJSON One g) => GFromJSON One (f :.: g) where
     -- If an occurrence of the last type parameter is nested inside two
     -- composed types, it is decoded by using the outermost type's FromJSON1
     -- instance to generically decode the innermost type:
-    --
-    -- Note: the ommitedField is not passed here.
-    -- This might be related for :.: associated the wrong way in Generics Rep.
     gParseJSON opts fargs =
         let gpj = gParseJSON opts fargs
-        in fmap Comp1 . liftParseJSON Nothing gpj (listParser gpj)
+        in fmap Comp1 . liftParseJSON (gOmittedField fargs) gpj (listParser gpj)
     {-# INLINE gParseJSON #-}
 
 instance FromJSON a => GOmitFromJSON arity (K1 i a) where

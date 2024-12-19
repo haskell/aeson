@@ -884,6 +884,7 @@ instance ( WriteProduct arity a, WriteProduct arity b
 
 instance ( ToJSON1 f
          , GToJSON' Value One g
+         , GOmitToJSON Value One g
          ) => GToJSON' Value One (f :.: g)
   where
     -- If an occurrence of the last type parameter is nested inside two
@@ -891,7 +892,7 @@ instance ( ToJSON1 f
     -- instance to generically encode the innermost type:
     gToJSON opts targs =
       let gtj = gToJSON opts targs in
-      liftToJSON (const False) gtj (listValue gtj) . unComp1
+      liftToJSON (gOmitField targs) gtj (listValue gtj) . unComp1
     {-# INLINE gToJSON #-}
 
 --------------------------------------------------------------------------------
@@ -931,6 +932,7 @@ instance ( EncodeProduct  arity a
 
 instance ( ToJSON1 f
          , GToJSON' Encoding One g
+         , GOmitToJSON Encoding One g
          ) => GToJSON' Encoding One (f :.: g)
   where
     -- If an occurrence of the last type parameter is nested inside two
@@ -938,7 +940,7 @@ instance ( ToJSON1 f
     -- instance to generically encode the innermost type:
     gToJSON opts targs =
       let gte = gToJSON opts targs in
-      liftToEncoding (const False) gte (listEncoding gte) . unComp1
+      liftToEncoding (gOmitField targs) gte (listEncoding gte) . unComp1
     {-# INLINE gToJSON #-}
 
 --------------------------------------------------------------------------------
