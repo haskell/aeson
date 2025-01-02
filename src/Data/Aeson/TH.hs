@@ -124,7 +124,7 @@ import qualified Data.Aeson.Key as Key
 import qualified Data.Aeson.KeyMap as KM
 import Data.Foldable (foldr')
 import Data.List (genericLength, intercalate, union)
-import Data.List.NonEmpty ((<|), NonEmpty((:|)))
+import Data.List.NonEmpty ((<|), NonEmpty((:|)), nonEmpty)
 import Data.Map (Map)
 import qualified Data.Monoid as Monoid
 import Data.Set (Set)
@@ -945,7 +945,8 @@ parseRecord jc tvMap argTys opts tName conName fields obj inTaggedObject =
                           (appE [|show|] (varE unknownFields)))
                       []
               ]
-      x:xs = [ lookupField argTy
+      x:|xs = fromMaybe (error "parseRecord: no fields") $ nonEmpty
+             [ lookupField argTy
                `appE` dispatchParseJSON jc conName tvMap argTy
                `appE` litE (stringL $ show tName)
                `appE` litE (stringL $ constructorTagModifier opts $ nameBase conName)
@@ -1061,7 +1062,8 @@ parseProduct :: JSONClass -- ^ The FromJSON variant being derived.
 parseProduct jc tvMap argTys tName conName numArgs =
     [ do arr <- newName "arr"
          -- List of: "parseJSON (arr `V.unsafeIndex` <IX>)"
-         let x:xs = [ dispatchParseJSON jc conName tvMap argTy
+         let x:|xs = fromMaybe (error "parseProduct: no args") $ nonEmpty
+                    [ dispatchParseJSON jc conName tvMap argTy
                       `appE`
                       infixApp (varE arr)
                                [|V.unsafeIndex|]
