@@ -45,7 +45,7 @@ import qualified Test.QuickCheck as QC
 newtype Key = Key { unKey :: Text }
   deriving (Typeable, Data)
 
--- | The length in characters.
+-- | The length in UTF-8 code points.  \( O(n) \).
 length :: Key -> Int
 length = T.length . unKey
 
