@@ -1,5 +1,9 @@
 For the latest version of this document, please see [https://github.com/haskell/aeson/blob/master/changelog.md](https://github.com/haskell/aeson/blob/master/changelog.md).
 
+## Upcoming
+
+* Add `Data.Aeson.Key.length`
+
 ### 2.2.3.0
 
 * Support `hashable-1.4.6.0`.

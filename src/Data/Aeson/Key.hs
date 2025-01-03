@@ -13,6 +13,7 @@
 
 module Data.Aeson.Key (
     Key,
+    length,
     fromString,
     toString,
     toText,
@@ -22,7 +23,7 @@ module Data.Aeson.Key (
     fromShortText,
 ) where
 
-import Prelude (Eq, Ord, (.), Show (..), String, Maybe (..))
+import Prelude (Eq, Ord, (.), Show (..), Int, String, Maybe (..))
 
 import Control.Applicative ((<$>))
 import Control.DeepSeq (NFData(..))
@@ -43,6 +44,10 @@ import qualified Test.QuickCheck as QC
 
 newtype Key = Key { unKey :: Text }
   deriving (Typeable, Data)
+
+-- | The length in characters.
+length :: Key -> Int
+length = T.length . unKey
 
 fromString :: String -> Key
 fromString = Key . T.pack
