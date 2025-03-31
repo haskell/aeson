@@ -240,7 +240,7 @@ test-suite aeson-tests
     build-depends: integer-gmp
 
   if impl(ghc >=9.2 && <9.7)
-    build-depends: nothunks >=0.1.4 && <0.3
+    build-depends: nothunks >=0.1.4 && <0.4
 
 source-repository head
   type:     git
