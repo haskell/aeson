@@ -1,7 +1,7 @@
 cabal-version:      2.2
 name:               aeson
 version:            2.2.3.0
-x-revision:         3
+x-revision:         4
 license:            BSD-3-Clause
 license-file:       LICENSE
 category:           Text, Web, JSON
@@ -124,7 +124,7 @@ library
     , network-uri           ^>=2.6.4.1
     , OneTuple              ^>=0.4.1.1
     , primitive             ^>=0.8.0.0  || ^>=0.9.0.0
-    , QuickCheck            ^>=2.14.3   || ^>=2.15
+    , QuickCheck            ^>=2.14.3   || ^>=2.15    || ^>=2.16.0.0
     , scientific            ^>=0.3.7.0
     , semialign             ^>=1.3
     , strict                ^>=0.5
@@ -204,7 +204,7 @@ test-suite aeson-tests
     , containers
     , data-fix
     , deepseq
-    , Diff                  >=0.4    && <0.6 || ^>=1.0.2
+    , Diff                  >=0.4    && <0.6  || ^>=1.0.2
     , directory
     , dlist
     , filepath
@@ -217,7 +217,7 @@ test-suite aeson-tests
     , network-uri
     , OneTuple
     , primitive
-    , QuickCheck            >=2.14.2 && <2.16
+    , QuickCheck
     , quickcheck-instances  >=0.3.29 && <0.4
     , scientific
     , strict
