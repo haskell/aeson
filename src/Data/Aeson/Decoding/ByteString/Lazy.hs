@@ -159,7 +159,9 @@ scanStringLiteral ok err bs0 = go 0 bs0 where
             Right t -> ok t (lbsDrop (n + 1) bs0)
             Left e  -> err (show e)
         Just (92, bs') -> goSlash (n + 1) bs'
-        Just (_,  bs') -> goEsc (n + 1) bs'
+        Just (w8, bs')
+            | w8 < 0x20  -> errCC
+            | otherwise  -> goEsc (n + 1) bs'
 
     goSlash :: Int -> ByteString -> r
     goSlash !n !bs = case LBS.uncons bs of
