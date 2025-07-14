@@ -1,12 +1,18 @@
 {-# LANGUAGE CPP #-}
 {-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE GADTs #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE NoImplicitPrelude #-}
+{-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE StandaloneDeriving #-}
+{-# LANGUAGE TemplateHaskell #-}
+{-# LANGUAGE TypeFamilies #-}
+{-# LANGUAGE UndecidableInstances #-}
+{-# OPTIONS_GHC -ddump-splices #-}
 
 module Types (module Types) where
 
@@ -17,6 +23,7 @@ import Data.Data
 import Data.Functor.Compose (Compose (..))
 import Data.Functor.Identity (Identity (..))
 import Data.Hashable (Hashable (..))
+import Data.Kind
 #if !MIN_VERSION_base(4,16,0)
 import Data.Semigroup (Option)
 #endif
@@ -27,6 +34,7 @@ import Test.QuickCheck (Arbitrary (..), Property, counterexample, scale)
 import Test.QuickCheck.Gen (chooseUpTo)
 import qualified Data.Map as Map
 import Data.Aeson
+import Data.Aeson.TH
 import Data.Aeson.Types
 import Data.Word (Word64)
 
@@ -176,3 +184,80 @@ instance Show UniformWord64 where
 instance Arbitrary UniformWord64 where
     arbitrary = U64 <$> chooseUpTo maxBound
     shrink (U64 w) = map U64 (shrink w)
+
+-- NB: it should not have JSON instances
+data Unit = Unit
+
+data WithPhantom a = WithPhantom Int
+
+deriveJSON defaultOptions ''WithPhantom
+
+withPhantom :: WithPhantom Unit -> Value
+withPhantom = toJSON
+
+type family SomeTypeFamily a where
+  SomeTypeFamily Unit = Int
+  SomeTypeFamily ool = Unit
+
+data WithTypeFamily a = WithTypeFamily (SomeTypeFamily a)
+
+deriveJSON defaultOptions ''WithTypeFamily
+
+withTypeFamilyUnit :: WithTypeFamily Unit -> Value
+withTypeFamilyUnit = toJSON
+
+withTypeFamilyA :: (ToJSON (SomeTypeFamily a)) => WithTypeFamily a -> Value
+withTypeFamilyA = toJSON
+
+-- -- No instance for ‘ToJSON Unit’
+-- withTypeFamilyBool :: WithTypeFamily Bool -> Value
+-- withTypeFamilyBool = toJSON
+
+-- -- No instance for ‘ToJSON (SomeTypeFamily a)’
+-- withTypeFamilyA' :: WithTypeFamily a -> Value
+-- withTypeFamilyA' = toJSON
+
+type family SomeTypeFamily1 a :: Type -> Type where
+  SomeTypeFamily1 Unit = Identity
+
+data SomeFunctor a = SomeFunctor a
+
+deriveJSON1 defaultOptions ''SomeFunctor
+
+data WithTypeFamily1 a b = WithTypeFamily1
+  { a :: SomeTypeFamily1 a b
+  , b :: SomeFunctor b
+  }
+
+deriveJSON1 defaultOptions ''WithTypeFamily1
+
+withTypeFamily1Unit
+  :: (ToJSON1 (SomeTypeFamily1 a))
+  => (b -> Bool) -> (b -> Value) -> ([b] -> Value) -> WithTypeFamily1 a b -> Value
+withTypeFamily1Unit = liftToJSON
+
+data Lifted2 f a b = ManyLifted
+  { lifted2 :: f a b
+  }
+
+deriveJSON2 defaultOptions ''Lifted2
+
+data Lifted2Flipped f a b = Lifted2Flipped
+  { lifted2Flipped :: f b a
+  }
+
+deriveJSON2 defaultOptions ''Lifted2Flipped
+
+data Lifted1From2 f a b = Lifted1From2
+  { lifted1From2 :: f a
+  , lifted1From2' :: f b
+  }
+
+deriveJSON2 defaultOptions ''Lifted1From2
+
+data Bar f g h a b = Bar
+    { f :: f a b
+    , g :: g b
+    , h :: h Int
+    }
+deriveToJSON2 defaultOptions ''Bar

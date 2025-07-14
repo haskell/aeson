@@ -114,6 +114,8 @@ module Data.Aeson.TH
 
 import Data.Aeson.Internal.Prelude
 
+import Control.Monad
+import Data.Bifunctor
 import Data.Char (ord)
 import Data.Aeson (Object, (.:), FromJSON(..), FromJSON1(..), FromJSON2(..), ToJSON(..), ToJSON1(..), ToJSON2(..))
 import Data.Aeson.Types (Options(..), Parser, SumEncoding(..), Value(..), defaultOptions, defaultTaggedObject)
@@ -122,19 +124,19 @@ import Data.Aeson.Types.ToJSON (fromPairs, pair)
 import Data.Aeson.Key (Key)
 import qualified Data.Aeson.Key as Key
 import qualified Data.Aeson.KeyMap as KM
-import Data.Foldable (foldr')
-import Data.List (genericLength, intercalate, union)
-import Data.List.NonEmpty ((<|), NonEmpty((:|)))
+import Data.Foldable (fold, foldr')
+import Data.List (genericLength, intercalate, nub)
+import Data.List.NonEmpty ((<|), NonEmpty((:|)), nonEmpty)
 import Data.Map (Map)
+import Data.Maybe
 import qualified Data.Monoid as Monoid
-import Data.Set (Set)
+import Data.Tuple (swap)
 import Language.Haskell.TH hiding (Arity)
 import Language.Haskell.TH.Datatype
 import Text.Printf (printf)
 import qualified Data.Aeson.Encoding.Internal as E
-import qualified Data.List.NonEmpty as NE (length, reverse)
+import qualified Data.List.NonEmpty as NE (reverse)
 import qualified Data.Map as M (fromList, keys, lookup , singleton, size)
-import qualified Data.Set as Set (empty, insert, member)
 import qualified Data.Text as T (pack, unpack)
 import qualified Data.Vector as V (unsafeIndex, null, length, create, empty)
 import qualified Data.Vector.Mutable as VM (unsafeNew, unsafeWrite)
@@ -1210,14 +1212,13 @@ deriveJSONClass :: [(JSONFun, JSONClass -> Name -> Options -> [Type]
 deriveJSONClass consFuns jc opts name = do
   info <- reifyDatatype name
   case info of
-    DatatypeInfo { datatypeContext   = ctxt
-                 , datatypeName      = parentName
+    DatatypeInfo { datatypeName      = parentName
                  , datatypeInstTypes = instTys
                  , datatypeVariant   = variant
                  , datatypeCons      = cons
                  } -> do
       (instanceCxt, instanceType)
-        <- buildTypeInstance parentName jc ctxt instTys variant
+        <- buildTypeInstance parentName jc instTys cons variant
       (:[]) <$> instanceD (return instanceCxt)
                           (return instanceType)
                           (methodDecs parentName instTys cons)
@@ -1242,8 +1243,7 @@ mkFunCommon :: (JSONClass -> Name -> Options -> [Type] -> [ConstructorInfo] -> Q
 mkFunCommon consFun jc opts name = do
   info <- reifyDatatype name
   case info of
-    DatatypeInfo { datatypeContext   = ctxt
-                 , datatypeName      = parentName
+    DatatypeInfo { datatypeName      = parentName
                  , datatypeInstTypes = instTys
                  , datatypeVariant   = variant
                  , datatypeCons      = cons
@@ -1251,7 +1251,7 @@ mkFunCommon consFun jc opts name = do
       -- We force buildTypeInstance here since it performs some checks for whether
       -- or not the provided datatype's kind matches the derived method's
       -- typeclass, and produces errors if it can't.
-      !_ <- buildTypeInstance parentName jc ctxt instTys variant
+      !_ <- buildTypeInstance parentName jc instTys cons variant
       consFun jc parentName opts instTys cons
 
 data FunArg = Omit | Single | Plural deriving (Eq)
@@ -1271,7 +1271,7 @@ dispatchFunByType _ jf _ tvMap list (VarT tyName) =
     varE $ case M.lookup tyName tvMap of
                 Just (tfjoExp, tfjExp, tfjlExp) -> case list of
                     Omit -> tfjoExp
-                    Single -> tfjExp 
+                    Single -> tfjExp
                     Plural -> tfjlExp
                 Nothing                   -> jsonFunValOrListName list jf Arity0
 dispatchFunByType jc jf conName tvMap list (SigT ty _) =
@@ -1325,14 +1325,14 @@ buildTypeInstance :: Name
                   -- ^ The type constructor or data family name
                   -> JSONClass
                   -- ^ The typeclass to derive
-                  -> Cxt
-                  -- ^ The datatype context
                   -> [Type]
-                  -- ^ The types to instantiate the instance with
+                  -- ^ Type parameters of the datatype declaration
+                  -> [ConstructorInfo]
+                  -- ^ Constructors
                   -> DatatypeVariant
                   -- ^ Are we dealing with a data family instance or not
                   -> Q (Cxt, Type)
-buildTypeInstance tyConName jc dataCxt varTysOrig variant = do
+buildTypeInstance tyConName jc varTysOrig cons variant = do
     -- Make sure to expand through type/kind synonyms! Otherwise, the
     -- eta-reduction check might get tripped up over type variables in a
     -- synonym that are actually dropped.
@@ -1360,32 +1360,15 @@ buildTypeInstance tyConName jc dataCxt varTysOrig variant = do
         varTysExpSubst :: [Type]
         varTysExpSubst = map (substNamesWithKindStar droppedKindVarNames) varTysExp
 
-        remainingTysExpSubst, droppedTysExpSubst :: [Type]
-        (remainingTysExpSubst, droppedTysExpSubst) =
-          splitAt remainingLength varTysExpSubst
-
-        -- All of the type variables mentioned in the dropped types
-        -- (post-synonym expansion)
-        droppedTyVarNames :: [Name]
-        droppedTyVarNames = freeVariables droppedTysExpSubst
+        droppedTysExpSubst :: [Type]
+        droppedTysExpSubst = drop remainingLength varTysExpSubst
 
     -- If any of the dropped types were polykinded, ensure that they are of kind *
     -- after substituting * for the dropped kind variables. If not, throw an error.
     unless (all hasKindStar droppedTysExpSubst) $
       derivingKindError jc tyConName
 
-    let preds    :: [Maybe Pred]
-        kvNames  :: [[Name]]
-        kvNames' :: [Name]
-        -- Derive instance constraints (and any kind variables which are specialized
-        -- to * in those constraints)
-        (preds, kvNames) = unzip $ map (deriveConstraint jc) remainingTysExpSubst
-        kvNames' = concat kvNames
-
-        -- Substitute the kind variables specialized in the constraints with *
-        remainingTysExpSubst' :: [Type]
-        remainingTysExpSubst' =
-          map (substNamesWithKindStar kvNames') remainingTysExpSubst
+    let
 
         -- We now substitute all of the specialized-to-* kind variable names with
         -- *, but in the original types, not the synonym-expanded types. The reason
@@ -1405,7 +1388,7 @@ buildTypeInstance tyConName jc dataCxt varTysOrig variant = do
         --   instance C (Fam [Char])
         remainingTysOrigSubst :: [Type]
         remainingTysOrigSubst =
-          map (substNamesWithKindStar (droppedKindVarNames `union` kvNames'))
+          map (substNamesWithKindStar droppedKindVarNames)
             $ take remainingLength varTysOrig
 
         isDataFamily :: Bool
@@ -1424,21 +1407,19 @@ buildTypeInstance tyConName jc dataCxt varTysOrig variant = do
              then remainingTysOrigSubst
              else map unSigT remainingTysOrigSubst
 
-        instanceCxt :: Cxt
-        instanceCxt = catMaybes preds
-
         instanceType :: Type
         instanceType = AppT (ConT $ jsonClassName jc)
-                     $ applyTyCon tyConName remainingTysOrigSubst'
+                     $ applyTy (ConT tyConName) remainingTysOrigSubst'
 
-    -- If the datatype context mentions any of the dropped type variables,
-    -- we can't derive an instance, so throw an error.
-    when (any (`predMentionsName` droppedTyVarNames) dataCxt) $
-      datatypeContextError tyConName instanceType
-    -- Also ensure the dropped types can be safely eta-reduced. Otherwise,
-    -- throw an error.
-    unless (canEtaReduce remainingTysExpSubst' droppedTysExpSubst) $
-      etaReductionError instanceType
+    liftedVars <- do
+      let (_, liftedVars) = splitAtArityRight (arity jc) varTysExp
+      forM liftedVars $ \tv -> case varTToNameMaybe tv of
+        Nothing -> fail $ show tv <> " is unsupported as a type parameter"
+        Just name -> pure name
+
+    instanceCxt <- nub . filter (/= instanceType) . concat <$>
+      mapM (constructorInstances jc liftedVars) cons
+
     return (instanceCxt, instanceType)
 
 -- | Attempt to derive a constraint on a Type. If successful, return
@@ -1447,20 +1428,9 @@ buildTypeInstance tyConName jc dataCxt varTysOrig variant = do
 --
 -- See Note [Type inference in derived instances] for the heuristics used to
 -- come up with constraints.
-deriveConstraint :: JSONClass -> Type -> (Maybe Pred, [Name])
-deriveConstraint jc t
-  | not (isTyVar t) = (Nothing, [])
-  | hasKindStar t   = (Just (applyCon (jcConstraint Arity0) tName), [])
-  | otherwise = case hasKindVarChain 1 t of
-      Just ns | jcArity >= Arity1
-              -> (Just (applyCon (jcConstraint Arity1) tName), ns)
-      _ -> case hasKindVarChain 2 t of
-           Just ns | jcArity == Arity2
-                   -> (Just (applyCon (jcConstraint Arity2) tName), ns)
-           _ -> (Nothing, [])
+deriveConstraint :: JSONClass -> Type -> Pred
+deriveConstraint jc = AppT (ConT $ jcConstraint jcArity)
   where
-    tName :: Name
-    tName = varTToName t
 
     jcArity :: Arity
     jcArity = arity jc
@@ -1600,30 +1570,9 @@ hasKindStar VarT{}         = True
 hasKindStar (SigT _ StarT) = True
 hasKindStar _              = False
 
--- Returns True is a kind is equal to *, or if it is a kind variable.
-isStarOrVar :: Kind -> Bool
-isStarOrVar StarT  = True
-isStarOrVar VarT{} = True
-isStarOrVar _      = False
-
 -- Generate a list of fresh names with a common prefix, and numbered suffixes.
 newNameList :: String -> Int -> Q [Name]
 newNameList prefix len = mapM newName [prefix ++ show n | n <- [1..len]]
-
--- | @hasKindVarChain n kind@ Checks if @kind@ is of the form
--- k_0 -> k_1 -> ... -> k_(n-1), where k0, k1, ..., and k_(n-1) can be * or
--- kind variables.
-hasKindVarChain :: Int -> Type -> Maybe [Name]
-hasKindVarChain kindArrows t =
-  let uk = uncurryKind (tyKind t)
-  in if (NE.length uk - 1 == kindArrows) && all isStarOrVar uk
-        then Just (concatMap freeVariables uk)
-        else Nothing
-
--- | If a Type is a SigT, returns its kind signature. Otherwise, return *.
-tyKind :: Type -> Kind
-tyKind (SigT _ k) = k
-tyKind _          = starK
 
 -- | Extract Just the Name from a type variable. If the argument Type is not a
 -- type variable, return Nothing.
@@ -1644,14 +1593,8 @@ triple :: [a] -> [a]
 triple = foldr (\x xs -> x:x:x:xs) []
 
 -- | Fully applies a type constructor to its type variables.
-applyTyCon :: Name -> [Type] -> Type
-applyTyCon = foldl' AppT . ConT
-
--- | Is the given type a variable?
-isTyVar :: Type -> Bool
-isTyVar (VarT _)   = True
-isTyVar (SigT t _) = isTyVar t
-isTyVar _          = False
+applyTy :: Type -> [Type] -> Type
+applyTy t = maybe t (foldl' AppT t) . nonEmpty
 
 -- | Detect if a Name in a list of provided Names occurs as an argument to some
 -- type family. This makes an effort to exclude /oversaturated/ arguments to
@@ -1687,20 +1630,10 @@ isInTypeFamilyApp names tyFun tyArgs =
 
 -- | Peel off a kind signature from a Type (if it has one).
 unSigT :: Type -> Type
+unSigT (ForallT binders context t) = ForallT binders context (unSigT t)
+unSigT (AppT t1 t2) = AppT (unSigT t1) (unSigT t2)
 unSigT (SigT t _) = t
 unSigT t          = t
-
--- | Are all of the items in a list (which have an ordering) distinct?
---
--- This uses Set (as opposed to nub) for better asymptotic time complexity.
-allDistinct :: Ord a => [a] -> Bool
-allDistinct = allDistinct' Set.empty
-  where
-    allDistinct' :: Ord a => Set a -> [a] -> Bool
-    allDistinct' uniqs (x:xs)
-        | x `Set.member` uniqs = False
-        | otherwise            = allDistinct' (Set.insert x uniqs) xs
-    allDistinct' _ _           = True
 
 -- | Does the given type mention any of the Names in the list?
 mentionsName :: Type -> [Name] -> Bool
@@ -1737,31 +1670,6 @@ unapplyTy = NE.reverse . go
     go (ForallT _ _ t) = go t
     go t               = t :| []
 
--- | Split a type signature by the arrows on its spine. For example, this:
---
--- @
--- forall a b. (a ~ b) => (a -> b) -> Char -> ()
--- @
---
--- would split to this:
---
--- @
--- (a ~ b, [a -> b, Char, ()])
--- @
-uncurryTy :: Type -> (Cxt, NonEmpty Type)
-uncurryTy (AppT (AppT ArrowT t1) t2) =
-  let (ctxt, tys) = uncurryTy t2
-  in (ctxt, t1 <| tys)
-uncurryTy (SigT t _) = uncurryTy t
-uncurryTy (ForallT _ ctxt t) =
-  let (ctxt', tys) = uncurryTy t
-  in (ctxt ++ ctxt', tys)
-uncurryTy t = ([], t :| [])
-
--- | Like uncurryType, except on a kind level.
-uncurryKind :: Kind -> NonEmpty Kind
-uncurryKind = snd . uncurryTy
-
 createKindChain :: Int -> Kind
 createKindChain = go starK
   where
@@ -1792,24 +1700,116 @@ valueConName (Number _) = "Number"
 valueConName (Bool   _) = "Boolean"
 valueConName Null       = "Null"
 
-applyCon :: Name -> Name -> Pred
-applyCon con t = AppT (ConT con) (VarT t)
+constructorInstances :: JSONClass
+                     -> [Name]
+                       -- ^ Lifted data type parameters, i.e. last N variables
+                       -- corresponding to the arity
+                     -> ConstructorInfo
+                     -> Q [Type]
+constructorInstances jc typeVars cons = do
+  fmap (nub . concatMap fold) $ forM (constructorFields cons) $
+    -- Note that we eliminate kind signatures.
+    deduceFieldConstraints typeVars (map tvName $ constructorVars cons) jc . unSigT
 
--- | Checks to see if the last types in a data family instance can be safely eta-
--- reduced (i.e., dropped), given the other types. This checks for three conditions:
---
--- (1) All of the dropped types are type variables
--- (2) All of the dropped types are distinct
--- (3) None of the remaining types mention any of the dropped types
-canEtaReduce :: [Type] -> [Type] -> Bool
-canEtaReduce remaining dropped =
-       all isTyVar dropped
-    && allDistinct droppedNames -- Make sure not to pass something of type [Type], since Type
-                                -- didn't have an Ord instance until template-haskell-2.10.0.0
-    && not (any (`mentionsName` droppedNames) remaining)
-  where
-    droppedNames :: [Name]
-    droppedNames = map varTToName dropped
+deduceFieldConstraints :: [Name]
+                       -- ^ Lifted data type parameters, i.e. last N variables
+                       -- corresponding to the arity
+                       -> [Name]
+                       -- ^ Constructor type vars
+                       -> JSONClass
+                       -> Type
+                       -> Q (Maybe Cxt)
+deduceFieldConstraints liftedVars consVars jc fieldType = do
+  let typeFun :| typeArgs = unapplyTy fieldType
+  tfArity <- typeFamilyArity typeFun
+  {- This will try to create instance of the highest arity available.
+  E.g.
+  @
+  data Foo f g h a b = Foo
+    { f :: f a b
+    , g :: g b
+    , h :: h Int
+    }
+  deriveToJSON2 defaultOptions ''Foo
+  @
+  will generate @(ToJSON2 f, ToJSON1 g, ToJSON (h Int))@ context
+  -}
+  pure $ listToMaybe $ mapMaybe
+    (\arity' -> liftedContext jc{arity = arity'} liftedVars consVars
+      (typeFun, typeArgs, tfArity))
+    (reverse [Arity0 .. arity jc])
+
+liftedContext :: JSONClass
+              -> [Name]
+              -- ^ Lifted data type vars, i.e. last N type variables
+              -- corresponding to the 'arity' of the class to be derived
+              -> [Name]
+              -- ^ Constructor type parameters
+              -> (Type, [Type], Maybe Int)
+              -- ^ @(field type head, field type parameters, type family arity)@
+              -- If field type is type family application @Maybe Int@ represents.
+              -> Maybe Cxt
+liftedContext jc liftedVars consVars (fun, args, mbTypeFamilyArity) = do
+  guard $ length args >= fromEnum (arity jc)
+  let
+    (consumedArgs, unconsumedArgs) = splitAtArityRight (arity jc) args
+    appliedCon = applyTy fun consumedArgs
+    notLifted t = case varTToNameMaybe t of
+      Nothing -> True
+      Just name -> name `notElem` liftedVars
+  guard $ notLifted fun
+  -- Ensure type family application is saturated
+  case mbTypeFamilyArity of
+    Nothing -> pure ()
+    Just tfArity -> guard $ length consumedArgs >= tfArity
+  case unconsumedArgs of
+    [] -> do
+      -- No need for instance if type is fully instantiated
+      guard $ hasFreeTypeVariable consVars appliedCon
+      Just [deriveConstraint jc{arity = Arity0} appliedCon]
+    t : ts -> do
+      tvar <- case t of
+        VarT name -> Just name
+        SigT (VarT name) _ -> Just name
+        _ -> Nothing
+      guard $ tvar `elem` liftedVars
+      let
+        ctxFun = do
+          -- No need for instance if type is fully instantiated
+          guard $ hasFreeTypeVariable consVars appliedCon
+          [deriveConstraint jc appliedCon]
+        -- For rest of the args (excluding lifted) generate 'Arity0' context
+        ctxArgs = flip mapMaybe ts $ \t' -> do
+          -- No need for instance if type is fully instantiated
+          guard $ notLifted t' && hasFreeTypeVariable consVars t'
+          Just $ deriveConstraint jc{arity = Arity0} t'
+      Just $ ctxFun <> ctxArgs
+
+typeFamilyArity :: Type -> Q (Maybe Int)
+typeFamilyArity t = case t of
+  ConT name -> do
+    info <- reify name
+    pure $ case info of
+      FamilyI (OpenTypeFamilyD (TypeFamilyHead _ tfVars _ _)) _->
+        Just $ length tfVars
+      FamilyI (ClosedTypeFamilyD (TypeFamilyHead _ tfVars _ _) _) _ ->
+        Just $ length tfVars
+      _ -> Nothing
+  _ -> pure Nothing
+
+-- Check whether type uses one of the free variables
+hasFreeTypeVariable :: [Name] -> Type -> Bool
+hasFreeTypeVariable binders (ForallT binders' _ t) =
+  hasFreeTypeVariable (binders <> map tvName binders') t
+hasFreeTypeVariable binders (AppT t1 t2) =
+  hasFreeTypeVariable binders t1 || hasFreeTypeVariable binders t2
+hasFreeTypeVariable binders (SigT (VarT name) _) = name `notElem` binders
+hasFreeTypeVariable binders (VarT name) = name `notElem` binders
+hasFreeTypeVariable _ _ = False
+
+splitAtArityRight :: Arity -> [a] -> ([a], [a])
+splitAtArityRight arity =
+  bimap reverse reverse . swap . splitAt (fromEnum arity) . reverse
 
 -------------------------------------------------------------------------------
 -- Expanding type synonyms
@@ -1847,24 +1847,6 @@ derivingKindError jc tyConName = fail
   where
     className :: String
     className = nameBase $ jsonClassName jc
-
--- | One of the last type variables cannot be eta-reduced (see the canEtaReduce
--- function for the criteria it would have to meet).
-etaReductionError :: Type -> Q a
-etaReductionError instanceType = fail $
-    "Cannot eta-reduce to an instance of form \n\tinstance (...) => "
-    ++ pprint instanceType
-
--- | The data type has a DatatypeContext which mentions one of the eta-reduced
--- type variables.
-datatypeContextError :: Name -> Type -> Q a
-datatypeContextError dataName instanceType = fail
-    . showString "Can't make a derived instance of ‘"
-    . showString (pprint instanceType)
-    . showString "‘:\n\tData type ‘"
-    . showString (nameBase dataName)
-    . showString "‘ must not have a class context involving the last type argument(s)"
-    $ ""
 
 -- | The data type mentions one of the n eta-reduced type variables in a place other
 -- than the last nth positions of a data type in a constructor's field.
