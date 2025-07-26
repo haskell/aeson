@@ -249,6 +249,9 @@ class GFromJSON arity f where
     -- or 'liftParseJSON' (if the @arity@ is 'One').
     gParseJSON :: Options -> FromArgs arity a -> Value -> Parser (f a)
 
+class GOmitFromJSON arity f where
+    gOmittedField :: FromArgs arity a -> Maybe (f a)
+
 -- | A 'FromArgs' value either stores nothing (for 'FromJSON') or it stores the
 -- three function arguments that decode occurrences of the type parameter (for
 -- 'FromJSON1').
@@ -1025,17 +1028,30 @@ instance (FromJSON1 f) => GFromJSON One (Rec1 f) where
     gParseJSON _opts (From1Args o pj pjl) = fmap Rec1 . liftParseJSON o pj pjl
     {-# INLINE gParseJSON #-}
 
-instance (FromJSON1 f, GFromJSON One g) => GFromJSON One (f :.: g) where
+instance (FromJSON1 f, GFromJSON One g, GOmitFromJSON One g) => GFromJSON One (f :.: g) where
     -- If an occurrence of the last type parameter is nested inside two
     -- composed types, it is decoded by using the outermost type's FromJSON1
     -- instance to generically decode the innermost type:
-    --
-    -- Note: the ommitedField is not passed here.
-    -- This might be related for :.: associated the wrong way in Generics Rep.
     gParseJSON opts fargs =
         let gpj = gParseJSON opts fargs
-        in fmap Comp1 . liftParseJSON Nothing gpj (listParser gpj)
+        in fmap Comp1 . liftParseJSON (gOmittedField fargs) gpj (listParser gpj)
     {-# INLINE gParseJSON #-}
+
+instance FromJSON a => GOmitFromJSON arity (K1 i a) where
+    gOmittedField _ = fmap K1 omittedField
+    {-# INLINE gOmittedField #-}
+
+instance GOmitFromJSON One Par1 where
+    gOmittedField (From1Args o _ _) = fmap Par1 o
+    {-# INLINE gOmittedField #-}
+
+instance FromJSON1 f => GOmitFromJSON One (Rec1 f) where
+    gOmittedField (From1Args o _ _) = fmap Rec1 $ liftOmittedField o
+    {-# INLINE gOmittedField #-}
+
+instance (FromJSON1 f, GOmitFromJSON One g) => GOmitFromJSON One (f :.: g) where
+    gOmittedField = fmap Comp1 . liftOmittedField . gOmittedField
+    {-# INLINE gOmittedField #-}
 
 --------------------------------------------------------------------------------
 
@@ -1423,56 +1439,19 @@ instance ( RecordFromJSON' arity a
               <*> recordParseJSON' p obj
     {-# INLINE recordParseJSON' #-}
 
-instance {-# OVERLAPPABLE #-}
-         RecordFromJSON' arity f => RecordFromJSON' arity (M1 i s f) where
-    recordParseJSON' args obj = M1 <$> recordParseJSON' args obj
+instance (Selector s, GFromJSON arity a, GOmitFromJSON arity a) => RecordFromJSON' arity (S1 s a) where
+    recordParseJSON' (cname :* tname :* opts :* fargs) obj =
+        handleMissingKey (M1 <$> mdef) $ do
+            fv <- contextCons cname tname (obj .: label)
+            M1 <$> gParseJSON opts fargs fv <?> Key label
+        where
+            handleMissingKey Nothing p = p
+            handleMissingKey (Just def) p = if label `KM.member` obj then p else pure def
+
+            label = Key.fromString $ fieldLabelModifier opts sname
+            sname = selName (undefined :: M1 _i s _f _p)
+            mdef = guard (allowOmittedFields opts) >> gOmittedField fargs
     {-# INLINE recordParseJSON' #-}
-
-instance (Selector s, FromJSON a, Generic a, K1 i a ~ Rep a) =>
-         RecordFromJSON' arity (S1 s (K1 i a)) where
-    recordParseJSON' args@(_ :* _ :* opts :* _) obj =
-      recordParseJSONImpl (guard (allowOmittedFields opts) >> fmap K1 omittedField) gParseJSON args obj
-    {-# INLINE recordParseJSON' #-}
-
-instance {-# OVERLAPPING #-}
-         (Selector s, FromJSON a) =>
-         RecordFromJSON' arity (S1 s (Rec0 a)) where
-    recordParseJSON' args@(_ :* _ :* opts :* _) obj =
-      recordParseJSONImpl (guard (allowOmittedFields opts) >> fmap K1 omittedField) gParseJSON args obj
-    {-# INLINE recordParseJSON' #-}
-
-instance {-# OVERLAPPING #-}
-         (Selector s, GFromJSON One (Rec1 f), FromJSON1 f) =>
-         RecordFromJSON' One (S1 s (Rec1 f)) where
-    recordParseJSON' args@(_ :* _ :* opts :* From1Args o _ _) obj =
-      recordParseJSONImpl (guard (allowOmittedFields opts) >> fmap Rec1 (liftOmittedField o)) gParseJSON args obj
-    {-# INLINE recordParseJSON' #-}
-
-instance {-# OVERLAPPING #-}
-         (Selector s, GFromJSON One Par1) =>
-         RecordFromJSON' One (S1 s Par1) where
-    recordParseJSON' args@(_ :* _ :* opts :* From1Args o _ _) obj =
-      recordParseJSONImpl (guard (allowOmittedFields opts) >> fmap Par1 o) gParseJSON args obj
-    {-# INLINE recordParseJSON' #-}
-
-
-recordParseJSONImpl :: forall s arity a f i
-                     . (Selector s)
-                    => Maybe (f a)
-                    -> (Options -> FromArgs arity a -> Value -> Parser (f a))
-                    -> (ConName :* TypeName :* Options :* FromArgs arity a)
-                    -> Object -> Parser (M1 i s f a)
-recordParseJSONImpl mdef parseVal (cname :* tname :* opts :* fargs) obj =
-  handleMissingKey (M1 <$> mdef) $ do
-    fv <- contextCons cname tname (obj .: label)
-    M1 <$> parseVal opts fargs fv <?> Key label
-  where
-    handleMissingKey Nothing p = p
-    handleMissingKey (Just def) p = if label `KM.member` obj then p else pure def
-
-    label = Key.fromString $ fieldLabelModifier opts sname
-    sname = selName (undefined :: M1 _i s _f _p)
-{-# INLINE recordParseJSONImpl #-}
 
 --------------------------------------------------------------------------------
 
