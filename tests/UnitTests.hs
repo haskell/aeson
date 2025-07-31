@@ -280,7 +280,7 @@ showOptions =
         ++ ", allNullaryToStringTag = True"
         ++ ", omitNothingFields = False"
         ++ ", allowOmittedFields = True"
-        ++ ", sumEncoding = TaggedObject {tagFieldName = \"tag\", contentsFieldName = \"contents\"}"
+        ++ ", sumEncoding = TaggedObject {tagFieldName = \"tag\", contentsFieldName = \"contents\", tagAsContentsFieldName = False}"
         ++ ", unwrapUnaryRecords = False"
         ++ ", tagSingleConstructors = False"
         ++ ", rejectUnknownFields = False"
