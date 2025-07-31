@@ -961,7 +961,7 @@ nonAllNullarySumToJSON opts targs =
     case sumEncoding opts of
 
       TaggedObject{..}      ->
-        taggedObject opts targs (Key.fromString tagFieldName) (Key.fromString contentsFieldName)
+        taggedObject opts targs (Key.fromString tagFieldName) (Key.fromString contentsFieldName) tagAsContentsFieldName
 
       ObjectWithSingleField ->
         (unTagged :: Tagged ObjectWithSingleField enc -> enc)
@@ -984,17 +984,17 @@ nonAllNullarySumToJSON opts targs =
 
 class TaggedObject enc arity f where
     taggedObject :: Options -> ToArgs enc arity a
-                 -> Key -> Key
+                 -> Key -> Key -> Bool
                  -> f a -> enc
 
 instance ( TaggedObject enc arity a
          , TaggedObject enc arity b
          ) => TaggedObject enc arity (a :+: b)
   where
-    taggedObject opts targs tagFieldName contentsFieldName (L1 x) =
-        taggedObject opts targs tagFieldName contentsFieldName x
-    taggedObject opts targs tagFieldName contentsFieldName (R1 x) =
-        taggedObject opts targs tagFieldName contentsFieldName x
+    taggedObject opts targs tagFieldName contentsFieldName tagAsContentsFieldName (L1 x) =
+        taggedObject opts targs tagFieldName contentsFieldName tagAsContentsFieldName x
+    taggedObject opts targs tagFieldName contentsFieldName tagAsContentsFieldName (R1 x) =
+        taggedObject opts targs tagFieldName contentsFieldName tagAsContentsFieldName x
     {-# INLINE taggedObject #-}
 
 instance ( IsRecord                      a isRecord
@@ -1005,15 +1005,17 @@ instance ( IsRecord                      a isRecord
          , Constructor c
          ) => TaggedObject enc arity (C1 c a)
   where
-    taggedObject opts targs tagFieldName contentsFieldName =
+    taggedObject opts targs tagFieldName contentsFieldName tagAsContentsFieldName =
       fromPairs . mappend tag . contents
       where
-        tag = tagFieldName `pair`
-          (fromString (constructorTagModifier opts (conName (undefined :: t c a p)))
-            :: enc)
+        constructorTagString = constructorTagModifier opts (conName (undefined :: t c a p))
+        tag = tagFieldName `pair` (fromString constructorTagString :: enc)
+        contentsFieldName' = if tagAsContentsFieldName
+          then Key.fromString constructorTagString
+          else contentsFieldName
         contents =
           (unTagged :: Tagged isRecord pairs -> pairs) .
-            taggedObject' opts targs contentsFieldName . unM1
+            taggedObject' opts targs contentsFieldName' . unM1
     {-# INLINE taggedObject #-}
 
 class TaggedObject' enc pairs arity f isRecord where

@@ -1209,8 +1209,11 @@ parseNonAllNullarySum p@(tname :* opts :* _) =
       TaggedObject{..} ->
           withObject tname $ \obj -> do
               tag <- contextType tname . contextTag tagKey cnames_ $ obj .: tagKey
+              let contentsFieldName' = if tagAsContentsFieldName
+                                       then unpack tag
+                                       else contentsFieldName
               fromMaybe (badTag tag <?> Key tagKey) $
-                  parseFromTaggedObject (tag :* contentsFieldName :* p) obj
+                  parseFromTaggedObject (tag :* contentsFieldName' :* p) obj
         where
           tagKey = Key.fromString tagFieldName
           badTag tag = failWith_ $ \cnames ->
