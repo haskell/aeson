@@ -131,6 +131,7 @@ module Data.Aeson
     , fieldLabelModifier
     , constructorTagModifier
     , allNullaryToStringTag
+    , allNullaryConstructorTagModifier
     , omitNothingFields
     , allowOmittedFields
     , sumEncoding
