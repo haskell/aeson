@@ -278,6 +278,7 @@ showOptions =
         ++   "fieldLabelModifier =~ \"exampleField\""
         ++ ", constructorTagModifier =~ \"ExampleConstructor\""
         ++ ", allNullaryToStringTag = True"
+        ++ ", allNullaryConstructorTagModifier =~ Nothing"
         ++ ", omitNothingFields = False"
         ++ ", allowOmittedFields = True"
         ++ ", sumEncoding = TaggedObject {tagFieldName = \"tag\", contentsFieldName = \"contents\"}"
