@@ -407,11 +407,11 @@ sumToValue letInsert target opts multiCons nullary conName value pairs
         case sumEncoding opts of
           TwoElemArray ->
             array target [conStr target opts conName, value]
-          TaggedObject{tagFieldName, contentsFieldName, tagAsContentsFieldName} ->
+          TaggedObject{tagFieldName, contentsFieldName} ->
             -- TODO: Maybe throw an error in case
             -- tagFieldName overwrites a field in pairs.
             let tag = pairE letInsert target tagFieldName (conStr target opts conName)
-                contentsFieldName' = if tagAsContentsFieldName
+                contentsFieldName' = if null contentsFieldName
                                      then conString opts conName
                                      else contentsFieldName
                 content = pairs contentsFieldName'
@@ -718,8 +718,8 @@ consFromJSON jc tName opts instTys cons = do
 
     mixedMatches tvMap =
         case sumEncoding opts of
-          TaggedObject {tagFieldName, contentsFieldName, tagAsContentsFieldName} ->
-            parseObject $ parseTaggedObject tvMap tagFieldName contentsFieldName tagAsContentsFieldName
+          TaggedObject {tagFieldName, contentsFieldName} ->
+            parseObject $ parseTaggedObject tvMap tagFieldName contentsFieldName
           UntaggedValue -> error "UntaggedValue: Should be handled already"
           ObjectWithSingleField ->
             parseObject $ parseObjectWithSingleField tvMap
@@ -761,7 +761,7 @@ consFromJSON jc tName opts instTys cons = do
                    []
         ]
 
-    parseTaggedObject tvMap typFieldName valFieldName tagAsContentsFieldName obj = do
+    parseTaggedObject tvMap typFieldName valFieldName obj = do
       conKey <- newName "conKeyX"
       valField <- newName "valField"
       doE [ bindS (varP conKey)
@@ -770,7 +770,7 @@ consFromJSON jc tName opts instTys cons = do
                             ([|Key.fromString|] `appE` stringE typFieldName))
           , letS [ valD (varP valField)
                         ( normalB
-                          $ if tagAsContentsFieldName
+                          $ if null valFieldName
                             then varE conKey
                             else litE $ stringL valFieldName
                         )

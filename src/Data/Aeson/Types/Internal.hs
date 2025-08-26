@@ -761,9 +761,8 @@ instance Show Options where
 
 -- | Specifies how to encode constructors of a sum datatype.
 data SumEncoding =
-    TaggedObject { tagFieldName           :: String
-                 , contentsFieldName      :: String
-                 , tagAsContentsFieldName :: Bool
+    TaggedObject { tagFieldName      :: String
+                 , contentsFieldName :: String
                  }
     -- ^ A constructor will be encoded to an object with a field
     -- 'tagFieldName' which specifies the constructor tag (modified by
@@ -775,7 +774,7 @@ data SumEncoding =
     -- record the encoded constructor contents will be stored under
     -- the 'contentsFieldName' field.
     --
-    -- If 'tagAsContentsFieldName' is True, then the value of
+    -- If 'contentsFieldName' is the empty string, then the value of
     -- 'tagFieldName' will be used as the 'contentsFieldName' instead.
   | UntaggedValue
     -- ^ Constructor names won't be encoded. Instead only the contents of the
@@ -868,9 +867,8 @@ defaultOptions = Options
 -- @
 defaultTaggedObject :: SumEncoding
 defaultTaggedObject = TaggedObject
-                      { tagFieldName           = "tag"
-                      , contentsFieldName      = "contents"
-                      , tagAsContentsFieldName = False
+                      { tagFieldName      = "tag"
+                      , contentsFieldName = "contents"
                       }
 
 -- | Default 'JSONKeyOptions':
