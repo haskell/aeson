@@ -411,7 +411,10 @@ sumToValue letInsert target opts multiCons nullary conName value pairs
             -- TODO: Maybe throw an error in case
             -- tagFieldName overwrites a field in pairs.
             let tag = pairE letInsert target tagFieldName (conStr target opts conName)
-                content = pairs contentsFieldName
+                contentsFieldName' = if null contentsFieldName
+                                     then conString opts conName
+                                     else contentsFieldName
+                content = pairs contentsFieldName'
             in fromPairsE target $
               if nullary then tag else infixApp tag [|(Monoid.<>)|] content
           ObjectWithSingleField ->
@@ -760,11 +763,20 @@ consFromJSON jc tName opts instTys cons = do
 
     parseTaggedObject tvMap typFieldName valFieldName obj = do
       conKey <- newName "conKeyX"
+      valField <- newName "valField"
       doE [ bindS (varP conKey)
                   (infixApp (varE obj)
                             [|(.:)|]
                             ([|Key.fromString|] `appE` stringE typFieldName))
-          , noBindS $ parseContents tvMap conKey (Left (valFieldName, obj)) 'conNotFoundFailTaggedObject [|Key.fromString|] [|Key.toString|]
+          , letS [ valD (varP valField)
+                        ( normalB
+                          $ if null valFieldName
+                            then varE conKey
+                            else litE $ stringL valFieldName
+                        )
+                        []
+                 ]
+          , noBindS $ parseContents tvMap conKey (Left (valField, obj)) 'conNotFoundFailTaggedObject [|Key.fromString|] [|Key.toString|]
           ]
 
     parseUntaggedValue tvMap cons' conVal =
@@ -955,19 +967,19 @@ parseRecord jc tvMap argTys opts tName conName fields obj inTaggedObject =
              | (field, argTy) <- zip fields argTys
              ]
 
-getValField :: Name -> String -> [MatchQ] -> Q Exp
-getValField obj valFieldName matches = do
+getValField :: Name -> Name -> [MatchQ] -> Q Exp
+getValField obj valField matches = do
   val <- newName "val"
   doE [ bindS (varP val) $ infixApp (varE obj)
                                     [|(.:)|]
                                     ([|Key.fromString|] `appE`
-                                       litE (stringL valFieldName))
+                                       varE valField)
       , noBindS $ caseE (varE val) matches
       ]
 
-matchCases :: Either (String, Name) Name -> [MatchQ] -> Q Exp
-matchCases (Left (valFieldName, obj)) = getValField obj valFieldName
-matchCases (Right valName)            = caseE (varE valName)
+matchCases :: Either (Name, Name) Name -> [MatchQ] -> Q Exp
+matchCases (Left (valField, obj)) = getValField obj valField
+matchCases (Right valName)        = caseE (varE valName)
 
 -- | Generates code to parse the JSON encoding of a single constructor.
 parseArgs :: JSONClass -- ^ The FromJSON variant being derived.
@@ -976,8 +988,8 @@ parseArgs :: JSONClass -- ^ The FromJSON variant being derived.
           -> Name -- ^ Name of the type to which the constructor belongs.
           -> Options -- ^ Encoding options.
           -> ConstructorInfo -- ^ Constructor for which to generate JSON parsing code.
-          -> Either (String, Name) Name -- ^ Left (valFieldName, objName) or
-                                        --   Right valName
+          -> Either (Name, Name) Name -- ^ Left (valFieldName, objName) or
+                                     --   Right valName
           -> Q Exp
 -- Nullary constructors.
 parseArgs _ _ _ _

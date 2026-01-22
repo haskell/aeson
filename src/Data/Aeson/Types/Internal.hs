@@ -773,6 +773,9 @@ data SumEncoding =
     -- by the encoded value of that field! If the constructor is not a
     -- record the encoded constructor contents will be stored under
     -- the 'contentsFieldName' field.
+    --
+    -- If 'contentsFieldName' is the empty string, then the value of
+    -- 'tagFieldName' will be used as the 'contentsFieldName' instead.
   | UntaggedValue
     -- ^ Constructor names won't be encoded. Instead only the contents of the
     -- constructor will be encoded as if the type had a single constructor. JSON

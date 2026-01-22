@@ -1008,12 +1008,14 @@ instance ( IsRecord                      a isRecord
     taggedObject opts targs tagFieldName contentsFieldName =
       fromPairs . mappend tag . contents
       where
-        tag = tagFieldName `pair`
-          (fromString (constructorTagModifier opts (conName (undefined :: t c a p)))
-            :: enc)
+        constructorTagString = constructorTagModifier opts (conName (undefined :: t c a p))
+        tag = tagFieldName `pair` (fromString constructorTagString :: enc)
+        contentsFieldName' = if null $ Key.toString contentsFieldName
+                             then Key.fromString constructorTagString
+                             else contentsFieldName
         contents =
           (unTagged :: Tagged isRecord pairs -> pairs) .
-            taggedObject' opts targs contentsFieldName . unM1
+            taggedObject' opts targs contentsFieldName' . unM1
     {-# INLINE taggedObject #-}
 
 class TaggedObject' enc pairs arity f isRecord where
