@@ -24,7 +24,7 @@ import           Data.Word                   (Word16)
 
 -- | Unescape JSON text literal.
 --
--- This function is exporeted mostly for testing and benchmarking purposes.
+-- This function is exported mostly for testing and benchmarking purposes.
 unescapeFromText :: Text -> Either UnicodeException Text
 unescapeFromText = unsafeDupablePerformIO . try . unescapeFromTextIO
 

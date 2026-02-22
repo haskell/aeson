@@ -29,7 +29,7 @@ import           Data.Word                (Word16)
 
 -- | Unescape JSON text literal.
 --
--- This function is exporeted mostly for testing and benchmarking purposes.
+-- This function is exported mostly for testing and benchmarking purposes.
 unescapeText :: ByteString -> Either UnicodeException Text
 unescapeText = unsafeDupablePerformIO . try . unescapeTextIO
 
