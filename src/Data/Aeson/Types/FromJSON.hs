@@ -216,6 +216,12 @@ parseScientificText = scanScientific
     (\sci rest -> if T.null rest then return sci else fail $ "Expecting end-of-input, got " ++ show (T.take 10 rest))
     fail
 
+parseBoundedScientificText :: Text -> Parser Scientific
+parseBoundedScientificText t = parseScientificText t >>= rejectLargeExponent
+  where
+    rejectLargeExponent :: Scientific -> Parser Scientific
+    rejectLargeExponent s = withBoundedScientific' pure (Number s)
+
 parseIntegralText :: Integral a => String -> Text -> Parser a
 parseIntegralText name t =
     prependContext name $
@@ -1724,6 +1730,10 @@ instance (FromJSON a, Integral a) => FromJSON (Ratio a) where
 -- 'withScientific' if you want to allow larger inputs.
 instance HasResolution a => FromJSON (Fixed a) where
     parseJSON = prependContext "Fixed" . withBoundedScientific' (pure . realToFrac)
+
+instance HasResolution a => FromJSONKey (Fixed a) where
+  fromJSONKey = FromJSONKeyTextParser $ \t ->
+      realToFrac <$> parseBoundedScientificText t
 
 instance FromJSON Int where
     parseJSON = parseBoundedIntegral "Int"
