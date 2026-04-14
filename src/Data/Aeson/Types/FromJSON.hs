@@ -216,21 +216,21 @@ parseScientificText = scanScientific
     (\sci rest -> if T.null rest then return sci else fail $ "Expecting end-of-input, got " ++ show (T.take 10 rest))
     fail
 
-parseBoundedScientificText :: Text -> Parser Scientific
-parseBoundedScientificText t = parseScientificText t >>= rejectLargeExponent
+parseBoundedScientificTextTo :: (Scientific -> Parser a) -> String -> Text -> Parser a
+parseBoundedScientificTextTo toResultType name t =
+    prependContext name $
+            parseScientificText t
+        >>= rejectLargeExponent
+        >>= toResultType
   where
     rejectLargeExponent :: Scientific -> Parser Scientific
     rejectLargeExponent s = withBoundedScientific' pure (Number s)
 
+parseBoundedScientificText :: String -> Text -> Parser Scientific
+parseBoundedScientificText = parseBoundedScientificTextTo pure
+
 parseIntegralText :: Integral a => String -> Text -> Parser a
-parseIntegralText name t =
-    prependContext name $
-            parseScientificText t
-        >>= rejectLargeExponent
-        >>= parseIntegralFromScientific
-  where
-    rejectLargeExponent :: Scientific -> Parser Scientific
-    rejectLargeExponent s = withBoundedScientific' pure (Number s)
+parseIntegralText = parseBoundedScientificTextTo parseIntegralFromScientific
 
 parseBoundedIntegralText :: (Bounded a, Integral a) => String -> Text -> Parser a
 parseBoundedIntegralText name t =
@@ -1733,7 +1733,7 @@ instance HasResolution a => FromJSON (Fixed a) where
 
 instance HasResolution a => FromJSONKey (Fixed a) where
   fromJSONKey = FromJSONKeyTextParser $ \t ->
-      realToFrac <$> parseBoundedScientificText t
+      realToFrac <$> parseBoundedScientificText "Fixed" t
 
 instance FromJSON Int where
     parseJSON = parseBoundedIntegral "Int"
