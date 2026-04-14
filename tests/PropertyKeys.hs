@@ -6,7 +6,7 @@ module PropertyKeys ( keysTests ) where
 import Prelude.Compat
 
 import Control.Applicative (Const)
-import Data.Fixed
+import Data.Fixed (Fixed, E3, E6)
 import Data.Time.Compat (Day, LocalTime, TimeOfDay, UTCTime)
 import Data.Time.Calendar.Compat (DayOfWeek)
 import Data.Time.Calendar.Month.Compat (Month)
