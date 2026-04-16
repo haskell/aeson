@@ -6,6 +6,7 @@ module PropertyKeys ( keysTests ) where
 import Prelude.Compat
 
 import Control.Applicative (Const)
+import Data.Fixed (Fixed, E3, E6)
 import Data.Time.Compat (Day, LocalTime, TimeOfDay, UTCTime)
 import Data.Time.Calendar.Compat (DayOfWeek)
 import Data.Time.Calendar.Month.Compat (Month)
@@ -47,4 +48,6 @@ keysTests =
     , testProperty "Lazy Text"     $ roundTripKey @LT.Text
     , testProperty "UUID"          $ roundTripKey @UUID.UUID
     , testProperty "Const Text"    $ roundTripKey @(Const T.Text ())
+    , testProperty "Fixed E3"      $ roundTripKey @(Fixed E3)
+    , testProperty "Fixed E6"      $ roundTripKey @(Fixed E6)
     ]
