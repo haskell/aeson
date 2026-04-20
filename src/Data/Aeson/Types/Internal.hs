@@ -56,6 +56,7 @@ module Data.Aeson.Types.Internal
           fieldLabelModifier
         , constructorTagModifier
         , allNullaryToStringTag
+        , nullaryToObject
         , omitNothingFields
         , allowOmittedFields
         , sumEncoding
@@ -714,6 +715,9 @@ data Options = Options
       -- nullary constructors, will be encoded to just a string with
       -- the constructor tag. If 'False' the encoding will always
       -- follow the `sumEncoding`.
+    , nullaryToObject :: Bool
+      -- ^ If 'True', the nullary constructors will be encoded
+      -- as empty objects (the default is to encode them as empty arrays).
     , omitNothingFields :: Bool
       -- ^ If 'True', record fields with a 'Nothing' value will be
       -- omitted from the resulting object. If 'False', the resulting
@@ -744,12 +748,13 @@ data Options = Options
     }
 
 instance Show Options where
-  show (Options f c a o q s u t r) =
+  show (Options f c a n o q s u t r) =
        "Options {"
     ++ intercalate ", "
       [ "fieldLabelModifier =~ " ++ show (f "exampleField")
       , "constructorTagModifier =~ " ++ show (c "ExampleConstructor")
       , "allNullaryToStringTag = " ++ show a
+      , "nullaryToObject = " ++ show n
       , "omitNothingFields = " ++ show o
       , "allowOmittedFields = " ++ show q
       , "sumEncoding = " ++ show s
@@ -846,6 +851,7 @@ defaultOptions = Options
                  { fieldLabelModifier      = id
                  , constructorTagModifier  = id
                  , allNullaryToStringTag   = True
+                 , nullaryToObject         = False
                  , omitNothingFields       = False
                  , allowOmittedFields      = True
                  , sumEncoding             = defaultTaggedObject
