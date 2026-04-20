@@ -56,6 +56,7 @@ module Data.Aeson.Types.Internal
           fieldLabelModifier
         , constructorTagModifier
         , allNullaryToStringTag
+        , allNullaryConstructorTagModifier
         , omitNothingFields
         , allowOmittedFields
         , sumEncoding
@@ -714,6 +715,10 @@ data Options = Options
       -- nullary constructors, will be encoded to just a string with
       -- the constructor tag. If 'False' the encoding will always
       -- follow the `sumEncoding`.
+    , allNullaryConstructorTagModifier :: Maybe (String -> String)
+      -- ^ If not 'Nothing', specifies the function to be used instead of
+      -- 'constructorTagModifier' whenever 'allNullaryToStringTag'
+      -- is in effect. Useful for encoding enums specially.
     , omitNothingFields :: Bool
       -- ^ If 'True', record fields with a 'Nothing' value will be
       -- omitted from the resulting object. If 'False', the resulting
@@ -744,12 +749,13 @@ data Options = Options
     }
 
 instance Show Options where
-  show (Options f c a o q s u t r) =
+  show (Options f c a ac o q s u t r) =
        "Options {"
     ++ intercalate ", "
       [ "fieldLabelModifier =~ " ++ show (f "exampleField")
       , "constructorTagModifier =~ " ++ show (c "ExampleConstructor")
       , "allNullaryToStringTag = " ++ show a
+      , "allNullaryConstructorTagModifier =~ " ++ show (($ "ExampleConstructor") <$> ac)
       , "omitNothingFields = " ++ show o
       , "allowOmittedFields = " ++ show q
       , "sumEncoding = " ++ show s
@@ -843,15 +849,16 @@ data JSONKeyOptions = JSONKeyOptions
 -- @
 defaultOptions :: Options
 defaultOptions = Options
-                 { fieldLabelModifier      = id
-                 , constructorTagModifier  = id
-                 , allNullaryToStringTag   = True
-                 , omitNothingFields       = False
-                 , allowOmittedFields      = True
-                 , sumEncoding             = defaultTaggedObject
-                 , unwrapUnaryRecords      = False
-                 , tagSingleConstructors   = False
-                 , rejectUnknownFields     = False
+                 { fieldLabelModifier               = id
+                 , constructorTagModifier           = id
+                 , allNullaryToStringTag            = True
+                 , allNullaryConstructorTagModifier = Nothing
+                 , omitNothingFields                = False
+                 , allowOmittedFields               = True
+                 , sumEncoding                      = defaultTaggedObject
+                 , unwrapUnaryRecords               = False
+                 , tagSingleConstructors            = False
+                 , rejectUnknownFields              = False
                  }
 
 -- | Default 'TaggedObject' 'SumEncoding' options:

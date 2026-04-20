@@ -1128,7 +1128,8 @@ parseAllNullarySum tname opts =
     badTag tag = failWithCTags tname modifier $ \cnames ->
         "expected one of the tags " ++ show cnames ++
         ", but found tag " ++ show tag
-    modifier = constructorTagModifier opts
+    modifier = fromMaybe (constructorTagModifier opts)
+                         (allNullaryConstructorTagModifier opts)
 
 -- | Fail with an informative error message about a mismatched tag.
 -- The error message is parameterized by the list of expected tags,
