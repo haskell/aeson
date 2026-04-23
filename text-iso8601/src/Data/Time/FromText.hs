@@ -415,6 +415,8 @@ makeTimeOfDay :: Int -> Int -> Pico -> (Local.TimeOfDay -> Either String r) -> E
 makeTimeOfDay h m s kont =
     if h < 24 && m < 60 && s < 61
     then inline kont (Local.TimeOfDay h m s)
+    else if h == 24 && m == 0 && s == 0
+    then inline kont (Local.TimeOfDay 24 0 0)
     else Left $ "Invalid time of day:" ++ show (h,m,s)
 
 -- Parse seconds: @SS.SSS@.
