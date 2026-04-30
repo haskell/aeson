@@ -1,7 +1,7 @@
 {-# LANGUAGE RankNTypes          #-}
 {-# LANGUAGE ScopedTypeVariables #-}
--- | Convertion to and from @aeson@ 'A.Value'.
--- 
+-- | Conversion to and from @aeson@ 'A.Value'.
+--
 module Data.Aeson.Decoding (
     decode,
     eitherDecode,
