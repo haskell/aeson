@@ -690,6 +690,12 @@ instance WI.TraversableWithIndex Key KeyMap where
 -- semialign
 -------------------------------------------------------------------------------
 
+-- |
+--
+-- @since 2.2.5.0
+instance SA.Unzip KeyMap where
+    unzip = SA.unzipDefault
+
 instance SA.Zip KeyMap where
     zipWith = intersectionWith
 

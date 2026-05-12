@@ -1,5 +1,9 @@
 For the latest version of this document, please see [https://github.com/haskell/aeson/blob/master/changelog.md](https://github.com/haskell/aeson/blob/master/changelog.md).
 
+### 2.2.5.0
+
+* Support `semialign-1.4`
+
 ### 2.2.4.0
 
 * Check for control characters in text literals everywhere
