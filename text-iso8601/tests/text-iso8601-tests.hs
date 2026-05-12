@@ -61,6 +61,9 @@ main = defaultMain $ testGroup "text-iso8601"
         -- accepts +23:59
         , accepts T.parseUTCTime "1937-01-01T12:00:00+23:59"
         , accepts T.parseUTCTime "1937-01-01T12:00:00-23:59"
+
+        -- accepts 24:00:00
+        , accepts T.parseUTCTime "1990-12-31T24:00:00Z"
         ]
 
     , testGroup "rejected"
@@ -78,6 +81,11 @@ main = defaultMain $ testGroup "text-iso8601"
         -- accepts +23:59, but not 24 or 60
         , rejects T.parseUTCTime "1937-01-01T12:00:00+24:59"
         , rejects T.parseUTCTime "1937-01-01T12:00:00-23:60"
+
+        -- rejects 24:xx:xx except 24:00:00
+        , rejects T.parseUTCTime "1990-12-31T24:00:01Z"
+        , rejects T.parseUTCTime "1990-12-31T24:00:60Z"
+        , rejects T.parseUTCTime "1990-12-31T24:01:00Z"
         ]
     ]
 
