@@ -2392,7 +2392,7 @@ instance FromJSONKey URI.URI where
     fromJSONKey = FromJSONKeyTextParser parseURI
 
 parseURI :: Text -> Parser URI.URI
-parseURI t = case URI.parseURI (T.unpack t) of
+parseURI t = case URI.parseURIReference (T.unpack t) of
     Nothing -> fail "Invalid URI"
     Just x  -> return x
 
