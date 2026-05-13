@@ -955,7 +955,7 @@ parseRecord jc tvMap argTys opts tName conName fields obj inTaggedObject =
              | (field, argTy) <- zip fields argTys
              ]
 
--- A hack, as I'm too lazy to changge code to not assume fields are non empty.
+-- A hack, as I'm too lazy to change code to not assume fields are non empty.
 nonEmpty :: [a] -> (a, [a])
 nonEmpty (x:xs) = (x,xs)
 nonEmpty []     = error "unexpected empty list"
@@ -1276,7 +1276,7 @@ dispatchFunByType _ jf _ tvMap list (VarT tyName) =
     varE $ case M.lookup tyName tvMap of
                 Just (tfjoExp, tfjExp, tfjlExp) -> case list of
                     Omit -> tfjoExp
-                    Single -> tfjExp 
+                    Single -> tfjExp
                     Plural -> tfjlExp
                 Nothing                   -> jsonFunValOrListName list jf Arity0
 dispatchFunByType jc jf conName tvMap list (SigT ty _) =
