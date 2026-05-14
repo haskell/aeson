@@ -114,7 +114,7 @@ initialStartValues v = lowerBoundaryCloser' $ applyExponent e S
     (s, e, lower_boundary_is_closer) = decodeFloat' v
     lowerBoundaryCloser' = if lower_boundary_is_closer then lowerBoundaryCloser else id
 
--- | return significant, exponent and whether lower boundery is closer.
+-- | return significant, exponent and whether lower boundary is closer.
 --
 -- GHC's decodeFloat does "weird" stuff to denormal doubles,
 -- that messes up our delta calculation.

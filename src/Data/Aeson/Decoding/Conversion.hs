@@ -87,7 +87,7 @@ convertR tkr err kont = goR [] tkr err $ kont . KM.fromList where
         -> (e -> r)
         -> ([(Key, A.Value)] -> k -> r)
         -> r
-    -- here we don't stricly need bang on !v as KM is a Strict (in values) map.
+    -- here we don't strictly need bang on !v as KM is a Strict (in values) map.
     -- but we force the value sooner.
     goR !acc (TkPair t toks) g f = convert toks g $ \ !v k -> goR ((t , v) : acc) k g f
     goR !acc (TkRecordEnd k) _ f = f acc k
