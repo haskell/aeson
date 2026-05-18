@@ -796,11 +796,13 @@ withBoundedScientific' f v = withBoundedScientific_ id f v
 withBoundedScientific_ :: (Parser a -> Parser a) -> (Scientific -> Parser a) -> Value -> Parser a
 withBoundedScientific_ whenFail f (Number scientific) =
     if exp10 > 1024
-    then whenFail (fail msg)
+    then whenFail (fail (msg "greater than 1024"))
+    else if exp10 < -1024
+    then whenFail (fail (msg "less than -1024"))
     else f scientific
   where
     exp10 = base10Exponent scientific
-    msg = "found a number with exponent " ++ show exp10 ++ ", but it must not be greater than 1024"
+    msg req = "found a number with exponent " ++ show exp10 ++ ", but it must not be " ++ req
 withBoundedScientific_ whenFail _ v =
     whenFail (typeMismatch "Number" v)
 
@@ -1706,14 +1708,7 @@ instance FromJSONKey Float where
         _      -> Scientific.toRealFloat <$> parseScientificText t
 
 instance (FromJSON a, Integral a) => FromJSON (Ratio a) where
-    parseJSON (Number x)
-      | exp10 <= 1024
-      , exp10 >= -1024 = return $! realToFrac x
-      | otherwise      = prependContext "Ratio" $ fail msg
-      where
-        exp10 = base10Exponent x
-        msg = "found a number with exponent " ++ show exp10
-           ++ ", but it must not be greater than 1024 or less than -1024"
+    parseJSON n@(Number _) = withBoundedScientific "Ratio" (($!) pure . realToFrac) n
     parseJSON o = objParser o
       where
         objParser = withObject "Rational" $ \obj -> do
