@@ -272,19 +272,24 @@ parseYear_ kontEOF kontC (Text arr offS lenS) = start offS lenS where
     start :: Int -> Int -> Either String r
     start !off !len = unconsAscii_ arr off len
         (unexpectedEOF "-, +, or a digit") $ \c off' len' -> case c of
-            '-' -> loop negate off' off' len'
-            '+' -> loop id     off' off' len'
+            -- year is capped to 15 digits and we try consuming one more before raising an error, hence max 16 digits
+            '-' -> loop negate off' off' (min len' 16)
+            '+' -> loop id     off' off' (min len' 16)
             _
-                | '0' <= c, c <= '9' -> loop id    off  off' len'
+                | '0' <= c, c <= '9' -> loop id off off' (min len' 15)  -- already consumed first digit, 15 left
                 | otherwise          -> Left $ "Unexpected '" ++ show c ++ ", expecting -, +, or a digit"
 
+    -- The caller must make sure not to consume too many digits, to avoid complexity blow up in conversion to Integer!
     loop :: (Integer -> Integer) -> Int -> Int -> Int -> Either String r
     loop !posNeg !off0 !off !len = unconsAscii_ arr off len (finishEOF posNeg off0 off) $ \c off' len' -> if
         | '0' <= c, c <= '9' -> loop posNeg off0 off' len'
-        | otherwise          -> finishC posNeg c off0 off off' len'
+        | otherwise          -> finishC posNeg c off0 off off' (lenS - (off' - offS)) -- restore the full remaining length
 
     finishEOF :: (Integer -> Integer) -> Int -> Int -> Either String r
     finishEOF !posNeg !off0 !off
+        | len0 >= 16
+        = Left "expected year with at most 15 digits"
+
         | len0 >= 4
         = year `seq` kontEOF year
 
