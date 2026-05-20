@@ -87,7 +87,8 @@ camelFrom c s = case split c s of
   _    -> s -- shouldn't happen?
   where
     split c' s' = map L.unpack $ L.split c' $ L.pack s'
-    capitalize t = toUpper (head t) : tail t
+    capitalize []     = []
+    capitalize (x:xs) = toUpper x : xs
 
 
 data Wibble = Wibble {
