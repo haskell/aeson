@@ -1,6 +1,6 @@
 cabal-version:      1.12
 name:               text-iso8601
-version:            0.1.1.1
+version:            0.2.0.0
 synopsis:           Converting time to and from ISO 8601 text.
 description:
   Converting time to and from ISO 8601 text.

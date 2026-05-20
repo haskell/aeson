@@ -12,7 +12,7 @@ import           Test.QuickCheck            (Arbitrary, counterexample,
                                              property)
 import           Test.QuickCheck.Instances  ()
 import           Test.Tasty                 (TestTree, defaultMain, testGroup)
-import           Test.Tasty.HUnit           (assertFailure, testCase)
+import           Test.Tasty.HUnit           (assertEqual, assertFailure, testCase)
 import           Test.Tasty.QuickCheck      (testProperty)
 
 import qualified Data.Text                  as T
@@ -68,24 +68,27 @@ main = defaultMain $ testGroup "text-iso8601"
 
     , testGroup "rejected"
         -- https://github.com/haskell/aeson/issues/1033
-        [ rejects T.parseUTCTime "2023-06-09T02:35:33 Z"
+        [ rejects T.parseUTCTime "2023-06-09T02:35:33 Z" "Unexpected ' ', expecting timezone: Z, +HH:MM or -HH:MM"
 
         -- Y2K years
-        , rejects T.parseDay "99-12-12"
+        , rejects T.parseDay "99-12-12" "expected year with at least 4 digits"
 
         -- we don't accept lowercase T or Z
         -- RFC3339 says we MAY limit, i.e. requiring they should be uppercase.
-        , rejects T.parseUTCTime "2023-06-09T02:35:33z"
-        , rejects T.parseUTCTime "2023-06-09t02:35:33Z"
+        , rejects T.parseUTCTime "2023-06-09T02:35:33z" "Unexpected 'z', expecting timezone: Z, +HH:MM or -HH:MM"
+        , rejects T.parseUTCTime "2023-06-09t02:35:33Z" "Unexpected 't', expecting a day separator, T or space"
 
         -- accepts +23:59, but not 24 or 60
-        , rejects T.parseUTCTime "1937-01-01T12:00:00+24:59"
-        , rejects T.parseUTCTime "1937-01-01T12:00:00-23:60"
+        , rejects T.parseUTCTime "1937-01-01T12:00:00+24:59" "Invalid TimeZone:(24,59)"
+        , rejects T.parseUTCTime "1937-01-01T12:00:00-23:60" "Invalid TimeZone:(23,60)"
 
         -- rejects 24:xx:xx except 24:00:00
-        , rejects T.parseUTCTime "1990-12-31T24:00:01Z"
-        , rejects T.parseUTCTime "1990-12-31T24:00:60Z"
-        , rejects T.parseUTCTime "1990-12-31T24:01:00Z"
+        , rejects T.parseUTCTime "1990-12-31T24:00:01Z" "Invalid time of day:(24,0,1.000000000000)"
+        , rejects T.parseUTCTime "1990-12-31T24:00:60Z" "Invalid time of day:(24,0,60.000000000000)"
+        , rejects T.parseUTCTime "1990-12-31T24:01:00Z" "Invalid time of day:(24,1,0.000000000000)"
+
+        -- Reject long years
+        , rejects T.parseUTCTime "1234567890123456-01-01T01:01Z" "expected year with at most 15 digits"
         ]
     ]
 
@@ -106,10 +109,10 @@ roundtrip eq build parse = testProperty (show (typeRep (Proxy :: Proxy a))) $ \x
        counterexample (show y) $
        property (liftEq eq y (Right x))
 
-rejects :: forall a. (Typeable a, Show a) => (Text -> Either String a) -> String -> TestTree
-rejects parse inp = testCase (show (typeRep (Proxy :: Proxy a)) ++ " rejects " ++ show inp) $ do
+rejects :: forall a. (Typeable a, Show a) => (Text -> Either String a) -> String -> String -> TestTree
+rejects parse inp expected = testCase (show (typeRep (Proxy :: Proxy a)) ++ " rejects " ++ show inp) $ do
     case parse (T.pack inp) of
-        Left _  -> return ()
+        Left actual -> assertEqual "Error message mismatch" actual expected
         Right a -> assertFailure $ "Unexpectedly accepted: " ++ show a
 
 accepts :: forall a. (Typeable a, Show a) => (Text -> Either String a) -> String -> TestTree
