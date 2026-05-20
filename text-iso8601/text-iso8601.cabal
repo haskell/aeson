@@ -3,7 +3,7 @@ name:               text-iso8601
 version:            0.1.1.1
 synopsis:           Converting time to and from ISO 8601 text.
 description:
-  Converting time to and from IS0 8601 text.
+  Converting time to and from ISO 8601 text.
   Specifically the [RFC3339](https://datatracker.ietf.org/doc/html/rfc3339) profile.
 
 license:            BSD3
