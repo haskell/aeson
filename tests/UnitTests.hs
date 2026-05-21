@@ -38,6 +38,7 @@ import Data.Aeson.Types
   , Value(..), camelTo, camelTo2
   , defaultOptions, formatPath, formatRelativePath, omitNothingFields, parse)
 import Data.Char (toUpper, GeneralCategory(Control,Surrogate), generalCategory)
+import Data.Fixed (Nano)
 import Data.HashMap.Strict (HashMap)
 import Data.Kind (Type)
 import Data.List (isSuffixOf)
@@ -459,17 +460,22 @@ rationalNumber =
     (eitherDecode "1.37" :: Either String Rational)
 
 bigRationalDecoding :: Assertion
-bigRationalDecoding =
-  assertEqual "Decoding an Integer with a large exponent should fail"
-    (Left "Error in $: parsing Ratio failed, found a number with exponent 2000, but it must not be greater than 1024 or less than -1024")
+bigRationalDecoding = do
+  assertEqual "Decoding a Rational with a large exponent should fail"
+    (Left "Error in $: parsing Ratio failed, found a number with exponent 2000, but it must not be greater than 1024")
     ((eitherDecode :: L.ByteString -> Either String Rational) "1e2000")
-
-smallRationalDecoding :: Assertion
-smallRationalDecoding =
-  assertEqual "Decoding an Integer with a large exponent should fail"
-    (Left "Error in $: parsing Ratio failed, found a number with exponent -2000, but it must not be greater than 1024 or less than -1024")
+  assertEqual "Decoding a Rational with a small exponent should fail"
+    (Left "Error in $: parsing Ratio failed, found a number with exponent -2000, but it must not be less than -1024")
     ((eitherDecode :: L.ByteString -> Either String Rational) "1e-2000")
 
+bigFixedDecoding :: Assertion
+bigFixedDecoding = do
+  assertEqual "Decoding a Fixed with a large exponent should fail"
+    (Left "Error in $: parsing Fixed failed, found a number with exponent 9999, but it must not be greater than 1024")
+    ((eitherDecode :: L.ByteString -> Either String Nano) "1e9999")
+  assertEqual "Decoding a Fixed with a small exponent should fail"
+    (Left "Error in $: parsing Fixed failed, found a number with exponent -9999, but it must not be less than -1024")
+    ((eitherDecode :: L.ByteString -> Either String Nano) "1e-9999")
 
 bigScientificExponent :: Assertion
 bigScientificExponent =
@@ -556,7 +562,7 @@ tests = testGroup "unit" [
   , testCase "Ratio with denominator 0" ratioDenominator0
   , testCase "Rational parses number"   rationalNumber
   , testCase "Big rational"             bigRationalDecoding
-  , testCase "Small rational"           smallRationalDecoding
+  , testCase "Big fixed"                bigFixedDecoding
   , testCase "Big scientific exponent" bigScientificExponent
   , testCase "Big integer decoding" bigIntegerDecoding
   , testCase "Big natural decoding" bigNaturalDecoding

@@ -1,5 +1,16 @@
 For the latest version of this document, please see [https://github.com/haskell/aeson/blob/master/changelog.md](https://github.com/haskell/aeson/blob/master/changelog.md).
 
+### 2.3.0.0 - 2026-05-21
+
+* Fix parsing of fractional numbers to reject exponents smaller than -1024.
+  This breaking change affects `FromJSON` instances of `Fixed`, `DiffTime`, and `NominalDiffTime`,
+  rejecting more inputs. Error messages for `Ratio` and integral types are also slightly different
+  due to reusing the same bounding logic.
+* Fix typo in error message: "~~Unespected~~ Unexpected control character while parsing string literal".
+* Accept 24:00:00 time of day.
+* Support nothunks 0.3.
+* Unset executable permissions in some test files and remove a broken symlink.
+
 ### 2.2.5.0
 
 * Support `semialign-1.4`
