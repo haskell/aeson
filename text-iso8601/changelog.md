@@ -1,6 +1,7 @@
 # 0.2.0.0 - 2026-05-21
 
 - Fix parsers to reject years with more than 15 digits
+- Accept 24:00:00 time of day.
 
 # 0.1.1
 
