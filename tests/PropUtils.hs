@@ -31,7 +31,7 @@ import Prelude.Compat
 
 import Data.Aeson (eitherDecode, encode)
 import Data.Aeson.Encoding (encodingToLazyByteString)
-import Data.Aeson.Types
+import Data.Aeson.Types hiding (isEmptyArray)
 import qualified Data.Aeson.Key as Key
 import qualified Data.Aeson.KeyMap as KM
 import Data.HashMap.Strict (HashMap)
