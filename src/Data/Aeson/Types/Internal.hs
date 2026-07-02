@@ -112,18 +112,18 @@ data JSONPathElement = Key Key
                      | Index {-# UNPACK #-} !Int
                        -- ^ JSON path element of an index into an
                        -- array, \"array[index]\".
-                       deriving (Eq, Show, Typeable, Ord)
+                       deriving (Eq, Show, Ord)
 type JSONPath = [JSONPathElement]
 
 -- | The internal result of running a 'Parser'.
 data IResult a = IError JSONPath String
                | ISuccess a
-               deriving (Eq, Show, Typeable)
+               deriving (Eq, Show)
 
 -- | The result of running a 'Parser'.
 data Result a = Error String
               | Success a
-                deriving (Eq, Show, Typeable)
+                deriving (Eq, Show)
 
 instance NFData JSONPathElement where
   rnf (Key t)   = rnf t
@@ -369,7 +369,7 @@ data Value = Object !Object
            | Number !Scientific
            | Bool !Bool
            | Null
-             deriving (Eq, Read, Typeable, Data, Generic)
+             deriving (Eq, Read, Data, Generic)
 
 -- | Since version 1.5.6.0 version object values are printed in lexicographic key order
 --
@@ -505,7 +505,7 @@ deriving instance Ord Value
 newtype DotNetTime = DotNetTime {
       fromDotNetTime :: UTCTime
       -- ^ Acquire the underlying value.
-    } deriving (Eq, Ord, Read, Show, Typeable, FormatTime)
+    } deriving (Eq, Ord, Read, Show, FormatTime)
 
 instance NFData Value where
     rnf (Object o) = rnf o

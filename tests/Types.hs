@@ -41,32 +41,32 @@ data Foo = Foo {
     -- This definition causes an infinite loop in genericTo and genericFrom!
     -- , fooMap :: Map.Map String Foo
     , fooMap :: Map.Map String (Text,Int)
-    } deriving (Show, Typeable, Data)
+    } deriving (Show, Data)
 
 data UFoo = UFoo {
       _UFooInt :: Int
     , uFooInt :: Int
-    } deriving (Show, Eq, Data, Typeable)
+    } deriving (Show, Eq, Data)
 
 data NoConstructors
 
 data OneConstructor = OneConstructor
-                      deriving (Show, Eq, Typeable, Data)
+                      deriving (Show, Eq, Data)
 
 data Product2 a b = Product2 a b
-                    deriving (Show, Eq, Typeable, Data)
+                    deriving (Show, Eq, Data)
 
 data Product6 a b c d e f = Product6 a b c d e f
-                    deriving (Show, Eq, Typeable, Data)
+                    deriving (Show, Eq, Data)
 
 data Sum4 a b c d = Alt1 a | Alt2 b | Alt3 c | Alt4 d
-                    deriving (Show, Eq, Typeable, Data)
+                    deriving (Show, Eq, Data)
 
 class ApproxEq a where
     (=~) :: a -> a -> Bool
 
 newtype Approx a = Approx { fromApprox :: a }
-    deriving (Show, Data, Typeable, ApproxEq, Num)
+    deriving (Show, Data, ApproxEq, Num)
 
 instance (ApproxEq a) => Eq (Approx a) where
     Approx a == Approx b = a =~ b
@@ -93,7 +93,6 @@ data EitherTextInt
 
 data GADT a where
     GADT :: { gadt :: String } -> GADT String
-  deriving Typeable
 
 deriving instance Data (GADT String)
 deriving instance Eq   (GADT a)

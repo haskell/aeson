@@ -20,21 +20,21 @@ module Twitter
     ) where
 
 import Control.DeepSeq
-import Data.Data (Typeable, Data)
+import Data.Data (Data)
 import Data.Int (Int64)
 import Data.Text (Text)
 import GHC.Generics (Generic)
 
 newtype Metadata = Metadata {
     result_type :: Text
-  } deriving (Eq, Show, Typeable, Data, Generic)
+  } deriving (Eq, Show, Data, Generic)
 
 instance NFData Metadata
 
 data Geo = Geo {
     type_       :: Text
   , coordinates :: (Double, Double)
-  } deriving (Eq, Show, Typeable, Data, Generic)
+  } deriving (Eq, Show, Data, Generic)
 
 instance NFData Geo
 
@@ -53,7 +53,7 @@ data Story = Story {
   , iso_language_code :: Text
   , to_user_id_str    :: Maybe Text
   , source            :: Text
-  } deriving (Show, Typeable, Data, Generic)
+  } deriving (Show, Data, Generic)
 
 instance NFData Story
 
@@ -69,6 +69,6 @@ data Result = Result {
   , since_id_str     :: Text
   , max_id_str       :: Text
   , query            :: Text
-  } deriving (Show, Typeable, Data, Generic)
+  } deriving (Show, Data, Generic)
 
 instance NFData Result
