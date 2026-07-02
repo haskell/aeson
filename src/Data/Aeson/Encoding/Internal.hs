@@ -82,7 +82,7 @@ import qualified Data.Text.Short as ST
 newtype Encoding' tag = Encoding {
       fromEncoding :: Builder
       -- ^ Acquire the underlying bytestring builder.
-    } deriving (Typeable)
+    }
 
 -- | Often used synonym for 'Encoding''.
 type Encoding = Encoding' Value
@@ -128,7 +128,6 @@ instance IsString (Encoding' a) where
 -- > toEncoding (Person name age) = pairs ("name" .= name <> "age" .= age)
 data Series = Empty
             | Value (Encoding' Series)
-            deriving (Typeable)
 
 pair :: Key -> Encoding -> Series
 pair name val = pair' (key name) val

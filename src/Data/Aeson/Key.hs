@@ -32,7 +32,6 @@ import Data.Monoid (Monoid(mempty, mappend))
 import Data.Semigroup (Semigroup((<>)))
 import Data.Text (Text)
 import Data.Type.Coercion (Coercion (..))
-import Data.Typeable (Typeable)
 import Text.Read (Read (..))
 
 import qualified Data.String
@@ -42,7 +41,7 @@ import qualified Language.Haskell.TH.Syntax as TH
 import qualified Test.QuickCheck as QC
 
 newtype Key = Key { unKey :: Text }
-  deriving (Typeable, Data)
+  deriving (Data)
 
 fromString :: String -> Key
 fromString = Key . T.pack

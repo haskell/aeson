@@ -114,7 +114,6 @@ import Data.Semigroup (Semigroup((<>)))
 import Data.Text (Text)
 import Data.These (These (..))
 import Data.Type.Coercion (Coercion (..))
-import Data.Typeable (Typeable)
 import Text.Read (Read (..), Lexeme(..), readListPrecDefault, prec, lexP, parens)
 
 import qualified Data.Aeson.Key as Key
@@ -141,7 +140,7 @@ import qualified Witherable as W
 
 -- | A map from JSON key type 'Key' to 'v'.
 newtype KeyMap v = KeyMap { unKeyMap :: Map Key v }
-  deriving (Eq, Ord, Typeable, Data, Functor)
+  deriving (Eq, Ord, Data, Functor)
 
 
 -- | Construct an empty map.
@@ -355,7 +354,7 @@ import Prelude (fst)
 
 -- | A map from JSON key type 'Key' to 'v'.
 newtype KeyMap v = KeyMap { unKeyMap :: HashMap Key v }
-  deriving (Eq, Ord, Typeable, Data, Functor)
+  deriving (Eq, Ord, Data, Functor)
 
 -- | Construct an empty map.
 empty :: KeyMap v
