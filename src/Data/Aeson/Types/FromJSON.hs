@@ -1726,6 +1726,8 @@ instance (FromJSON a, Integral a) => FromJSON (Ratio a) where
             else pure $ numerator % denominator
 
 -- | A complex number @x+iy@ is encoded as an array @[x, y]@.
+--
+-- @since 2.3.1.0
 instance FromJSON a => FromJSON (Complex a) where
     parseJSON = withArray "Complex" $ \c ->
         let n = V.length c
@@ -1741,6 +1743,8 @@ instance FromJSON a => FromJSON (Complex a) where
 instance HasResolution a => FromJSON (Fixed a) where
     parseJSON = prependContext "Fixed" . withBoundedScientific' (pure . realToFrac)
 
+-- |
+-- @since 2.3.1.0
 instance HasResolution a => FromJSONKey (Fixed a) where
   fromJSONKey = FromJSONKeyTextParser $ \t ->
       realToFrac <$> parseBoundedScientificText "Fixed" t
