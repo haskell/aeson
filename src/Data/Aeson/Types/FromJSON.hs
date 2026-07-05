@@ -1725,6 +1725,7 @@ instance (FromJSON a, Integral a) => FromJSON (Ratio a) where
             then fail "Ratio denominator was 0"
             else pure $ numerator % denominator
 
+-- | A complex number @x+iy@ is encoded as an array @[x, y]@.
 instance FromJSON a => FromJSON (Complex a) where
     parseJSON = withArray "Complex" $ \c ->
         let n = V.length c
