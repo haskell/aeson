@@ -1,8 +1,11 @@
 For the latest version of this document, please see [https://github.com/haskell/aeson/blob/master/changelog.md](https://github.com/haskell/aeson/blob/master/changelog.md).
 
-### Upcoming
+### 2.3.1.0
 
-* Expose `isEmptyArray` from `Data.Aeson.Types` module.
+* Add `FromJSONKey` instance for `Data.Fixed`.
+* Add `ToJSON` and `FromJSON` instances for `Data.Complex`.
+* Export `isEmptyArray` from `Data.Aeson.Types` module.
+* Document that file decoding functions throw an exception when the file is missing.
 
 ### 2.3.0.0 - 2026-05-21
 
