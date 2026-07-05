@@ -20,9 +20,6 @@ See what's changed in recent (and upcoming) releases:
 
 * https://github.com/haskell/aeson/blob/master/changelog.md
 
-(You can create and contribute changes using either git or Mercurial.)
-
-
 # Authors
 
 This library was originally written by Bryan O'Sullivan.
