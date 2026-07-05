@@ -1425,6 +1425,7 @@ instance (ToJSON a, Integral a) => ToJSON (Ratio a) where
         "numerator" .= numerator r <>
         "denominator" .= denominator r
 
+-- | A complex number @x+iy@ is encoded as an array @[x, y]@.
 instance ToJSON a => ToJSON (Complex a) where
     toJSON (i :+ q) = Array $ V.create $ do
         mv <- VM.unsafeNew 2
