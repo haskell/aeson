@@ -7,12 +7,14 @@ license:            BSD3
 license-file:       LICENSE
 category:           Parsing
 copyright:
-  (c) 2011-2016 Bryan O'Sullivan
-  (c) 2011 MailRank, Inc.
-
+  2014-2026 Aeson project contributors,
+  2011-2016 Bryan O'Sullivan,
+  2011 MailRank, Inc.
 author:             Bryan O'Sullivan <bos@serpentine.com>
-maintainer:         Adam Bergmark <adam@bergmark.nl>
-stability:          experimental
+maintainer:
+  Li-yao Xia <lysxia@gmail.com>,
+  Core Libraries Committee
+stability:          stable
 cabal-version:      1.12
 homepage:           https://github.com/haskell/aeson
 bug-reports:        https://github.com/haskell/aeson/issues
