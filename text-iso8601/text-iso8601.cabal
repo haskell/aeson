@@ -9,10 +9,13 @@ description:
 license:            BSD3
 license-file:       LICENSE
 category:           Parsing
-copyright:          Oleg Grenrus <oleg.grenrus@iki.fi>
+copyright:
+  2026 Aeson project contributors,
+  2023-2026 Oleg Grenrus
 author:             Oleg Grenrus <oleg.grenrus@iki.fi>
 maintainer:
-  Oleg Grenrus <oleg.grenrus@iki.fi>
+  Li-yao Xia <lysxia@gmail.com>,
+  Core Libraries Committee
 
 homepage:           https://github.com/haskell/aeson
 bug-reports:        https://github.com/haskell/aeson/issues

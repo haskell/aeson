@@ -5,12 +5,14 @@ license:            BSD-3-Clause
 license-file:       LICENSE
 category:           Text, Web, JSON
 copyright:
-  (c) 2011-2016 Bryan O'Sullivan
-  (c) 2011 MailRank, Inc.
-
+  2014-2026 Aeson project contributors,
+  2011-2016 Bryan O'Sullivan,
+  2011 MailRank, Inc.
 author:             Bryan O'Sullivan <bos@serpentine.com>
-maintainer:         Adam Bergmark <adam@bergmark.nl>
-stability:          experimental
+maintainer:
+  Li-yao Xia <lysxia@gmail.com>,
+  Core Libraries Committee
+stability:          stable
 tested-with:
   GHC ==8.6.5
    || ==8.8.4
