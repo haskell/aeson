@@ -556,6 +556,8 @@ emptyArray = Array V.empty
 --
 -- Do note that if this is `False`, the `Value` may be a non-empty
 -- array, or it may not even be an array.
+--
+-- @since 2.3.1.0
 isEmptyArray :: Value -> Bool
 isEmptyArray (Array arr) = V.null arr
 isEmptyArray _ = False
