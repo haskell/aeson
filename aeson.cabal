@@ -38,12 +38,12 @@ description:
   below.
   .
   (A note on naming: in Greek mythology, Aeson was the father of Jason.)
-
+extra-doc-files:
+  README.markdown
+  changelog.md
 extra-source-files:
   *.yaml
   benchmarks/json-data/*.json
-  changelog.md
-  README.markdown
   tests/golden/*.expected
   tests/JSONTestSuite/results/*.tok
   tests/JSONTestSuite/results/*.txt
