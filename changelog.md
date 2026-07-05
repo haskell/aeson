@@ -1,6 +1,8 @@
 For the latest version of this document, please see [https://github.com/haskell/aeson/blob/master/changelog.md](https://github.com/haskell/aeson/blob/master/changelog.md).
 
-### 2.3.1.0
+### Unreleased - Future date
+
+### 2.3.1.0 - 2026-07-05
 
 * Add `FromJSONKey` instance for `Data.Fixed`.
 * Add `ToJSON` and `FromJSON` instances for `Data.Complex`.
