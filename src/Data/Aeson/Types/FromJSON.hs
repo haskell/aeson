@@ -690,7 +690,7 @@ omittedField2 = liftOmittedField2 omittedField omittedField
 
 -- | Helper function to use with 'liftParseJSON'. See 'Data.Aeson.ToJSON.listEncoding'.
 listParser :: (Value -> Parser a) -> Value -> Parser [a]
-listParser f (Array xs) = fmap V.toList (V.mapM f xs)
+listParser f (Array xs) = fmap V.toList (V.imapM (\i x -> f x <?> Index i) xs)
 listParser _ v          = typeMismatch "Array" v
 {-# INLINE listParser #-}
 
