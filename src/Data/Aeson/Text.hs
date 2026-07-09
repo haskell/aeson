@@ -10,7 +10,7 @@
 -- Portability: portable
 --
 -- Most frequently, you'll probably want to encode straight to UTF-8
--- (the standard JSON encoding) using 'encode'.
+-- (the standard JSON encoding) using 'Data.Aeson.encode'.
 --
 -- You can use the conversions to 'Builder's when embedding JSON messages as
 -- parts of a protocol.
@@ -47,8 +47,8 @@ encodeToLazyText = LT.decodeUtf8 . encodingToLazyByteString . toEncoding
 -- embedded efficiently in a text-based protocol.
 --
 -- If you are going to immediately encode straight to a
--- 'L.ByteString', it is more efficient to use 'encode' (lazy ByteString)
--- or @'fromEncoding' . 'toEncoding'@ (ByteString.Builder) instead.
+-- 'Data.ByteString.Lazy.ByteString', it is more efficient to use 'Data.Aeson.encode' (lazy ByteString)
+-- or @'Data.Aeson.fromEncoding' . 'toEncoding'@ ('Builder') instead.
 --
 -- /Note:/ Uses 'toJSON'
 encodeToTextBuilder :: ToJSON a => a -> Builder

@@ -1322,7 +1322,7 @@ instance {-# OVERLAPPING #-} FromTaggedObject' arity U1 False where
 --------------------------------------------------------------------------------
 
 -- | Constructors need to be decoded differently depending on whether they're
--- a record or not. This distinction is made by 'ConsParseJSON'.
+-- a record or not. This distinction is made by 'ConsFromJSON'.
 class ConsFromJSON arity f where
     consParseJSON
         :: ConName :* TypeName :* Options :* FromArgs arity a

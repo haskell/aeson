@@ -591,7 +591,7 @@ deriveFromJSON1 = deriveFromJSONCommon fromJSON1Class
 deriveFromJSON2 :: Options
                 -- ^ Encoding options.
                 -> Name
-                -- ^ Name of the type for which to generate a 'FromJSON3' instance
+                -- ^ Name of the type for which to generate a 'FromJSON2' instance
                 -- declaration.
                 -> Q [Dec]
 deriveFromJSON2 = deriveFromJSONCommon fromJSON2Class

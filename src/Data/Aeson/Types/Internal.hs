@@ -488,7 +488,9 @@ arbPartition k = case compare k 1 of
 -- The ordering is total, consistent with 'Eq' instance.
 -- However, nothing else about the ordering is specified,
 -- and it may change from environment to environment and version to version
--- of either this package or its dependencies ('hashable' and 'unordered-containers').
+-- of either this package or its dependencies
+-- (<https://hackage.haskell.org/package/hashable hashable> and
+-- <https://hackage.haskell.org/package/unordered-containers unordered-containers>).
 --
 -- @since 1.5.2.0
 deriving instance Ord Value
@@ -731,7 +733,7 @@ data Options = Options
       -- 'allowOmittedFieds' controls parsing behavior.
     , allowOmittedFields :: Bool
       -- ^ If 'True', missing fields of a record will be filled
-      -- with 'omittedField' values (if they are 'Just').
+      -- with 'Data.Aeson.FromJSON.omittedField' values (if they are 'Just').
       -- If 'False', all fields will required to present in the record object.
     , sumEncoding :: SumEncoding
       -- ^ Specifies how to encode constructors of a sum datatype.
@@ -885,7 +887,7 @@ defaultJSONKeyOptions = JSONKeyOptions id
 -- | Converts from CamelCase to another lower case, interspersing
 --   the character between all capital letters and their previous
 --   entries, except those capital letters that appear together,
---   like 'API'.
+--   like \"API\".
 --
 --   For use by Aeson template haskell calls.
 --

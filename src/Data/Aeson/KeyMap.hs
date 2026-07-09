@@ -138,7 +138,7 @@ import qualified Witherable as W
 -- Map
 -------------------------------------------------------------------------------
 
--- | A map from JSON key type 'Key' to 'v'.
+-- | A map from JSON key type 'Key' to @v@.
 newtype KeyMap v = KeyMap { unKeyMap :: Map Key v }
   deriving (Eq, Ord, Data, Functor)
 
@@ -268,7 +268,7 @@ difference :: KeyMap v -> KeyMap v' -> KeyMap v
 difference tm1 tm2 = KeyMap (M.difference (unKeyMap tm1) (unKeyMap tm2))
 
 -- | The (left-biased) union of two maps. It prefers the first map when duplicate
--- keys are encountered, i.e. ('union' == 'unionWith' 'const').
+-- keys are encountered, i.e. ('union' == 'unionWith' 'Prelude.const').
 union :: KeyMap v -> KeyMap v -> KeyMap v
 union (KeyMap x) (KeyMap y) = KeyMap (M.union x y)
 
@@ -352,7 +352,7 @@ import Data.List (sortBy)
 import Data.Ord (comparing)
 import Prelude (fst)
 
--- | A map from JSON key type 'Key' to 'v'.
+-- | A map from JSON key type 'Key' to @v@.
 newtype KeyMap v = KeyMap { unKeyMap :: HashMap Key v }
   deriving (Eq, Ord, Data, Functor)
 
@@ -477,7 +477,7 @@ difference :: KeyMap v -> KeyMap v' -> KeyMap v
 difference tm1 tm2 = KeyMap (H.difference (unKeyMap tm1) (unKeyMap tm2))
 
 -- | The (left-biased) union of two maps. It prefers the first map when duplicate
--- keys are encountered, i.e. ('union' == 'unionWith' 'const').
+-- keys are encountered, i.e. ('union' == 'unionWith' 'Prelude.const').
 union :: KeyMap v -> KeyMap v -> KeyMap v
 union (KeyMap x) (KeyMap y) = KeyMap (H.union x y)
 

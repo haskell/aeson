@@ -374,7 +374,7 @@ throwDecodeStrict' = throwDecodeStrict
 --
 --     \-- this encodes directly to a bytestring Builder
 --     'toEncoding' (Person name age) =
---         'pairs' (\"name\" '.=' 'name' '<>' \"age\" '.=' age)
+--         'pairs' (\"name\" '.=' name '<>' \"age\" '.=' age)
 -- @
 --
 -- We can now encode a value like so:
@@ -524,7 +524,7 @@ throwDecodeStrict' = throwDecodeStrict
 --
 -- @
 --     'toEncoding' (Person name age) =
---         'pairs' (\"name\" '.=' 'name' '<>' \"age\" '.=' age)
+--         'pairs' (\"name\" '.=' name '<>' \"age\" '.=' age)
 -- @
 --
 -- Any container type that implements 'Foldable' can be encoded to a
@@ -566,3 +566,6 @@ throwDecodeStrict' = throwDecodeStrict
 -- <https://hackage.haskell.org/package/time time>,
 -- and <https://hackage.haskell.org/package/text-iso8601 text-iso8601>
 -- (where the relevant parsers are defined).
+
+-- $optionsFields
+-- The functions here are in fact record fields of the 'Options' type.

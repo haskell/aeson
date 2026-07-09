@@ -467,7 +467,7 @@ instance value ~ Value => KeyValueOmit Value (KM.KeyMap value) where
 --   >   deriving (Show,Read,Eq,Ord)
 --
 --   It is possible to get the 'ToJSONKey' instance for free as we did
---   with 'Foo'. However, in this case, we have a natural way to go to
+--   with @Foo@. However, in this case, we have a natural way to go to
 --   and from 'Text' that does not require any escape sequences. So
 --   'ToJSONKeyText' can be used instead of 'ToJSONKeyValue' to encode maps
 --   as objects instead of arrays of pairs. This instance may be
