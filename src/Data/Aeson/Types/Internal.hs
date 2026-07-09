@@ -277,7 +277,7 @@ type Success a f r = a -> f r
 -- i.e. a parser to which the input has already been applied.
 newtype Parser a = Parser {
       runParser :: forall f r.
-                   JSONPath
+                   JSONPath       -- Note: the path is accumulated in reverse: <?> cons new elements, however `fail` (and other functions) will reverse the path before calling the failure continuation.
                 -> Failure f r
                 -> Success a f r
                 -> f r
