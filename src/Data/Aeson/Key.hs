@@ -55,12 +55,7 @@ fromText = Key
 toText :: Key -> Text
 toText = unKey
 
--- | @'coercing r1 r2'@ will evaluate to @r1@ if 'Key' is 'Coercible' to  'Text',
--- and to @r2@ otherwise.
---
--- Using 'coercing' we can make more efficient implementations
--- when 'Key' is backed up by 'Text' without exposing internals.
---
+-- | Partially exposed coercion for forwards compatibility.
 coercionToText :: Maybe (Coercion Key Text)
 coercionToText = Just Coercion
 {-# INLINE coercionToText #-}
