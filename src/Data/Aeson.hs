@@ -200,7 +200,10 @@ encodeFile fp = L.writeFile fp . encode
 -- This function parses immediately, but defers conversion.  See
 -- 'json' for details.
 --
--- Throws an 'Exception' when the file is missing.
+-- Throws an exception when the file cannot be accessed
+-- (e.g., it is missing or permissions are invalid).
+-- This function uses 'Data.ByteString.readFile' without handling
+-- any of its exceptions.
 decodeFileStrict :: (FromJSON a) => FilePath -> IO (Maybe a)
 decodeFileStrict = fmap decodeStrict . B.readFile
 
@@ -228,7 +231,10 @@ decodeStrict' = decodeStrict
 -- If this fails due to incomplete or invalid input, 'Nothing' is
 -- returned.
 --
--- Throws an 'Exception' when the file is missing.
+-- Throws an exception when the file cannot be accessed
+-- (e.g., it is missing or permissions are invalid).
+-- This function uses 'Data.ByteString.readFile' without handling
+-- any of its exceptions.
 --
 -- Since @2.2.0.0@ an alias for 'decodeFileStrict'.
 decodeFileStrict' :: (FromJSON a) => FilePath -> IO (Maybe a)
@@ -236,7 +242,10 @@ decodeFileStrict' = decodeFileStrict
 
 -- | Like 'decodeFileStrict' but returns an error message when decoding fails.
 --
--- Throws an 'Exception' when the file is missing.
+-- Throws an exception when the file cannot be accessed
+-- (e.g., it is missing or permissions are invalid).
+-- This function uses 'Data.ByteString.readFile' without handling
+-- any of its exceptions.
 eitherDecodeFileStrict :: (FromJSON a) => FilePath -> IO (Either String a)
 eitherDecodeFileStrict =
   fmap eitherDecodeStrict . B.readFile
@@ -258,7 +267,10 @@ eitherDecodeStrict' = eitherDecodeStrict
 
 -- | Like 'decodeFileStrict'' but returns an error message when decoding fails.
 --
--- Throws an 'Exception' when the file is missing.
+-- Throws an exception when the file cannot be accessed
+-- (e.g., it is missing or permissions are invalid).
+-- This function uses 'Data.ByteString.readFile' without handling
+-- any of its exceptions.
 --
 -- Since @2.2.0.0@ an alias for 'eitherDecodeFileStrict'.
 eitherDecodeFileStrict' :: (FromJSON a) => FilePath -> IO (Either String a)
