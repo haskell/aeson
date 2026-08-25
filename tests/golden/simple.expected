@@ -20,3 +20,5 @@ Either
 Error in $[1].Left[1]: expected Bool, but encountered Number
 Seq
 Error in $[2]: parsing Int failed, expected Number, but encountered Boolean
+listParser
+Error in $[0]: parsing Int failed, expected Number, but encountered Boolean

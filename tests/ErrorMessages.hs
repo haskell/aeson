@@ -11,7 +11,7 @@ module ErrorMessages
 import Prelude.Compat
 
 import Data.Aeson (FromJSON(..), Value, eitherDecode)
-import Data.Aeson.Types (Parser, parseEither)
+import Data.Aeson.Types (Parser, listParser, parseEither)
 import Data.Algorithm.Diff (PolyDiff (..), getGroupedDiff)
 import Data.Proxy (Proxy(..))
 
@@ -75,6 +75,10 @@ output = concat
     -- issue #358
   , testFor "Seq" (Proxy :: Proxy (Seq Int))
       [ "[0,1,true]"
+      ]
+
+  , testWith "listParser" (listParser parseJSON :: Value -> Parser [Int])
+      [ "[true]"
       ]
   ]
 
