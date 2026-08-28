@@ -2,6 +2,10 @@ For the latest version of this document, please see [https://github.com/haskell/
 
 ### Unreleased - Future date
 
+* Fix optimized decoding through `fmap` on `FromJSONKeyFunction` producing an
+  invalid `Map` when the target key type has a different `Ord` instance. This
+  is a patch-level behavioral correction with no public API change.
+
 ### 2.3.1.0 - 2026-07-05
 
 * Add `FromJSONKey` instance for `Data.Fixed`.

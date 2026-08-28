@@ -454,7 +454,7 @@ class FromJSONKey a where
 --   For performance reasons, these exist as three options instead of one.
 data FromJSONKeyFunction a where
     FromJSONKeyCoerce :: Coercible Text a => FromJSONKeyFunction a
-      -- ^ uses 'coerce', we expect that 'Hashable' and 'Ord' instance are compatible.
+      -- ^ uses 'coerce', we expect that 'Eq', 'Hashable', and 'Ord' instances are compatible.
     FromJSONKeyText :: !(Text -> a) -> FromJSONKeyFunction a
       -- ^ conversion from 'Text' that always succeeds
     FromJSONKeyTextParser :: !(Text -> Parser a) -> FromJSONKeyFunction a
@@ -470,11 +470,9 @@ instance Functor FromJSONKeyFunction where
     fmap h (FromJSONKeyValue f)      = FromJSONKeyValue (fmap h . f)
 
 -- | Construct 'FromJSONKeyFunction' for types coercible from 'Text'. This
--- conversion is still unsafe, as 'Hashable' and 'Eq' instances of @a@ should be
--- compatible with 'Text' i.e. hash values should be equal for wrapped values as well.
--- This property will always be maintained if the 'Hashable' and 'Eq' instances
--- are derived with generalized newtype deriving.
--- compatible with 'Text' i.e. hash values be equal for wrapped values as well.
+-- conversion is still unsafe, as 'Hashable', 'Eq', and 'Ord' instances of @a@
+-- should be compatible with 'Text'. This property will always be maintained if
+-- these instances are derived with generalized newtype deriving.
 --
 -- On pre GHC 7.8 this is unconstrained function.
 fromJSONKeyCoerce ::
@@ -482,18 +480,13 @@ fromJSONKeyCoerce ::
     FromJSONKeyFunction a
 fromJSONKeyCoerce = FromJSONKeyCoerce
 
--- | Semantically the same as @coerceFromJSONKeyFunction = fmap coerce = coerce@.
+-- | Coerce the result type without changing the parsing strategy.
 --
 -- See note on 'fromJSONKeyCoerce'.
 coerceFromJSONKeyFunction ::
     Coercible a b =>
     FromJSONKeyFunction a -> FromJSONKeyFunction b
 coerceFromJSONKeyFunction = coerce
-
-{-# RULES
-  "FromJSONKeyCoerce: fmap coerce" forall x .
-                                   fmap coerce x = coerceFromJSONKeyFunction x
-  #-}
 
 -- | Same as 'fmap'. Provided for the consistency with 'ToJSONKeyFunction'.
 mapFromJSONKeyFunction :: (a -> b) -> FromJSONKeyFunction a -> FromJSONKeyFunction b
@@ -2491,7 +2484,7 @@ instance FromJSON b => FromJSON (Tagged a b) where
 
 instance FromJSONKey b => FromJSONKey (Tagged a b) where
     fromJSONKey = coerceFromJSONKeyFunction (fromJSONKey :: FromJSONKeyFunction b)
-    fromJSONKeyList = (fmap . fmap) Tagged fromJSONKeyList
+    fromJSONKeyList = coerceFromJSONKeyFunction (fromJSONKeyList :: FromJSONKeyFunction [b])
 
 -------------------------------------------------------------------------------
 -- these

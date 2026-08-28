@@ -35,8 +35,23 @@ mapKey :: (Eq k2, Hashable k2) => (k1 -> k2) -> H.HashMap k1 v -> H.HashMap k2 v
 mapKey fk = mapKeyVal fk id
 {-# INLINE mapKey #-}
 
--- | Transform the keys of a 'M.Map'.
+-- | Transform the keys of a 'M.Map', preserving its tree shape only when the
+-- projected keys prove strictly ascending.
 mapKeyO :: (Ord k2) => (k1 -> k2) -> M.Map k1 v -> M.Map k2 v
-mapKeyO fk = mapKeyValO fk id
-{-# INLINE mapKeyO #-}
+mapKeyO fk sourceMap
+    | keysRemainAscending = M.mapKeysMonotonic fk sourceMap
+    | otherwise = M.mapKeysWith (\_ earlierValue -> earlierValue) fk sourceMap
+  where
+    keysRemainAscending = case M.foldrWithKey checkKeyOrder (Just Nothing) sourceMap of
+        Nothing -> False
+        Just _  -> True
 
+    -- The outer 'Nothing' is an ordering obstruction; the inner one is the
+    -- empty suffix before its greatest projected key is seen.
+    checkKeyOrder sourceKey _ maybeNextKey = do
+        nextKey <- maybeNextKey
+        let currentKey = fk sourceKey
+        if maybe True (currentKey <) nextKey
+        then Just (Just currentKey)
+        else Nothing
+{-# INLINE mapKeyO #-}
