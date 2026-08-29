@@ -1,5 +1,16 @@
 For the latest version of this document, please see [https://github.com/haskell/aeson/blob/master/changelog.md](https://github.com/haskell/aeson/blob/master/changelog.md).
 
+### 2.2.5.1 - 2026-08-29
+
+Fix a DoS vulnerability caused by parsing large numbers (advisory [HSEC-2026-0007](https://haskell.github.io/security-advisories/advisory/HSEC-2026-0007.html)). Backported from 2.3.0.0 to ease migration.
+
+* Fix parsing of fractional numbers to reject exponents smaller than -1024.
+  This change affects `FromJSON` instances of `Fixed`, `DiffTime`, and `NominalDiffTime`,
+  rejecting more inputs. Error messages for `Ratio` and integral types are also slightly different
+  due to reusing the same bounding logic.
+* In `text-iso8601-0.1.1.2`:
+    - Reject years of more than 15 digits.
+
 ### 2.2.5.0
 
 * Support `semialign-1.4`
@@ -34,7 +45,7 @@ For the latest version of this document, please see [https://github.com/haskell/
   One gotcha is that internal `Text` values (in `Key`s or `Value` `String`s)
   will most likely retain the original input `Text` value (its underlying `Array`).
   It shouldn't be an issue if the `Value` is then decoded to something else so these
-  `Text` values disapper, but if not (e.g. `Object` keys survive)
+  `Text` values disappear, but if not (e.g. `Object` keys survive)
   then users might want to use `Data.Text.copy`.
 
 ### 2.2.0.0
@@ -54,7 +65,7 @@ For the latest version of this document, please see [https://github.com/haskell/
 
   In addition to `Maybe` (and `Option`) fields the `Data.Monoid.First` and `Data.Monoid.Last` are also omitted,
   as well as the most newtype wrappers, when their wrap omittable type (e.g. newtypes in `Data.Monoid` and `Data.Semigroup`, `Identity`, `Const`, `Tagged`, `Compose`).
-  Additionall "boring" types like `()` and `Proxy` are omitted as well.
+  Additionally "boring" types like `()` and `Proxy` are omitted as well.
   As the omitting is now uniform, type arguments are also omitted (also in `Generic1` derived instance).
 
   Resolves issues:
@@ -72,7 +83,7 @@ For the latest version of this document, please see [https://github.com/haskell/
 * Move `Data.Aeson.Parser` module into separate [`attoparsec-aeson`](https://hackage.haskell.org/package/attoparsec-aeson) package, as these parsers are not used by `aeson` itself anymore.
 * Use [`text-iso8601`](https://hackage.haskell.org/package/text-iso8601) package for parsing `time` types. These are slightly faster than previously used (copy of) `attoparsec-iso8601`.
   Formats accepted is slightly changed:
-  - The space between time and timezone offset (in `UTCTime` and `ZonedTime`) is disallowed. ISO8601 explictly forbidds it.
+  - The space between time and timezone offset (in `UTCTime` and `ZonedTime`) is disallowed. ISO8601 explicitly forbids it.
   - The timezone offsets can be in range -23:59..23:59. This is how Python, joda-time etc seems to do. (Previously the range was -12..+14)
 
 * Remove internal `Data.Aeson.Internal` and `Data.Aeson.Internal.Time` modules. Everything from the former is exported elsewhere (`Data.Aeson.Types`), the latter was truly internal.
@@ -235,7 +246,7 @@ instance FromJSON Foo where
   parseJSON = gParseJSON defaultOptions { rejectUnknownFields = True }
 ```
 
-* `FromJSON` instance of `Ratio a` now parses numbers in addtion to
+* `FromJSON` instance of `Ratio a` now parses numbers in addition to
   standard `{numerator=..., denumerator=...}` encoding. Thanks to
   Aleksey Khudyakov.
 
