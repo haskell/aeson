@@ -939,7 +939,9 @@ instance ( GetConName f
   where
     sumToJSON opts targs
         | allNullaryToStringTag opts = Tagged . fromString
-                                     . constructorTagModifier opts . getConName
+                                     . fromMaybe (constructorTagModifier opts)
+                                                 (allNullaryConstructorTagModifier opts)
+                                     . getConName
         | otherwise = Tagged . nonAllNullarySumToJSON opts targs
     {-# INLINE sumToJSON #-}
 
