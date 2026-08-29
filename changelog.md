@@ -11,16 +11,23 @@ For the latest version of this document, please see [https://github.com/haskell/
 
 ### 2.3.0.0 - 2026-05-21
 
-* Fix parsing of fractional numbers to reject exponents smaller than -1024.
-  This breaking change affects `FromJSON` instances of `Fixed`, `DiffTime`, and `NominalDiffTime`,
-  rejecting more inputs. Error messages for `Ratio` and integral types are also slightly different
-  due to reusing the same bounding logic.
+* Fix DoS vulnerabilities caused by parsing large numbers (advisory [HSEC-2026-0007](https://haskell.github.io/security-advisories/advisory/HSEC-2026-0007.html)). Backported to 2.2.5.1, see below.
 * Fix typo in error message: "~~Unespected~~ Unexpected control character while parsing string literal".
 * Support nothunks 0.3.
 * Unset executable permissions in some test files and remove a broken symlink.
 * In `text-iso8601-0.2.0.0`:
-    - Reject years of more than 15 digits.
     - Accept 24:00:00 time of day.
+
+### 2.2.5.1 - 2026-08-29
+
+Fix a DoS vulnerability caused by parsing large numbers (advisory [HSEC-2026-0007](https://haskell.github.io/security-advisories/advisory/HSEC-2026-0007.html)). Backported from 2.3.0.0 to ease migration.
+
+* (HSEC-2026-0007) Fix parsing of fractional numbers to reject exponents smaller than -1024.
+  This change affects `FromJSON` instances of `Fixed`, `DiffTime`, and `NominalDiffTime`,
+  rejecting more inputs. Error messages for `Ratio` and integral types are also slightly different
+  due to reusing the same bounding logic.
+* In `text-iso8601-0.1.1.2` (backported from 0.2.0.0):
+    - (HSEC-2026-0007) Reject years of more than 15 digits.
 
 ### 2.2.5.0
 
