@@ -2,6 +2,8 @@ For the latest version of this document, please see [https://github.com/haskell/
 
 ### Unreleased - Future date
 
+* Remove unsound rewrite rule on `FromJSONKey` (`fmap coerce = coerce`)
+
 ### 2.3.1.0 - 2026-07-05
 
 * Add `FromJSONKey` instance for `Data.Fixed`.

@@ -470,11 +470,10 @@ instance Functor FromJSONKeyFunction where
     fmap h (FromJSONKeyValue f)      = FromJSONKeyValue (fmap h . f)
 
 -- | Construct 'FromJSONKeyFunction' for types coercible from 'Text'. This
--- conversion is still unsafe, as 'Hashable' and 'Eq' instances of @a@ should be
+-- conversion is still unsafe, as 'Hashable', 'Eq', and 'Ord' instances of @a@ should be
 -- compatible with 'Text' i.e. hash values should be equal for wrapped values as well.
--- This property will always be maintained if the 'Hashable' and 'Eq' instances
+-- This property will always be maintained if the 'Hashable', 'Eq', and 'Ord' instances
 -- are derived with generalized newtype deriving.
--- compatible with 'Text' i.e. hash values be equal for wrapped values as well.
 --
 -- On pre GHC 7.8 this is unconstrained function.
 fromJSONKeyCoerce ::
@@ -482,18 +481,15 @@ fromJSONKeyCoerce ::
     FromJSONKeyFunction a
 fromJSONKeyCoerce = FromJSONKeyCoerce
 
--- | Semantically the same as @coerceFromJSONKeyFunction = fmap coerce = coerce@.
+-- | Coerce the result of a 'FromJSONKeyFunction'.
 --
--- See note on 'fromJSONKeyCoerce'.
+-- __Warning__: This function is unsafe when the argument is
+-- 'fromJSONKeyCoerce'. It can break internal invariants of maps.
+-- See also the note on 'fromJSONKeyCoerce'.
 coerceFromJSONKeyFunction ::
     Coercible a b =>
     FromJSONKeyFunction a -> FromJSONKeyFunction b
 coerceFromJSONKeyFunction = coerce
-
-{-# RULES
-  "FromJSONKeyCoerce: fmap coerce" forall x .
-                                   fmap coerce x = coerceFromJSONKeyFunction x
-  #-}
 
 -- | Same as 'fmap'. Provided for the consistency with 'ToJSONKeyFunction'.
 mapFromJSONKeyFunction :: (a -> b) -> FromJSONKeyFunction a -> FromJSONKeyFunction b
@@ -2491,7 +2487,7 @@ instance FromJSON b => FromJSON (Tagged a b) where
 
 instance FromJSONKey b => FromJSONKey (Tagged a b) where
     fromJSONKey = coerceFromJSONKeyFunction (fromJSONKey :: FromJSONKeyFunction b)
-    fromJSONKeyList = (fmap . fmap) Tagged fromJSONKeyList
+    fromJSONKeyList = coerce (fromJSONKeyList @b)
 
 -------------------------------------------------------------------------------
 -- these
