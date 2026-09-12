@@ -1,8 +1,9 @@
 For the latest version of this document, please see [https://github.com/haskell/aeson/blob/master/changelog.md](https://github.com/haskell/aeson/blob/master/changelog.md).
 
-### Unreleased - Future date
+### 2.3.2.0 - 2026-09-12
 
 * Remove unsound rewrite rule on `FromJSONKey` (`fmap coerce = coerce`)
+* Fix `listParser` to include list indices in error traces
 
 ### 2.3.1.0 - 2026-07-05
 
