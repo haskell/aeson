@@ -30,7 +30,14 @@ Fix a DoS vulnerability caused by parsing large numbers (advisory [HSEC-2026-000
   rejecting more inputs. Error messages for `Ratio` and integral types are also slightly different
   due to reusing the same bounding logic.
 * In `text-iso8601-0.1.1.2` (backported from 0.2.0.0):
-    - (HSEC-2026-0007) Reject years of more than 15 digits.
+    - Reject years of more than 15 digits.
+
+      This year parsing issue was previously reported as a DoS vulnerability in [HSEC-2026-0007](https://haskell.github.io/security-advisories/advisory/HSEC-2026-0007.html)
+      but [we later reevaluated it as not a DoS vulnerability](https://github.com/haskell/security-advisories/issues/339).
+      (The other vulnerability in aeson remains in that advisory.)
+      Indeed, years were parsed in time `O(n log n)` which is asymptotically
+      no slower than parsing integer literals (which happens on all JSON integers
+      regardless of the target type, unlike dates).
 
 ### 2.2.5.0
 
