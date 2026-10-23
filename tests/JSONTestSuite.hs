@@ -156,7 +156,6 @@ tests = do
 ignore_accepted :: HashSet.HashSet FilePath
 ignore_accepted = HashSet.fromList
     [ "i_number_double_huge_neg_exp.json"
-    , "i_number_huge_exp.json"
     , "i_number_neg_int_huge_exp.json"
     , "i_number_pos_double_huge_exp.json"
     , "i_number_real_neg_overflow.json"
