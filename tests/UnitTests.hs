@@ -504,7 +504,7 @@ bigIntegerKeyDecoding =
 bigNaturalKeyDecoding :: Assertion
 bigNaturalKeyDecoding =
   assertEqual "Decoding an Integer key with a large exponent should fail"
-    (Left "Error in $['1e2000']: found a number with exponent 2000, but it must not be greater than 1024")
+    (Left "Error in $['1e2000']: parsing Natural failed, found a number with exponent 2000, but it must not be greater than 1024")
     ((eitherDecode :: L.ByteString -> Either String (HashMap Natural Value)) "{ \"1e2000\": null }")
 
 -- A regression test for: https://github.com/bos/aeson/issues/757
@@ -567,6 +567,7 @@ tests = testGroup "unit" [
   , testCase "Big integer decoding" bigIntegerDecoding
   , testCase "Big natural decoding" bigNaturalDecoding
   , testCase "Big integer key decoding" bigIntegerKeyDecoding
+  , testCase "Big natural key decoding" bigNaturalKeyDecoding
   , testGroup "QQ.Simple"
     [ testCase "example" $
       assertEqual "" (object ["foo" .= True]) [aesonQQ| {"foo": true } |]
