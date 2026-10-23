@@ -28,7 +28,7 @@ module UnitTests
 import Prelude.Compat
 
 import Control.Monad (forM, forM_, when)
-import Data.Aeson ((.=), (.:), (.:?), (.:!), FromJSON(..), ToJSON1(..), decode, eitherDecode, encode, fromJSON, genericParseJSON, genericToEncoding, genericToJSON, object, withObject, withEmbeddedJSON)
+import Data.Aeson ((.=), (.:), (.:?), (.:!), FromJSON(..), ToJSON1(..), decode, eitherDecode, eitherDecodeStrict, encode, fromJSON, genericParseJSON, genericToEncoding, genericToJSON, object, withObject, withEmbeddedJSON, eitherDecodeStrictText)
 import Data.Aeson.Types (JSONPathElement(..), formatError)
 import Data.Aeson.QQ.Simple (aesonQQ)
 import Data.Aeson.TH (deriveJSON, deriveToJSON, deriveToJSON1)
@@ -43,6 +43,7 @@ import Data.HashMap.Strict (HashMap)
 import Data.Kind (Type)
 import Data.List (isSuffixOf)
 import Data.Scientific (Scientific, scientific)
+import Data.String (IsString, fromString)
 import GHC.Generics (Generic)
 #if __GLASGOW_HASKELL__ >= 806
 import GHC.Generics.Generically (Generically (..))
@@ -513,6 +514,26 @@ type instance Fam757 = Maybe
 newtype Newtype757 a = MkNewtype757 (Fam757 a)
 deriveToJSON1 defaultOptions ''Newtype757
 
+veryBigExponent :: Assertion
+veryBigExponent = do
+  let big, small :: IsString a => a
+      big = fromString $ "1e" ++ show (toInteger (maxBound :: Int) + 1)
+      small = fromString $ "1.1e" ++ show (toInteger (minBound :: Int))
+      bigErr = Left "Scientific notation with exponent too large" :: Either String Value
+      smallErr = Left "Scientific notation with exponent too small" :: Either String Value
+  assertEqual "Reject very large exponent even in Value (Strict BS)"
+    bigErr (eitherDecodeStrict big)
+  assertEqual "Reject very negative exponent even in Value (Strict BS)"
+    smallErr (eitherDecodeStrict small)
+  assertEqual "Reject very large exponent even in Value (Lazy BS)"
+    bigErr (eitherDecode big)
+  assertEqual "Reject very negative exponent even in Value (Lazy BS)"
+    smallErr (eitherDecode small)
+  assertEqual "Reject very large exponent even in Value (Strict Text)"
+    bigErr (eitherDecodeStrictText big)
+  assertEqual "Reject very negative exponent even in Value (Strict Text)"
+    smallErr (eitherDecodeStrictText small)
+
 -------------------------------------------------------------------------------
 -- Tests trees
 -------------------------------------------------------------------------------
@@ -568,6 +589,7 @@ tests = testGroup "unit" [
   , testCase "Big natural decoding" bigNaturalDecoding
   , testCase "Big integer key decoding" bigIntegerKeyDecoding
   , testCase "Big natural key decoding" bigNaturalKeyDecoding
+  , testCase "Very big exponent" veryBigExponent
   , testGroup "QQ.Simple"
     [ testCase "example" $
       assertEqual "" (object ["foo" .= True]) [aesonQQ| {"foo": true } |]
