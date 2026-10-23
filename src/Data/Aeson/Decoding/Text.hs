@@ -261,23 +261,25 @@ scanNumberLiteral kont err bs0 = state_start bs0 where
 
     go_sci_pos :: Integer -> Int -> Text -> Int -> Text -> r
     go_sci_pos !coef !exp10 !bs2 !n !bs = case unconsPoint bs of
-        Nothing                                 -> kont (NumScientific sci) bs
         Just (w8, bs')
             | W.DIGIT_0 <= w8, w8 <= W.DIGIT_9  -> go_sci_pos coef exp10 bs2 (n + 1) bs'
-            | otherwise                         -> kont (NumScientific sci) bs
+        -- Technically it would be more lenient to bound `toInteger exp10 + exp10'`
+        -- but the extra complexity is not worth it.
+        _ | exp10' <= toInteger (maxBound :: Int) -> kont (NumScientific sci) bs
+        _ -> err "Scientific notation with exponent too large"
       where
-        exp10' = fromInteger (textToInteger (unsafeTakePoints n bs2))
-        sci = Sci.scientific coef (exp10 + exp10')
+        exp10' = textToInteger (unsafeTakePoints n bs2)
+        sci = Sci.scientific coef (exp10 + fromInteger exp10')
 
     go_sci_neg :: Integer -> Int -> Text -> Int -> Text -> r
     go_sci_neg !coef !exp10 !bs2 !n !bs = case unconsPoint bs of
-        Nothing                                 -> kont (NumScientific sci) bs
         Just (w8, bs')
             | W.DIGIT_0 <= w8, w8 <= W.DIGIT_9  -> go_sci_neg coef exp10 bs2 (n + 1) bs'
-            | otherwise                         -> kont (NumScientific sci) bs
+        _ | exp10' <= - toInteger (minBound - exp10) -> kont (NumScientific sci) bs
+        _ -> err "Scientific notation with exponent too small"
       where
-        exp10' = fromInteger (textToInteger (unsafeTakePoints n bs2))
-        sci = Sci.scientific coef (exp10 - exp10')
+        exp10' = textToInteger (unsafeTakePoints n bs2)
+        sci = Sci.scientific coef (exp10 - fromInteger exp10')
 
     errEnd    = err "Unexpected end-of-input while parsing number literal"
     errUnx w8 = err $ "Unexpected " ++ show (chr (fromIntegral w8)) ++ " while parsing number literal"
