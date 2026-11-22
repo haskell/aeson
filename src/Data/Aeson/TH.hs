@@ -335,7 +335,11 @@ consToValue target jc opts instTys cons = autoletE liftSBS $ \letInsert -> do
       -- forgotten.
       [con] | not (tagSingleConstructors opts) -> [argsToValue letInsert target jc tvMap opts False con]
       _ | allNullaryToStringTag opts && all isNullary cons ->
-              [ match (conP conName []) (normalB $ conStr target opts conName) []
+              let opts' = opts { constructorTagModifier =
+                                     fromMaybe (constructorTagModifier opts)
+                                               (allNullaryConstructorTagModifier opts)
+                               } in
+              [ match (conP conName []) (normalB $ conStr target opts' conName) []
               | con <- cons
               , let conName = constructorName con
               ]
@@ -682,13 +686,17 @@ consFromJSON jc tName opts instTys cons = do
                    else mixedMatches tvMap
 
     allNullaryMatches =
+      let opts' = opts { constructorTagModifier =
+                             fromMaybe (constructorTagModifier opts)
+                                       (allNullaryConstructorTagModifier opts)
+                       } in
       [ do txt <- newName "txtX"
            match (conP 'String [varP txt])
                  (guardedB $
                   [ liftM2 (,) (normalG $
                                   infixApp (varE txt)
                                            [|(==)|]
-                                           (conTxt opts conName)
+                                           (conTxt opts' conName)
                                )
                                ([|pure|] `appE` conE conName)
                   | con <- cons
