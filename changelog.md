@@ -2,6 +2,9 @@ For the latest version of this document, please see [https://github.com/haskell/
 
 ### Upcoming
 
+* Parse `Version` in linear time. Previously, `parseJSON` and `fromJSONKey`
+  for `Version` took quadratic time in the length of the input.
+
 * Reject large exponents when parsing scientific notation. Previously, parsing
   a JSON number into a `Value` would silently let the exponent overflow if it is
   greater than `maxBound :: Int` or smaller than `minBound :: Int`.
