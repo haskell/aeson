@@ -1,4 +1,4 @@
-cabal-version:      2.2
+cabal-version:      2.4
 name:               aeson
 version:            2.3.3.0
 license:            BSD-3-Clause
@@ -113,7 +113,7 @@ library
     build-depends: generically >=0.1 && <0.2
 
   if !impl(ghc >=9.0)
-    build-depends: integer-gmp
+    build-depends: integer-gmp < 1.2
 
   -- Other dependencies
   build-depends:
