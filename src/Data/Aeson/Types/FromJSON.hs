@@ -95,6 +95,7 @@ import Data.Aeson.Internal.Scientific
 import Data.Aeson.Types.Generic
 import Data.Aeson.Types.Internal
 import Data.Bits (unsafeShiftR)
+import Data.Char (isAlphaNum, isDigit)
 import Data.Complex (Complex(..))
 import Data.Fixed (Fixed, HasResolution (resolution), Nano)
 import Data.Functor.Compose (Compose(..))
@@ -121,11 +122,10 @@ import Data.Time.Format.Compat (parseTimeM, defaultTimeLocale)
 import Data.Traversable as Tr (sequence)
 import Data.Tuple.Solo (Solo (..))
 import Data.Type.Coercion (Coercion (..))
-import Data.Version (Version, parseVersion)
+import Data.Version (Version (..))
 import Foreign.Storable (Storable)
 import Foreign.C.Types (CTime (..))
 import GHC.Generics
-import Text.ParserCombinators.ReadP (readP_to_S)
 import Unsafe.Coerce (unsafeCoerce)
 import qualified Data.Aeson.Parser.Time as Time
 import qualified Data.Aeson.Key as Key
@@ -1863,12 +1863,20 @@ instance FromJSON Version where
 instance FromJSONKey Version where
     fromJSONKey = FromJSONKeyTextParser parseVersionText
 
+-- | Accepts the same strings as 'Data.Version.parseVersion', which takes
+-- quadratic time in the length of the input (#1198).
 parseVersionText :: Text -> Parser Version
-parseVersionText = go . readP_to_S parseVersion . unpack
+parseVersionText t = case T.splitOn "-" t of
+    branch : tags
+      | Just ns <- traverse number (T.splitOn "." branch)
+      , all isTag tags
+      -> return (Version ns (map unpack tags))
+    _ -> fail "parsing Version failed"
   where
-    go [(v,[])] = return v
-    go (_ : xs) = go xs
-    go _        = fail "parsing Version failed"
+    number s
+      | not (T.null s) && T.all isDigit s = Just (read (unpack s))
+      | otherwise = Nothing
+    isTag s = not (T.null s) && T.all isAlphaNum s
 
 -------------------------------------------------------------------------------
 -- semigroups NonEmpty

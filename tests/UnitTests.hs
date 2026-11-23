@@ -67,6 +67,7 @@ import Regression.Issue571
 import Regression.Issue687
 import Regression.Issue967
 import Regression.Issue1138
+import Regression.Issue1198
 import UnitTests.OmitNothingFieldsNote
 import UnitTests.FromJSONKey
 import UnitTests.Hashable
@@ -600,6 +601,7 @@ tests = testGroup "unit" [
   , issue687
   , issue967
   , issue1138
+  , issue1198
   , keyMapInsertWithTests
   , omitNothingFieldsNoteTests
   , noThunksTests

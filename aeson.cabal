@@ -180,6 +180,7 @@ test-suite aeson-tests
     Regression.Issue687
     Regression.Issue967
     Regression.Issue1138
+    Regression.Issue1198
     RFC8785
     SerializationFormatSpec
     Types
