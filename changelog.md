@@ -1,6 +1,6 @@
 For the latest version of this document, please see [https://github.com/haskell/aeson/blob/master/changelog.md](https://github.com/haskell/aeson/blob/master/changelog.md).
 
-### Upcoming
+### 2.3.3.0 - 2026-11-23
 
 * Parse `Version` in linear time. Previously, `parseJSON` and `fromJSONKey`
   for `Version` took quadratic time in the length of the input.
