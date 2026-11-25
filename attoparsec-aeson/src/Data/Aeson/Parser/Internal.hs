@@ -46,7 +46,7 @@ module Data.Aeson.Parser.Internal
 
 import Control.Applicative ((<|>))
 import Control.Monad (when, void)
-import Data.Attoparsec.ByteString.Char8 (Parser, char, decimal, endOfInput, isDigit_w8, signed, string)
+import Data.Attoparsec.ByteString.Char8 (Parser, char, endOfInput, isDigit_w8, signed, string)
 import Data.Function (fix)
 import Data.Functor (($>))
 import Data.Integer.Conversion (byteStringToInteger)
@@ -479,7 +479,15 @@ scientific = do
   let !signedCoeff | positive  =  c
                    | otherwise = -c
 
-  (A.satisfy (\ex -> case ex of W8.LOWER_E -> True; W8.UPPER_E -> True; _ -> False) *>
-      fmap (Sci.scientific signedCoeff . (e +)) (signed decimal)) <|>
-    return (Sci.scientific signedCoeff    e)
+  mexp <- (A.satisfy (\ex -> case ex of W8.LOWER_E -> True; W8.UPPER_E -> True; _ -> False) *>
+      fmap Just (signed (byteStringToInteger <$> A.takeWhile1 isDigit_w8))) <|>
+    return Nothing
+
+  -- The same bounds as in Data.Aeson.Decoding, so that the exponent cannot overflow.
+  case mexp of
+    Nothing -> return (Sci.scientific signedCoeff e)
+    Just exp10
+      | exp10 > toInteger (maxBound :: Int) -> fail "Scientific notation with exponent too large"
+      | exp10 < toInteger (minBound :: Int) - toInteger e -> fail "Scientific notation with exponent too small"
+      | otherwise -> return (Sci.scientific signedCoeff (e + fromInteger exp10))
 {-# INLINE scientific #-}

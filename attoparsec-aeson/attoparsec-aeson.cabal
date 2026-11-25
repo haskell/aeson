@@ -68,6 +68,7 @@ test-suite attoparsec-aeson-tests
     , attoparsec-aeson
     , base
     , bytestring
+    , scientific
     , tasty
     , tasty-hunit
 

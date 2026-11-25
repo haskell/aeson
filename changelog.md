@@ -5,6 +5,8 @@ For the latest version of this document, please see [https://github.com/haskell/
 * In `attoparsec-aeson`:
     - Reject unescaped control characters in strings that also contain an
       escape or a non-ASCII character, as `Data.Aeson.Decoding` does since #1138.
+    - Reject exponents outside the range of `Int` in numbers, as
+      `Data.Aeson.Decoding` does since 2.3.3.0. Previously they overflowed.
 
 ### 2.3.3.0 - 2026-11-23
 
