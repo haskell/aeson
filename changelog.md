@@ -1,5 +1,11 @@
 For the latest version of this document, please see [https://github.com/haskell/aeson/blob/master/changelog.md](https://github.com/haskell/aeson/blob/master/changelog.md).
 
+### Upcoming
+
+* In `attoparsec-aeson`:
+    - Reject unescaped control characters in strings that also contain an
+      escape or a non-ASCII character, as `Data.Aeson.Decoding` does since #1138.
+
 ### 2.3.3.0 - 2026-11-23
 
 * Parse `Version` in linear time. Previously, `parseJSON` and `fromJSONKey`

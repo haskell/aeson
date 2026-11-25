@@ -333,8 +333,11 @@ jstring_ = do
 jstringSlow :: B.ByteString -> Parser Text
 {-# INLINE jstringSlow #-}
 jstringSlow s' = do
-  s <- A.scan startState go <* A.anyWord8
-  case unescapeText (B.append s' s) of
+  s <- A.scan startState go
+  w <- A.anyWord8
+  if w /= W8.DOUBLE_QUOTE
+  then fail "unescaped control character"
+  else case unescapeText (B.append s' s) of
     Right r  -> return r
     Left err -> fail $ show err
  where
@@ -342,6 +345,7 @@ jstringSlow s' = do
     go a c
       | a                     = Just False
       | c == W8.DOUBLE_QUOTE  = Nothing
+      | c < 0x20              = Nothing
       | otherwise = let a' = c == W8.BACKSLASH
                     in Just a'
 
